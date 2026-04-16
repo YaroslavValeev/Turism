@@ -13,14 +13,18 @@
     "db:studio": "pnpm --filter api db:studio",
     "db:seed": "pnpm --filter api db:seed",
     "smoke": "node scripts/smoke.js",
-    "smoke:analytics": "node scripts/smoke_analytics_internal.js",
-    "check:analytics-parity": "node scripts/check_analytics_parity.mjs",
-    "check:telegram-alerts": "node scripts/check_telegram_alert_delivery.mjs",
+    "smoke:analytics": "pnpm --filter @mywave/config build && node -r ./scripts/preload-repo-env.cjs scripts/smoke_analytics_internal.js",
+    "check:analytics-parity": "pnpm --filter @mywave/config build && node scripts/check_analytics_parity.mjs",
+    "check:telegram-alerts": "pnpm --filter @mywave/config build && node scripts/check_telegram_alert_delivery.mjs",
+    "check:web-analytics-proxy": "pnpm --filter @mywave/config build && node scripts/check_web_analytics_proxy.mjs",
+    "sync:web-analytics-env": "pnpm --filter @mywave/config build && node scripts/sync-web-analytics-env.mjs",
     "e2e:checkpoint1": "node scripts/e2e_checkpoint1.js",
     "e2e:checkpoint2": "node scripts/e2e_checkpoint2_commission.js",
     "e2e:fair-success-fee": "node scripts/e2e_fair_success_fee.js"
   },
   "devDependencies": {
+    "@mywave/config": "workspace:*",
+    "dotenv": "^16.4.5",
     "typescript": "^5.3.0"
   },
   "packageManager": "pnpm@9.0.0",

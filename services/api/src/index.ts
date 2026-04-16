@@ -2,6 +2,7 @@
  * API entry. Sprint 1: env/config, auth (admin only), organizers CRUD, audit log.
  * No public auth. No revenue UI.
  */
+import "./env/loadProcessEnv";
 import express from "express";
 import cors from "cors";
 import { loadEnv } from "@mywave/config";

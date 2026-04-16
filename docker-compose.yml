@@ -1,5 +1,10 @@
 # Local PostgreSQL for development. Run: docker compose up -d
 # Matches .env.example: user/password@localhost:5432/mywave
+#
+# API сейчас запускается на хосте (pnpm dev:api), не в compose. Переменные для API —
+# в `services/api/.env` и/или корневом `.env` (см. services/api/.env.example).
+# Для будущего сервиса API в compose используйте `env_file: [ ./services/api/.env ]`
+# и те же канонические имена: INTERNAL_ANALYTICS_TOKEN, TELEGRAM_BOT_API_BASE_URL, TELEGRAM_ALERT_CHAT_ID.
 services:
   postgres:
     image: postgres:16-alpine

@@ -1,5 +1,6 @@
 /**
  * Env parsing. Source of truth: config_and_secrets_map.csv
+ * Алиасы legacy → канон (TARGET_INTERNAL_TOKEN, TELEGRAM_BOT_TOKEN, OWNER_CHAT_ID): см. applyApiRuntimeEnvAliases.
  */
 
 function required(key: string): string {

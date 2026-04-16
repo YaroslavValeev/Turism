@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800" role="img" aria-labelledby="title desc">
+  <title id="title">Kuban Pilot Media</title>
+  <desc id="desc">Abstract wakesurf-themed placeholder for the third pilot program.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1b4332" />
+      <stop offset="100%" stop-color="#235789" />
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="800" fill="url(#bg)" />
+  <circle cx="229" cy="162" r="84" fill="#ffe29a" />
+  <path d="M0 479 C111 446 224 520 334 489 C482 446 559 334 716 346 C860 357 948 461 1081 447 C1122 443 1161 434 1200 422 L1200 800 L0 800 Z" fill="#53c5db" opacity="0.9" />
+  <path d="M0 601 C144 569 279 661 401 646 C554 626 640 551 786 561 C940 571 1043 671 1200 639 L1200 800 L0 800 Z" fill="#d6fbff" opacity="0.92" />
+  <text x="74" y="144" fill="#ffffff" font-size="56" font-family="Georgia, serif">Kuban Wake Family Days</text>
+  <text x="77" y="202" fill="#dff8ff" font-size="28" font-family="Georgia, serif">Krasnodar pilot media • local SVG asset</text>
+</svg>

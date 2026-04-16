@@ -1,0 +1,8 @@
+﻿function,role,primary_kpi,secondary_kpi,health_metric,failure_signal
+Founder,CEO / Product Owner,completed bookings,verified organizers,weekly decisions shipped,many open priorities without owner
+Supply,Partnerships Lead,new listed organizers,call->interested conversion,response speed,pipeline stalled
+Trust & Safety,Safety / Legal Lead,verification turnaround time,complaints resolved,low incident rate,unclear organizer status
+Demand,Growth / Content Lead,qualified leads,CTR to booking inquiry,repeat visitors,traffic without inquiries
+Ops,Operations Lead,lead->contacted conversion,contacted->booked conversion,response SLA,lead aging
+Tech,Tech Lead,successful releases,time to fix critical bug,staging stability,prod regressions
+Finance,Commission Tracking Owner,commission collected,commission accrued accuracy,reconciliation cadence,completed deals not invoiced

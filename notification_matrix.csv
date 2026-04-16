@@ -1,0 +1,7 @@
+﻿notification_type,recipient,trigger,channel,must_have_content,owner
+new_lead_alert,organizer,booking created,email / TG / dashboard,"program, user contact, next step",Ops
+lead_stale_reminder,organizer + ops,no response within SLA,email / dashboard,"booking age, required action",Ops
+booking_completed_review_request,user,booking completed,email / TG,review link,Ops
+refund_update,user,refund status change,email,"status, expected timing",Ops
+complaint_received,founder + ops,incident created high+,email / TG,"severity, case link",Ops
+commission_due,organizer,commission accrued,email,"deal id, amount due, deadline",Finance

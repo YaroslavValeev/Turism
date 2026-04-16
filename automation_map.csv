@@ -1,0 +1,8 @@
+﻿automation_id,name,trigger,condition,action,owner,mode
+AUT-001,New lead notify organizer,booking created,status = new,send notification to organizer + ops,Ops,auto
+AUT-002,Stale lead reminder,booking age > SLA,status in new/reviewed/sent_to_organizer,send reminder + queue flag,Ops,auto
+AUT-003,Review request,booking status -> completed,after 24h,send review request,Ops,auto
+AUT-004,Missing card fields alert,program publish review,required fields missing,flag program in quality queue,Trust,auto
+AUT-005,Commission reminder,commission accrual created,not collected by due date,send reminder to organizer,Finance,auto
+AUT-006,Verified approval,manual founder/trust decision,evidence sufficient,change status + write audit log,Trust,manual
+AUT-007,Refund exception approval,refund case outside rules,requires founder review,manual decision + audit log,Founder,manual

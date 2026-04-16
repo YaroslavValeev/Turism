@@ -1,0 +1,12 @@
+﻿table_name,primary_key,important_columns,status_columns,owner_domain
+users,user_id,"name,email,phone,role",,auth
+organizers,organizer_id,"display_name,legal_status,contact_email,contact_phone,response_score",verification_status,supply/trust
+organizer_verification_evidence,evidence_id,"organizer_id,evidence_type,evidence_url,notes",,trust
+programs,program_id,"organizer_id,title,discipline,region,start_date,end_date,price_from_rub,risk_level,level_required",publish_status,catalog
+program_media,media_id,"program_id,media_type,url,caption",,catalog
+bookings,booking_id,"program_id,organizer_id,user_id_or_guest_name,source_channel,gmv_rub,completed_at,refund_amount_rub",booking_status,demand/revenue
+reviews,review_id,"booking_id,program_id,organizer_id,rating,comment",moderation_status,trust
+incidents,incident_id,"booking_id,organizer_id,program_id,type,severity,summary",incident_status,ops/trust
+commissions,commission_record_id,"booking_id,organizer_id,program_id,gmv_rub,commission_rate_pct,commission_accrued_rub,commission_collected_rub",reconciliation_status,finance
+audit_logs,audit_id,"entity_type,entity_id,changed_field,old_value,new_value,changed_by,reason",,platform
+notifications,notification_id,"recipient_type,recipient_id,channel,template_key,delivery_status",,ops

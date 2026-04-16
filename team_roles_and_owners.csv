@@ -1,0 +1,8 @@
+﻿function,role,main_owner,backup_owner,core_goal,weekly_output,critical_metric
+Founder,CEO / Product Owner,Yaroslav,,"direction, priorities, final decisions",weekly priorities,completed bookings
+Supply,Partnerships Lead,Yaroslav,AI Partnerships Agent,bring in right organizers,pipeline movement,listed organizers
+Trust & Safety,Safety / Legal Lead,Yaroslav,AI Trust & Safety Agent,"verification, complaints, risk control",verification decisions,verified organizer ratio
+Demand,Growth / Content Lead,Yaroslav,AI Growth Agent,qualified traffic and trust-building content,weekly content + leads,qualified leads
+Ops,Operations Lead,Yaroslav,AI Ops Agent,move leads to outcomes,lead status hygiene,lead->booked conversion
+Tech,Tech Lead,Cursor / Dev Agent,Yaroslav,stable release loop,shipped changes,critical bugs open
+Finance,Commission Tracking Owner,Yaroslav,AI Finance Agent,track completed deals and commission,commission log update,commission collected

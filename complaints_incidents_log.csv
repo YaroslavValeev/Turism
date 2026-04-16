@@ -1,0 +1,2 @@
+﻿incident_id,date_reported,type,severity,organizer_id,program_name,user_id,status,owner,resolution_deadline,root_cause,resolution_notes
+INC-001,,complaint / refund / safety / fraud / tech,,,,,open,Yaroslav,,,

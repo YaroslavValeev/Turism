@@ -1,0 +1,5 @@
+﻿item_id,item,stream,priority,impact_on_revenue,impact_on_trust,impact_on_launch,effort,decision
+BL-001,Fix booking status model,Product,P0,high,high,high,medium,do now
+BL-002,Improve organizer card completeness,Supply,P0,medium,high,high,low,do now
+BL-003,Add advanced membership mechanics,Growth,P3,low,low,low,high,later
+BL-004,Automate commission reconciliation,Finance,P1,high,medium,medium,medium,next

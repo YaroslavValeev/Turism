@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800" role="img" aria-labelledby="title desc">
+  <title id="title">SouthCrew Pilot Media</title>
+  <desc id="desc">Abstract wakesurf-themed placeholder for the second pilot program.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3a1c40" />
+      <stop offset="100%" stop-color="#13505b" />
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="800" fill="url(#bg)" />
+  <path d="M0 278 C145 221 325 355 498 324 C654 296 760 176 914 185 C1030 193 1114 272 1200 231 L1200 0 L0 0 Z" fill="#ffb36b" opacity="0.85" />
+  <path d="M0 530 C185 479 334 610 505 579 C686 546 810 420 965 447 C1071 465 1136 529 1200 507 L1200 800 L0 800 Z" fill="#72d6e5" opacity="0.92" />
+  <path d="M0 645 C204 602 374 719 566 689 C734 662 860 578 1030 606 C1107 619 1163 655 1200 639 L1200 800 L0 800 Z" fill="#e5fbff" opacity="0.9" />
+  <text x="74" y="664" fill="#ffffff" font-size="56" font-family="Georgia, serif">SouthCrew Technique Reset</text>
+  <text x="77" y="719" fill="#dcfaff" font-size="28" font-family="Georgia, serif">Pilot media placeholder • local render-safe asset</text>
+</svg>

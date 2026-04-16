@@ -1,0 +1,16 @@
+# Local PostgreSQL for development. Run: docker compose up -d
+# Matches .env.example: user/password@localhost:5432/mywave
+services:
+  postgres:
+    image: postgres:16-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: mywave
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:

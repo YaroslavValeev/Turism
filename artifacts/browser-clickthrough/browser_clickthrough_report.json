@@ -1,0 +1,39 @@
+{
+  "screenshots": {
+    "admin_organizers_initial": "F:\\Проекты MyWave\\NEW2026\\Toutism\\artifacts\\browser-clickthrough\\screenshots\\admin_organizers_initial.png",
+    "admin_organizers_checked": "F:\\Проекты MyWave\\NEW2026\\Toutism\\artifacts\\browser-clickthrough\\screenshots\\admin_organizers_checked.png",
+    "admin_programs_published": "F:\\Проекты MyWave\\NEW2026\\Toutism\\artifacts\\browser-clickthrough\\screenshots\\admin_programs_published.png",
+    "web_catalog": "F:\\Проекты MyWave\\NEW2026\\Toutism\\artifacts\\browser-clickthrough\\screenshots\\web_catalog.png",
+    "web_program_submitted": "F:\\Проекты MyWave\\NEW2026\\Toutism\\artifacts\\browser-clickthrough\\screenshots\\web_program_submitted.png",
+    "admin_booking_completed": "F:\\Проекты MyWave\\NEW2026\\Toutism\\artifacts\\browser-clickthrough\\screenshots\\admin_booking_completed.png",
+    "admin_reviews": "F:\\Проекты MyWave\\NEW2026\\Toutism\\artifacts\\browser-clickthrough\\screenshots\\admin_reviews.png",
+    "admin_incidents": "F:\\Проекты MyWave\\NEW2026\\Toutism\\artifacts\\browser-clickthrough\\screenshots\\admin_incidents.png",
+    "admin_commissions": "F:\\Проекты MyWave\\NEW2026\\Toutism\\artifacts\\browser-clickthrough\\screenshots\\admin_commissions.png"
+  },
+  "virtual_organizers": [
+    {
+      "name": "WaveLine Krasnodar BR-095201",
+      "status": "checked"
+    },
+    {
+      "name": "SouthCrew Wakesurf BR-095201",
+      "status": "checked"
+    },
+    {
+      "name": "Kuban Wake Camp BR-095201",
+      "status": "checked"
+    }
+  ],
+  "booking_statuses": [
+    "reviewed",
+    "sent_to_organizer",
+    "contacted",
+    "offer_sent",
+    "booked",
+    "paid_off_platform",
+    "completed"
+  ],
+  "created_review": true,
+  "created_incident": true,
+  "created_commission": true
+}

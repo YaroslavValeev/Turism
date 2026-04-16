@@ -1,0 +1,9 @@
+﻿test_id,area,scenario,expected_result,priority,owner
+QA-001,Booking status,new -> sent_to_organizer,status changes and audit log written,P0,QA/Tech
+QA-002,Booking status validation,new -> completed direct,transition blocked,P0,QA/Tech
+QA-003,Review automation,completed booking + 24h,review request sent once,P1,QA/Ops
+QA-004,Commission accrual,completed deal with GMV,commission record created,P0,QA/Finance
+QA-005,Stale lead reminder,lead exceeds SLA,reminder event fired,P1,QA/Ops
+QA-006,Program publish gate,missing safety fields,publish blocked / needs_fix,P0,QA/Trust
+QA-007,Incident escalation,critical incident created,founder escalation triggered,P0,QA/Ops
+QA-008,Dashboard metrics,completed deal exists,north-star metrics update correctly,P1,QA/Data

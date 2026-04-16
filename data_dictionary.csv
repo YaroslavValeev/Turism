@@ -1,0 +1,11 @@
+﻿entity,field_name,field_type,required,description,source_of_truth
+Organizer,organizer_id,string,yes,Unique organizer ID,backend_db
+Organizer,verification_status,enum,yes,listed / checked / verified / trusted,backend_db
+Program,program_id,string,yes,Unique program ID,backend_db
+Program,risk_level,enum,yes,low / medium / high / extreme,backend_db
+Booking,booking_id,string,yes,Unique booking ID,backend_db
+Booking,booking_status,enum,yes,Canonical booking status,backend_db
+Booking,gmv_rub,number,no,Gross merchandise value,ops_confirmed
+Commission,commission_accrued_rub,number,no,Accrued commission after completed deal,finance_ops
+Review,rating,number,yes,User rating after completed booking,user_submitted
+Incident,severity,enum,yes,low / medium / high / critical,ops_triage

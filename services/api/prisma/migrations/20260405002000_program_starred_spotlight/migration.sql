@@ -1,0 +1,2 @@
+ALTER TABLE "programs"
+ADD COLUMN "isStarred" BOOLEAN NOT NULL DEFAULT false;

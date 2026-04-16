@@ -1,0 +1,1512 @@
+[
+  {
+    "type": "instagram",
+    "name": "Sokolov Travel",
+    "urlOrHandle": "https://www.instagram.com/sokolov.travel/",
+    "discipline": "велотуризм / bikepacking",
+    "country": "Russia",
+    "region": null,
+    "language": "ru",
+    "priority": 20,
+    "trustScore": 0.82,
+    "parserProfile": "instagram_public_profile",
+    "fetchIntervalMinutes": 1440,
+    "isActive": true,
+    "metaJson": {
+      "originalChannel": "inst",
+      "sports": [
+        "Велосипедные дисциплины"
+      ],
+      "disciplines": [
+        "велотуризм / bikepacking"
+      ],
+      "responsiblePeople": [
+        "Юрий Соколов"
+      ],
+      "contactPhones": [
+        "+7 928 172-92-07"
+      ],
+      "projectTypes": [
+        "турклуб / авторские велотуры"
+      ],
+      "notes": [
+        "Статус: подтверждено. Авторские велотуры по РФ; есть календарь велотуров 2026."
+      ],
+      "verificationStatus": "подтверждено",
+      "verificationSummary": "Авторские велотуры по РФ; есть календарь велотуров 2026.",
+      "verificationUrls": [
+        "https://www.instagram.com/sokolov.travel/",
+        "https://sokolov.travel/contact/",
+        "https://sokolov.travel/calendar/"
+      ],
+      "sourceRegistryExternalId": "1Oo6xN2WQwJBKeImzc6DQsv-oqfdLvgEx",
+      "autoPublish": true,
+      "fallbackImageUrl": null
+    }
+  },
+  {
+    "type": "instagram",
+    "name": "Dahovskaya Bike Camp",
+    "urlOrHandle": "https://www.instagram.com/dahovskaya_bikepark/",
+    "discipline": "горный велосипед / bike camp",
+    "country": "Russia",
+    "region": null,
+    "language": "ru",
+    "priority": 60,
+    "trustScore": 0.58,
+    "parserProfile": "instagram_public_profile",
+    "fetchIntervalMinutes": 1440,
+    "isActive": true,
+    "metaJson": {
+      "originalChannel": "inst",
+      "sports": [
+        "Велосипедные дисциплины"
+      ],
+      "disciplines": [
+        "горный велосипед / bike camp"
+      ],
+      "responsiblePeople": [],
+      "contactPhones": [
+        "+7 962 767-67-92"
+      ],
+      "projectTypes": [
+        "bike camp / школа"
+      ],
+      "notes": [
+        "Статус: неподтверждено. Аккаунт публикует тренировки по горному велоспорту и запись по телефону."
+      ],
+      "verificationStatus": "неподтверждено",
+      "verificationSummary": "Аккаунт публикует тренировки по горному велоспорту и запись по телефону.",
+      "verificationUrls": [
+        "https://www.instagram.com/dahovskaya_bikepark/",
+        "https://vk.com/dhovskaya",
+        "https://t.me/dahbikecamp"
+      ],
+      "sourceRegistryExternalId": "1Oo6xN2WQwJBKeImzc6DQsv-oqfdLvgEx",
+      "autoPublish": true,
+      "fallbackImageUrl": null
+    }
+  },
+  {
+    "type": "instagram",
+    "name": "TrialNinja Bike Camp",
+    "urlOrHandle": "https://www.instagram.com/trialninja_/",
+    "discipline": "горный велосипед / тренировочный лагерь",
+    "country": "Russia",
+    "region": null,
+    "language": "ru",
+    "priority": 60,
+    "trustScore": 0.58,
+    "parserProfile": "instagram_public_profile",
+    "fetchIntervalMinutes": 1440,
+    "isActive": true,
+    "metaJson": {
+      "originalChannel": "inst",
+      "sports": [
+        "Велосипедные дисциплины"
+      ],
+      "disciplines": [
+        "горный велосипед / тренировочный лагерь"
+      ],
+      "responsiblePeople": [],
+      "contactPhones": [],
+      "projectTypes": [
+        "школа / лагерь"
+      ],
+      "notes": [
+        "Статус: неподтверждено. Есть программа bike camp 2026 и признаки активных сборов."
+      ],
+      "verificationStatus": "неподтверждено",
+      "verificationSummary": "Есть программа bike camp 2026 и признаки активных сборов.",
+      "verificationUrls": [
+        "https://www.instagram.com/trialninja_/",
+        "https://bike-camp.ru/raspisanie-2026/",
+        "https://bike-camp.ru/camp/"
+      ],
+      "sourceRegistryExternalId": "1Oo6xN2WQwJBKeImzc6DQsv-oqfdLvgEx",
+      "autoPublish": true,
+      "fallbackImageUrl": null
+    }
+  },
+  {
+    "type": "instagram",
+    "name": "WakeExperience",
+    "urlOrHandle": "https://www.instagram.com/wakeexperience/",
+    "discipline": "вейк-кэмпы / travel camps",
+    "country": "Russia",
+    "region": null,
+    "language": "ru",
+    "priority": 20,
+    "trustScore": 0.82,
+    "parserProfile": "instagram_public_profile",
+    "fetchIntervalMinutes": 1440,
+    "isActive": true,
+    "metaJson": {
+      "originalChannel": "inst",
+      "sports": [
+        "Вейкборд",
+        "Сноуборд"
+      ],
+      "disciplines": [
+        "вейк-кэмпы / travel camps",
+        "сноуборд-кэмпы / туры"
+      ],
+      "responsiblePeople": [
+        "Кирилл Карнов"
+      ],
+      "contactPhones": [
+        "+7 921 770-33-10"
+      ],
+      "projectTypes": [
+        "event-команда / школа / кэмпы"
+      ],
+      "notes": [
+        "Статус: подтверждено. Ведут кэмпы и спортивные поездки.",
+        "Статус: подтверждено. В профиле проекта заявлены сноуборд, вейк и серф-туры."
+      ],
+      "verificationStatus": "подтверждено",
+      "verificationSummary": "В профиле проекта заявлены сноуборд, вейк и серф-туры.",
+      "verificationUrls": [
+        "https://www.instagram.com/wakeexperience/",
+        "https://www.instagram.com/kurill777/",
+        "https://www.youtube.com/watch?v=5-rhO3dvndU"
+      ],
+      "sourceRegistryExternalId": "1Oo6xN2WQwJBKeImzc6DQsv-oqfdLvgEx",
+      "autoPublish": true,
+      "fallbackImageUrl": null
+    }
+  },
+  {
+    "type": "instagram",
+    "name": "TRIP2 Wake Camps",
+    "urlOrHandle": "https://www.instagram.com/trip2wakecamps/",
+    "discipline": "вейкборд-лагеря / кэмпы",
+    "country": "Russia",
+    "region": null,
+    "language": "ru",
+    "priority": 60,
+    "trustScore": 0.58,
+    "parserProfile": "instagram_public_profile",
+    "fetchIntervalMinutes": 1440,
+    "isActive": true,
+    "metaJson": {
+      "originalChannel": "inst",
+      "sports": [
+        "Вейкборд"
+      ],
+      "disciplines": [
+        "вейкборд-лагеря / кэмпы"
+      ],
+      "responsiblePeople": [],
+      "contactPhones": [],
+      "projectTypes": [
+        "лагерь / event-команда"
+      ],
+      "notes": [
+        "Статус: неподтверждено. Видны активные лагеря и тренерские смены 2026."
+      ],
+      "verificationStatus": "неподтверждено",
+      "verificationSummary": "Видны активные лагеря и тренерские смены 2026.",
+      "verificationUrls": [
+        "https://www.instagram.com/trip2wakecamps/",
+        "https://www.instagram.com/p/DFqb4A0oA4Y/",
+        "https://www.instagram.com/p/DGdo2yJouuN/"
+      ],
+      "sourceRegistryExternalId": "1Oo6xN2WQwJBKeImzc6DQsv-oqfdLvgEx",
+      "autoPublish": true,
+      "fallbackImageUrl": null
+    }
+  },
+  {
+    "type": "instagram",
+    "name": "Kacheev Wake School",
+    "urlOrHandle": "https://www.instagram.com/kacheev_wakeschool/",
+    "discipline": "вейкборд-школа / кэмпы",
+    "country": "Russia",
+    "region": null,
+    "language": "ru",
+    "priority": 60,
+    "trustScore": 0.58,
+    "parserProfile": "instagram_public_profile",
+    "fetchIntervalMinutes": 1440,
+    "isActive": true,
+    "metaJson": {
+      "originalChannel": "inst",
+      "sports": [
+        "Вейкборд"
+      ],
+      "disciplines": [
+        "вейкборд-школа / кэмпы"
+      ],
+      "responsiblePeople": [],
+      "contactPhones": [],
+      "projectTypes": [
+        "школа / лагерь"
+      ],
+      "notes": [
+        "Статус: неподтверждено. Есть признаки весенних сборов и кэмпов 2026."
+      ],
+      "verificationStatus": "неподтверждено",
+      "verificationSummary": "Есть признаки весенних сборов и кэмпов 2026.",
+      "verificationUrls": [
+        "https://www.instagram.com/kacheev_wakeschool/",
+        "https://www.instagram.com/reel/DHI1uU8CRmg/",
+        "https://www.instagram.com/p/DHWpoJgCMgs/"
+      ],
+      "sourceRegistryExternalId": "1Oo6xN2WQwJBKeImzc6DQsv-oqfdLvgEx",
+      "autoPublish": true,
+      "fallbackImageUrl": null
+    }
+  },
+  {
+    "type": "instagram",
+    "name": "SaratovSurfCamp",
+    "urlOrHandle": "https://www.instagram.com/saratovsurfcamp/",
+    "discipline": "вейксерф-клуб / weekend camps",
+    "country": "Russia",
+    "region": null,
+    "language": "ru",
+    "priority": 20,
+    "trustScore": 0.82,
+    "parserProfile": "instagram_public_profile",
+    "fetchIntervalMinutes": 1440,
+    "isActive": true,
+    "metaJson": {
+      "originalChannel": "inst",
+      "sports": [
+        "Вейксерф"
+      ],
+      "disciplines": [
+        "вейксерф-клуб / weekend camps"
+      ],
+      "responsiblePeople": [
+        "Екатерина Пирская"
+      ],
+      "contactPhones": [
+        "+7 987 330-00-77"
+      ],
+      "projectTypes": [
+        "клуб / лагерь / школа"
+      ],
+      "notes": [
+        "Статус: подтверждено. Авторские вейксерф-выезды и школа."
+      ],
+      "verificationStatus": "подтверждено",
+      "verificationSummary": "Авторские вейксерф-выезды и школа.",
+      "verificationUrls": [
+        "https://www.instagram.com/saratovsurfcamp/",
+        "https://sarsurfcamp.ru/",
+        "https://sarsurfcamp.ru/o-nas/"
+      ],
+      "sourceRegistryExternalId": "1Oo6xN2WQwJBKeImzc6DQsv-oqfdLvgEx",
+      "autoPublish": true,
+      "fallbackImageUrl": null
+    }
+  },
+  {
+    "type": "instagram",
+    "name": "Offys Wakesurf",
+    "urlOrHandle": "https://www.instagram.com/offys_wakesurf/",
+    "discipline": "вейксерф / катания / тренировки",
+    "country": "Russia",
+    "region": null,
+    "language": "ru",
+    "priority": 60,
+    "trustScore": 0.58,
+    "parserProfile": "instagram_public_profile",
+    "fetchIntervalMinutes": 1440,
+    "isActive": true,
+    "metaJson": {
+      "originalChannel": "inst",
+      "sports": [
+        "Вейксерф"
+      ],
+      "disciplines": [
+        "вейксерф / катания / тренировки"
+      ],
+      "responsiblePeople": [],
+      "contactPhones": [],
+      "projectTypes": [
+        "школа / клуб"
+      ],
+      "notes": [
+        "Статус: неподтверждено. В профиле заявлены wakesurf, wakeboard и прогулки на катере."
+      ],
+      "verificationStatus": "неподтверждено",
+      "verificationSummary": "В профиле заявлены wakesurf, wakeboard и прогулки на катере.",
+      "verificationUrls": [
+        "https://www.instagram.com/offys_wakesurf/",
+        "https://www.instagram.com/p/CtHo0oKtwtj/"
+      ],
+      "sourceRegistryExternalId": "1Oo6xN2WQwJBKeImzc6DQsv-oqfdLvgEx",
+      "autoPublish": true,
+      "fallbackImageUrl": null
+    }
+  },
+  {
+    "type": "telegram",
+    "name": "ProWakesurf",
+    "urlOrHandle": "https://t.me/prowakesurf",
+    "discipline": "соревнования / event",
+    "country": "Russia",
+    "region": null,
+    "language": "ru",
+    "priority": 60,
+    "trustScore": 0.58,
+    "parserProfile": "telegram_public_channel",
+    "fetchIntervalMinutes": 1440,
+    "isActive": true,
+    "metaJson": {
+      "originalChannel": "tg",
+      "sports": [
+        "Вейксерф"
+      ],
+      "disciplines": [
+        "соревнования / event"
+      ],
+      "responsiblePeople": [],
+      "contactPhones": [],
+      "projectTypes": [
+        "event-проект / организатор соревнований"
+      ],
+      "notes": [
+        "Статус: неподтверждено. Канал публикует анонсы стартов и ивентов."
+      ],
+      "verificationStatus": "неподтверждено",
+      "verificationSummary": "Канал публикует анонсы стартов и ивентов.",
+      "verificationUrls": [
+        "https://t.me/prowakesurf",
+        "https://t.me/s/prowakesurf/2531",
+        "https://t.me/s/prowakesurf/2524"
+      ],
+      "sourceRegistryExternalId": "1Oo6xN2WQwJBKeImzc6DQsv-oqfdLvgEx",
+      "autoPublish": true,
+      "fallbackImageUrl": null
+    }
+  },
+  {
+    "type": "telegram",
+    "name": "Sportstation Club",
+    "urlOrHandle": "https://t.me/sportstation_club",
+    "discipline": "тренировки / ивенты",
+    "country": "Russia",
+    "region": null,
+    "language": "ru",
+    "priority": 60,
+    "trustScore": 0.58,
+    "parserProfile": "telegram_public_channel",
+    "fetchIntervalMinutes": 1440,
+    "isActive": true,
+    "metaJson": {
+      "originalChannel": "tg",
+      "sports": [
+        "Вейкборд"
+      ],
+      "disciplines": [
+        "тренировки / ивенты"
+      ],
+      "responsiblePeople": [],
+      "contactPhones": [
+        "+7 (495) 125-36-56"
+      ],
+      "projectTypes": [
+        "клуб / вейк-парк"
+      ],
+      "notes": [
+        "Статус: неподтверждено. Активный клуб с анонсами тренировок и мероприятий."
+      ],
+      "verificationStatus": "неподтверждено",
+      "verificationSummary": "Активный клуб с анонсами тренировок и мероприятий.",
+      "verificationUrls": [
+        "https://t.me/sportstation_club",
+        "https://www.sportstation.club/",
+        "https://www.sportstation.club/contacts"
+      ],
+      "sourceRegistryExternalId": "1Oo6xN2WQwJBKeImzc6DQsv-oqfdLvgEx",
+      "autoPublish": true,
+      "fallbackImageUrl": null
+    }
+  },
+  {
+    "type": "telegram",
+    "name": "NEW STAR CAMP",
+    "urlOrHandle": "https://t.me/newstarcamp",
+    "discipline": "фестиваль / лагерь",
+    "country": "Russia",
+    "region": null,
+    "language": "ru",
+    "priority": 60,
+    "trustScore": 0.58,
+    "parserProfile": "telegram_public_channel",
+    "fetchIntervalMinutes": 1440,
+    "isActive": true,
+    "metaJson": {
+      "originalChannel": "tg",
+      "sports": [
+        "Сноуборд"
+      ],
+      "disciplines": [
+        "фестиваль / лагерь"
+      ],
+      "responsiblePeople": [],
+      "contactPhones": [],
+      "projectTypes": [
+        "фестиваль / лагерь"
+      ],
+      "notes": [
+        "Статус: неподтверждено. Есть активные анонсы сезона и турпакетов 2026."
+      ],
+      "verificationStatus": "неподтверждено",
+      "verificationSummary": "Есть активные анонсы сезона и турпакетов 2026.",
+      "verificationUrls": [
+        "https://t.me/newstarcamp",
+        "https://t.me/s/newstarcamp/1183",
+        "https://newstarcamp.ru/"
+      ],
+      "sourceRegistryExternalId": "1Oo6xN2WQwJBKeImzc6DQsv-oqfdLvgEx",
+      "autoPublish": true,
+      "fallbackImageUrl": null
+    }
+  },
+  {
+    "type": "instagram",
+    "name": "NEW STAR CAMP",
+    "urlOrHandle": "https://www.instagram.com/newstarcamp/",
+    "discipline": "фестиваль / лагерь",
+    "country": "Russia",
+    "region": null,
+    "language": "ru",
+    "priority": 60,
+    "trustScore": 0.58,
+    "parserProfile": "instagram_public_profile",
+    "fetchIntervalMinutes": 1440,
+    "isActive": true,
+    "metaJson": {
+      "originalChannel": "inst",
+      "sports": [
+        "Сноуборд"
+      ],
+      "disciplines": [
+        "фестиваль / лагерь"
+      ],
+      "responsiblePeople": [],
+      "contactPhones": [],
+      "projectTypes": [
+        "фестиваль / лагерь"
+      ],
+      "notes": [
+        "Статус: неподтверждено. Активный профиль фестиваля с поездками и пакетами."
+      ],
+      "verificationStatus": "неподтверждено",
+      "verificationSummary": "Активный профиль фестиваля с поездками и пакетами.",
+      "verificationUrls": [
+        "https://www.instagram.com/newstarcamp/",
+        "https://newstarcamp.ru/",
+        "https://www.instagram.com/p/DHhVtW9x2vN/"
+      ],
+      "sourceRegistryExternalId": "1Oo6xN2WQwJBKeImzc6DQsv-oqfdLvgEx",
+      "autoPublish": true,
+      "fallbackImageUrl": null
+    }
+  },
+  {
+    "type": "instagram",
+    "name": "BIG SNOW CAMP",
+    "urlOrHandle": "https://www.instagram.com/bigsnowcamp/",
+    "discipline": "сноуборд-кэмпы для взрослых",
+    "country": "Russia",
+    "region": null,
+    "language": "ru",
+    "priority": 60,
+    "trustScore": 0.58,
+    "parserProfile": "instagram_public_profile",
+    "fetchIntervalMinutes": 1440,
+    "isActive": true,
+    "metaJson": {
+      "originalChannel": "inst",
+      "sports": [
+        "Сноуборд"
+      ],
+      "disciplines": [
+        "сноуборд-кэмпы для взрослых"
+      ],
+      "responsiblePeople": [],
+      "contactPhones": [],
+      "projectTypes": [
+        "лагерь / event-команда"
+      ],
+      "notes": [
+        "Статус: неподтверждено. Активный профиль, зимний сезон 2026 и туры all inclusive."
+      ],
+      "verificationStatus": "неподтверждено",
+      "verificationSummary": "Активный профиль, зимний сезон 2026 и туры all inclusive.",
+      "verificationUrls": [
+        "https://www.instagram.com/bigsnowcamp/",
+        "https://www.instagram.com/p/DO6fQHJDOzK/",
+        "https://www.instagram.com/p/DTIPfMEjXWq/"
+      ],
+      "sourceRegistryExternalId": "1Oo6xN2WQwJBKeImzc6DQsv-oqfdLvgEx",
+      "autoPublish": true,
+      "fallbackImageUrl": null
+    }
+  },
+  {
+    "type": "instagram",
+    "name": "X-camp Russia",
+    "urlOrHandle": "https://www.instagram.com/xcamp.russia/",
+    "discipline": "школа / лагерь",
+    "country": "Russia",
+    "region": null,
+    "language": "ru",
+    "priority": 60,
+    "trustScore": 0.58,
+    "parserProfile": "instagram_public_profile",
+    "fetchIntervalMinutes": 1440,
+    "isActive": true,
+    "metaJson": {
+      "originalChannel": "inst",
+      "sports": [
+        "Сноуборд",
+        "Лонгборд"
+      ],
+      "disciplines": [
+        "школа / лагерь"
+      ],
+      "responsiblePeople": [],
+      "contactPhones": [
+        "+7 903 202-28-52"
+      ],
+      "projectTypes": [
+        "школа / лагерь"
+      ],
+      "notes": [
+        "Статус: неподтверждено. В профиле заявлены зимний лагерь и школа сноуборда.",
+        "Статус: неподтверждено. В профиле заявлены longboard / skateboard и летний лагерь."
+      ],
+      "verificationStatus": "неподтверждено",
+      "verificationSummary": "В профиле заявлены longboard / skateboard и летний лагерь.",
+      "verificationUrls": [
+        "https://www.instagram.com/xcamp.russia/",
+        "https://x-camp.ru/longboard/",
+        "https://www.facebook.com/xcampru/"
+      ],
+      "sourceRegistryExternalId": "1Oo6xN2WQwJBKeImzc6DQsv-oqfdLvgEx",
+      "autoPublish": true,
+      "fallbackImageUrl": null
+    }
+  },
+  {
+    "type": "instagram",
+    "name": "Funsnow / Алексей Аввакумов",
+    "urlOrHandle": "https://www.instagram.com/avvakumov.alexey/",
+    "discipline": "горнолыжная клиника / обучение",
+    "country": "Russia",
+    "region": null,
+    "language": "ru",
+    "priority": 20,
+    "trustScore": 0.82,
+    "parserProfile": "instagram_public_profile",
+    "fetchIntervalMinutes": 1440,
+    "isActive": true,
+    "metaJson": {
+      "originalChannel": "inst",
+      "sports": [
+        "Горные лыжи",
+        "Фрирайд"
+      ],
+      "disciplines": [
+        "горнолыжная клиника / обучение",
+        "фрирайд-гид / обучение"
+      ],
+      "responsiblePeople": [
+        "Алексей Аввакумов"
+      ],
+      "contactPhones": [
+        "+7 922 110-11-08"
+      ],
+      "projectTypes": [
+        "гид / клиника / школа"
+      ],
+      "notes": [
+        "Статус: подтверждено. Частный инструктор и организатор программ в Красной Поляне.",
+        "Статус: подтверждено. Фрирайд-гид и инструктор по горным лыжам и сноуборду."
+      ],
+      "verificationStatus": "подтверждено",
+      "verificationSummary": "Фрирайд-гид и инструктор по горным лыжам и сноуборду.",
+      "verificationUrls": [
+        "https://www.instagram.com/avvakumov.alexey/",
+        "https://t.me/s/avvakumov_alexey",
+        "https://www.instagram.com/reel/DFM7-4MNZ-1/"
+      ],
+      "sourceRegistryExternalId": "1Oo6xN2WQwJBKeImzc6DQsv-oqfdLvgEx",
+      "autoPublish": true,
+      "fallbackImageUrl": null
+    }
+  },
+  {
+    "type": "telegram",
+    "name": "Freetime.guru",
+    "urlOrHandle": "https://t.me/freetimeguru",
+    "discipline": "горные и фрирайд-туры",
+    "country": "Russia",
+    "region": null,
+    "language": "ru",
+    "priority": 20,
+    "trustScore": 0.82,
+    "parserProfile": "telegram_public_channel",
+    "fetchIntervalMinutes": 1440,
+    "isActive": true,
+    "metaJson": {
+      "originalChannel": "tg",
+      "sports": [
+        "Фрирайд",
+        "Горные лыжи"
+      ],
+      "disciplines": [
+        "горные и фрирайд-туры",
+        "горнолыжные туры / лагеря"
+      ],
+      "responsiblePeople": [
+        "Ярослав Кучук"
+      ],
+      "contactPhones": [
+        "+7 927 300-34-00"
+      ],
+      "projectTypes": [
+        "турклуб / организатор активных туров"
+      ],
+      "notes": [
+        "Статус: подтверждено. Есть фрирайд-программы и туры по РФ.",
+        "Статус: подтверждено. Есть горнолыжные туры и сезонные выезды."
+      ],
+      "verificationStatus": "подтверждено",
+      "verificationSummary": "Есть горнолыжные туры и сезонные выезды.",
+      "verificationUrls": [
+        "https://t.me/freetimeguru",
+        "https://freetime.guru/contacts",
+        "https://freetime.guru/about/"
+      ],
+      "sourceRegistryExternalId": "1Oo6xN2WQwJBKeImzc6DQsv-oqfdLvgEx",
+      "autoPublish": true,
+      "fallbackImageUrl": null
+    }
+  },
+  {
+    "type": "instagram",
+    "name": "WhitePeaks",
+    "urlOrHandle": "https://www.instagram.com/whitepeaks_ru/",
+    "discipline": "фрирайд / ски-тур / программы",
+    "country": "Russia",
+    "region": null,
+    "language": "ru",
+    "priority": 20,
+    "trustScore": 0.82,
+    "parserProfile": "instagram_public_profile",
+    "fetchIntervalMinutes": 1440,
+    "isActive": true,
+    "metaJson": {
+      "originalChannel": "inst",
+      "sports": [
+        "Фрирайд"
+      ],
+      "disciplines": [
+        "фрирайд / ски-тур / программы"
+      ],
+      "responsiblePeople": [
+        "Оксана Чекулаева"
+      ],
+      "contactPhones": [
+        "+7 915 082-34-50"
+      ],
+      "projectTypes": [
+        "гид / туроператор"
+      ],
+      "notes": [
+        "Статус: подтверждено. Программы фрирайда, ски-тура и выездов по РФ."
+      ],
+      "verificationStatus": "подтверждено",
+      "verificationSummary": "Программы фрирайда, ски-тура и выездов по РФ.",
+      "verificationUrls": [
+        "https://www.instagram.com/whitepeaks_ru/",
+        "https://whitepeaks.ru/contacts",
+        "https://t.me/Oksana_Chekulaeva"
+      ],
+      "sourceRegistryExternalId": "1Oo6xN2WQwJBKeImzc6DQsv-oqfdLvgEx",
+      "autoPublish": true,
+      "fallbackImageUrl": null
+    }
+  },
+  {
+    "type": "telegram",
+    "name": "WhitePeaks",
+    "urlOrHandle": "https://t.me/Oksana_Chekulaeva",
+    "discipline": "heli-ski / авторские программы",
+    "country": "Russia",
+    "region": null,
+    "language": "ru",
+    "priority": 20,
+    "trustScore": 0.82,
+    "parserProfile": "telegram_public_channel",
+    "fetchIntervalMinutes": 1440,
+    "isActive": true,
+    "metaJson": {
+      "originalChannel": "tg",
+      "sports": [
+        "Хели-ски"
+      ],
+      "disciplines": [
+        "heli-ski / авторские программы"
+      ],
+      "responsiblePeople": [
+        "Оксана Чекулаева"
+      ],
+      "contactPhones": [
+        "+7 915 082-34-50"
+      ],
+      "projectTypes": [
+        "гид / туроператор"
+      ],
+      "notes": [
+        "Статус: подтверждено. У проекта заявлены heliski-программы и контакт руководителя."
+      ],
+      "verificationStatus": "подтверждено",
+      "verificationSummary": "У проекта заявлены heliski-программы и контакт руководителя.",
+      "verificationUrls": [
+        "https://whitepeaks.ru/contacts",
+        "https://t.me/Oksana_Chekulaeva",
+        "https://whitepeaks.ru/"
+      ],
+      "sourceRegistryExternalId": "1Oo6xN2WQwJBKeImzc6DQsv-oqfdLvgEx",
+      "autoPublish": true,
+      "fallbackImageUrl": null
+    }
+  },
+  {
+    "type": "telegram",
+    "name": "Kamchatka Freeride Community",
+    "urlOrHandle": "https://t.me/kam_freeride_tg",
+    "discipline": "камчатский фрирайд / day trips",
+    "country": "Russia",
+    "region": null,
+    "language": "ru",
+    "priority": 20,
+    "trustScore": 0.82,
+    "parserProfile": "telegram_public_channel",
+    "fetchIntervalMinutes": 1440,
+    "isActive": true,
+    "metaJson": {
+      "originalChannel": "tg",
+      "sports": [
+        "Фрирайд",
+        "Хели-ски"
+      ],
+      "disciplines": [
+        "камчатский фрирайд / day trips",
+        "heli-ski / heli-freeride"
+      ],
+      "responsiblePeople": [
+        "Полина Ивахненко"
+      ],
+      "contactPhones": [
+        "+7 924 894-08-34"
+      ],
+      "projectTypes": [
+        "сообщество / туры / гиды"
+      ],
+      "notes": [
+        "Статус: подтверждено. У проекта есть активный TG-контакт и подтвержденные менеджеры/контакты.",
+        "Статус: подтверждено. В проекте есть heli-программы и активные зимние туры."
+      ],
+      "verificationStatus": "подтверждено",
+      "verificationSummary": "В проекте есть heli-программы и активные зимние туры.",
+      "verificationUrls": [
+        "https://t.me/kam_freeride_tg",
+        "https://www.allaboutkamchatka.ru/en/programs/individual/",
+        "https://www.allaboutkamchatka.ru/en/contacts/"
+      ],
+      "sourceRegistryExternalId": "1Oo6xN2WQwJBKeImzc6DQsv-oqfdLvgEx",
+      "autoPublish": true,
+      "fallbackImageUrl": null
+    }
+  },
+  {
+    "type": "instagram",
+    "name": "Sochi Heliski",
+    "urlOrHandle": "https://www.instagram.com/sochiheliski/",
+    "discipline": "heli-ski / программы",
+    "country": "Russia",
+    "region": null,
+    "language": "ru",
+    "priority": 20,
+    "trustScore": 0.82,
+    "parserProfile": "instagram_public_profile",
+    "fetchIntervalMinutes": 1440,
+    "isActive": true,
+    "metaJson": {
+      "originalChannel": "inst",
+      "sports": [
+        "Хели-ски"
+      ],
+      "disciplines": [
+        "heli-ski / программы"
+      ],
+      "responsiblePeople": [
+        "Максим Ануфриков"
+      ],
+      "contactPhones": [
+        "+7 938 868-48-68"
+      ],
+      "projectTypes": [
+        "heli-ski оператор"
+      ],
+      "notes": [
+        "Статус: подтверждено. Подтверждены co-owner и контактный телефон проекта."
+      ],
+      "verificationStatus": "подтверждено",
+      "verificationSummary": "Подтверждены co-owner и контактный телефон проекта.",
+      "verificationUrls": [
+        "https://www.instagram.com/sochiheliski/",
+        "https://sochiheliski.ru/contacts/",
+        "https://sochiheliski.ru/team/"
+      ],
+      "sourceRegistryExternalId": "1Oo6xN2WQwJBKeImzc6DQsv-oqfdLvgEx",
+      "autoPublish": true,
+      "fallbackImageUrl": null
+    }
+  },
+  {
+    "type": "telegram",
+    "name": "Heliski Russia",
+    "urlOrHandle": "https://t.me/heliskirussia",
+    "discipline": "heli-ski / heli-expeditions",
+    "country": "Russia",
+    "region": null,
+    "language": "ru",
+    "priority": 20,
+    "trustScore": 0.82,
+    "parserProfile": "telegram_public_channel",
+    "fetchIntervalMinutes": 1440,
+    "isActive": true,
+    "metaJson": {
+      "originalChannel": "tg",
+      "sports": [
+        "Хели-ски"
+      ],
+      "disciplines": [
+        "heli-ski / heli-expeditions"
+      ],
+      "responsiblePeople": [
+        "Марко Гаяни"
+      ],
+      "contactPhones": [
+        "+7 926 757-76-83"
+      ],
+      "projectTypes": [
+        "heli-ski оператор / экспедиционный проект"
+      ],
+      "notes": [
+        "Статус: подтверждено. Основатель и контакты проекта подтверждены."
+      ],
+      "verificationStatus": "подтверждено",
+      "verificationSummary": "Основатель и контакты проекта подтверждены.",
+      "verificationUrls": [
+        "https://t.me/heliskirussia",
+        "https://heliski.ru/contact/",
+        "https://heliski.ru/aboutus/"
+      ],
+      "sourceRegistryExternalId": "1Oo6xN2WQwJBKeImzc6DQsv-oqfdLvgEx",
+      "autoPublish": true,
+      "fallbackImageUrl": null
+    }
+  },
+  {
+    "type": "instagram",
+    "name": "Heliski Russia",
+    "urlOrHandle": "https://www.instagram.com/heliskirussia/",
+    "discipline": "heli-ski / heli-expeditions",
+    "country": "Russia",
+    "region": null,
+    "language": "ru",
+    "priority": 20,
+    "trustScore": 0.82,
+    "parserProfile": "instagram_public_profile",
+    "fetchIntervalMinutes": 1440,
+    "isActive": true,
+    "metaJson": {
+      "originalChannel": "inst",
+      "sports": [
+        "Хели-ски"
+      ],
+      "disciplines": [
+        "heli-ski / heli-expeditions"
+      ],
+      "responsiblePeople": [
+        "Марко Гаяни"
+      ],
+      "contactPhones": [
+        "+7 926 757-76-83"
+      ],
+      "projectTypes": [
+        "heli-ski оператор / экспедиционный проект"
+      ],
+      "notes": [
+        "Статус: подтверждено. Основатель и контакты проекта подтверждены."
+      ],
+      "verificationStatus": "подтверждено",
+      "verificationSummary": "Основатель и контакты проекта подтверждены.",
+      "verificationUrls": [
+        "https://www.instagram.com/heliskirussia/",
+        "https://heliski.ru/contact/",
+        "https://heliski.ru/aboutus/"
+      ],
+      "sourceRegistryExternalId": "1Oo6xN2WQwJBKeImzc6DQsv-oqfdLvgEx",
+      "autoPublish": true,
+      "fallbackImageUrl": null
+    }
+  },
+  {
+    "type": "instagram",
+    "name": "Kvadro Tur 24",
+    "urlOrHandle": "https://www.instagram.com/kvadro_tur_24/",
+    "discipline": "ATV-туры / прогулки",
+    "country": "Russia",
+    "region": null,
+    "language": "ru",
+    "priority": 60,
+    "trustScore": 0.58,
+    "parserProfile": "instagram_public_profile",
+    "fetchIntervalMinutes": 1440,
+    "isActive": true,
+    "metaJson": {
+      "originalChannel": "inst",
+      "sports": [
+        "Квадроциклы",
+        "Снегоходы"
+      ],
+      "disciplines": [
+        "ATV-туры / прогулки",
+        "снегоходные прогулки / туры"
+      ],
+      "responsiblePeople": [],
+      "contactPhones": [
+        "+7 959 807-01-01"
+      ],
+      "projectTypes": [
+        "прокат с турами / клуб"
+      ],
+      "notes": [
+        "Статус: неподтверждено. Аккаунт по handle @kvadro_tur_24; есть активные анонсы экскурсий на квадроциклах.",
+        "Статус: неподтверждено. Аккаунт по handle @kvadro_tur_24; есть активные зимние туры на снегоходах."
+      ],
+      "verificationStatus": "неподтверждено",
+      "verificationSummary": "Аккаунт по handle @kvadro_tur_24; есть активные зимние туры на снегоходах.",
+      "verificationUrls": [
+        "https://www.instagram.com/reel/DWLYFVbN8Ju/",
+        "https://www.instagram.com/p/DVcnphYCHGo/",
+        "https://kvadrotur24.ru/"
+      ],
+      "sourceRegistryExternalId": "1Oo6xN2WQwJBKeImzc6DQsv-oqfdLvgEx",
+      "autoPublish": true,
+      "fallbackImageUrl": null
+    }
+  },
+  {
+    "type": "telegram",
+    "name": "Дикий Север / Pripolar",
+    "urlOrHandle": "https://t.me/pripolar_club",
+    "discipline": "снегоходные экспедиции",
+    "country": "Russia",
+    "region": null,
+    "language": "ru",
+    "priority": 20,
+    "trustScore": 0.82,
+    "parserProfile": "telegram_public_channel",
+    "fetchIntervalMinutes": 1440,
+    "isActive": true,
+    "metaJson": {
+      "originalChannel": "tg",
+      "sports": [
+        "Снегоходы",
+        "Квадроциклы"
+      ],
+      "disciplines": [
+        "снегоходные экспедиции",
+        "квадроэкспедиции / Северный Урал"
+      ],
+      "responsiblePeople": [
+        "Евгений Свитов"
+      ],
+      "contactPhones": [
+        "+7 912 22-33-777"
+      ],
+      "projectTypes": [
+        "клуб экспедиций / туроператор"
+      ],
+      "notes": [
+        "Статус: подтверждено. Активные экспедиции 2026, руководитель клуба и телефон подтверждены.",
+        "Статус: подтверждено. Есть квадросафари и летние экспедиции по Уралу."
+      ],
+      "verificationStatus": "подтверждено",
+      "verificationSummary": "Есть квадросафари и летние экспедиции по Уралу.",
+      "verificationUrls": [
+        "https://telemetr.io/uz/channels/1244178205-pripolar_club",
+        "https://www.pripolar.ru/",
+        "https://www.pripolar.ru/narodnaia-expedition/"
+      ],
+      "sourceRegistryExternalId": "1Oo6xN2WQwJBKeImzc6DQsv-oqfdLvgEx",
+      "autoPublish": true,
+      "fallbackImageUrl": null
+    }
+  },
+  {
+    "type": "telegram",
+    "name": "Школа Аркадия Доскина",
+    "urlOrHandle": "https://t.me/doskin_ark",
+    "discipline": "школа / лагерь / клиника",
+    "country": "Russia",
+    "region": null,
+    "language": "ru",
+    "priority": 20,
+    "trustScore": 0.82,
+    "parserProfile": "telegram_public_channel",
+    "fetchIntervalMinutes": 1440,
+    "isActive": true,
+    "metaJson": {
+      "originalChannel": "tg",
+      "sports": [
+        "Лонгборд"
+      ],
+      "disciplines": [
+        "школа / лагерь / клиника"
+      ],
+      "responsiblePeople": [
+        "Аркадий Доскин"
+      ],
+      "contactPhones": [
+        "+7 (499) 348-83-08"
+      ],
+      "projectTypes": [
+        "школа / комьюнити"
+      ],
+      "notes": [
+        "Статус: подтверждено. Школа лонгбординга и личный TG-контакт основателя."
+      ],
+      "verificationStatus": "подтверждено",
+      "verificationSummary": "Школа лонгбординга и личный TG-контакт основателя.",
+      "verificationUrls": [
+        "https://t.me/doskin_ark",
+        "https://kheprilongboards.com/school",
+        "https://kheprilongboards.com/contacts"
+      ],
+      "sourceRegistryExternalId": "1Oo6xN2WQwJBKeImzc6DQsv-oqfdLvgEx",
+      "autoPublish": true,
+      "fallbackImageUrl": null
+    }
+  },
+  {
+    "type": "telegram",
+    "name": "Snowave Kamchatka",
+    "urlOrHandle": "https://t.me/snowave_kamchatka",
+    "discipline": "серф-школа / серф-кэмпы",
+    "country": "Russia",
+    "region": null,
+    "language": "ru",
+    "priority": 20,
+    "trustScore": 0.82,
+    "parserProfile": "telegram_public_channel",
+    "fetchIntervalMinutes": 1440,
+    "isActive": true,
+    "metaJson": {
+      "originalChannel": "tg",
+      "sports": [
+        "Серфинг"
+      ],
+      "disciplines": [
+        "серф-школа / серф-кэмпы"
+      ],
+      "responsiblePeople": [
+        "Антон Морозов"
+      ],
+      "contactPhones": [
+        "+7 996 035-65-33"
+      ],
+      "projectTypes": [
+        "серф-школа / серф-кэмпы"
+      ],
+      "notes": [
+        "Статус: подтверждено. Есть зимние и летние серф-кэмпы 2026."
+      ],
+      "verificationStatus": "подтверждено",
+      "verificationSummary": "Есть зимние и летние серф-кэмпы 2026.",
+      "verificationUrls": [
+        "https://t.me/snowave_kamchatka",
+        "https://snowave.ru/contacts/",
+        "https://snowave.ru/o-nas/"
+      ],
+      "sourceRegistryExternalId": "1Oo6xN2WQwJBKeImzc6DQsv-oqfdLvgEx",
+      "autoPublish": true,
+      "fallbackImageUrl": null
+    }
+  },
+  {
+    "type": "telegram",
+    "name": "Quiksilver Surf Camp Kamchatka",
+    "urlOrHandle": "https://t.me/kamchatkasurf",
+    "discipline": "серф-лагерь / выездные кэмпы",
+    "country": "Russia",
+    "region": null,
+    "language": "ru",
+    "priority": 60,
+    "trustScore": 0.58,
+    "parserProfile": "telegram_public_channel",
+    "fetchIntervalMinutes": 1440,
+    "isActive": true,
+    "metaJson": {
+      "originalChannel": "tg",
+      "sports": [
+        "Серфинг"
+      ],
+      "disciplines": [
+        "серф-лагерь / выездные кэмпы"
+      ],
+      "responsiblePeople": [
+        "Алексей Лещёв"
+      ],
+      "contactPhones": [],
+      "projectTypes": [
+        "серф-лагерь / школа"
+      ],
+      "notes": [
+        "Статус: неподтверждено. Активный TG-канал лагеря; ФИО найдено, прямой телефон не найден."
+      ],
+      "verificationStatus": "неподтверждено",
+      "verificationSummary": "Активный TG-канал лагеря; ФИО найдено, прямой телефон не найден.",
+      "verificationUrls": [
+        "https://t.me/kamchatkasurf",
+        "https://kamchatka.surf/",
+        "https://kamchatka.surf/about/"
+      ],
+      "sourceRegistryExternalId": "1Oo6xN2WQwJBKeImzc6DQsv-oqfdLvgEx",
+      "autoPublish": true,
+      "fallbackImageUrl": null
+    }
+  },
+  {
+    "type": "instagram",
+    "name": "Swell VL",
+    "urlOrHandle": "https://www.instagram.com/swell_vl/",
+    "discipline": "серф-школа / лагерь",
+    "country": "Russia",
+    "region": null,
+    "language": "ru",
+    "priority": 60,
+    "trustScore": 0.58,
+    "parserProfile": "instagram_public_profile",
+    "fetchIntervalMinutes": 1440,
+    "isActive": true,
+    "metaJson": {
+      "originalChannel": "inst",
+      "sports": [
+        "Серфинг"
+      ],
+      "disciplines": [
+        "серф-школа / лагерь"
+      ],
+      "responsiblePeople": [],
+      "contactPhones": [
+        "+7 953 219-33-77"
+      ],
+      "projectTypes": [
+        "серф-школа / лагерь"
+      ],
+      "notes": [
+        "Статус: неподтверждено. Активный профиль и анонсы мест в ближайшие кэмпы."
+      ],
+      "verificationStatus": "неподтверждено",
+      "verificationSummary": "Активный профиль и анонсы мест в ближайшие кэмпы.",
+      "verificationUrls": [
+        "https://www.instagram.com/swell_vl/",
+        "https://www.instagram.com/p/DHW6jtnyAgT/",
+        "https://www.instagram.com/p/C1k7sQ6s3x5/"
+      ],
+      "sourceRegistryExternalId": "1Oo6xN2WQwJBKeImzc6DQsv-oqfdLvgEx",
+      "autoPublish": true,
+      "fallbackImageUrl": null
+    }
+  },
+  {
+    "type": "telegram",
+    "name": "SurfPoint",
+    "urlOrHandle": "https://t.me/SurfPoint",
+    "discipline": "kite camp / школа / кайт-лагерь",
+    "country": "Russia",
+    "region": null,
+    "language": "ru",
+    "priority": 20,
+    "trustScore": 0.82,
+    "parserProfile": "telegram_public_channel",
+    "fetchIntervalMinutes": 1440,
+    "isActive": true,
+    "metaJson": {
+      "originalChannel": "tg",
+      "sports": [
+        "Кайтсерфинг",
+        "Виндсерфинг"
+      ],
+      "disciplines": [
+        "kite camp / школа / кайт-лагерь",
+        "windsurf camp / школа / лагерь"
+      ],
+      "responsiblePeople": [
+        "Олег Вячеславович Черкашин"
+      ],
+      "contactPhones": [
+        "+7 (915) 985-64-34"
+      ],
+      "projectTypes": [
+        "школа / клуб / лагерь"
+      ],
+      "notes": [
+        "Статус: подтверждено. У проекта есть отдельные кайт-кэмпы; на сайте подтверждены организаторы лагеря.",
+        "Статус: подтверждено. Проект ведет виндсерф- и серф-лагеря, есть лагерные организаторы и контакт."
+      ],
+      "verificationStatus": "подтверждено",
+      "verificationSummary": "Проект ведет виндсерф- и серф-лагеря, есть лагерные организаторы и контакт.",
+      "verificationUrls": [
+        "https://t.me/SurfPoint",
+        "https://surfpoint.ru/surf-camp/",
+        "https://surfpoint.ru/contacts/"
+      ],
+      "sourceRegistryExternalId": "1Oo6xN2WQwJBKeImzc6DQsv-oqfdLvgEx",
+      "autoPublish": true,
+      "fallbackImageUrl": null
+    }
+  },
+  {
+    "type": "instagram",
+    "name": "Take Off Surf Club",
+    "urlOrHandle": "https://www.instagram.com/takeoffspb.ru/",
+    "discipline": "обучение / кайт-кэмпы",
+    "country": "Russia",
+    "region": null,
+    "language": "ru",
+    "priority": 20,
+    "trustScore": 0.82,
+    "parserProfile": "instagram_public_profile",
+    "fetchIntervalMinutes": 1440,
+    "isActive": true,
+    "metaJson": {
+      "originalChannel": "inst",
+      "sports": [
+        "Кайтсерфинг",
+        "Виндсерфинг"
+      ],
+      "disciplines": [
+        "обучение / кайт-кэмпы",
+        "обучение / windsurf-кэмпы"
+      ],
+      "responsiblePeople": [
+        "Дмитрий Гудков"
+      ],
+      "contactPhones": [
+        "+7 (904) 514-49-13"
+      ],
+      "projectTypes": [
+        "школа / лагерь"
+      ],
+      "notes": [
+        "Статус: подтверждено. В команде подтвержден тренер по kitesurfing и windsurfing Дмитрий Гудков."
+      ],
+      "verificationStatus": "подтверждено",
+      "verificationSummary": "В команде подтвержден тренер по kitesurfing и windsurfing Дмитрий Гудков.",
+      "verificationUrls": [
+        "https://www.instagram.com/takeoffspb.ru/",
+        "https://takeoffspb.com/team/",
+        "https://takeoffspb.com/contact"
+      ],
+      "sourceRegistryExternalId": "1Oo6xN2WQwJBKeImzc6DQsv-oqfdLvgEx",
+      "autoPublish": true,
+      "fallbackImageUrl": null
+    }
+  },
+  {
+    "type": "instagram",
+    "name": "KitePiter",
+    "urlOrHandle": "https://www.instagram.com/kitepiter_com/",
+    "discipline": "школа / кайт-сафари / кэмпы",
+    "country": "Russia",
+    "region": null,
+    "language": "ru",
+    "priority": 20,
+    "trustScore": 0.82,
+    "parserProfile": "instagram_public_profile",
+    "fetchIntervalMinutes": 1440,
+    "isActive": true,
+    "metaJson": {
+      "originalChannel": "inst",
+      "sports": [
+        "Кайтсерфинг"
+      ],
+      "disciplines": [
+        "школа / кайт-сафари / кэмпы"
+      ],
+      "responsiblePeople": [
+        "Иван Четвериков"
+      ],
+      "contactPhones": [
+        "+7 (921) 744-30-11"
+      ],
+      "projectTypes": [
+        "школа / клуб / кэмпы"
+      ],
+      "notes": [
+        "Статус: подтверждено. Основатель и телефон школы подтверждены; есть кайт-сафари и туры."
+      ],
+      "verificationStatus": "подтверждено",
+      "verificationSummary": "Основатель и телефон школы подтверждены; есть кайт-сафари и туры.",
+      "verificationUrls": [
+        "https://www.instagram.com/kitepiter_com/",
+        "https://kitepiter.com/contact",
+        "https://www.instagram.com/p/CTrg4INIFB3/"
+      ],
+      "sourceRegistryExternalId": "1Oo6xN2WQwJBKeImzc6DQsv-oqfdLvgEx",
+      "autoPublish": true,
+      "fallbackImageUrl": null
+    }
+  },
+  {
+    "type": "instagram",
+    "name": "Simple Kite",
+    "urlOrHandle": "https://www.instagram.com/simple_kite/",
+    "discipline": "школа / лагерь / обучение",
+    "country": "Russia",
+    "region": null,
+    "language": "ru",
+    "priority": 20,
+    "trustScore": 0.82,
+    "parserProfile": "instagram_public_profile",
+    "fetchIntervalMinutes": 1440,
+    "isActive": true,
+    "metaJson": {
+      "originalChannel": "inst",
+      "sports": [
+        "Кайтсерфинг"
+      ],
+      "disciplines": [
+        "школа / лагерь / обучение"
+      ],
+      "responsiblePeople": [
+        "Роман Шафигуллин"
+      ],
+      "contactPhones": [
+        "+7 (922) 420-92-22"
+      ],
+      "projectTypes": [
+        "школа / лагерь"
+      ],
+      "notes": [
+        "Статус: подтверждено. Основатель/администратор и телефон школы подтверждены."
+      ],
+      "verificationStatus": "подтверждено",
+      "verificationSummary": "Основатель/администратор и телефон школы подтверждены.",
+      "verificationUrls": [
+        "https://www.instagram.com/simple_kite/",
+        "https://simplekite.ru/company/staff/",
+        "https://www.instagram.com/roman_shafigullin/"
+      ],
+      "sourceRegistryExternalId": "1Oo6xN2WQwJBKeImzc6DQsv-oqfdLvgEx",
+      "autoPublish": true,
+      "fallbackImageUrl": null
+    }
+  },
+  {
+    "type": "instagram",
+    "name": "Yeiskwind",
+    "urlOrHandle": "https://www.instagram.com/yeiskwind/reels/",
+    "discipline": "виндсерф-школа / лагерь",
+    "country": "Russia",
+    "region": null,
+    "language": "ru",
+    "priority": 20,
+    "trustScore": 0.82,
+    "parserProfile": "instagram_public_profile",
+    "fetchIntervalMinutes": 1440,
+    "isActive": true,
+    "metaJson": {
+      "originalChannel": "inst",
+      "sports": [
+        "Виндсерфинг"
+      ],
+      "disciplines": [
+        "виндсерф-школа / лагерь"
+      ],
+      "responsiblePeople": [
+        "Виталий Владивостоков"
+      ],
+      "contactPhones": [
+        "+7 989 213-18-88"
+      ],
+      "projectTypes": [
+        "школа / лагерь"
+      ],
+      "notes": [
+        "Статус: подтверждено. Подтверждены основатель и контакт проекта, активность есть в 2026."
+      ],
+      "verificationStatus": "подтверждено",
+      "verificationSummary": "Подтверждены основатель и контакт проекта, активность есть в 2026.",
+      "verificationUrls": [
+        "https://www.instagram.com/yeiskwind/reels/",
+        "https://yeiskwind.ru/",
+        "https://yeiskwind.ru/team/"
+      ],
+      "sourceRegistryExternalId": "1Oo6xN2WQwJBKeImzc6DQsv-oqfdLvgEx",
+      "autoPublish": true,
+      "fallbackImageUrl": null
+    }
+  },
+  {
+    "type": "instagram",
+    "name": "Windsurf Be Camp",
+    "urlOrHandle": "https://www.instagram.com/olyaraskina/",
+    "discipline": "виндсерф-кэмпы / clinics",
+    "country": "Russia",
+    "region": null,
+    "language": "ru",
+    "priority": 20,
+    "trustScore": 0.82,
+    "parserProfile": "instagram_public_profile",
+    "fetchIntervalMinutes": 1440,
+    "isActive": true,
+    "metaJson": {
+      "originalChannel": "inst",
+      "sports": [
+        "Виндсерфинг"
+      ],
+      "disciplines": [
+        "виндсерф-кэмпы / clinics"
+      ],
+      "responsiblePeople": [
+        "Оля Раскина"
+      ],
+      "contactPhones": [
+        "+7 (903) 712-76-66"
+      ],
+      "projectTypes": [
+        "лагерь / клиника"
+      ],
+      "notes": [
+        "Статус: подтверждено. Основательница Windsurf Be Camp и контакт проекта подтверждены."
+      ],
+      "verificationStatus": "подтверждено",
+      "verificationSummary": "Основательница Windsurf Be Camp и контакт проекта подтверждены.",
+      "verificationUrls": [
+        "https://www.instagram.com/olyaraskina/",
+        "https://windsurf.camp/about/",
+        "https://windsurf.camp/contacts/"
+      ],
+      "sourceRegistryExternalId": "1Oo6xN2WQwJBKeImzc6DQsv-oqfdLvgEx",
+      "autoPublish": true,
+      "fallbackImageUrl": null
+    }
+  }
+]

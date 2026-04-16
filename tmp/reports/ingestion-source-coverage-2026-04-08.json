@@ -1,0 +1,849 @@
+[
+  {
+    "id": "cmnnll1vp000vvn3x394iilqv",
+    "name": "Freetime.guru",
+    "type": "site",
+    "isActive": true,
+    "priority": 20,
+    "parserProfile": "site_calendar_html",
+    "urlOrHandle": "https://freetime.guru/calendar/",
+    "verificationUrls": [
+      "https://freetime.guru/calendar/",
+      "https://freetime.guru/"
+    ],
+    "externalSiteUrls": [
+      "https://freetime.guru/calendar/",
+      "https://freetime.guru/"
+    ],
+    "rawItems": 11,
+    "normalizedItems": 11,
+    "publishedPrograms": 3,
+    "candidateStatuses": {
+      "archived": 8,
+      "published": 3
+    },
+    "recommendedClass": "A",
+    "recommendedAction": "Уже даёт publishable events. Усиливать detail-page extraction и качество карточек."
+  },
+  {
+    "id": "cmnnll1z70011vn3x8dugofju",
+    "name": "Kamchatka Freeride Community",
+    "type": "telegram",
+    "isActive": true,
+    "priority": 20,
+    "parserProfile": "telegram_public_channel",
+    "urlOrHandle": "https://t.me/kam_freeride_tg",
+    "verificationUrls": [
+      "https://t.me/kam_freeride_tg",
+      "https://www.allaboutkamchatka.ru/en/programs/individual/",
+      "https://www.allaboutkamchatka.ru/en/contacts/"
+    ],
+    "externalSiteUrls": [
+      "https://www.allaboutkamchatka.ru/en/programs/individual/",
+      "https://www.allaboutkamchatka.ru/en/contacts/"
+    ],
+    "rawItems": 0,
+    "normalizedItems": 0,
+    "publishedPrograms": 0,
+    "candidateStatuses": {},
+    "recommendedClass": "A",
+    "recommendedAction": "Писать source-specific parser profile под календарь/расписание и detail pages."
+  },
+  {
+    "id": "cmnnll1f2000dvn3xbzdxmfar",
+    "name": "SaratovSurfCamp",
+    "type": "instagram",
+    "isActive": true,
+    "priority": 20,
+    "parserProfile": "instagram_public_profile",
+    "urlOrHandle": "https://www.instagram.com/saratovsurfcamp/",
+    "verificationUrls": [
+      "https://www.instagram.com/saratovsurfcamp/",
+      "https://sarsurfcamp.ru/",
+      "https://sarsurfcamp.ru/o-nas/"
+    ],
+    "externalSiteUrls": [
+      "https://sarsurfcamp.ru/",
+      "https://sarsurfcamp.ru/o-nas/"
+    ],
+    "rawItems": 9,
+    "normalizedItems": 9,
+    "publishedPrograms": 0,
+    "candidateStatuses": {
+      "archived": 9
+    },
+    "recommendedClass": "A",
+    "recommendedAction": "Писать source-specific parser profile под календарь/расписание и detail pages."
+  },
+  {
+    "id": "cmnnll16m0001vn3xqhrjpt80",
+    "name": "Sokolov Travel",
+    "type": "instagram",
+    "isActive": true,
+    "priority": 20,
+    "parserProfile": "instagram_public_profile",
+    "urlOrHandle": "https://www.instagram.com/sokolov.travel/",
+    "verificationUrls": [
+      "https://www.instagram.com/sokolov.travel/",
+      "https://sokolov.travel/contact/",
+      "https://sokolov.travel/calendar/"
+    ],
+    "externalSiteUrls": [
+      "https://sokolov.travel/contact/",
+      "https://sokolov.travel/calendar/"
+    ],
+    "rawItems": 1,
+    "normalizedItems": 1,
+    "publishedPrograms": 0,
+    "candidateStatuses": {
+      "archived": 1
+    },
+    "recommendedClass": "A",
+    "recommendedAction": "Писать source-specific parser profile под календарь/расписание и detail pages."
+  },
+  {
+    "id": "cmnnll2bh001lvn3xg7ugvovp",
+    "name": "SurfPoint",
+    "type": "telegram",
+    "isActive": true,
+    "priority": 20,
+    "parserProfile": "telegram_public_channel",
+    "urlOrHandle": "https://t.me/SurfPoint",
+    "verificationUrls": [
+      "https://t.me/SurfPoint",
+      "https://surfpoint.ru/surf-camp/",
+      "https://surfpoint.ru/contacts/"
+    ],
+    "externalSiteUrls": [
+      "https://surfpoint.ru/surf-camp/",
+      "https://surfpoint.ru/contacts/"
+    ],
+    "rawItems": 20,
+    "normalizedItems": 20,
+    "publishedPrograms": 0,
+    "candidateStatuses": {
+      "archived": 20
+    },
+    "recommendedClass": "A",
+    "recommendedAction": "Писать source-specific parser profile под календарь/расписание и detail pages."
+  },
+  {
+    "id": "cmnnll2gm001vvn3xot0qt616",
+    "name": "Windsurf Be Camp",
+    "type": "instagram",
+    "isActive": true,
+    "priority": 20,
+    "parserProfile": "instagram_public_profile",
+    "urlOrHandle": "https://www.instagram.com/olyaraskina/",
+    "verificationUrls": [
+      "https://www.instagram.com/olyaraskina/",
+      "https://windsurf.camp/about/",
+      "https://windsurf.camp/contacts/"
+    ],
+    "externalSiteUrls": [
+      "https://windsurf.camp/about/",
+      "https://windsurf.camp/contacts/"
+    ],
+    "rawItems": 1,
+    "normalizedItems": 1,
+    "publishedPrograms": 0,
+    "candidateStatuses": {
+      "archived": 1
+    },
+    "recommendedClass": "A",
+    "recommendedAction": "Писать source-specific parser profile под календарь/расписание и detail pages."
+  },
+  {
+    "id": "cmnnll1lt000lvn3xfcdxi5y8",
+    "name": "NEW STAR CAMP",
+    "type": "telegram",
+    "isActive": true,
+    "priority": 60,
+    "parserProfile": "telegram_public_channel",
+    "urlOrHandle": "https://t.me/newstarcamp",
+    "verificationUrls": [
+      "https://t.me/newstarcamp",
+      "https://t.me/s/newstarcamp/1183",
+      "https://newstarcamp.ru/"
+    ],
+    "externalSiteUrls": [
+      "https://newstarcamp.ru/"
+    ],
+    "rawItems": 4,
+    "normalizedItems": 4,
+    "publishedPrograms": 0,
+    "candidateStatuses": {
+      "archived": 2,
+      "merged": 1,
+      "rejected": 1
+    },
+    "recommendedClass": "A",
+    "recommendedAction": "Писать source-specific parser profile под календарь/расписание и detail pages."
+  },
+  {
+    "id": "cmnnll1ms000nvn3xexkthyw9",
+    "name": "NEW STAR CAMP",
+    "type": "instagram",
+    "isActive": true,
+    "priority": 60,
+    "parserProfile": "instagram_public_profile",
+    "urlOrHandle": "https://www.instagram.com/newstarcamp/",
+    "verificationUrls": [
+      "https://www.instagram.com/newstarcamp/",
+      "https://newstarcamp.ru/",
+      "https://www.instagram.com/p/DHhVtW9x2vN/"
+    ],
+    "externalSiteUrls": [
+      "https://newstarcamp.ru/"
+    ],
+    "rawItems": 4,
+    "normalizedItems": 4,
+    "publishedPrograms": 0,
+    "candidateStatuses": {
+      "archived": 4
+    },
+    "recommendedClass": "A",
+    "recommendedAction": "Писать source-specific parser profile под календарь/расписание и detail pages."
+  },
+  {
+    "id": "cmnnll1an0005vn3xejto53er",
+    "name": "TrialNinja Bike Camp",
+    "type": "instagram",
+    "isActive": true,
+    "priority": 60,
+    "parserProfile": "instagram_public_profile",
+    "urlOrHandle": "https://www.instagram.com/trialninja_/",
+    "verificationUrls": [
+      "https://www.instagram.com/trialninja_/",
+      "https://bike-camp.ru/raspisanie-2026/",
+      "https://bike-camp.ru/camp/"
+    ],
+    "externalSiteUrls": [
+      "https://bike-camp.ru/raspisanie-2026/",
+      "https://bike-camp.ru/camp/"
+    ],
+    "rawItems": 3,
+    "normalizedItems": 3,
+    "publishedPrograms": 0,
+    "candidateStatuses": {
+      "archived": 3
+    },
+    "recommendedClass": "A",
+    "recommendedAction": "Писать source-specific parser profile под календарь/расписание и detail pages."
+  },
+  {
+    "id": "cmnnll1sj000rvn3xdfbgb6vb",
+    "name": "X-camp Russia",
+    "type": "instagram",
+    "isActive": true,
+    "priority": 60,
+    "parserProfile": "instagram_public_profile",
+    "urlOrHandle": "https://www.instagram.com/xcamp.russia/",
+    "verificationUrls": [
+      "https://www.instagram.com/xcamp.russia/",
+      "https://x-camp.ru/longboard/",
+      "https://www.facebook.com/xcampru/"
+    ],
+    "externalSiteUrls": [
+      "https://x-camp.ru/longboard/"
+    ],
+    "rawItems": 2,
+    "normalizedItems": 2,
+    "publishedPrograms": 0,
+    "candidateStatuses": {
+      "archived": 2
+    },
+    "recommendedClass": "A",
+    "recommendedAction": "Писать source-specific parser profile под календарь/расписание и detail pages."
+  },
+  {
+    "id": "cmnnll24c001bvn3xvop2ob52",
+    "name": "Дикий Север / Pripolar",
+    "type": "telegram",
+    "isActive": true,
+    "priority": 20,
+    "parserProfile": "telegram_public_channel",
+    "urlOrHandle": "https://t.me/pripolar_club",
+    "verificationUrls": [
+      "https://telemetr.io/uz/channels/1244178205-pripolar_club",
+      "https://www.pripolar.ru/",
+      "https://www.pripolar.ru/narodnaia-expedition/"
+    ],
+    "externalSiteUrls": [
+      "https://www.pripolar.ru/",
+      "https://www.pripolar.ru/narodnaia-expedition/"
+    ],
+    "rawItems": 4,
+    "normalizedItems": 4,
+    "publishedPrograms": 0,
+    "candidateStatuses": {
+      "archived": 4
+    },
+    "recommendedClass": "B",
+    "recommendedAction": "Проверить структуру сайта. Вероятно нужен site cards/grid parser или follow-links extraction."
+  },
+  {
+    "id": "cmnnll25c001dvn3x86uloyw7",
+    "name": "Школа Аркадия Доскина",
+    "type": "telegram",
+    "isActive": true,
+    "priority": 20,
+    "parserProfile": "telegram_public_channel",
+    "urlOrHandle": "https://t.me/doskin_ark",
+    "verificationUrls": [
+      "https://t.me/doskin_ark",
+      "https://kheprilongboards.com/school",
+      "https://kheprilongboards.com/contacts"
+    ],
+    "externalSiteUrls": [
+      "https://kheprilongboards.com/school",
+      "https://kheprilongboards.com/contacts"
+    ],
+    "rawItems": 0,
+    "normalizedItems": 0,
+    "publishedPrograms": 0,
+    "candidateStatuses": {},
+    "recommendedClass": "B",
+    "recommendedAction": "Проверить структуру сайта. Вероятно нужен site cards/grid parser или follow-links extraction."
+  },
+  {
+    "id": "cmnnll2210015vn3xsj5dwm9b",
+    "name": "Heliski Russia",
+    "type": "telegram",
+    "isActive": true,
+    "priority": 20,
+    "parserProfile": "telegram_public_channel",
+    "urlOrHandle": "https://t.me/heliskirussia",
+    "verificationUrls": [
+      "https://t.me/heliskirussia",
+      "https://heliski.ru/contact/",
+      "https://heliski.ru/aboutus/"
+    ],
+    "externalSiteUrls": [
+      "https://heliski.ru/contact/",
+      "https://heliski.ru/aboutus/"
+    ],
+    "rawItems": 20,
+    "normalizedItems": 20,
+    "publishedPrograms": 0,
+    "candidateStatuses": {
+      "archived": 19,
+      "rejected": 1
+    },
+    "recommendedClass": "B",
+    "recommendedAction": "Проверить структуру сайта. Вероятно нужен site cards/grid parser или follow-links extraction."
+  },
+  {
+    "id": "cmnnll22n0017vn3xvx2wlvy2",
+    "name": "Heliski Russia",
+    "type": "instagram",
+    "isActive": true,
+    "priority": 20,
+    "parserProfile": "instagram_public_profile",
+    "urlOrHandle": "https://www.instagram.com/heliskirussia/",
+    "verificationUrls": [
+      "https://www.instagram.com/heliskirussia/",
+      "https://heliski.ru/contact/",
+      "https://heliski.ru/aboutus/"
+    ],
+    "externalSiteUrls": [
+      "https://heliski.ru/contact/",
+      "https://heliski.ru/aboutus/"
+    ],
+    "rawItems": 1,
+    "normalizedItems": 1,
+    "publishedPrograms": 0,
+    "candidateStatuses": {
+      "archived": 1
+    },
+    "recommendedClass": "B",
+    "recommendedAction": "Проверить структуру сайта. Вероятно нужен site cards/grid parser или follow-links extraction."
+  },
+  {
+    "id": "cmnnll2dj001pvn3xrj15ew2s",
+    "name": "KitePiter",
+    "type": "instagram",
+    "isActive": true,
+    "priority": 20,
+    "parserProfile": "instagram_public_profile",
+    "urlOrHandle": "https://www.instagram.com/kitepiter_com/",
+    "verificationUrls": [
+      "https://www.instagram.com/kitepiter_com/",
+      "https://kitepiter.com/contact",
+      "https://www.instagram.com/p/CTrg4INIFB3/"
+    ],
+    "externalSiteUrls": [
+      "https://kitepiter.com/contact"
+    ],
+    "rawItems": 10,
+    "normalizedItems": 10,
+    "publishedPrograms": 0,
+    "candidateStatuses": {
+      "archived": 10
+    },
+    "recommendedClass": "B",
+    "recommendedAction": "Проверить структуру сайта. Вероятно нужен site cards/grid parser или follow-links extraction."
+  },
+  {
+    "id": "cmnnll2e4001rvn3xmlqgxzyn",
+    "name": "Simple Kite",
+    "type": "instagram",
+    "isActive": true,
+    "priority": 20,
+    "parserProfile": "instagram_public_profile",
+    "urlOrHandle": "https://www.instagram.com/simple_kite/",
+    "verificationUrls": [
+      "https://www.instagram.com/simple_kite/",
+      "https://simplekite.ru/company/staff/",
+      "https://www.instagram.com/roman_shafigullin/"
+    ],
+    "externalSiteUrls": [
+      "https://simplekite.ru/company/staff/"
+    ],
+    "rawItems": 7,
+    "normalizedItems": 7,
+    "publishedPrograms": 0,
+    "candidateStatuses": {
+      "archived": 4,
+      "rejected": 3
+    },
+    "recommendedClass": "B",
+    "recommendedAction": "Проверить структуру сайта. Вероятно нужен site cards/grid parser или follow-links extraction."
+  },
+  {
+    "id": "cmnnll264001fvn3x28i07ldz",
+    "name": "Snowave Kamchatka",
+    "type": "telegram",
+    "isActive": true,
+    "priority": 20,
+    "parserProfile": "telegram_public_channel",
+    "urlOrHandle": "https://t.me/snowave_kamchatka",
+    "verificationUrls": [
+      "https://t.me/snowave_kamchatka",
+      "https://snowave.ru/contacts/",
+      "https://snowave.ru/o-nas/"
+    ],
+    "externalSiteUrls": [
+      "https://snowave.ru/contacts/",
+      "https://snowave.ru/o-nas/"
+    ],
+    "rawItems": 8,
+    "normalizedItems": 8,
+    "publishedPrograms": 0,
+    "candidateStatuses": {
+      "archived": 7,
+      "rejected": 1
+    },
+    "recommendedClass": "B",
+    "recommendedAction": "Проверить структуру сайта. Вероятно нужен site cards/grid parser или follow-links extraction."
+  },
+  {
+    "id": "cmnnll20v0013vn3xk7edk7cj",
+    "name": "Sochi Heliski",
+    "type": "instagram",
+    "isActive": true,
+    "priority": 20,
+    "parserProfile": "instagram_public_profile",
+    "urlOrHandle": "https://www.instagram.com/sochiheliski/",
+    "verificationUrls": [
+      "https://www.instagram.com/sochiheliski/",
+      "https://sochiheliski.ru/contacts/",
+      "https://sochiheliski.ru/team/"
+    ],
+    "externalSiteUrls": [
+      "https://sochiheliski.ru/contacts/",
+      "https://sochiheliski.ru/team/"
+    ],
+    "rawItems": 1,
+    "normalizedItems": 1,
+    "publishedPrograms": 0,
+    "candidateStatuses": {
+      "archived": 1
+    },
+    "recommendedClass": "B",
+    "recommendedAction": "Проверить структуру сайта. Вероятно нужен site cards/grid parser или follow-links extraction."
+  },
+  {
+    "id": "cmnnll2cv001nvn3xh1p4m0mc",
+    "name": "Take Off Surf Club",
+    "type": "instagram",
+    "isActive": true,
+    "priority": 20,
+    "parserProfile": "instagram_public_profile",
+    "urlOrHandle": "https://www.instagram.com/takeoffspb.ru/",
+    "verificationUrls": [
+      "https://www.instagram.com/takeoffspb.ru/",
+      "https://takeoffspb.com/team/",
+      "https://takeoffspb.com/contact"
+    ],
+    "externalSiteUrls": [
+      "https://takeoffspb.com/team/",
+      "https://takeoffspb.com/contact"
+    ],
+    "rawItems": 1,
+    "normalizedItems": 1,
+    "publishedPrograms": 0,
+    "candidateStatuses": {
+      "archived": 1
+    },
+    "recommendedClass": "B",
+    "recommendedAction": "Проверить структуру сайта. Вероятно нужен site cards/grid parser или follow-links extraction."
+  },
+  {
+    "id": "cmnnll1xw000zvn3xcl9ztxx1",
+    "name": "WhitePeaks",
+    "type": "telegram",
+    "isActive": true,
+    "priority": 20,
+    "parserProfile": "telegram_public_channel",
+    "urlOrHandle": "https://t.me/Oksana_Chekulaeva",
+    "verificationUrls": [
+      "https://whitepeaks.ru/contacts",
+      "https://t.me/Oksana_Chekulaeva",
+      "https://whitepeaks.ru/"
+    ],
+    "externalSiteUrls": [
+      "https://whitepeaks.ru/contacts",
+      "https://whitepeaks.ru/"
+    ],
+    "rawItems": 0,
+    "normalizedItems": 0,
+    "publishedPrograms": 0,
+    "candidateStatuses": {},
+    "recommendedClass": "B",
+    "recommendedAction": "Проверить структуру сайта. Вероятно нужен site cards/grid parser или follow-links extraction."
+  },
+  {
+    "id": "cmnnll1wp000xvn3xzthgrlbq",
+    "name": "WhitePeaks",
+    "type": "instagram",
+    "isActive": true,
+    "priority": 20,
+    "parserProfile": "instagram_public_profile",
+    "urlOrHandle": "https://www.instagram.com/whitepeaks_ru/",
+    "verificationUrls": [
+      "https://www.instagram.com/whitepeaks_ru/",
+      "https://whitepeaks.ru/contacts",
+      "https://t.me/Oksana_Chekulaeva"
+    ],
+    "externalSiteUrls": [
+      "https://whitepeaks.ru/contacts"
+    ],
+    "rawItems": 2,
+    "normalizedItems": 2,
+    "publishedPrograms": 0,
+    "candidateStatuses": {
+      "archived": 2
+    },
+    "recommendedClass": "B",
+    "recommendedAction": "Проверить структуру сайта. Вероятно нужен site cards/grid parser или follow-links extraction."
+  },
+  {
+    "id": "cmnnll2fq001tvn3xxsycvahv",
+    "name": "Yeiskwind",
+    "type": "instagram",
+    "isActive": true,
+    "priority": 20,
+    "parserProfile": "instagram_public_profile",
+    "urlOrHandle": "https://www.instagram.com/yeiskwind/reels/",
+    "verificationUrls": [
+      "https://www.instagram.com/yeiskwind/reels/",
+      "https://yeiskwind.ru/",
+      "https://yeiskwind.ru/team/"
+    ],
+    "externalSiteUrls": [
+      "https://yeiskwind.ru/",
+      "https://yeiskwind.ru/team/"
+    ],
+    "rawItems": 4,
+    "normalizedItems": 4,
+    "publishedPrograms": 0,
+    "candidateStatuses": {
+      "archived": 4
+    },
+    "recommendedClass": "B",
+    "recommendedAction": "Проверить структуру сайта. Вероятно нужен site cards/grid parser или follow-links extraction."
+  },
+  {
+    "id": "cmnnll23e0019vn3xc257h7xb",
+    "name": "Kvadro Tur 24",
+    "type": "instagram",
+    "isActive": true,
+    "priority": 60,
+    "parserProfile": "instagram_public_profile",
+    "urlOrHandle": "https://www.instagram.com/kvadro_tur_24/",
+    "verificationUrls": [
+      "https://www.instagram.com/reel/DWLYFVbN8Ju/",
+      "https://www.instagram.com/p/DVcnphYCHGo/",
+      "https://kvadrotur24.ru/"
+    ],
+    "externalSiteUrls": [
+      "https://kvadrotur24.ru/"
+    ],
+    "rawItems": 11,
+    "normalizedItems": 11,
+    "publishedPrograms": 0,
+    "candidateStatuses": {
+      "archived": 10,
+      "rejected": 1
+    },
+    "recommendedClass": "B",
+    "recommendedAction": "Проверить структуру сайта. Вероятно нужен site cards/grid parser или follow-links extraction."
+  },
+  {
+    "id": "cmnnll281001hvn3xs8okx7wi",
+    "name": "Quiksilver Surf Camp Kamchatka",
+    "type": "telegram",
+    "isActive": true,
+    "priority": 60,
+    "parserProfile": "telegram_public_channel",
+    "urlOrHandle": "https://t.me/kamchatkasurf",
+    "verificationUrls": [
+      "https://t.me/kamchatkasurf",
+      "https://kamchatka.surf/",
+      "https://kamchatka.surf/about/"
+    ],
+    "externalSiteUrls": [
+      "https://kamchatka.surf/",
+      "https://kamchatka.surf/about/"
+    ],
+    "rawItems": 3,
+    "normalizedItems": 3,
+    "publishedPrograms": 0,
+    "candidateStatuses": {
+      "archived": 3
+    },
+    "recommendedClass": "B",
+    "recommendedAction": "Проверить структуру сайта. Вероятно нужен site cards/grid parser или follow-links extraction."
+  },
+  {
+    "id": "cmnnll1ka000jvn3xpq5dtylw",
+    "name": "Sportstation Club",
+    "type": "telegram",
+    "isActive": false,
+    "priority": 60,
+    "parserProfile": "telegram_public_channel",
+    "urlOrHandle": "https://t.me/sportstation_club",
+    "verificationUrls": [
+      "https://t.me/sportstation_club",
+      "https://www.sportstation.club/",
+      "https://www.sportstation.club/contacts"
+    ],
+    "externalSiteUrls": [
+      "https://www.sportstation.club/",
+      "https://www.sportstation.club/contacts"
+    ],
+    "rawItems": 0,
+    "normalizedItems": 0,
+    "publishedPrograms": 0,
+    "candidateStatuses": {},
+    "recommendedClass": "B",
+    "recommendedAction": "Проверить структуру сайта. Вероятно нужен site cards/grid parser или follow-links extraction."
+  },
+  {
+    "id": "cmnnll1j7000hvn3x9jxc6qmh",
+    "name": "ProWakesurf",
+    "type": "telegram",
+    "isActive": true,
+    "priority": 60,
+    "parserProfile": "telegram_public_channel",
+    "urlOrHandle": "https://t.me/prowakesurf",
+    "verificationUrls": [
+      "https://t.me/prowakesurf",
+      "https://t.me/s/prowakesurf/2531",
+      "https://t.me/s/prowakesurf/2524"
+    ],
+    "externalSiteUrls": [],
+    "rawItems": 7,
+    "normalizedItems": 7,
+    "publishedPrograms": 0,
+    "candidateStatuses": {
+      "archived": 7
+    },
+    "recommendedClass": "C",
+    "recommendedAction": "Оставить как event-feed/discovery. Нужен parser для event-like posts, без ожидания site-quality."
+  },
+  {
+    "id": "cmnnll1ua000tvn3xkvexh8ym",
+    "name": "Funsnow / Алексей Аввакумов",
+    "type": "instagram",
+    "isActive": true,
+    "priority": 20,
+    "parserProfile": "instagram_public_profile",
+    "urlOrHandle": "https://www.instagram.com/avvakumov.alexey/",
+    "verificationUrls": [
+      "https://www.instagram.com/avvakumov.alexey/",
+      "https://t.me/s/avvakumov_alexey",
+      "https://www.instagram.com/reel/DFM7-4MNZ-1/"
+    ],
+    "externalSiteUrls": [],
+    "rawItems": 2,
+    "normalizedItems": 2,
+    "publishedPrograms": 0,
+    "candidateStatuses": {
+      "archived": 2
+    },
+    "recommendedClass": "D",
+    "recommendedAction": "Discovery-only или low-value source. Не тратить parser effort до появления структурированного источника."
+  },
+  {
+    "id": "cmnnll1bc0007vn3xxkmfhtru",
+    "name": "WakeExperience",
+    "type": "instagram",
+    "isActive": true,
+    "priority": 20,
+    "parserProfile": "instagram_public_profile",
+    "urlOrHandle": "https://www.instagram.com/wakeexperience/",
+    "verificationUrls": [
+      "https://www.instagram.com/wakeexperience/",
+      "https://www.instagram.com/kurill777/",
+      "https://www.youtube.com/watch?v=5-rhO3dvndU"
+    ],
+    "externalSiteUrls": [],
+    "rawItems": 3,
+    "normalizedItems": 3,
+    "publishedPrograms": 0,
+    "candidateStatuses": {
+      "archived": 3
+    },
+    "recommendedClass": "D",
+    "recommendedAction": "Discovery-only или low-value source. Не тратить parser effort до появления структурированного источника."
+  },
+  {
+    "id": "cmnnll1or000pvn3xtbx3yq81",
+    "name": "BIG SNOW CAMP",
+    "type": "instagram",
+    "isActive": true,
+    "priority": 60,
+    "parserProfile": "instagram_public_profile",
+    "urlOrHandle": "https://www.instagram.com/bigsnowcamp/",
+    "verificationUrls": [
+      "https://www.instagram.com/bigsnowcamp/",
+      "https://www.instagram.com/p/DO6fQHJDOzK/",
+      "https://www.instagram.com/p/DTIPfMEjXWq/"
+    ],
+    "externalSiteUrls": [],
+    "rawItems": 3,
+    "normalizedItems": 3,
+    "publishedPrograms": 0,
+    "candidateStatuses": {
+      "archived": 3
+    },
+    "recommendedClass": "D",
+    "recommendedAction": "Discovery-only или low-value source. Не тратить parser effort до появления структурированного источника."
+  },
+  {
+    "id": "cmnnll19v0003vn3x2rjxbqp9",
+    "name": "Dahovskaya Bike Camp",
+    "type": "instagram",
+    "isActive": true,
+    "priority": 60,
+    "parserProfile": "instagram_public_profile",
+    "urlOrHandle": "https://www.instagram.com/dahovskaya_bikepark/",
+    "verificationUrls": [
+      "https://www.instagram.com/dahovskaya_bikepark/",
+      "https://vk.com/dhovskaya",
+      "https://t.me/dahbikecamp"
+    ],
+    "externalSiteUrls": [],
+    "rawItems": 2,
+    "normalizedItems": 2,
+    "publishedPrograms": 0,
+    "candidateStatuses": {
+      "archived": 2
+    },
+    "recommendedClass": "D",
+    "recommendedAction": "Discovery-only или low-value source. Не тратить parser effort до появления структурированного источника."
+  },
+  {
+    "id": "cmnnll1dl000bvn3xcae8s4e7",
+    "name": "Kacheev Wake School",
+    "type": "instagram",
+    "isActive": true,
+    "priority": 60,
+    "parserProfile": "instagram_public_profile",
+    "urlOrHandle": "https://www.instagram.com/kacheev_wakeschool/",
+    "verificationUrls": [
+      "https://www.instagram.com/kacheev_wakeschool/",
+      "https://www.instagram.com/reel/DHI1uU8CRmg/",
+      "https://www.instagram.com/p/DHWpoJgCMgs/"
+    ],
+    "externalSiteUrls": [],
+    "rawItems": 3,
+    "normalizedItems": 3,
+    "publishedPrograms": 0,
+    "candidateStatuses": {
+      "archived": 3
+    },
+    "recommendedClass": "D",
+    "recommendedAction": "Discovery-only или low-value source. Не тратить parser effort до появления структурированного источника."
+  },
+  {
+    "id": "cmnnll1ic000fvn3xhru6cdkx",
+    "name": "Offys Wakesurf",
+    "type": "instagram",
+    "isActive": true,
+    "priority": 60,
+    "parserProfile": "instagram_public_profile",
+    "urlOrHandle": "https://www.instagram.com/offys_wakesurf/",
+    "verificationUrls": [
+      "https://www.instagram.com/offys_wakesurf/",
+      "https://www.instagram.com/p/CtHo0oKtwtj/"
+    ],
+    "externalSiteUrls": [],
+    "rawItems": 2,
+    "normalizedItems": 2,
+    "publishedPrograms": 0,
+    "candidateStatuses": {
+      "archived": 2
+    },
+    "recommendedClass": "D",
+    "recommendedAction": "Discovery-only или low-value source. Не тратить parser effort до появления структурированного источника."
+  },
+  {
+    "id": "cmnnll2ae001jvn3xefa5f1e3",
+    "name": "Swell VL",
+    "type": "instagram",
+    "isActive": true,
+    "priority": 60,
+    "parserProfile": "instagram_public_profile",
+    "urlOrHandle": "https://www.instagram.com/swell_vl/",
+    "verificationUrls": [
+      "https://www.instagram.com/swell_vl/",
+      "https://www.instagram.com/p/DHW6jtnyAgT/",
+      "https://www.instagram.com/p/C1k7sQ6s3x5/"
+    ],
+    "externalSiteUrls": [],
+    "rawItems": 3,
+    "normalizedItems": 3,
+    "publishedPrograms": 0,
+    "candidateStatuses": {
+      "archived": 3
+    },
+    "recommendedClass": "D",
+    "recommendedAction": "Discovery-only или low-value source. Не тратить parser effort до появления структурированного источника."
+  },
+  {
+    "id": "cmnnll1cd0009vn3x1s8xuw74",
+    "name": "TRIP2 Wake Camps",
+    "type": "instagram",
+    "isActive": true,
+    "priority": 60,
+    "parserProfile": "instagram_public_profile",
+    "urlOrHandle": "https://www.instagram.com/trip2wakecamps/",
+    "verificationUrls": [
+      "https://www.instagram.com/trip2wakecamps/",
+      "https://www.instagram.com/p/DFqb4A0oA4Y/",
+      "https://www.instagram.com/p/DGdo2yJouuN/"
+    ],
+    "externalSiteUrls": [],
+    "rawItems": 3,
+    "normalizedItems": 3,
+    "publishedPrograms": 0,
+    "candidateStatuses": {
+      "archived": 3
+    },
+    "recommendedClass": "D",
+    "recommendedAction": "Discovery-only или low-value source. Не тратить parser effort до появления структурированного источника."
+  }
+]

@@ -1,0 +1,5 @@
+﻿environment,purpose,apps_enabled,data_policy,secrets_policy,release_gate
+local,developer work,"web, admin, api, jobs",seed / fake data,local env only,none
+dev,shared integration,"web, admin, api, jobs",resettable,non-prod secrets,basic smoke
+staging,preprod validation,"web, admin, api, jobs",prod-like masked data,staging secrets,QA sign-off
+prod,public service,"web, admin, api, jobs",real data,prod secrets only,founder approval

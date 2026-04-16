@@ -1,0 +1,18 @@
+﻿module,endpoint,method,auth_role,writes_audit_log,primary_entity,notes
+auth,/auth/register,POST,public,no,User,register user
+auth,/auth/login,POST,public,no,User,login
+organizers,/organizers,GET,public,no,Organizer,list organizers
+organizers,/organizers/:id,GET,public,no,Organizer,organizer detail
+organizers,/organizers,POST,organizer/admin,yes,Organizer,create organizer profile
+organizers,/organizers/:id/verification-status,PATCH,admin,yes,Organizer,verification change
+programs,/programs,GET,public,no,Program,catalog
+programs,/programs/:id,GET,public,no,Program,program detail
+programs,/programs,POST,organizer/admin,yes,Program,create program
+programs,/programs/:id/publish-status,PATCH,admin,yes,Program,publish workflow
+bookings,/bookings,POST,public/user,yes,Booking,create inquiry
+bookings,/bookings,GET,admin/organizer,no,Booking,queue listing
+bookings,/bookings/:id/status,PATCH,admin/organizer,yes,Booking,status update
+bookings,/bookings/:id/confirm-completion,POST,admin/organizer,yes,Booking,completion evidence
+reviews,/reviews,POST,user,yes,Review,submit review
+incidents,/incidents,POST,user/admin/organizer,yes,Incident,create incident
+commissions,/commissions/accrue,POST,admin/finance,yes,Commission,accrual

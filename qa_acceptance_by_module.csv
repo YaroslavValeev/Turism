@@ -1,0 +1,10 @@
+﻿module,acceptance_criteria,must_pass_before_release,owner
+organizers,verification status changes audited,yes,QA/Trust
+programs,program cannot publish without safety/cancellation fields,yes,QA/Product
+catalog,filters return correct results,yes,QA/Product
+bookings,canonical transitions enforced,yes,QA/Ops
+reviews,review only after completed booking,yes,QA/Trust
+incidents,high severity triggers escalation,yes,QA/Ops
+commissions,accrual only after deal evidence,yes,QA/Finance
+automation,jobs are idempotent and logged,yes,QA/Tech
+analytics,core events visible in dashboard,yes,QA/Data

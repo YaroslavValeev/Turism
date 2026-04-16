@@ -1,0 +1,9 @@
+﻿event_name,trigger_point,properties,primary_metric,owner
+program_view,program page opened,"program_id, discipline, organizer_id, verified_flag",program page views,Growth
+inquiry_submitted,user submits booking inquiry,"program_id, organizer_id, source_channel",qualified inquiries,Growth
+booking_status_changed,any booking status change,"booking_id, old_status, new_status, owner",funnel conversion,Ops
+review_request_sent,post-completion review request,"booking_id, organizer_id, delay_hours",review coverage,Ops
+review_submitted,user submits review,"booking_id, rating, organizer_id",trust growth,Trust
+commission_accrued,finance accrues commission,"booking_id, gmv_rub, commission_rub",revenue accrual,Finance
+commission_collected,commission payment received,"booking_id, amount_rub",cash collection,Finance
+incident_created,complaint/incident opened,"incident_id, severity, type",risk monitoring,Ops

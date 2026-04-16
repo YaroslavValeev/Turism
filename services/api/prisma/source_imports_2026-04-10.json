@@ -1,0 +1,314 @@
+[
+  {
+    "type": "telegram",
+    "name": "WakeStyleClub",
+    "urlOrHandle": "https://t.me/wakestyleclub",
+    "discipline": "Wakesurf",
+    "country": "Russia",
+    "region": "",
+    "language": "ru",
+    "priority": 55,
+    "trustScore": 0.62,
+    "parserProfile": "telegram_public_channel",
+    "fetchIntervalMinutes": 1440,
+    "isActive": true,
+    "metaJson": {
+      "autoPublish": true,
+      "notes": [
+        "Добавлено вручную 2026-04-10 по запросу Owner."
+      ],
+      "sports": [
+        "Wakesurf"
+      ],
+      "verificationUrls": [
+        "https://t.me/wakestyleclub",
+        "t.me/wakestyleclub",
+        "@wakestyleclub"
+      ]
+    }
+  },
+  {
+    "type": "instagram",
+    "name": "WakeHouse",
+    "urlOrHandle": "https://www.instagram.com/wakehouse.ru/",
+    "discipline": "Wakesurf",
+    "country": "Russia",
+    "region": "",
+    "language": "ru",
+    "priority": 70,
+    "trustScore": 0.55,
+    "parserProfile": "instagram_public_profile",
+    "fetchIntervalMinutes": 1440,
+    "isActive": true,
+    "metaJson": {
+      "autoPublish": false,
+      "notes": [
+        "Instagram как discovery-источник. Добавлено вручную 2026-04-10."
+      ],
+      "sports": [
+        "Wakesurf"
+      ],
+      "verificationUrls": [
+        "https://www.instagram.com/wakehouse.ru/",
+        "https://instagram.com/wakehouse.ru/",
+        "wakehouse.ru",
+        "@wakehouse.ru"
+      ]
+    }
+  },
+  {
+    "type": "instagram",
+    "name": "Offys Wakesurf",
+    "urlOrHandle": "https://www.instagram.com/offys_wakesurf/",
+    "discipline": "Wakesurf",
+    "country": "Russia",
+    "region": "",
+    "language": "ru",
+    "priority": 70,
+    "trustScore": 0.55,
+    "parserProfile": "instagram_public_profile",
+    "fetchIntervalMinutes": 1440,
+    "isActive": true,
+    "metaJson": {
+      "autoPublish": false,
+      "notes": [
+        "Instagram как discovery-источник. Обновлено вручную 2026-04-10."
+      ],
+      "sports": [
+        "Wakesurf"
+      ],
+      "verificationUrls": [
+        "https://www.instagram.com/offys_wakesurf/",
+        "https://instagram.com/offys_wakesurf/",
+        "offys_wakesurf",
+        "@offys_wakesurf"
+      ]
+    }
+  },
+  {
+    "type": "instagram",
+    "name": "Bonus Summer Camp",
+    "urlOrHandle": "https://www.instagram.com/bonussummercamp/",
+    "discipline": "Snowboard",
+    "country": "Russia",
+    "region": "",
+    "language": "ru",
+    "priority": 72,
+    "trustScore": 0.56,
+    "parserProfile": "instagram_public_profile",
+    "fetchIntervalMinutes": 1440,
+    "isActive": true,
+    "metaJson": {
+      "autoPublish": false,
+      "notes": [
+        "Instagram как discovery-источник. Добавлено вручную 2026-04-10."
+      ],
+      "sports": [
+        "Snowboard"
+      ],
+      "verificationUrls": [
+        "https://www.instagram.com/bonussummercamp/"
+      ]
+    }
+  },
+  {
+    "type": "instagram",
+    "name": "RiverSurf Zavidovo",
+    "urlOrHandle": "https://www.instagram.com/riversurf.zavidovo/",
+    "discipline": "Wakesurf",
+    "country": "Russia",
+    "region": "",
+    "language": "ru",
+    "priority": 70,
+    "trustScore": 0.56,
+    "parserProfile": "instagram_public_profile",
+    "fetchIntervalMinutes": 1440,
+    "isActive": true,
+    "metaJson": {
+      "autoPublish": false,
+      "notes": [
+        "Instagram как discovery-источник. Добавлено вручную 2026-04-10."
+      ],
+      "sports": [
+        "Wakesurf"
+      ],
+      "verificationUrls": [
+        "https://www.instagram.com/riversurf.zavidovo/",
+        "https://instagram.com/riversurf.zavidovo/",
+        "riversurf.zavidovo",
+        "@riversurf.zavidovo"
+      ]
+    }
+  },
+  {
+    "type": "telegram",
+    "name": "Freeride Russia",
+    "urlOrHandle": "https://t.me/freeriderussia",
+    "discipline": "Freeride",
+    "country": "Russia",
+    "region": "",
+    "language": "ru",
+    "priority": 62,
+    "trustScore": 0.58,
+    "parserProfile": "telegram_public_channel",
+    "fetchIntervalMinutes": 1440,
+    "isActive": true,
+    "metaJson": {
+      "autoPublish": false,
+      "notes": [
+        "Telegram-источник по фрирайду. Добавлено вручную 2026-04-10."
+      ],
+      "sports": [
+        "Freeride",
+        "Ski",
+        "Snowboard"
+      ],
+      "verificationUrls": [
+        "https://t.me/freeriderussia",
+        "t.me/freeriderussia",
+        "@freeriderussia"
+      ],
+      "fetchUrls": [
+        "https://t.me/s/freeriderussia?before=820"
+      ]
+    }
+  },
+  {
+    "type": "instagram",
+    "name": "Mouse Bike House",
+    "urlOrHandle": "https://www.instagram.com/mouse_bike_house/",
+    "discipline": "MTB",
+    "country": "Russia",
+    "region": "",
+    "language": "ru",
+    "priority": 72,
+    "trustScore": 0.56,
+    "parserProfile": "instagram_public_profile",
+    "fetchIntervalMinutes": 1440,
+    "isActive": true,
+    "metaJson": {
+      "autoPublish": false,
+      "notes": [
+        "Instagram как discovery-источник. Добавлено вручную 2026-04-13."
+      ],
+      "sports": [
+        "MTB"
+      ],
+      "verificationUrls": [
+        "https://www.instagram.com/mouse_bike_house/",
+        "https://instagram.com/mouse_bike_house/",
+        "https://www.instagram.com/mouse_bike_house?igsh=MWJ0dWJla3loMzNkdg==",
+        "mouse_bike_house",
+        "@mouse_bike_house"
+      ]
+    }
+  },
+  {
+    "type": "instagram",
+    "name": "Team Sergeev",
+    "urlOrHandle": "https://www.instagram.com/team_sergeev/",
+    "discipline": null,
+    "country": "Russia",
+    "region": "",
+    "language": "ru",
+    "priority": 72,
+    "trustScore": 0.56,
+    "parserProfile": "instagram_public_profile",
+    "fetchIntervalMinutes": 1440,
+    "isActive": true,
+    "metaJson": {
+      "autoPublish": false,
+      "notes": [
+        "Instagram как discovery-источник. Добавлено вручную 2026-04-13."
+      ],
+      "verificationUrls": [
+        "https://www.instagram.com/team_sergeev/",
+        "https://instagram.com/team_sergeev/",
+        "https://www.instagram.com/team_sergeev?igsh=M256bnMycWsyY3N6",
+        "team_sergeev",
+        "@team_sergeev"
+      ]
+    }
+  },
+  {
+    "type": "telegram",
+    "name": "Team Sergeev Telegram",
+    "urlOrHandle": "https://t.me/SERGEEVteamM",
+    "discipline": null,
+    "country": "Russia",
+    "region": "",
+    "language": "ru",
+    "priority": 72,
+    "trustScore": 0.58,
+    "parserProfile": "telegram_public_channel",
+    "fetchIntervalMinutes": 1440,
+    "isActive": true,
+    "metaJson": {
+      "notes": [
+        "Telegram fallback для Team Sergeev. Добавлено из Instagram raw 2026-04-13."
+      ],
+      "autoPublish": false,
+      "verificationUrls": [
+        "https://t.me/SERGEEVteamM",
+        "t.me/SERGEEVteamM",
+        "@SERGEEVteamM"
+      ]
+    }
+  },
+  {
+    "type": "instagram",
+    "name": "Kaif Camp",
+    "urlOrHandle": "https://www.instagram.com/kaif_camp/",
+    "discipline": null,
+    "country": "Russia",
+    "region": "",
+    "language": "ru",
+    "priority": 72,
+    "trustScore": 0.56,
+    "parserProfile": "instagram_public_profile",
+    "fetchIntervalMinutes": 1440,
+    "isActive": true,
+    "metaJson": {
+      "autoPublish": false,
+      "notes": [
+        "Instagram как discovery-источник. Добавлено вручную 2026-04-13."
+      ],
+      "verificationUrls": [
+        "https://www.instagram.com/kaif_camp/",
+        "https://instagram.com/kaif_camp/",
+        "https://www.instagram.com/kaif_camp?igsh=aWdsa3h1NnZiaXht",
+        "kaif_camp",
+        "@kaif_camp"
+      ]
+    }
+  },
+  {
+    "type": "telegram",
+    "name": "Talk to Fish / Kristina Kolesnikova",
+    "urlOrHandle": "https://t.me/talktofish",
+    "discipline": "Wakesurf",
+    "country": "Russia",
+    "region": "",
+    "language": "ru",
+    "priority": 62,
+    "trustScore": 0.6,
+    "parserProfile": "telegram_public_channel",
+    "fetchIntervalMinutes": 1440,
+    "isActive": true,
+    "metaJson": {
+      "autoPublish": false,
+      "notes": [
+        "Добавлено вручную 2026-04-14 по прямой ссылке на анонсы кэмпов от Кристины Колесниковой."
+      ],
+      "sports": [
+        "Wakesurf"
+      ],
+      "verificationUrls": [
+        "https://t.me/talktofish",
+        "t.me/talktofish",
+        "@talktofish",
+        "https://t.me/talktofish/453"
+      ]
+    }
+  }
+]

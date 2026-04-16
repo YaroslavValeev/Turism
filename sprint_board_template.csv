@@ -1,0 +1,5 @@
+sprint,stream,task,owner,status,dependency,due_date,definition_of_done,notes
+Sprint 1,Supply,Shortlist 30 organizers,Yaroslav,todo,,2025-03-28,"30 sourced in organizer_pipeline; card 100%; owner + next_step",""
+Sprint 1,Trust & Safety,Finalize verification checklist,Yaroslav,todo,,2025-03-28,"checklist approved; verification level fixed; evidence template ready",""
+Sprint 1,Product,Define canonical booking statuses,Yaroslav,todo,,2025-03-28,"status model frozen; acceptance criteria documented; no blocker",""
+Sprint 1,Growth,Prepare first niche landing copy,Yaroslav,todo,,2025-03-28,"draft ready; CTA clear; funnel role defined",""

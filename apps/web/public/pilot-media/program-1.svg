@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800" role="img" aria-labelledby="title desc">
+  <title id="title">WaveLine Pilot Media</title>
+  <desc id="desc">Abstract wakesurf-themed placeholder for the first pilot program.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f3d57" />
+      <stop offset="100%" stop-color="#1d6f8c" />
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="800" fill="url(#bg)" />
+  <circle cx="945" cy="160" r="92" fill="#ffd27f" opacity="0.95" />
+  <path d="M0 506 C175 451 274 584 462 544 C611 513 670 418 821 431 C980 444 1099 534 1200 497 L1200 800 L0 800 Z" fill="#6fd0de" opacity="0.95" />
+  <path d="M0 598 C198 563 352 696 538 661 C722 626 816 548 973 569 C1086 584 1143 633 1200 608 L1200 800 L0 800 Z" fill="#c8f0f5" opacity="0.88" />
+  <text x="76" y="132" fill="#ffffff" font-size="58" font-family="Georgia, serif">WaveLine Weekend Progress Camp</text>
+  <text x="79" y="192" fill="#d8f5ff" font-size="28" font-family="Georgia, serif">Wakesurf pilot • Krasnodar • MyWave Travel</text>
+</svg>

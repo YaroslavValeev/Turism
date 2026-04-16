@@ -1,0 +1,10 @@
+﻿phase,module,scope,dependency,release_target,success_metric
+0,foundation,"repo skeleton, envs, shared enums, auth base",none,R1,team can build safely
+1,organizers,CRUD + verification statuses,foundation,R1,organizer pipeline works
+1,programs,CRUD + publish workflow + media,organizers,R2,catalog data ready
+2,public catalog,catalog pages + filters + program page,programs,R2,users can browse programs
+2,bookings,inquiry form + booking queue + status updates,public catalog,R3,leads can be processed
+3,trust layer,reviews + incidents + evidence,bookings,R4,trust system active
+4,revenue layer,completion proof + GMV + commissions,bookings,R5,commission accrual works
+5,automation,reminders + review requests + alerts,"bookings,reviews,commissions",R6,ops load reduced
+5,analytics/observability,events + dashboards + release monitoring,all previous,R6,north star visible

@@ -1,0 +1,9 @@
+﻿field_name,ui_capture_point,backend_entity,required_at_stage,validation_rule,owner
+user_name,booking_form,Booking,new,not empty,Ops
+user_phone,booking_form,Booking,new,phone format,Ops
+organizer_id,system,Booking,new,must exist,Tech
+program_id,program page,Booking,new,must exist,Tech
+booking_status,system,Booking,all,must be canonical enum,Tech
+gmv_rub,manual confirmation / ops,Booking,booked/completed,numeric >= 0,Finance
+completed_at,ops confirmation,Booking,completed,date exists if completed,Ops
+commission_accrued_rub,finance ops,Commission,accrual,numeric >=0,Finance

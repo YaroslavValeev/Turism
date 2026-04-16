@@ -1,0 +1,45 @@
+root/
+├── apps/
+│   ├── web/
+│   │   ├── src/
+│   │   │   ├── pages/
+│   │   │   ├── features/
+│   │   │   ├── entities/
+│   │   │   ├── widgets/
+│   │   │   ├── shared/
+│   │   │   └── app/
+│   │   └── public/
+│   └── admin/
+│       ├── src/
+│       │   ├── pages/
+│       │   ├── queues/
+│       │   ├── dashboards/
+│       │   ├── moderation/
+│       │   └── shared/
+│       └── public/
+├── services/
+│   ├── api/
+│   │   ├── src/
+│   │   │   ├── modules/
+│   │   │   ├── entities/
+│   │   │   ├── routes/
+│   │   │   ├── middleware/
+│   │   │   ├── services/
+│   │   │   └── utils/
+│   └── jobs/
+│       ├── src/
+│       │   ├── workers/
+│       │   ├── schedules/
+│       │   └── handlers/
+├── packages/
+│   ├── shared-types/
+│   ├── ui/
+│   └── config/
+├── infra/
+│   ├── docker/
+│   ├── ci/
+│   ├── monitoring/
+│   └── backups/
+├── docs/
+├── scripts/
+└── .github/

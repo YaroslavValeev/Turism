@@ -1,0 +1,759 @@
+// Prisma schema. Source of truth: db_schema_draft.csv, db_relationship_notes.md, audit_log_spec.md
+// Sprint 1: users, organizers, audit_logs only.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Seed: pnpm --filter api db:seed (creates admin@mywave.local)
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String?
+  phone        String?
+  role         String   // admin | organizer | user (Sprint 1: admin only)
+  passwordHash String?  // for admin login only
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Organizer {
+  id                 String    @id @default(cuid())
+  displayName        String
+  legalStatus        String?   // self-employed / ИП / ООО
+  contactEmail       String
+  contactPhone       String?
+  responseScore      Int?      // optional metric
+  verificationStatus String    // listed | checked | verified | trusted_by_platform | paused | rejected
+  onboardingStatus   String    @default("applied") // applied | under_review | approved | contract_pending | contract_signed | billing_connected | active | limited | suspended
+  billingStatus      String    @default("not_connected") // not_connected | billing_connected | suspended
+  privilegeStatus    String    @default("limited") // limited | active | suspended
+  commissionRateBps  Int       @default(300) // Fair Success Fee default 3%
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  programs           Program[]
+  leads              Lead[]
+  bookings           Booking[]
+  verificationEvidence OrganizerVerificationEvidence[]
+  incidents          Incident[]
+  reviews            Review[]
+  commissions        Commission[]
+  sources            Source[]   @relation("SourceOrganizer")
+  payments           Payment[]
+  refunds            Refund[]
+  billingProfile     OrganizerBillingProfile?
+  contracts          OrganizerContract[]
+  billingStatements  BillingStatement[]
+  scoreSnapshots     OrganizerScoreSnapshot[]
+  reviewRequests     ReviewRequest[]
+
+  @@map("organizers")
+}
+
+// program_card_schema.md, db_schema_draft. publish_status: canonical_status_models (Program Publication Status)
+model Program {
+  id                      String    @id @default(cuid())
+  organizerId             String
+  title                   String
+  discipline              String
+  region                  String
+  exactLocation           String?
+  startDate               DateTime
+  endDate                 DateTime
+  durationDays            Int
+  formatType              String?   // tour | camp | clinic | training | ...
+  audienceFit             String?   @db.Text
+  levelRequired           String?   // beginner | intermediate | advanced | expert
+  riskLevel               String?   // low | medium | high | extreme (safety)
+  priceFromRub            Int?
+  capacityTotal           Int?
+  spotsAvailable          Int?
+  isStarred               Boolean   @default(false)
+  currency                String?   @default("RUB")
+  inclusions              String?   @db.Text
+  exclusions              String?   @db.Text
+  gearRequirements        String?   @db.Text
+  medicalLimitations      String?   @db.Text  // safety
+  itineraryDayByDay       String?   @db.Text
+  organizerName           String?   // denorm for display
+  trustReason             String?   @db.Text
+  reviewsSummary          String?   @db.Text
+  cancellationRules       String?   @db.Text  // required for publish
+  whatHappensAfterBooking String?   @db.Text
+  cta                     String?
+  // Canonical publish intake: organizer_form | admin_manual | email | telegram | sheets_csv | seed (see docs/INGESTION_POLICY.md)
+  intakeSource            String?
+  publishStatus           String    // draft | internal_review | needs_fix | approved | published | paused | archived
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+  organizer               Organizer @relation(fields: [organizerId], references: [id], onDelete: Cascade)
+  media                   ProgramMedia[]
+  leads                   Lead[]
+  bookings                Booking[]
+  reviews                 Review[]
+  incidents               Incident[]
+  commissions             Commission[]
+  payments                Payment[]
+  refunds                 Refund[]
+  publishedPrograms       PublishedProgram[]
+  scoreSnapshots          ProgramScoreSnapshot[]
+  reviewRequests          ReviewRequest[]
+
+  @@map("programs")
+}
+
+model Source {
+  id                   String      @id @default(cuid())
+  type                 String      // instagram | telegram | rss | site
+  name                 String
+  urlOrHandle          String
+  discipline           String?
+  country              String?
+  region               String?
+  language             String?
+  priority             Int         @default(100)
+  trustScore           Float       @default(0.5)
+  parserProfile        String?
+  fetchIntervalMinutes Int         @default(60)
+  isActive             Boolean     @default(true)
+  lastCheckedAt        DateTime?
+  lastSuccessAt        DateTime?
+  metaJson             Json?
+  organizerId          String?
+  createdAt            DateTime    @default(now())
+  updatedAt            DateTime    @updatedAt
+  organizer            Organizer?  @relation("SourceOrganizer", fields: [organizerId], references: [id], onDelete: SetNull)
+  runs                 SourceRun[]
+  rawItems             RawItem[]
+
+  @@index([type, isActive])
+  @@map("sources")
+}
+
+model SourceRun {
+  id           String    @id @default(cuid())
+  sourceId     String
+  runType      String    @default("collect") // collect | normalize | dedup | publish
+  startedAt    DateTime  @default(now())
+  finishedAt   DateTime?
+  status       String    // running | success | partial | failed
+  itemsFound   Int       @default(0)
+  itemsCreated Int       @default(0)
+  errorMessage String?   @db.Text
+  metaJson     Json?
+  source       Source    @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@index([sourceId, startedAt])
+  @@map("source_runs")
+}
+
+model RawItem {
+  id             String          @id @default(cuid())
+  sourceId       String
+  externalItemId String?
+  sourceType     String
+  sourceUrl      String?
+  authorName     String?
+  publishedAt    DateTime?
+  rawTitle       String?         @db.Text
+  rawText        String?         @db.Text
+  rawMediaJson   Json?
+  rawPayloadJson Json?
+  contentHash    String
+  fetchedAt      DateTime        @default(now())
+  source         Source          @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  normalizedItem NormalizedItem?
+
+  @@unique([sourceId, externalItemId])
+  @@unique([sourceId, contentHash])
+  @@index([sourceId, fetchedAt])
+  @@map("raw_items")
+}
+
+model NormalizedItem {
+  id               String           @id @default(cuid())
+  rawItemId        String           @unique
+  eventType        String?
+  discipline       String?
+  title            String?
+  descriptionShort String?          @db.Text
+  descriptionFull  String?          @db.Text
+  country          String?
+  region           String?
+  city             String?
+  venue            String?
+  startDate        DateTime?
+  endDate          DateTime?
+  durationDays     Int?
+  level            String?
+  priceFrom        Int?
+  currency         String?
+  organizerName    String?
+  bookingUrl       String?
+  imageUrl         String?
+  confidenceScore  Float?
+  parseVersion     String
+  extractedJson    Json?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  rawItem          RawItem          @relation(fields: [rawItemId], references: [id], onDelete: Cascade)
+  candidates       EventCandidate[]
+
+  @@index([discipline, startDate])
+  @@map("normalized_items")
+}
+
+model EventGroup {
+  id                   String           @id @default(cuid())
+  canonicalCandidateId String?
+  groupKey             String           @unique
+  mergeStatus          String           @default("open") // open | merged | locked
+  metaJson             Json?
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+  candidates           EventCandidate[]
+
+  @@map("event_groups")
+}
+
+model EventCandidate {
+  id                   String          @id @default(cuid())
+  normalizedItemId     String
+  dedupGroupId         String?
+  status               String          @default("new") // new | needs_review | approved | rejected | merged | published | archived
+  reviewPriority       Int             @default(0)
+  trustScore           Float           @default(0)
+  fitScore             Float           @default(0)
+  futureEventScore     Float           @default(0)
+  duplicateScore       Float           @default(0)
+  finalScore           Float           @default(0)
+  eventLikelihoodScore Float           @default(0)
+  completenessScore    Float           @default(0)
+  sourceTrustScore     Float           @default(0)
+  tourismFitScore      Float           @default(0)
+  decisionNotes        String?         @db.Text
+  reviewedBy           String?
+  reviewedAt           DateTime?
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+  normalizedItem       NormalizedItem  @relation(fields: [normalizedItemId], references: [id], onDelete: Cascade)
+  dedupGroup           EventGroup?     @relation(fields: [dedupGroupId], references: [id], onDelete: SetNull)
+  publishedProgram     PublishedProgram?
+
+  @@index([status, finalScore])
+  @@index([normalizedItemId])
+  @@map("event_candidates")
+}
+
+model PublishedProgram {
+  id            String         @id @default(cuid())
+  candidateId   String         @unique
+  programId     String         @unique
+  publishedAt   DateTime       @default(now())
+  publishStatus String         // draft_created | internal_review | published | archived
+  editorNotes   String?        @db.Text
+  candidate     EventCandidate @relation(fields: [candidateId], references: [id], onDelete: Restrict)
+  program       Program        @relation(fields: [programId], references: [id], onDelete: Restrict)
+
+  @@map("published_programs")
+}
+
+model Lead {
+  id                    String    @id @default(cuid())
+  programId             String
+  organizerId           String
+  source                String    @default("mywave")
+  // travelerKeyHash: HMAC guest contact, see docs/analytics/runtime/TRAVELER_KEY_POLICY.md
+  travelerKeyHash       String?
+  guestContact          String    @db.Text
+  sourceChannel         String?
+  sourceCampaign        String?
+  partnerId             String?
+  firstContactAt        DateTime  @default(now())
+  attributionWindowDays Int       @default(60)
+  leadStatus            String    @default("new") // new | contacted | qualified | rejected
+  notes                 String?   @db.Text
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  program               Program   @relation(fields: [programId], references: [id], onDelete: Restrict)
+  organizer             Organizer @relation(fields: [organizerId], references: [id], onDelete: Restrict)
+  bookings              Booking[]
+  payments              Payment[]
+  refunds               Refund[]
+  commissions           Commission[]
+
+  @@index([organizerId, leadStatus])
+  @@index([programId, firstContactAt])
+  @@index([travelerKeyHash])
+  @@map("leads")
+}
+
+// booking_data_contract.md, canonical_status_models. Booking = canonical business entity.
+model Booking {
+  id                  String    @id @default(cuid())
+  leadId              String?
+  programId           String
+  organizerId         String
+  source              String    @default("mywave")
+  // travelerKeyHash: HMAC guest contact, see docs/analytics/runtime/TRAVELER_KEY_POLICY.md
+  travelerKeyHash     String?
+  guestContact        String    @db.Text  // name, phone, email (assisted intake)
+  sourceChannel       String?   // landing | program_page | referral | tg | ...
+  sourceCampaign      String?
+  partnerId           String?
+  leadOwner           String?
+  bookingStatus       String    // created | booked | paid_partial | paid_full | completed | canceled | refunded_* | disputed (+ legacy statuses)
+  attributionWindowDays Int     @default(60)
+  firstResponseAt     DateTime?
+  bookedAt            DateTime?
+  completedAt         DateTime?
+  cancellationReason  String?   @db.Text
+  refundAmountRub     Int?
+  paidAmountRub       Int       @default(0)
+  refundedAmountRub   Int       @default(0)
+  netAmountRub        Int       @default(0)
+  gmvRub              Int?      // required for revenue; no negative
+  expectedCommissionRub  Int?
+  accruedCommissionRub   Int?
+  collectedCommissionRub Int?
+  proofOfCompletion   String?   @db.Text
+  notes               String?   @db.Text
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  lead                Lead?     @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  program             Program   @relation(fields: [programId], references: [id], onDelete: Restrict)
+  organizer           Organizer @relation(fields: [organizerId], references: [id], onDelete: Restrict)
+  payments            Payment[]
+  refunds             Refund[]
+  reviews             Review[]
+  reviewRequest       ReviewRequest?
+  incidents           Incident[]
+  commissions         Commission[]
+
+  @@index([leadId])
+  @@index([organizerId, bookingStatus])
+  @@index([travelerKeyHash])
+  @@map("bookings")
+}
+
+model Payment {
+  id                String    @id @default(cuid())
+  bookingId         String
+  leadId            String?
+  organizerId       String
+  programId         String
+  amountRub         Int
+  status            String    @default("confirmed") // recorded | confirmed | failed | reversed
+  paymentKind       String    @default("full") // partial | full
+  paidAt            DateTime  @default(now())
+  externalReference String?
+  paymentMethod     String?
+  notes             String?   @db.Text
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  booking           Booking   @relation(fields: [bookingId], references: [id], onDelete: Restrict)
+  lead              Lead?     @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  organizer         Organizer @relation(fields: [organizerId], references: [id], onDelete: Restrict)
+  program           Program   @relation(fields: [programId], references: [id], onDelete: Restrict)
+  refunds           Refund[]
+
+  @@index([bookingId, paidAt])
+  @@index([organizerId, paidAt])
+  @@map("payments")
+}
+
+model Refund {
+  id                String    @id @default(cuid())
+  bookingId         String
+  paymentId         String?
+  leadId            String?
+  organizerId       String
+  programId         String
+  amountRub         Int
+  status            String    @default("completed") // recorded | completed | failed
+  reason            String?   @db.Text
+  refundedAt        DateTime  @default(now())
+  externalReference String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  booking           Booking   @relation(fields: [bookingId], references: [id], onDelete: Restrict)
+  payment           Payment?  @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+  lead              Lead?     @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  organizer         Organizer @relation(fields: [organizerId], references: [id], onDelete: Restrict)
+  program           Program   @relation(fields: [programId], references: [id], onDelete: Restrict)
+
+  @@index([bookingId, refundedAt])
+  @@index([organizerId, refundedAt])
+  @@map("refunds")
+}
+
+model ProgramMedia {
+  id         String  @id @default(cuid())
+  programId String
+  mediaType  String  // image | video
+  url        String
+  caption    String?
+  program    Program @relation(fields: [programId], references: [id], onDelete: Cascade)
+
+  @@map("program_media")
+}
+
+// db_schema_draft, verification_framework. Support for verified/trusted organizer.
+model OrganizerVerificationEvidence {
+  id          String   @id @default(cuid())
+  organizerId String
+  evidenceType String  // document | media_report | review_batch | ...
+  evidenceUrl  String?
+  notes        String?  @db.Text
+  createdAt    DateTime @default(now())
+  organizer    Organizer @relation(fields: [organizerId], references: [id], onDelete: Cascade)
+
+  @@map("organizer_verification_evidence")
+}
+
+// db_schema_draft. Review only after completed booking (canonical rule).
+model Review {
+  id              String   @id @default(cuid())
+  bookingId       String   @unique
+  programId       String
+  organizerId     String
+  rating          Int      // 1-5 or scale
+  comment         String?  @db.Text
+  moderationStatus String  @default("pending") // pending | approved | rejected
+  createdAt       DateTime @default(now())
+  booking         Booking  @relation(fields: [bookingId], references: [id], onDelete: Restrict)
+  program         Program  @relation(fields: [programId], references: [id], onDelete: Restrict)
+  organizer       Organizer @relation(fields: [organizerId], references: [id], onDelete: Restrict)
+
+  @@map("reviews")
+}
+
+model ReviewRequest {
+  id                String   @id @default(cuid())
+  bookingId         String   @unique
+  organizerId       String
+  programId         String
+  guestContact      String   @db.Text
+  status            String   @default("queued") // queued | sent | delivery_failed | skipped_no_contact | skipped_review_exists
+  requestToken      String   @unique
+  requestedAt       DateTime @default(now())
+  firstSentAt       DateTime?
+  lastSentAt        DateTime?
+  nextReminderAt    DateTime?
+  reminderCount     Int      @default(0)
+  maxReminders      Int      @default(2)
+  lastAttemptAt     DateTime?
+  lastError         String?  @db.Text
+  bookingCompletedAt DateTime?
+  booking           Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  organizer         Organizer @relation(fields: [organizerId], references: [id], onDelete: Restrict)
+  program           Program   @relation(fields: [programId], references: [id], onDelete: Restrict)
+
+  @@index([status, nextReminderAt])
+  @@index([organizerId, status])
+  @@map("review_requests")
+}
+
+// db_schema_draft, canonical_status_models. Incident status: open | triaged | ... | closed
+model Incident {
+  id            String   @id @default(cuid())
+  bookingId     String?
+  organizerId   String
+  programId     String?
+  type          String   // complaint | safety | refund | fraud | ...
+  severity      String   // low | medium | high | critical
+  summary       String   @db.Text
+  incidentStatus String  // open | triaged | investigating | ... | closed
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  booking       Booking?  @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  organizer     Organizer @relation(fields: [organizerId], references: [id], onDelete: Restrict)
+  program       Program?  @relation(fields: [programId], references: [id], onDelete: SetNull)
+
+  @@map("incidents")
+}
+
+// commission_data_contract. Commission only after completed deal. Auditable.
+model Commission {
+  id                    String   @id @default(cuid())
+  bookingId             String
+  leadId                String?
+  organizerId           String
+  programId             String
+  gmvRub                Int      @default(0)
+  commissionRatePct     Int?
+  commissionRateBps     Int      @default(300)
+  commissionBaseRub     Int      @default(0)
+  commissionAmountRub   Int      @default(0)
+  commissionFixedRub    Int?
+  commissionAccruedRub  Int?
+  commissionCollectedRub Int?
+  calculationJson       Json?
+  invoiceStatus         String?
+  paymentDueDate        DateTime?
+  paymentReceivedDate   DateTime?
+  accruedAt             DateTime?
+  approvedAt            DateTime?
+  invoicedAt            DateTime?
+  paidAt                DateTime?
+  reversedAt            DateTime?
+  reconciliationStatus String   // draft | accrued | approved | invoiced | paid | reversed (+ legacy statuses)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  booking               Booking  @relation(fields: [bookingId], references: [id], onDelete: Restrict)
+  lead                  Lead?    @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  organizer             Organizer @relation(fields: [organizerId], references: [id], onDelete: Restrict)
+  program               Program  @relation(fields: [programId], references: [id], onDelete: Restrict)
+  statementLines        BillingStatementLine[]
+
+  @@unique([bookingId])
+  @@index([organizerId, reconciliationStatus])
+  @@index([leadId])
+  @@map("commissions")
+}
+
+model OrganizerBillingProfile {
+  id                   String    @id @default(cuid())
+  organizerId          String    @unique
+  legalType            String?
+  legalName            String?
+  inn                  String?
+  bankName             String?
+  bankBik              String?
+  bankAccount          String?
+  correspondentAccount String?
+  contactEmail         String?
+  contactPhone         String?
+  cancellationPolicy   String?   @db.Text
+  refundPolicy         String?   @db.Text
+  commissionRateBps    Int       @default(300)
+  billingStatus        String    @default("not_connected") // not_connected | billing_connected | suspended
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  organizer            Organizer @relation(fields: [organizerId], references: [id], onDelete: Cascade)
+
+  @@map("organizer_billing_profiles")
+}
+
+model OrganizerContract {
+  id          String    @id @default(cuid())
+  organizerId String
+  status      String    @default("not_generated") // not_generated | generated | sent | signed | expired | rejected
+  documentUrl String?
+  generatedAt DateTime?
+  sentAt      DateTime?
+  signedAt    DateTime?
+  expiresAt   DateTime?
+  rejectedAt  DateTime?
+  notes       String?   @db.Text
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  organizer   Organizer @relation(fields: [organizerId], references: [id], onDelete: Cascade)
+
+  @@index([organizerId, status])
+  @@map("organizer_contracts")
+}
+
+model BillingStatement {
+  id                 String    @id @default(cuid())
+  organizerId        String
+  periodStart        DateTime
+  periodEnd          DateTime
+  status             String    @default("draft") // draft | review | invoiced | paid | disputed | void
+  grossPaidRub       Int       @default(0)
+  refundedRub        Int       @default(0)
+  netSalesRub        Int       @default(0)
+  commissionTotalRub Int       @default(0)
+  objectionDeadline  DateTime?
+  issuedAt           DateTime?
+  paidAt             DateTime?
+  notes              String?   @db.Text
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  organizer          Organizer @relation(fields: [organizerId], references: [id], onDelete: Restrict)
+  lines              BillingStatementLine[]
+
+  @@index([organizerId, periodStart, periodEnd])
+  @@index([status])
+  @@map("billing_statements")
+}
+
+model BillingStatementLine {
+  id                String           @id @default(cuid())
+  statementId       String
+  commissionId      String
+  bookingId         String
+  paidAmountRub     Int              @default(0)
+  refundedAmountRub Int              @default(0)
+  netAmountRub      Int              @default(0)
+  commissionRateBps Int              @default(300)
+  commissionAmountRub Int            @default(0)
+  createdAt         DateTime         @default(now())
+  statement         BillingStatement @relation(fields: [statementId], references: [id], onDelete: Cascade)
+  commission        Commission       @relation(fields: [commissionId], references: [id], onDelete: Restrict)
+
+  @@index([statementId])
+  @@index([commissionId])
+  @@index([bookingId])
+  @@map("billing_statement_lines")
+}
+
+// audit_log_spec.md. Depth: actor=changedBy, entity_type, entity_id, action=changedField, timestamp=createdAt, metadata/diff=oldValue,newValue
+model AuditLog {
+  id           String   @id @default(cuid())
+  entityType   String
+  entityId     String
+  changedField String   // action (e.g. verification_status_change, publish_status_change)
+  oldValue     String?  // diff
+  newValue     String?  // diff
+  changedBy    String?  // actor
+  reason       String?
+  createdAt    DateTime @default(now()) // timestamp
+
+  @@map("audit_logs")
+}
+
+// Публичные заявки с лендинга (пилот): без авторизации, обработка оператором вручную.
+model PublicOrganizerIntake {
+  id             String   @id @default(cuid())
+  intakeType     String   // program_submission | verification_inquiry
+  contactName    String
+  contactEmail   String
+  contactPhone   String?
+  organization   String?
+  programTitle   String?
+  discipline     String?
+  region         String?
+  plannedDates   String?
+  message        String?  @db.Text
+  links          String?  @db.Text
+  meta           Json?
+  createdAt      DateTime @default(now())
+
+  @@map("public_organizer_intakes")
+}
+
+// Analytics event store (non-PII). Source: docs/analytics/*
+model AnalyticsEvent {
+  id               String   @id @default(cuid())
+  eventName        String
+  eventVersion     Int      @default(1)
+  eventSource      String // frontend | backend | system
+  eventTime        DateTime
+  ingestedAt       DateTime @default(now())
+  idempotencyKey   String   @unique
+
+  traceId          String?
+  sessionId        String?
+  userIdHash       String?
+  userRole         String?
+  pageType         String?
+
+  programId        String?
+  organizerId      String?
+  discipline       String?
+  region           String?
+  verifiedStatus   String?
+  trafficSource    String?
+
+  leadId           String?
+  bookingId        String?
+  statementId      String?
+  paymentId         String?
+  refundId          String?
+  commissionId      String?
+
+  contractVersion  String?
+  paymentStatus    String?
+
+  grossAmount      Int?
+  netAmount        Int?
+  refundAmount     Int?
+  commissionRate   Int?
+  commissionAmount Int?
+
+  propertiesJson   Json?
+  schemaValid      Boolean  @default(true)
+  piiFlag          Boolean  @default(false)
+
+  @@index([eventTime])
+  @@index([eventName, eventTime])
+  @@index([organizerId, eventTime])
+  @@index([bookingId, eventTime])
+  @@map("analytics_events")
+}
+
+model AnalyticsEventError {
+  id             String   @id @default(cuid())
+  idempotencyKey String?
+  eventName      String?
+  reasonCode     String
+  message        String   @db.Text
+  rawPayload     Json?
+  createdAt      DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([reasonCode])
+  @@map("analytics_event_errors")
+}
+
+model AnalyticsAlertState {
+  alertKey        String   @id
+  lastFiredAt     DateTime @default(now())
+  lastFingerprint String?
+
+  @@map("analytics_alert_state")
+}
+
+model AnalyticsMartRefreshLog {
+  id         String   @id @default(cuid())
+  status     String // success | failure
+  message    String?  @db.Text
+  durationMs Int?
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@map("analytics_mart_refresh_logs")
+}
+
+model OrganizerScoreSnapshot {
+  id               String    @id @default(cuid())
+  organizerId      String
+  periodStart      DateTime
+  periodEnd        DateTime
+  organizerScore   Float
+  scoreBand        String // low | medium | high | unknown
+  componentsJson   Json
+  sampleBookings   Int       @default(0)
+  recalculatedAt   DateTime  @default(now())
+  organizer        Organizer @relation(fields: [organizerId], references: [id], onDelete: Cascade)
+
+  @@unique([organizerId, periodEnd])
+  @@index([recalculatedAt])
+  @@map("organizer_score_snapshots")
+}
+
+model ProgramScoreSnapshot {
+  id                      String   @id @default(cuid())
+  programId               String
+  periodStart             DateTime
+  periodEnd               DateTime
+  programContentScore     Float?
+  programPerformanceScore Float?
+  totalProgramScore       Float
+  scoreBand               String // low | medium | high | unknown | insufficient_data
+  componentsJson          Json
+  sampleViews             Int      @default(0)
+  recalculatedAt          DateTime @default(now())
+  program                 Program  @relation(fields: [programId], references: [id], onDelete: Cascade)
+
+  @@unique([programId, periodEnd])
+  @@index([recalculatedAt])
+  @@map("program_score_snapshots")
+}

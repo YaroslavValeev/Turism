@@ -1,0 +1,5 @@
+﻿sprint,stream,task,owner,status,dependency,due_date,definition_of_done,notes
+Sprint 1,Supply,Shortlist 30 organizers,Yaroslav,todo,,,30 sourced in CRM,
+Sprint 1,Trust & Safety,Finalize verification checklist,Yaroslav,todo,,,checklist approved,
+Sprint 1,Product,Define canonical booking statuses,Yaroslav,todo,,,status model frozen,
+Sprint 1,Growth,Prepare first niche landing copy,Yaroslav,todo,,,draft ready,

@@ -1,0 +1,9 @@
+﻿sprint_block,timeframe,goal,task,owner,dependency,status,metric_of_success,notes
+0-30 days,Week 1,Freeze revenue scope,Зафиксировать Wakesurf + Krasnodar как первый revenue sprint,Yaroslav,,done,decision logged,"Dubai и Bodrum отложены в wave 2"
+0-30 days,Week 1,Stabilize core contour,Поднять PostgreSQL и сделать smoke зелёным,Tech Lead / Backend,local docker available,done,all smoke checks 200,"Smoke и build пройдены 27.03.2026"
+0-30 days,Week 1,Close pilot UX,Добавить public inquiry flow на карточку программы,Frontend / Backend,API booking intake,done,public lead reaches admin queue,"Form + notes + sourceChannel shipped"
+0-30 days,Week 1-2,Close operator path,Дать оператору действия в organizers/programs/reviews/incidents/commissions,AI Dev Agent,admin build green,done,operator can execute pilot path,"Admin actions shipped; manual click-through pending"
+0-30 days,Week 1-2,Build supply pipeline,Собрать shortlist 30 wakesurf-организаторов по Krasnodar,Yaroslav,,todo,30 sourced,"Начать с первой волны из 10 касаний"
+0-30 days,Week 2,Start outreach,Отправить первые 10 organizer outreaches,Yaroslav,shortlist 10 ready,todo,10 first contacts sent,"Founder-led outreach only"
+0-30 days,Week 2-3,Onboard supply,Дожать 1-2 организаторов до checked+ и загрузить 3-5 pilot программ,Partnerships / Legal / Owner,first positive responses,todo,1-2 checked organizers and 3-5 published programs,"Только Wakesurf + Krasnodar"
+0-30 days,Week 3-4,Rehearse and launch,Пройти e2e + commission + manual operator pass и открыть limited pilot,QA / GM / Owner,published pilot catalog,todo,GO or GO WITH GUARDRAILS,"Первая сильная заявка доведена до booked"

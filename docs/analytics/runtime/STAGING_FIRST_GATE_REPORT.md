@@ -1,115 +1,113 @@
-# Staging-first gate report (parity, Telegram, review MVP, prod)
+# HTTPS staging gate — sign-off (parity, Telegram, review, prod Phase A)
 
-Сводка для перехода к выделенному staging и prod. Обновляйте дату/секцию «Runtime fingerprint» после каждого прогона.
+Документ фиксирует **обязательный gate** перед controlled prod rollout.  
+**Локальный / staging-like parity** (например `localhost:3001`) — хороший промежуточный результат, но **не заменяет** этот gate: ниже — канонический порядок для **настоящего HTTPS staging**.
 
-## Runtime fingerprint (последний прогон в репозитории)
-
-| Параметр | Значение |
-|----------|----------|
-| Дата отчёта | 2026-04-16 |
-| `TARGET_BASE_URL` (host) | `localhost:3001` — **не** выделенный staging-хост; контур staging-like / local-first |
-| `TARGET_INTERNAL_TOKEN` / internal | задан |
-| `TARGET_ADMIN_TOKEN` | задан (для parity) |
-| `TELEGRAM_BOT_API_BASE_URL` | задан |
-| `TELEGRAM_ALERT_CHAT_ID` | задан |
-
-Для **выделенного staging**: замените `TARGET_BASE_URL` на HTTPS API staging, выровняйте токены с секретами staging, повторите все команды ниже.
+Env-нормализация и локальный web proxy E2E считаются закрытыми и **не** являются блокером для прохождения gate (см. только переменные шага 1).
 
 ---
 
-## 1. Staging parity report
+## Порядок действий (зафиксировано)
 
-### Команда
+### 1. На машине, с которой гоняете проверки (CI / ноутбук владельца)
+
+Задать **только для сеанса** (или в защищённом secret store), **не** коммитить:
+
+| Переменная | Назначение |
+|------------|------------|
+| `TARGET_BASE_URL` | HTTPS base API staging, например `https://api.staging.example.com` |
+| `TARGET_ADMIN_TOKEN` | JWT после admin login **на staging** |
+| `TARGET_INTERNAL_TOKEN` | Тот же секрет, что `INTERNAL_ANALYTICS_TOKEN` на **staging API** |
+
+Опционально для сравнения с local: `LOCAL_BASE_URL`, `LOCAL_ADMIN_TOKEN`, `LOCAL_INTERNAL_TOKEN`.
+
+### 2. Parity-check на staging
 
 ```bash
 pnpm --filter @mywave/config build
 node scripts/check_analytics_parity.mjs
 ```
 
-При необходимости локального сравнения задайте также `LOCAL_BASE_URL`, `LOCAL_ADMIN_TOKEN`, `LOCAL_INTERNAL_TOKEN`.
+Проверить по **target** (staging):
 
-### Критерии «green» (target)
+| Шаг | Критерий GREEN |
+|-----|----------------|
+| health | `GET …/health` → 200 |
+| DQ / founder / billing | дашборды в ответе — `live` (или явно задокументированный допуск WARNING) |
+| refresh | `POST …/internal/analytics/refresh` → 200, `ok: true` |
+| scores/recalculate | `POST …/internal/analytics/scores/recalculate` → 200, `ok: true` |
+| alerts/run | `POST …/internal/analytics/alerts/run` → 200, `ok: true` |
 
-| Проверка | Ожидание |
-|----------|----------|
-| `GET /health` | `200`, `ok` |
-| Dashboards (admin JWT) | `dq`, `founder`, `billing`, `founderDaily` — `live` |
-| `POST /internal/analytics/refresh` | `200`, `ok: true` |
-| `POST /internal/analytics/scores/recalculate` | `200`, `ok: true` |
-| `POST /internal/analytics/alerts/run` | `200`, `ok: true` |
+### 3. Telegram — фактическая доставка
 
-### Результат прогона (localhost target, 2026-04-16)
+Конфига на API **недостаточно**. Нужно одно из:
 
-- Health: **200**, ok  
-- Dashboards: **live** (dq, founder, billing)  
-- Cycle: **refresh / scores / alerts** — все **ok**  
-- Алерты в этом прогоне **не срабатывали** (`fired: []`) — нормально при зелёном DQ.
+- **A)** Реальный прогон с **непустым `fired`** после `alerts/run`, сообщение **видно** в целевом чате; или  
+- **B)** **Controlled test-send** (тот же bot + chat_id, тот же `TELEGRAM_BOT_API_BASE_URL` контур), задокументированный одноразовый вызов вне прод-спама.
 
-**Вывод:** parity по целевому URL в актуальной конфигурации **GREEN**. На отдельном staging-хосте нужен **повторный** прогон с теми же критериями.
+`pnpm run check:telegram-alerts` остаётся smoke пути; **sign-off** = A или B выполнено.
 
----
+### 4. Manual review checklist на staging
 
-## 2. Telegram runtime check
+По образцу `REVIEW_FLOW_MANUAL_VALIDATION_STAGE.md`:
 
-### Команда
+| # | Сценарий | GREEN |
+|---|------------|-------|
+| 1 | `completed` → auto `review_requests`, статус `queued` | да |
+| 2 | `POST /reviews/requests/process` → доставка / статусы ожидаемы | да |
+| 3 | `POST /reviews/request/:token/submit` → одна review, корректный финальный статус запроса | да |
+| 4 | Повторный submit → **409**, вторая review не создаётся | да |
+| 5 | Напоминания **bounded**, без дублирующего спама при повторном process | да |
+| 6 | После review — **no extra send** при process | да |
 
-```bash
-pnpm run check:telegram-alerts
+### 5. Итоговый staging gate report (заполняет исполнитель после шагов 1–4)
+
+Скопируйте блок в тикет / статус релиза и заполните.
+
+```text
+Дата: YYYY-MM-DD
+Staging API host: <из TARGET_BASE_URL, без секретов>
+
+Общий статус gate: GREEN | WARNING | CRITICAL
+
+Parity (staging target):
+  - health: OK / FAIL
+  - dashboards (dq / founder / billing): OK / PARTIAL / FAIL
+  - refresh: OK / FAIL
+  - scores/recalculate: OK / FAIL
+  - alerts/run: OK / FAIL
+
+Telegram delivery:
+  - метод: fired-alert | controlled-test-send
+  - результат: подтверждено в чате ДА / НЕТ
+  - примечание: <кратко>
+
+Review checklist (1–6):
+  - все пункты: PASS / FAIL (указать номер при FAIL)
+
+Рекомендация prod Phase A:
+  - МОЖНО — при GREEN и подтверждённой доставке Telegram + PASS по review.
+  - НЕЛЬЗЯ — при CRITICAL по parity или FAIL по review или отсутствии подтверждения доставки.
+  - WARNING — только узкий Phase A (record-only / когорта) с явным перечнем рисков и сроком повторного gate.
 ```
 
-Вызывает `POST …/internal/analytics/alerts/run` с internal token.
+---
 
-### Результат прогона (2026-04-16)
+## Prod после sign-off
 
-- HTTP: **200**  
-- Тело: `ok: true`, `fired: []`, `skipped: []`, поле `telegram: false` — **ожидаемо**, если нет сработавших алертов (отправка в Telegram выполняется только при `fired.length > 0`).
-
-### Подтверждение реальной доставки в чат
-
-Нужен хотя бы один сценарий с **непустым `fired`** (например критический DQ или тестовый billing anomaly на staging-данных), либо отдельный controlled вызов Bot API вне алертов. До этого момента считать: **runtime конфигурации Telegram загружена, путь `/alerts/run` исполняется**.
+См. `AUTO_REVIEW_PROD_ROLLOUT_PLAN.md`: Phase A → B → C, rollback switches.
 
 ---
 
-## 3. Auto review request MVP — staging validation
-
-Опорный чеклист: `REVIEW_FLOW_MANUAL_VALIDATION_STAGE.md` (сценарии 1–6 уже пройдены на local/staging-like).
-
-На **выделенном staging** повторить:
-
-1. **completed → review request** — строка в `review_requests`, статус `queued`.  
-2. **`POST /reviews/requests/process`** — переход `queued → sent`, счётчики доставки.  
-3. **`POST /reviews/request/:token/submit`** — одна review, request в `skipped_review_exists` или эквивалент.  
-4. **Повторный submit** — `409`, вторая review не создаётся.  
-5. **Напоминания** — bounded `reminderCount`, без дублирующего спама при повторном process.  
-6. **После review** — process не шлёт лишних писем/сообщений.
-
-Дополнительно на staging: проверить **реальный** канал доставки (если не mock), мониторинг `delivery_failed`.
-
-**Вывод по коду/докам:** MVP готов к повторной валидации на staging-хосте; автоматический «зелёный» прогон из CI без данных бронирований здесь не выполнялся.
-
----
-
-## 4. Rollout recommendation (prod)
-
-Опираться на `AUTO_REVIEW_PROD_ROLLOUT_PLAN.md`.
-
-| Рекомендация | Деталь |
-|--------------|--------|
-| Gate перед prod | Выделенный **staging** с полным parity + Telegram smoke с реальным `fired` + чеклист review (6 пунктов). |
-| Фаза A | Prod: создание запросов на `completed`, диспатч в **safe / record-only** или узкая когорта. |
-| Фаза B | Ограниченная реальная отправка, метрики `delivery_failed`, дубликаты, модерация. |
-| Фаза C | Полный охват при стабильных метриках. |
-| Rollback | Отключить job `run-review-reminders`, при необходимости заморозить send в `queued`, крайний случай — отключить триггер при `completed`. |
-
-**Итоговая рекомендация:** **не** включать полную prod-отправку, пока нет успешного прогона тех же проверок на **HTTPS staging** с боевыми секретами staging и одним подтверждённым Telegram delivery при сработавшем алерте или тестовом сценарии.
-
----
-
-## Команды одним списком
+## Команды (staging / ops)
 
 | Цель | Команда |
 |------|---------|
-| Parity | `node scripts/check_analytics_parity.mjs` |
-| Telegram path | `pnpm run check:telegram-alerts` |
-| Web proxy E2E (локально) | `pnpm run sync:web-analytics-env` затем `pnpm run check:web-analytics-proxy` |
-| Выравнивание web `.env.local` | `pnpm run sync:web-analytics-env` |
+| Parity на staging | `node scripts/check_analytics_parity.mjs` (с `TARGET_*` на HTTPS) |
+| Smoke пути alerts | `pnpm run check:telegram-alerts` |
+
+---
+
+## Annex — reference: staging-like local (не HTTPS sign-off)
+
+Зафиксировано ранее на **localhost** как промежуточный GREEN: parity target (health, dashboards live, refresh/scores/alerts ok), Telegram config присутствует; `fired: []` → отправка в чат не вызывалась. Это **не** подпись под HTTPS staging.

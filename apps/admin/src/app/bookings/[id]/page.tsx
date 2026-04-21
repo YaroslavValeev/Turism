@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { getBookingStatusLabel, getSourceChannelLabel } from "@mywave/shared-types";
+import { adminJson } from "../../../lib/admin";
+import { DomainStatusTimeline, type DomainStatusEventRow } from "../../../components/DomainStatusTimeline";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 
@@ -27,6 +29,9 @@ export default function BookingDetailPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [domainEvents, setDomainEvents] = useState<DomainStatusEventRow[]>([]);
+  const [domainEventsLoading, setDomainEventsLoading] = useState(false);
+  const [domainEventsError, setDomainEventsError] = useState<string | null>(null);
 
   useEffect(() => {
     const token = typeof window !== "undefined" ? window.localStorage.getItem("admin_token") : null;
@@ -53,6 +58,28 @@ export default function BookingDetailPage() {
       .catch((e) => setError(String(e)))
       .finally(() => setLoading(false));
   }, [id]);
+
+  useEffect(() => {
+    if (!id || !booking) return;
+    let cancelled = false;
+    setDomainEventsLoading(true);
+    setDomainEventsError(null);
+    adminJson<{ items: DomainStatusEventRow[] }>(
+      `/admin/domain-status-events?entity_type=booking&entity_id=${encodeURIComponent(id)}&limit=80`,
+    )
+      .then((data) => {
+        if (!cancelled) setDomainEvents(Array.isArray(data.items) ? data.items : []);
+      })
+      .catch((e) => {
+        if (!cancelled) setDomainEventsError(e instanceof Error ? e.message : "Ошибка загрузки событий");
+      })
+      .finally(() => {
+        if (!cancelled) setDomainEventsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [id, booking?.id, booking?.bookingStatus]);
 
   const handleStatusChange = () => {
     if (!booking || selectedStatus === booking.bookingStatus || !booking.nextStatuses.includes(selectedStatus)) return;
@@ -122,6 +149,12 @@ export default function BookingDetailPage() {
         </button>
         {booking.nextStatuses.length === 0 && <span style={{ marginLeft: 8, color: "#666" }}>Нет допустимых переходов</span>}
       </div>
+      <DomainStatusTimeline
+        title="Доменные статус-события (booking)"
+        events={domainEvents}
+        loading={domainEventsLoading}
+        error={domainEventsError}
+      />
     </main>
   );
 }

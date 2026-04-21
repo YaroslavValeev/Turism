@@ -1,4 +1,4 @@
-export const SOURCE_TYPES = ["instagram", "telegram", "rss", "site"] as const;
+export const SOURCE_TYPES = ["instagram", "telegram", "vk", "rss", "site", "other"] as const;
 export const SOURCE_RUN_STATUSES = ["running", "success", "partial", "failed"] as const;
 export const SOURCE_RUN_TYPES = ["collect", "normalize", "dedup", "publish"] as const;
 export const EVENT_CANDIDATE_STATUSES = [
@@ -31,7 +31,9 @@ export function isSourceRunType(value: string | undefined | null): value is Sour
 export const SOURCE_PRIORITY_RANK: Record<SourceType, number> = {
   rss: 1,
   site: 1,
+  vk: 2,
   telegram: 2,
   instagram: 3,
+  other: 3,
 };
 

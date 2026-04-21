@@ -12,3 +12,4 @@ coverage
 .prisma
 __pycache__/
 *.pyc
+*.tsbuildinfo

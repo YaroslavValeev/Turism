@@ -7,24 +7,31 @@
   },
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "tsc",
+    "build": "pnpm --filter @mywave/config build && tsc",
     "test": "vitest run",
     "start": "node dist/index.js",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
+    "db:migrate:deploy": "prisma migrate deploy",
     "db:studio": "prisma studio",
     "db:seed": "tsx prisma/seed.ts",
+    "db:delete-conversion-fixture": "tsx prisma/delete_seed_conversion_fixture.ts",
     "db:import-sources": "tsx prisma/import_sources.ts",
-    "backfill:traveler-key": "tsx scripts/backfill-traveler-key.ts"
+    "db:import-sources-xlsx": "tsx prisma/import_sources_xlsx.ts",
+    "db:merge-owner-sources-from-xlsx": "tsx prisma/merge_xlsx_into_owner_sources_json.ts",
+    "backfill:traveler-key": "tsx scripts/backfill-traveler-key.ts",
+    "notifications:worker": "tsx src/modules/notifications/runWorker.ts"
   },
   "dependencies": {
     "@mywave/config": "workspace:*",
+    "@mywave/shared-policy": "workspace:*",
     "@mywave/shared-types": "workspace:*",
     "@prisma/client": "^5.22.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.21.0",
-    "jsonwebtoken": "^9.0.2"
+    "jsonwebtoken": "^9.0.2",
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",

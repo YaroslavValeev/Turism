@@ -1,7 +1,6 @@
 /**
- * Booking status transition rules. Source: canonical_status_models.md
- * - booking cannot jump from new directly to completed
- * - status must be canonical
+ * Правила переходов статуса Booking (каноническая матрица).
+ * Ранее: services/api/src/modules/bookings/statusRules.ts
  */
 import { isBookingStatus, type BookingStatus } from "@mywave/shared-types";
 
@@ -12,7 +11,17 @@ const ALLOWED_TRANSITIONS: Record<BookingStatus, BookingStatus[]> = {
   sent_to_organizer: ["contacted", "cancelled_user", "cancelled_organizer"],
   contacted: ["offer_sent", "booked", "cancelled_user", "cancelled_organizer"],
   offer_sent: ["booked", "contacted", "cancelled_user", "cancelled_organizer"],
-  booked: ["paid_partial", "paid_full", "paid_off_platform", "completed", "canceled", "cancelled_user", "cancelled_organizer", "refund_pending", "disputed"],
+  booked: [
+    "paid_partial",
+    "paid_full",
+    "paid_off_platform",
+    "completed",
+    "canceled",
+    "cancelled_user",
+    "cancelled_organizer",
+    "refund_pending",
+    "disputed",
+  ],
   paid_partial: ["paid_full", "completed", "refunded_partial", "refunded_full", "canceled", "disputed"],
   paid_full: ["completed", "refunded_partial", "refunded_full", "canceled", "disputed"],
   paid_off_platform: ["completed", "cancelled_user", "cancelled_organizer", "refund_pending", "disputed"],
@@ -27,13 +36,13 @@ const ALLOWED_TRANSITIONS: Record<BookingStatus, BookingStatus[]> = {
   disputed: ["booked", "paid_partial", "paid_full", "completed", "canceled"],
 };
 
-export function isValidTransition(from: string, to: string): boolean {
+export function isValidBookingTransition(from: string, to: string): boolean {
   if (!isBookingStatus(from) || !isBookingStatus(to)) return false;
   return ALLOWED_TRANSITIONS[from as BookingStatus].includes(to as BookingStatus);
 }
 
-/** Allowed next statuses for admin UI (booking queue flow). */
-export function getNextStatuses(current: string): BookingStatus[] {
+/** Допустимые следующие статусы для UI очереди. */
+export function getNextBookingStatuses(current: string): BookingStatus[] {
   if (!isBookingStatus(current)) return [];
   return ALLOWED_TRANSITIONS[current as BookingStatus];
 }

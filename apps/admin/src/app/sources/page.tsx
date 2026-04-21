@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AdminNav } from "../../components/AdminNav";
 import { adminJson, getAdminToken } from "../../lib/admin";
@@ -34,16 +35,45 @@ type SourceRecord = {
   parserProfile: string | null;
   fetchIntervalMinutes: number;
   isActive: boolean;
+  sourceOrigin: string;
+  lifecycleState: string;
   organizerId: string | null;
+  nextScheduledAt: string | null;
+  lastErrorAt: string | null;
+  lastErrorSnippet: string | null;
+  importSessionId: string | null;
   metaJson?: {
     autoPublish?: boolean;
     fallbackImageUrl?: string;
   } | null;
   organizer: OrganizerOption | null;
+  externalChannelId?: string | null;
+  externalChannel?: {
+    id: string;
+    type: string;
+    urlOrHandle: string;
+    isActive: boolean;
+    lifecycleState: string;
+  } | null;
   lastCheckedAt: string | null;
   lastSuccessAt: string | null;
+  createdAt: string;
   runs: SourceRun[];
   _count: { rawItems: number };
+};
+
+type ImportSession = {
+  id: string;
+  status: string;
+  sourceFileName: string | null;
+  startedAt: string;
+  finishedAt: string | null;
+  dryRun: boolean;
+  createdCount: number;
+  updatedCount: number;
+  skippedCount: number;
+  duplicateCount: number;
+  errorCount: number;
 };
 
 type SourceDraft = {
@@ -109,6 +139,7 @@ function toDraft(source: SourceRecord): SourceDraft {
 
 export default function SourcesPage() {
   const [sources, setSources] = useState<SourceRecord[]>([]);
+  const [importSessions, setImportSessions] = useState<ImportSession[]>([]);
   const [organizers, setOrganizers] = useState<OrganizerOption[]>([]);
   const [drafts, setDrafts] = useState<Record<string, SourceDraft>>({});
   const [createDraft, setCreateDraft] = useState<SourceDraft>(EMPTY_DRAFT);
@@ -117,18 +148,44 @@ export default function SourcesPage() {
   const [runningId, setRunningId] = useState<string>("");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [typeFilter, setTypeFilter] = useState("");
+  const [activeFilter, setActiveFilter] = useState("");
+  const [originFilter, setOriginFilter] = useState("");
+  const [organizerFilter, setOrganizerFilter] = useState("");
+  const [profileFilter, setProfileFilter] = useState("");
+  const [attentionOnly, setAttentionOnly] = useState(false);
+  const [lifecycleFilter, setLifecycleFilter] = useState("");
+  const [importFilePath, setImportFilePath] = useState("c:/Users/X230/Downloads/mywave_v5_real_only.xlsx");
+  const [importDryRun, setImportDryRun] = useState(true);
+  const [selectedSessionId, setSelectedSessionId] = useState("");
+  const [runTypeFilter, setRunTypeFilter] = useState("telegram");
+  const [contractSyncOrganizerId, setContractSyncOrganizerId] = useState("");
+  const [contractSyncing, setContractSyncing] = useState(false);
 
   async function loadData() {
     setLoading(true);
     setError("");
     try {
-      const [sourcesData, organizersData] = await Promise.all([
-        adminJson<SourceRecord[]>("/sources"),
+      const params = new URLSearchParams();
+      if (typeFilter) params.set("type", typeFilter);
+      if (activeFilter) params.set("isActive", activeFilter);
+      if (originFilter) params.set("sourceOrigin", originFilter);
+      if (organizerFilter) params.set("organizerId", organizerFilter);
+      if (profileFilter) params.set("parserProfile", profileFilter);
+      if (attentionOnly) params.set("needs_attention", "1");
+      if (lifecycleFilter) params.set("lifecycleState", lifecycleFilter);
+      params.set("withMeta", "1");
+      params.set("includeExternalChannel", "1");
+      const query = `?${params.toString()}`;
+      const [sourcesData, organizersData, sessionsData] = await Promise.all([
+        adminJson<{ items: SourceRecord[] }>(`/sources${query}`),
         adminJson<OrganizerOption[]>("/organizers"),
+        adminJson<ImportSession[]>("/sources/import/sessions"),
       ]);
-      setSources(sourcesData);
+      setSources(sourcesData.items ?? []);
       setOrganizers(organizersData);
-      setDrafts(Object.fromEntries(sourcesData.map((source) => [source.id, toDraft(source)])));
+      setImportSessions(sessionsData);
+      setDrafts(Object.fromEntries((sourcesData.items ?? []).map((source) => [source.id, toDraft(source)])));
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -142,7 +199,31 @@ export default function SourcesPage() {
       return;
     }
     void loadData();
-  }, []);
+  }, [typeFilter, activeFilter, originFilter, organizerFilter, profileFilter, attentionOnly, lifecycleFilter]);
+
+  async function handleContractAutoSync() {
+    if (!contractSyncOrganizerId) {
+      setError("Выберите организатора для синхронизации");
+      return;
+    }
+    setContractSyncing(true);
+    setMessage("");
+    setError("");
+    try {
+      const r = await adminJson<{ createdOrUpdated: number; paused: number }>("/sources/contract-auto-sync", {
+        method: "POST",
+        body: JSON.stringify({ organizerId: contractSyncOrganizerId }),
+      });
+      setMessage(
+        `Синхронизация с каналами: обновлено записей ${r.createdOrUpdated}, пауза политикой ${r.paused}`,
+      );
+      await loadData();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setContractSyncing(false);
+    }
+  }
 
   async function handleCreate() {
     setMessage("");
@@ -218,6 +299,89 @@ export default function SourcesPage() {
     }
   }
 
+  async function handleDeactivate(sourceId: string) {
+    setSavingId(sourceId);
+    setError("");
+    setMessage("");
+    try {
+      await adminJson(`/sources/${sourceId}/deactivate`, { method: "POST", body: JSON.stringify({ lifecycleState: "inactive" }) });
+      setMessage("Источник деактивирован");
+      await loadData();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setSavingId("");
+    }
+  }
+
+  async function handleDelete(sourceId: string) {
+    if (!window.confirm("Удалить источник без возможности восстановления?")) return;
+    setSavingId(sourceId);
+    setError("");
+    setMessage("");
+    try {
+      await adminJson(`/sources/${sourceId}`, { method: "DELETE" });
+      setMessage("Источник удалён");
+      await loadData();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setSavingId("");
+    }
+  }
+
+  async function runBatch(mode: "all" | "by_type" | "by_import_session") {
+    setRunningId(mode);
+    setError("");
+    setMessage("");
+    try {
+      await adminJson("/sources/run", {
+        method: "POST",
+        body: JSON.stringify({
+          mode,
+          type: runTypeFilter,
+          importSessionId: selectedSessionId || null,
+        }),
+      });
+      setMessage(`Прогон завершён: ${mode}`);
+      await loadData();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setRunningId("");
+    }
+  }
+
+  async function runImport() {
+    setRunningId("import");
+    setError("");
+    setMessage("");
+    try {
+      const out = await adminJson<{
+        sessionId: string;
+        created: number;
+        updated: number;
+        skipped: number;
+        duplicates: number;
+        errors: number;
+      }>("/sources/import", {
+        method: "POST",
+        body: JSON.stringify({
+          filePath: importFilePath,
+          dryRun: importDryRun,
+        }),
+      });
+      setMessage(
+        `Import ${importDryRun ? "dry-run" : "write"}: created=${out.created}, updated=${out.updated}, skipped=${out.skipped}, duplicates=${out.duplicates}, errors=${out.errors}`,
+      );
+      await loadData();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setRunningId("");
+    }
+  }
+
   function updateDraft(sourceId: string, patch: Partial<SourceDraft>) {
     setDrafts((current) => ({
       ...current,
@@ -230,13 +394,133 @@ export default function SourcesPage() {
   return (
     <main style={{ padding: 24 }}>
       <AdminNav current="/sources" />
-      <h1>Реестр источников ingestion</h1>
+      <h1 data-testid="sources-registry-heading">Реестр источников ingestion</h1>
       <p style={{ fontSize: 14, color: "#555", maxWidth: 960 }}>
         Здесь задаются источники discovery-слоя. Публикация в каталог автоматически не происходит: каждый найденный
         анонс всё равно должен пройти очередь модерации и стать draft-карточкой только после approve.
       </p>
       {error && <p style={{ color: "red" }}>{error}</p>}
       {message && <p style={{ color: "green" }}>{message}</p>}
+
+      <section style={{ border: "1px solid #ddd", borderRadius: 12, padding: 16, marginBottom: 24 }}>
+        <h2>Фильтры</h2>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 8 }}>
+          <input placeholder="type (telegram/vk/...)" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} style={{ padding: 8 }} />
+          <select value={activeFilter} onChange={(e) => setActiveFilter(e.target.value)} style={{ padding: 8 }}>
+            <option value="">isActive: любой</option>
+            <option value="true">active</option>
+            <option value="false">inactive</option>
+          </select>
+          <select
+            value={lifecycleFilter}
+            onChange={(e) => setLifecycleFilter(e.target.value)}
+            style={{ padding: 8 }}
+            data-testid="sources-filter-lifecycle"
+            title="ADR-009 lifecycleState"
+          >
+            <option value="">lifecycle: любой</option>
+            <option value="active">active</option>
+            <option value="inactive">inactive</option>
+            <option value="paused_by_policy">paused_by_policy</option>
+            <option value="manual_override">manual_override (manual only)</option>
+            <option value="archived">archived</option>
+          </select>
+          <input placeholder="sourceOrigin" value={originFilter} onChange={(e) => setOriginFilter(e.target.value)} style={{ padding: 8 }} />
+          <input placeholder="organizerId" value={organizerFilter} onChange={(e) => setOrganizerFilter(e.target.value)} style={{ padding: 8 }} />
+          <input placeholder="parserProfile" value={profileFilter} onChange={(e) => setProfileFilter(e.target.value)} style={{ padding: 8 }} />
+          <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <input type="checkbox" checked={attentionOnly} onChange={(e) => setAttentionOnly(e.target.checked)} />
+            needs_attention
+          </label>
+        </div>
+      </section>
+
+      <section
+        style={{ border: "1px solid #ddd", borderRadius: 12, padding: 16, marginBottom: 24 }}
+        data-testid="sources-contract-sync-panel"
+      >
+        <h2>Договорные источники (каналы организатора)</h2>
+        <p style={{ fontSize: 14, color: "#555", maxWidth: 960, marginTop: 0 }}>
+          После подписанного договора и настроенных внешних каналов организатора источники с origin{" "}
+          <code>organizer_contract_auto</code> создаются/обновляются автоматически. Здесь можно принудительно
+          пересобрать их из актуальных каналов (и synthetic Telegram из поля организатора).
+        </p>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center" }}>
+          <select
+            data-testid="sources-contract-sync-organizer"
+            value={contractSyncOrganizerId}
+            onChange={(e) => setContractSyncOrganizerId(e.target.value)}
+            style={{ padding: 8, minWidth: 240 }}
+          >
+            <option value="">Организатор…</option>
+            {organizers.map((o) => (
+              <option key={o.id} value={o.id}>
+                {o.displayName}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            data-testid="sources-contract-sync-submit"
+            onClick={() => void handleContractAutoSync()}
+            disabled={contractSyncing || !contractSyncOrganizerId}
+            style={{ padding: "8px 16px" }}
+          >
+            {contractSyncing ? "Синхронизация…" : "Синхронизировать с каналами"}
+          </button>
+        </div>
+      </section>
+
+      <section style={{ border: "1px solid #ddd", borderRadius: 12, padding: 16, marginBottom: 24 }}>
+        <h2>Импорт источников (XLSX / batch)</h2>
+        <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 8 }}>
+          <input value={importFilePath} onChange={(e) => setImportFilePath(e.target.value)} style={{ padding: 8 }} placeholder="Путь к xlsx" />
+          <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <input type="checkbox" checked={importDryRun} onChange={(e) => setImportDryRun(e.target.checked)} />
+            dry run
+          </label>
+          <button type="button" onClick={() => void runImport()} disabled={runningId === "import"} style={{ padding: "8px 16px" }}>
+            {runningId === "import" ? "Импорт..." : "Import sources"}
+          </button>
+        </div>
+        <p style={{ marginTop: 8, fontSize: 12, color: "#666" }}>
+          Обрабатываются листы: PROJECTS_DB, TG_VK_SOURCES, TOP_30_PRIORITY, KIDS_FAMILY, PREMIUM_EXPEDITIONS.
+        </p>
+      </section>
+
+      <section style={{ border: "1px solid #ddd", borderRadius: 12, padding: 16, marginBottom: 24 }}>
+        <h2>Принудительный прогон ingestion</h2>
+        <p style={{ fontSize: 13, color: "#555", maxWidth: "min(960px, 100%)", marginTop: 0 }}>
+          На сервере действуют лимиты: пауза между «Прогнать источник» по одной строке (~30 с по умолчанию), пауза между
+          массовыми прогонами (~90 с). «Run all» разрешён только если активных источников не больше лимита (по умолчанию 40);
+          иначе используйте Run by type / по import session. Настройки:{" "}
+          <code>INGESTION_MANUAL_RUN_MIN_INTERVAL_MS</code>, <code>INGESTION_MANUAL_BULK_MIN_INTERVAL_MS</code>,{" "}
+          <code>INGESTION_MANUAL_BULK_MAX_SOURCES</code>.
+        </p>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8, alignItems: "center" }}>
+          <button type="button" onClick={() => void runBatch("all")} disabled={runningId !== ""} style={{ padding: "8px 16px" }}>
+            {runningId === "all" ? "Run..." : "Run all active sources"}
+          </button>
+          <input value={runTypeFilter} onChange={(e) => setRunTypeFilter(e.target.value)} placeholder="type" style={{ padding: 8 }} />
+          <button type="button" onClick={() => void runBatch("by_type")} disabled={runningId !== ""} style={{ padding: "8px 16px" }}>
+            {runningId === "by_type" ? "Run..." : "Run by type"}
+          </button>
+          <button type="button" onClick={() => void loadData()} style={{ padding: "8px 16px" }}>
+            Обновить
+          </button>
+          <select value={selectedSessionId} onChange={(e) => setSelectedSessionId(e.target.value)} style={{ padding: 8, gridColumn: "span 2" }}>
+            <option value="">Import session (optional)</option>
+            {importSessions.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.id.slice(0, 8)} · {s.status} · {new Date(s.startedAt).toLocaleString("ru-RU")}
+              </option>
+            ))}
+          </select>
+          <button type="button" onClick={() => void runBatch("by_import_session")} disabled={runningId !== "" || !selectedSessionId} style={{ padding: "8px 16px" }}>
+            {runningId === "by_import_session" ? "Run..." : "Run imported batch"}
+          </button>
+        </div>
+      </section>
 
       <section style={{ border: "1px solid #ddd", borderRadius: 12, padding: 16, marginBottom: 24 }}>
         <h2>Добавить источник</h2>
@@ -252,7 +536,9 @@ export default function SourcesPage() {
             <option value="rss">RSS</option>
             <option value="telegram">Telegram</option>
             <option value="instagram">Instagram</option>
+            <option value="vk">VK</option>
             <option value="site">Site</option>
+            <option value="other">Other</option>
           </select>
           <input placeholder="Название" value={createDraft.name} onChange={(e) => setCreateDraft((v) => ({ ...v, name: e.target.value }))} style={{ padding: 8 }} />
           <input
@@ -317,14 +603,14 @@ export default function SourcesPage() {
         </button>
       </section>
 
-      <h2>Активные источники</h2>
-      <table style={{ width: "100%", borderCollapse: "collapse" }}>
+      <h2>Источники</h2>
+      <table data-testid="sources-table" style={{ width: "100%", borderCollapse: "collapse" }}>
         <thead>
           <tr>
-            <th align="left">Источник</th>
+            <th align="left">Источник / origin / канал</th>
             <th align="left">Параметры</th>
             <th align="left">Организатор</th>
-            <th align="left">Состояние</th>
+            <th align="left">Состояние / schedule</th>
             <th align="left">Последние запуски</th>
             <th align="left">Действия</th>
           </tr>
@@ -342,7 +628,9 @@ export default function SourcesPage() {
                       <option value="rss">RSS</option>
                       <option value="telegram">Telegram</option>
                       <option value="instagram">Instagram</option>
+                      <option value="vk">VK</option>
                       <option value="site">Site</option>
+                      <option value="other">Other</option>
                     </select>
                   </div>
                   <input value={draft?.name ?? source.name} onChange={(e) => updateDraft(source.id, { name: e.target.value })} style={{ padding: 6, width: "100%", marginTop: 8 }} />
@@ -351,6 +639,28 @@ export default function SourcesPage() {
                     onChange={(e) => updateDraft(source.id, { urlOrHandle: e.target.value })}
                     style={{ padding: 6, width: "100%", marginTop: 8 }}
                   />
+                  <div style={{ marginTop: 8, fontSize: 12, color: "#666" }}>
+                    sourceOrigin: {source.sourceOrigin}
+                    <br />
+                    lifecycle: {source.lifecycleState}
+                    <br />
+                    externalChannel:{" "}
+                    {source.externalChannel ? (
+                      <>
+                        {source.externalChannel.type} · {source.externalChannel.urlOrHandle.slice(0, 48)}
+                        {source.externalChannel.urlOrHandle.length > 48 ? "…" : ""}
+                        {!source.externalChannel.isActive ? " (канал off)" : ""}
+                      </>
+                    ) : source.externalChannelId ? (
+                      <span title="Канал удалён или недоступен">{source.externalChannelId}</span>
+                    ) : (
+                      "—"
+                    )}
+                    <br />
+                    importSession: {source.importSessionId ?? "—"}
+                    <br />
+                    created: {formatDate(source.createdAt)}
+                  </div>
                 </td>
                 <td style={{ padding: "12px 8px", minWidth: 280 }}>
                   <input placeholder="Дисциплина" value={draft?.discipline ?? ""} onChange={(e) => updateDraft(source.id, { discipline: e.target.value })} style={{ padding: 6, width: "100%", marginBottom: 8 }} />
@@ -389,6 +699,31 @@ export default function SourcesPage() {
                       </option>
                     ))}
                   </select>
+                  {source.organizerId ? (
+                    <div style={{ marginBottom: 8 }}>
+                      <Link href={`/organizers#organizer-row-${source.organizerId}`} style={{ fontSize: 13 }}>
+                        Карточка организатора →
+                      </Link>
+                    </div>
+                  ) : null}
+                  <div
+                    style={{
+                      marginBottom: 10,
+                      padding: "8px 10px",
+                      background: "#f8f9fa",
+                      borderRadius: 8,
+                      fontSize: 12,
+                      color: "#333",
+                    }}
+                    data-testid={`source-schedule-${source.id}`}
+                  >
+                    <strong style={{ display: "block", marginBottom: 6 }}>Расписание / парсинг</strong>
+                    next: {formatDate(source.nextScheduledAt)}
+                    <br />
+                    checked: {formatDate(source.lastCheckedAt)}
+                    <br />
+                    success: {formatDate(source.lastSuccessAt)}
+                  </div>
                   <label>
                     <input
                       type="checkbox"
@@ -411,9 +746,9 @@ export default function SourcesPage() {
                   <div style={{ fontSize: 13, color: "#666", marginTop: 8 }}>
                     raw items: {source._count.rawItems}
                     <br />
-                    last checked: {formatDate(source.lastCheckedAt)}
+                    last error at: {formatDate(source.lastErrorAt)}
                     <br />
-                    last success: {formatDate(source.lastSuccessAt)}
+                    {source.lastErrorSnippet ? <span style={{ color: "#b42318" }}>{source.lastErrorSnippet.slice(0, 120)}</span> : "ошибка: —"}
                   </div>
                 </td>
                 <td style={{ padding: "12px 8px", minWidth: 260 }}>
@@ -443,6 +778,19 @@ export default function SourcesPage() {
                   <button type="button" onClick={() => void handleRun(source.id)} disabled={runningId === source.id} style={{ padding: "8px 12px", width: "100%" }}>
                     {runningId === source.id ? "Запускаем..." : "Прогнать источник"}
                   </button>
+                  <button type="button" onClick={() => void handleDeactivate(source.id)} disabled={savingId === source.id} style={{ padding: "8px 12px", width: "100%", marginTop: 8 }}>
+                    Deactivate
+                  </button>
+                  <button type="button" onClick={() => void handleDelete(source.id)} disabled={savingId === source.id} style={{ padding: "8px 12px", width: "100%", marginTop: 8, color: "#b42318" }}>
+                    Delete
+                  </button>
+                  <div style={{ marginTop: 8, fontSize: 12 }}>
+                    <a href={`/raw-items?sourceId=${encodeURIComponent(source.id)}`}>raw items</a>
+                    {" · "}
+                    <a href={`/event-candidates?sourceId=${encodeURIComponent(source.id)}`}>candidates</a>
+                    {" · "}
+                    <a href="/jobs">jobs</a>
+                  </div>
                 </td>
               </tr>
             );

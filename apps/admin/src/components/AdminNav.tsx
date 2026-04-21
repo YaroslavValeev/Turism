@@ -3,6 +3,10 @@
 const LINKS = [
   { href: "/organizers", label: "Организаторы" },
   { href: "/programs", label: "Программы" },
+  { href: "/admin/economics", label: "Economics" },
+  { href: "/alerts", label: "Alerts" },
+  { href: "/admin/conversion-drafts", label: "Conversion drafts" },
+  { href: "/organizer-intakes", label: "Intake организаторов" },
   { href: "/bookings", label: "Заявки" },
   { href: "/incidents", label: "Инциденты" },
   { href: "/reviews", label: "Отзывы" },

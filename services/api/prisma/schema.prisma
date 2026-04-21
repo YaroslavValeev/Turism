@@ -21,6 +21,85 @@ model User {
   passwordHash String?  // for admin login only
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
+  notificationSubscriptions NotificationSubscription[]
+  programUgc                ProgramUgc[]
+  referralCodes             ReferralCode[]
+  rewards                   UserReward[]
+}
+
+/// Согласие на уведомления (email / telegram / max). filters: { discipline?, region?, seasonMonth? }.
+/// status: pending_confirmation | active | unsubscribed.
+/// identityKey: canonical ключ (channel:recipient:type:filtersHash) для дедупа.
+model NotificationSubscription {
+  id                 String   @id @default(cuid())
+  userId             String?
+  contactEmail       String?
+  telegramChatId     String?
+  maxRecipientId     String?
+  channel            String // email | telegram | max
+  type               String // seasonal | program_updates
+  filters            Json     @default("{}")
+  status             String   @default("pending_confirmation")
+  identityKey        String   @unique
+  confirmationToken  String?  @unique
+  confirmationSentAt DateTime?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  user               User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  deliveries         NotificationDelivery[]
+
+  @@index([status, type])
+  @@map("notification_subscriptions")
+}
+
+/// Очередь событий уведомлений (без BullMQ на MVP — обработка poller-ом).
+model NotificationJob {
+  id          String    @id @default(cuid())
+  eventType String // program_dates_updated | program_upcoming_start
+  payload     Json
+  dedupeKey   String    @unique
+  status      String    @default("pending") // pending | processing | done | failed
+  resultCode  String?   // suppressed_flip | ok | error | ...
+  attempts    Int       @default(0)
+  lastError   String?   @db.Text
+  createdAt   DateTime  @default(now())
+  processedAt DateTime?
+
+  @@index([status, createdAt])
+  @@map("notification_jobs")
+}
+
+/// outcome: delivered | skipped_rate_limited | skipped_duplicate | stale_start_date_skipped | unsubscribed | pending_confirmation | failed
+model NotificationDelivery {
+  id               String   @id @default(cuid())
+  subscriptionId   String?
+  jobId            String?
+  recipientChannel String
+  recipientKey     String
+  eventType        String
+  dedupeKey        String
+  programId        String?
+  outcome          String   @default("delivered")
+  sentAt           DateTime @default(now())
+  subscription     NotificationSubscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+  feedbacks        NotificationFeedback[]
+
+  @@index([recipientKey, sentAt])
+  @@index([jobId])
+  @@map("notification_deliveries")
+}
+
+/// Реакция пользователя на уведомление: positive | negative. Одна запись на delivery.
+model NotificationFeedback {
+  id           String   @id @default(cuid())
+  deliveryId   String   @unique
+  programId    String?
+  feedbackType String   // positive | negative
+  createdAt    DateTime @default(now())
+  delivery     NotificationDelivery @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+
+  @@map("notification_feedback")
 }
 
 model Organizer {
@@ -29,12 +108,18 @@ model Organizer {
   legalStatus        String?   // self-employed / ИП / ООО
   contactEmail       String
   contactPhone       String?
+  /// Telegram chat_id для сервисных сообщений организатору (воронка, лиды). Не путать с пользовательскими подписками каталога.
+  telegramChatId     String?
   responseScore      Int?      // optional metric
   verificationStatus String    // listed | checked | verified | trusted_by_platform | paused | rejected
   onboardingStatus   String    @default("applied") // applied | under_review | approved | contract_pending | contract_signed | billing_connected | active | limited | suspended
   billingStatus      String    @default("not_connected") // not_connected | billing_connected | suspended
   privilegeStatus    String    @default("limited") // limited | active | suspended
   commissionRateBps  Int       @default(300) // Fair Success Fee default 3%
+  certificatesSummary String?   @db.Text
+  insuranceSummary    String?   @db.Text
+  emergencyPlanSummary String?   @db.Text
+  equipmentSummary    String?   @db.Text
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
   programs           Program[]
@@ -45,6 +130,7 @@ model Organizer {
   reviews            Review[]
   commissions        Commission[]
   sources            Source[]   @relation("SourceOrganizer")
+  externalChannels   OrganizerExternalChannel[]
   payments           Payment[]
   refunds            Refund[]
   billingProfile     OrganizerBillingProfile?
@@ -52,6 +138,11 @@ model Organizer {
   billingStatements  BillingStatement[]
   scoreSnapshots     OrganizerScoreSnapshot[]
   reviewRequests     ReviewRequest[]
+  ugcEntries         ProgramUgc[]
+  ugcRequests        ProgramUgcRequest[]
+  programConversionStates ProgramConversionState[]
+  conversionDeliveries    ProgramConversionDelivery[]
+  conversionMessageDrafts ConversionMessageDraft[]
 
   @@map("organizers")
 }
@@ -87,6 +178,30 @@ model Program {
   cancellationRules       String?   @db.Text  // required for publish
   whatHappensAfterBooking String?   @db.Text
   cta                     String?
+  /// Что взять с собой (организатор). Дополняет gearRequirements (техника/снаряжение).
+  packingListNotes      String?   @db.Text
+  accommodationNotes    String?   @db.Text
+  transportNotes        String?   @db.Text
+  sightsNotes           String?   @db.Text
+  planBWeatherNotes      String?   @db.Text
+  /// Мягкие подсказки платформы (не заменяют данные организатора).
+  platformTravelTips    String?   @db.Text
+  // Economics guardrails (reward/referral): мягкая подстройка через multiplier bps; suspended = mult 0.
+  economicsRewardSuspended       Boolean   @default(false)
+  /// Program-level множитель reward (bps): итог = base × global × program; 10000 = 100%.
+  economicsRewardMultiplierBps   Int       @default(10000)
+  economicsGuardrailReason       String?   @db.Text
+  economicsGuardrailUpdatedAt    DateTime?
+  /// Leading indicators (short vs long window); не заменяет guardrails, только мягкий nudge или сброс флага.
+  economicsEarlyWarningFlag      Boolean   @default(false)
+  economicsEarlyWarningReason      String?   @db.Text
+  economicsEarlyWarningAt        DateTime?
+  economicsEarlyWarningSnapshot  Json?
+  /// Ручной override guardrails: пока активен — job не меняет multiplier; grant/apply берут effective из mode.
+  economicsOverrideMode          String?
+  economicsOverrideReason        String?   @db.Text
+  economicsOverrideUntil         DateTime?
+  economicsOverrideUpdatedAt     DateTime?
   // Canonical publish intake: organizer_form | admin_manual | email | telegram | sheets_csv | seed (see docs/INGESTION_POLICY.md)
   intakeSource            String?
   publishStatus           String    // draft | internal_review | needs_fix | approved | published | paused | archived
@@ -104,6 +219,11 @@ model Program {
   publishedPrograms       PublishedProgram[]
   scoreSnapshots          ProgramScoreSnapshot[]
   reviewRequests          ReviewRequest[]
+  ugcEntries              ProgramUgc[]
+  ugcRequests             ProgramUgcRequest[]
+  conversionState         ProgramConversionState?
+  conversionDeliveries    ProgramConversionDelivery[]
+  conversionMessageDrafts ConversionMessageDraft[]
 
   @@map("programs")
 }
@@ -122,18 +242,100 @@ model Source {
   parserProfile        String?
   fetchIntervalMinutes Int         @default(60)
   isActive             Boolean     @default(true)
+  sourceOrigin         String      @default("manual") // manual | organizer_contract_auto | batch_import | legacy
+  lifecycleState       String      @default("active") // active | inactive | paused_by_policy | manual_override | archived (ADR-009)
   lastCheckedAt        DateTime?
   lastSuccessAt        DateTime?
+  lastErrorAt          DateTime?
+  lastErrorSnippet     String?     @db.Text
+  nextScheduledAt      DateTime?
   metaJson             Json?
   organizerId          String?
+  /// Связь с каналом организатора (contract-auto onboarding); null для synthetic telegram или ручных источников.
+  externalChannelId    String?
+  importSessionId      String?
   createdAt            DateTime    @default(now())
   updatedAt            DateTime    @updatedAt
   organizer            Organizer?  @relation("SourceOrganizer", fields: [organizerId], references: [id], onDelete: SetNull)
+  externalChannel      OrganizerExternalChannel? @relation(fields: [externalChannelId], references: [id], onDelete: SetNull)
+  importSession        SourceImportSession? @relation(fields: [importSessionId], references: [id], onDelete: SetNull)
   runs                 SourceRun[]
   rawItems             RawItem[]
 
   @@index([type, isActive])
+  @@index([sourceOrigin, isActive])
+  @@index([organizerId, sourceOrigin])
+  @@index([externalChannelId])
   @@map("sources")
+}
+
+model OrganizerExternalChannel {
+  id                   String    @id @default(cuid())
+  organizerId          String
+  type                 String    // telegram | instagram | vk | site | rss | other
+  urlOrHandle          String
+  parserProfile        String?
+  fetchIntervalMinutes Int       @default(1440)
+  isActive             Boolean   @default(true)
+  sourceOrigin         String    @default("organizer_contract_auto")
+  lifecycleState       String    @default("active") // active | inactive | paused_by_policy | manual_override | archived (ADR-009)
+  autoPublish          Boolean   @default(false)
+  metaJson             Json?
+  lastSyncedAt         DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  organizer            Organizer @relation(fields: [organizerId], references: [id], onDelete: Cascade)
+  sources              Source[]
+
+  @@unique([organizerId, type, urlOrHandle])
+  @@index([organizerId, isActive])
+  @@index([type, isActive])
+  @@map("organizer_external_channels")
+}
+
+model SourceImportSession {
+  id             String   @id @default(cuid())
+  status         String   @default("created") // created | dry_run | completed | failed
+  sourceFileName String?
+  sourceFormat   String   @default("xlsx") // xlsx | csv | json
+  sourceOrigin   String   @default("batch_import")
+  startedBy      String?
+  startedAt      DateTime @default(now())
+  finishedAt     DateTime?
+  dryRun         Boolean  @default(false)
+  createdCount   Int      @default(0)
+  updatedCount   Int      @default(0)
+  skippedCount   Int      @default(0)
+  duplicateCount Int      @default(0)
+  errorCount     Int      @default(0)
+  summaryJson    Json?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  rows           SourceImportRow[]
+  sources        Source[]
+
+  @@index([status, startedAt])
+  @@map("source_import_sessions")
+}
+
+model SourceImportRow {
+  id            String   @id @default(cuid())
+  sessionId     String
+  sheetName     String?
+  rowNumber     Int?
+  sourceType    String?
+  urlOrHandle   String?
+  sourceName    String?
+  action        String?  // created | updated | skipped | duplicate | manual_review | error
+  errorMessage  String?  @db.Text
+  sourceId      String?
+  normalizedJson Json?
+  rawJson       Json?
+  createdAt     DateTime @default(now())
+  session       SourceImportSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, action])
+  @@map("source_import_rows")
 }
 
 model SourceRun {
@@ -314,10 +516,17 @@ model Booking {
   bookedAt            DateTime?
   completedAt         DateTime?
   cancellationReason  String?   @db.Text
+  // Классификация отмены (для reward recovery policy):
+  // organizer_cancelled | platform_cancelled | user_cancelled | no_show | fraud | other
+  cancellationKind    String?
   refundAmountRub     Int?
   paidAmountRub       Int       @default(0)
   refundedAmountRub   Int       @default(0)
   netAmountRub        Int       @default(0)
+  // Model A: discount уменьшает цену пользователя; commission считается от finalAmount.
+  originalAmountRub   Int?
+  discountAmountRub   Int?
+  finalAmountRub      Int?
   gmvRub              Int?      // required for revenue; no negative
   expectedCommissionRub  Int?
   accruedCommissionRub   Int?
@@ -335,10 +544,17 @@ model Booking {
   reviewRequest       ReviewRequest?
   incidents           Incident[]
   commissions         Commission[]
+  ugc                 ProgramUgc?
+  ugcRequest          ProgramUgcRequest?
+  referralCode        String?
+  referral            ReferralCode? @relation(fields: [referralCode], references: [code], onDelete: SetNull)
+  appliedRewardId     String?       @unique
+  appliedReward       UserReward?   @relation("BookingAppliedReward", fields: [appliedRewardId], references: [id], onDelete: SetNull)
 
   @@index([leadId])
   @@index([organizerId, bookingStatus])
   @@index([travelerKeyHash])
+  @@index([referralCode])
   @@map("bookings")
 }
 
@@ -460,6 +676,171 @@ model ReviewRequest {
   @@map("review_requests")
 }
 
+/// UGC-запрос: письмо после completed booking с CTA оставить отзыв и медиа.
+/// Статусы: queued | sent | delivery_failed | skipped_no_email | submitted.
+model ProgramUgcRequest {
+  id                 String   @id @default(cuid())
+  bookingId          String   @unique
+  programId          String
+  organizerId        String
+  recipientEmail     String?
+  status             String   @default("queued")
+  requestToken       String   @unique
+  requestedAt        DateTime @default(now())
+  firstSentAt        DateTime?
+  lastSentAt         DateTime?
+  lastAttemptAt      DateTime?
+  lastError          String?  @db.Text
+  bookingCompletedAt DateTime?
+  submittedUgcId     String?
+  booking            Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  program            Program  @relation(fields: [programId], references: [id], onDelete: Restrict)
+  organizer          Organizer @relation(fields: [organizerId], references: [id], onDelete: Restrict)
+  submittedUgc       ProgramUgc? @relation(fields: [submittedUgcId], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@index([programId])
+  @@map("program_ugc_requests")
+}
+
+/// UGC после completed booking. Публикуется только после moderation = approved.
+/// source: post_trip_request | manual.
+/// rewardStatus: none | pending | granted (MVP placeholder reward, без кошелька).
+model ProgramUgc {
+  id               String   @id @default(cuid())
+  programId        String
+  organizerId      String
+  bookingId        String   @unique
+  userId           String?
+  authorName       String
+  contactEmail     String?
+  textReview       String   @db.Text
+  rating           Int?
+  mediaUrls        Json     @default("[]")
+  consentToPublish Boolean  @default(false)
+  moderationStatus String   @default("pending") // pending | approved | rejected
+  moderationNotes  String?  @db.Text
+  source           String   @default("post_trip_request")
+  rewardStatus     String   @default("none") // none | pending | granted
+  rewardGrantedAt  DateTime?
+  referralCode     String?  @unique
+  createdAt        DateTime @default(now())
+  reviewedAt       DateTime?
+  program          Program  @relation(fields: [programId], references: [id], onDelete: Restrict)
+  organizer        Organizer @relation(fields: [organizerId], references: [id], onDelete: Restrict)
+  booking          Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  user             User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  requests         ProgramUgcRequest[]
+  ownedReferral    ReferralCode?
+  mediaAssets      ProgramUgcMediaAsset[]
+
+  @@index([programId, moderationStatus])
+  @@index([moderationStatus, createdAt])
+  @@map("program_ugc")
+}
+
+/// Нативные медиафайлы UGC (S3-compatible key); модерация human-gate (Wave 3).
+model ProgramUgcMediaAsset {
+  id                 String    @id @default(cuid())
+  programUgcId       String
+  storageKey         String
+  mimeType           String
+  byteSize           Int       @default(0)
+  moderationStatus   String    @default("pending") // pending | approved | rejected
+  moderationNotes  String?   @db.Text
+  createdAt          DateTime  @default(now())
+  programUgc         ProgramUgc @relation(fields: [programUgcId], references: [id], onDelete: Cascade)
+
+  @@index([programUgcId])
+  @@index([moderationStatus, createdAt])
+  @@map("program_ugc_media_assets")
+}
+
+/// Reward пользователя: MVP percent или fixed amount, статус available|used|expired.
+/// source=ugc + sourceRefId=<program_ugc.id>. Выдаётся при approve+grant.
+model UserReward {
+  id            String   @id @default(cuid())
+  userId        String?
+  email         String?
+  source        String   @default("ugc")
+  sourceRefId   String?
+  valueType     String   @default("percent") // percent | amount
+  value         Int
+  currency      String?
+  status        String   @default("available") // available | used | expired
+  usedBookingId String?
+  createdAt     DateTime @default(now())
+  usedAt        DateTime?
+  expiresAt     DateTime?
+  /// Единоразовое email-напоминание «скоро истечёт» (job до основного expiry).
+  expiryReminderSentAt DateTime?
+  // Reward recovery lifecycle: если reward был used и возвращён в available,
+  // фиксируем момент и причину для админской видимости и audit.
+  recoveredAt              DateTime?
+  recoveredCancellationKind String?
+  user             User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  appliedOnBooking Booking? @relation("BookingAppliedReward")
+
+  @@index([userId, status])
+  @@index([email, status])
+  @@index([source, sourceRefId])
+  @@index([status, expiresAt])
+  @@map("user_rewards")
+}
+
+/// Журнал отказов по referral-коду: self_use_blocked, duplicate_use_blocked, rate_limited.
+/// Не связан foreign key с кодом — код может быть удалён, журнал остаётся для аналитики.
+model ReferralAbuseEvent {
+  id        String   @id @default(cuid())
+  code      String?
+  reason    String
+  email     String?
+  userId    String?
+  programId String?
+  bookingId String?
+  detail    String?
+  createdAt DateTime @default(now())
+
+  @@index([reason, createdAt])
+  @@index([code])
+  @@map("referral_abuse_events")
+}
+
+/// Referral-код. Генерируется при grant reward для approved UGC.
+/// MVP: ownerUgcId + ownerEmail/ownerUserId; без cash, без multi-level.
+model ReferralCode {
+  code         String   @id
+  ownerUserId  String?
+  ownerEmail   String?
+  ownerUgcId   String?  @unique
+  visits       Int      @default(0)
+  bookings     Int      @default(0)
+  lastVisitAt  DateTime?
+  createdAt    DateTime @default(now())
+  /// Economics: низкая конверсия visit→booking относительно порога (см. guardrails job).
+  economicsLowQuality     Boolean   @default(false)
+  economicsLowQualityReason String?   @db.Text
+  economicsLowQualityAt     DateTime?
+  /// Short vs long conversion/velocity (leading); multiplier программы не трогаем — только флаг + audit.
+  economicsEarlyWarningFlag      Boolean   @default(false)
+  economicsEarlyWarningReason    String?   @db.Text
+  economicsEarlyWarningAt        DateTime?
+  economicsEarlyWarningSnapshot  Json?
+  /// Ручной override: пока активен — job не меняет low_quality / EW по авто-логике.
+  economicsOverrideMode          String?
+  economicsOverrideReason        String?   @db.Text
+  economicsOverrideUntil         DateTime?
+  economicsOverrideUpdatedAt     DateTime?
+  ownerUser    User?    @relation(fields: [ownerUserId], references: [id], onDelete: SetNull)
+  ownerUgc     ProgramUgc? @relation(fields: [ownerUgcId], references: [id], onDelete: SetNull)
+  attributedBookings Booking[]
+
+  @@index([ownerEmail])
+  @@index([ownerUserId])
+  @@index([economicsLowQuality])
+  @@map("referral_codes")
+}
+
 // db_schema_draft, canonical_status_models. Incident status: open | triaged | ... | closed
 model Incident {
   id            String   @id @default(cuid())
@@ -470,12 +851,18 @@ model Incident {
   severity      String   // low | medium | high | critical
   summary       String   @db.Text
   incidentStatus String  // open | triaged | investigating | ... | closed
+  /// Опциональная связь с governance_alerts (корреляция с алертом, не дублирование сущности).
+  governanceAlertId String?
+  /// SLA / дедлайн реакции (ops), опционально.
+  slaDueAt      DateTime?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   booking       Booking?  @relation(fields: [bookingId], references: [id], onDelete: SetNull)
   organizer     Organizer @relation(fields: [organizerId], references: [id], onDelete: Restrict)
   program       Program?  @relation(fields: [programId], references: [id], onDelete: SetNull)
+  governanceAlert GovernanceAlert? @relation(fields: [governanceAlertId], references: [id], onDelete: SetNull)
 
+  @@index([governanceAlertId])
   @@map("incidents")
 }
 
@@ -619,6 +1006,62 @@ model AuditLog {
   @@map("audit_logs")
 }
 
+/// Governance / economics alerting v1: дедуп по fingerprint, доставка с cooldown.
+model GovernanceAlert {
+  id           String    @id @default(cuid())
+  fingerprint  String    @unique
+  alertType    String
+  severity     String // info | warning | critical
+  entityType   String
+  entityId     String
+  title        String
+  detail       String?   @db.Text
+  payloadJson  Json?
+  firstSeenAt  DateTime  @default(now())
+  lastSeenAt   DateTime  @default(now())
+  lastSentAt   DateTime?
+  lastDigestAt DateTime?
+  status       String    @default("open") // open | muted | resolved
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  incidents    Incident[]
+
+  @@index([status, severity, lastSeenAt])
+  @@index([severity, status])
+  @@map("governance_alerts")
+}
+
+/// Одна строка: время последнего daily digest.
+model GovernanceDigestState {
+  id               String    @id @default("default")
+  lastDigestSentAt DateTime?
+  updatedAt        DateTime  @updatedAt
+
+  @@map("governance_digest_state")
+}
+
+/// Операционные статусные события (не analytics telemetry). Источник правды для таймлайна и интеграций.
+model DomainStatusEvent {
+  id              String   @id @default(cuid())
+  eventType       String
+  entityType      String
+  entityId        String
+  fromStatus      String?
+  toStatus        String?
+  triggerMode     String   // manual | auto
+  actorId         String?
+  actorMarker     String?
+  reason          String?  @db.Text
+  source          String?
+  payloadJson     Json?
+  idempotencyKey  String?  @unique
+  occurredAt      DateTime @default(now())
+
+  @@index([entityType, entityId, occurredAt])
+  @@index([occurredAt])
+  @@map("domain_status_events")
+}
+
 // Публичные заявки с лендинга (пилот): без авторизации, обработка оператором вручную.
 model PublicOrganizerIntake {
   id             String   @id @default(cuid())
@@ -634,8 +1077,14 @@ model PublicOrganizerIntake {
   message        String?  @db.Text
   links          String?  @db.Text
   meta           Json?
+  /// new | in_review | draft_created | dismissed
+  processingStatus String  @default("new")
+  linkedProgramId  String?
+  processedAt      DateTime?
+  processedBy      String?
   createdAt      DateTime @default(now())
 
+  @@index([processingStatus, createdAt])
   @@map("public_organizer_intakes")
 }
 
@@ -686,7 +1135,86 @@ model AnalyticsEvent {
   @@index([eventName, eventTime])
   @@index([organizerId, eventTime])
   @@index([bookingId, eventTime])
+  @@index([programId, ingestedAt])
   @@map("analytics_events")
+}
+
+/// Состояние value-based воронки для организатора по программе (отдельно от notification_subscriptions пользователей каталога).
+model ProgramConversionState {
+  id                String    @id @default(cuid())
+  programId         String    @unique
+  organizerId       String
+  firstPublishedAt  DateTime
+  serviceCommsOptIn Boolean   @default(true)
+  maxStageReached   Int       @default(-1)
+  stage0SentAt      DateTime?
+  stage1SentAt      DateTime?
+  stage2SentAt      DateTime?
+  stage3SentAt      DateTime?
+  stage4SentAt      DateTime?
+  stage5SentAt      DateTime?
+  /// Когда можно отправить этап 4 (после этапа 3 + задержка).
+  stage4EligibleAt  DateTime?
+  followUpDueAt     DateTime?
+  followUpSentAt    DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  program           Program   @relation(fields: [programId], references: [id], onDelete: Cascade)
+  organizer         Organizer @relation(fields: [organizerId], references: [id], onDelete: Cascade)
+
+  @@index([organizerId])
+  @@map("program_conversion_states")
+}
+
+model ProgramConversionDelivery {
+  id          String    @id @default(cuid())
+  programId   String
+  organizerId String
+  stage       Int
+  channel     String
+  dedupeKey   String    @unique
+  outcome     String
+  sentAt      DateTime  @default(now())
+  program     Program   @relation(fields: [programId], references: [id], onDelete: Cascade)
+  organizer   Organizer @relation(fields: [organizerId], references: [id], onDelete: Cascade)
+
+  @@index([programId])
+  @@index([organizerId, sentAt])
+  @@map("program_conversion_deliveries")
+}
+
+/// Черновик сообщения организатору по conversion funnel; этапы 3–5 — только после owner approval.
+model ConversionMessageDraft {
+  id                  String    @id @default(cuid())
+  organizerId         String
+  programId           String
+  stage               Int
+  metricsSnapshotJson Json
+  /// Планируемый канал к организатору: telegram | email
+  channel             String
+  messageText         String    @db.Text
+  /// draft | awaiting_owner | approved | sent | rejected | deferred | edited
+  status              String
+  dedupeKey           String    @unique
+  createdAt           DateTime  @default(now())
+  reviewedAt          DateTime?
+  reviewedBy          String?
+  deferredUntil       DateTime?
+  sentAt              DateTime?
+  /// Окно для решения owner (информационно; автосенда по истечении нет).
+  expiresAt           DateTime?
+  /// Успешная доставка уведомления owner в Telegram (не плодим повторы при каждом тике).
+  ownerNotifiedAt     DateTime?
+  /// Последняя попытка отправить owner уведомление (успех или ошибка).
+  ownerNotifyLastAttemptAt DateTime?
+  /// Обрезанная причина ошибки Telegram; null если последняя попытка успешна.
+  ownerNotifyLastError     String?  @db.VarChar(512)
+  organizer           Organizer @relation(fields: [organizerId], references: [id], onDelete: Cascade)
+  program             Program   @relation(fields: [programId], references: [id], onDelete: Cascade)
+
+  @@index([status, deferredUntil])
+  @@index([organizerId, status])
+  @@map("conversion_message_drafts")
 }
 
 model AnalyticsEventError {

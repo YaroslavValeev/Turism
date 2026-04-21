@@ -2,7 +2,10 @@
  * Audit log writer. Source of truth: audit_log_spec.md
  * Depth: actor (changedBy), entity_type, entity_id, action (changedField), timestamp (createdAt), metadata/diff (oldValue, newValue).
  */
+import type { Prisma, PrismaClient } from "@prisma/client";
 import { prisma } from "./prisma";
+
+type AuditDb = PrismaClient | Prisma.TransactionClient;
 
 export interface AuditEntry {
   entityType: string;
@@ -16,8 +19,8 @@ export interface AuditEntry {
   reason?: string | null;
 }
 
-export async function writeAuditLog(entry: AuditEntry): Promise<void> {
-  await prisma.auditLog.create({
+export async function writeAuditLog(entry: AuditEntry, db: AuditDb = prisma): Promise<void> {
+  await db.auditLog.create({
     data: {
       entityType: entry.entityType,
       entityId: entry.entityId,

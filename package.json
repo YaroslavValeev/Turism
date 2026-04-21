@@ -14,6 +14,7 @@
     "db:seed": "pnpm --filter api db:seed",
     "db:import-sources": "pnpm --filter api exec tsx prisma/import_sources.ts",
     "ingest:import-owner-sources": "pnpm --filter api exec tsx prisma/import_sources.ts prisma/source_imports_owner_2026-04-16.json",
+    "ingest:merge-owner-sources-from-xlsx": "pnpm --filter api run db:merge-owner-sources-from-xlsx --",
     "ingest:owner-cycle": "pnpm --filter api exec tsx prisma/run_ingestion_cycle.ts",
     "ingest:owner-sources-only": "pnpm --filter api exec tsx prisma/run_ingestion_owner_batch.ts",
     "ingest:count-owner-sources": "pnpm --filter api exec tsx prisma/count_owner_sources.ts",
@@ -25,7 +26,9 @@
     "sync:web-analytics-env": "pnpm --filter @mywave/config build && node scripts/sync-web-analytics-env.mjs",
     "e2e:checkpoint1": "node scripts/e2e_checkpoint1.js",
     "e2e:checkpoint2": "node scripts/e2e_checkpoint2_commission.js",
-    "e2e:fair-success-fee": "node scripts/e2e_fair_success_fee.js"
+    "e2e:fair-success-fee": "node scripts/e2e_fair_success_fee.js",
+    "check:booking-status-adr007": "node scripts/check-booking-status-writers.mjs",
+    "e2e:admin": "pnpm --filter admin test:e2e"
   },
   "devDependencies": {
     "@mywave/config": "workspace:*",

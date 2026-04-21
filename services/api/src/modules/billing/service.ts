@@ -1,7 +1,10 @@
 import { Prisma } from "@prisma/client";
+import { parsePlatformMode } from "@mywave/config";
+import { isValidCommissionReconciliationBillingTransition } from "@mywave/shared-policy";
 import {
   DEFAULT_COMMISSION_RATE_BPS,
   ELIGIBLE_STATEMENT_COMMISSION_STATUSES,
+  isCommissionReconciliationStatus,
   type GenerateStatementInput,
   type OrganizerContractStatus,
   type PrivilegesState,
@@ -11,18 +14,15 @@ import {
 import { prisma } from "../../lib/prisma";
 import { writeAuditLog } from "../../lib/audit";
 import { emitBackendAnalyticsEventBestEffort } from "../analytics/service";
+import { emitCommissionPolicyViolationAnalyticsBestEffort } from "../status-engine/emitCommissionPolicyViolationAnalytics";
+import { recordCommissionTransitionViolationDetected } from "../status-engine/recordCommissionTransitionViolation";
+import { recordDomainStatusEvent } from "../status-engine/recordDomainStatusEvent";
+import { deriveBookingStatus } from "./deriveBookingStatus";
 
 type Actor = string | null;
 
 function calcCommission(netAmountRub: number, commissionRateBps: number): number {
   return Math.round((Math.max(0, netAmountRub) * commissionRateBps) / 10000);
-}
-
-function deriveBookingStatus(paidAmountRub: number, refundedAmountRub: number): string {
-  if (paidAmountRub <= 0) return "created";
-  if (refundedAmountRub >= paidAmountRub) return "refunded_full";
-  if (refundedAmountRub > 0) return "refunded_partial";
-  return "paid_full";
 }
 
 export async function recalculateCommissionForBooking(bookingId: string, actor: Actor) {
@@ -36,12 +36,67 @@ export async function recalculateCommissionForBooking(bookingId: string, actor: 
   const refundedAmountRub = booking.refundedAmountRub ?? 0;
   const netAmountRub = Math.max(0, paidAmountRub - refundedAmountRub);
   const commissionAmountRub = calcCommission(netAmountRub, rateBps);
+  const platformMode = parsePlatformMode(process.env.PLATFORM_MODE);
+  // Model A: reward-скидка уже учтена в paidAmountRub (гость платил finalAmount).
+  // В calculationJson фиксируем снимок экономики для прозрачности.
+  const rewardSnapshot = {
+    appliedRewardId: booking.appliedRewardId ?? null,
+    originalAmountRub: booking.originalAmountRub ?? null,
+    discountAmountRub: booking.discountAmountRub ?? null,
+    finalAmountRub: booking.finalAmountRub ?? null,
+  };
+  const calculationBase = {
+    paidAmountRub,
+    refundedAmountRub,
+    netAmountRub,
+    rateBps,
+    reward: rewardSnapshot,
+    platformMode,
+    ...(platformMode === "launch" ? { financialDueRub: 0 as const } : {}),
+  };
   const status =
     booking.bookingStatus === "disputed"
       ? "disputed"
       : netAmountRub <= 0
         ? "reversed"
         : "accrued";
+
+  const existingCommission = await prisma.commission.findUnique({ where: { bookingId } });
+  const fromStatus = existingCommission?.reconciliationStatus ?? "";
+  if (
+    existingCommission &&
+    isCommissionReconciliationStatus(fromStatus) &&
+    !isValidCommissionReconciliationBillingTransition(fromStatus, status, "recalculate")
+  ) {
+    console.warn("[billing] recalculate commission policy mismatch (logged, upsert continues)", {
+      commissionId: existingCommission.id,
+      fromStatus,
+      to: status,
+      bookingId,
+    });
+    await recordCommissionTransitionViolationDetected(prisma, {
+      commissionId: existingCommission.id,
+      fromStatus,
+      toStatus: status,
+      reason: "billing_recalculate_policy_mismatch_soft_allow",
+      actorId: actor,
+      actorMarker: "system:billing",
+      source: "billing",
+      billingKind: "recalculate",
+      triggerMode: "auto",
+    });
+    emitCommissionPolicyViolationAnalyticsBestEffort({
+      commissionId: existingCommission.id,
+      organizerId: existingCommission.organizerId,
+      programId: existingCommission.programId,
+      bookingId: existingCommission.bookingId,
+      fromStatus,
+      toStatus: status,
+      source: "billing",
+      billingKind: "recalculate",
+      idempotencySuffix: bookingId,
+    });
+  }
 
   const commission = await prisma.commission.upsert({
     where: { bookingId },
@@ -55,10 +110,11 @@ export async function recalculateCommissionForBooking(bookingId: string, actor: 
       commissionBaseRub: netAmountRub,
       commissionAmountRub,
       commissionAccruedRub: commissionAmountRub,
+      commissionCollectedRub: platformMode === "launch" ? 0 : undefined,
       reconciliationStatus: status,
       accruedAt: status === "accrued" ? new Date() : null,
       reversedAt: status === "reversed" ? new Date() : null,
-      calculationJson: { paidAmountRub, refundedAmountRub, netAmountRub, rateBps },
+      calculationJson: calculationBase,
     },
     update: {
       leadId: booking.leadId,
@@ -67,10 +123,11 @@ export async function recalculateCommissionForBooking(bookingId: string, actor: 
       commissionBaseRub: netAmountRub,
       commissionAmountRub,
       commissionAccruedRub: commissionAmountRub,
+      commissionCollectedRub: platformMode === "launch" ? 0 : undefined,
       reconciliationStatus: status,
       accruedAt: status === "accrued" ? new Date() : null,
       reversedAt: status === "reversed" ? new Date() : null,
-      calculationJson: { paidAmountRub, refundedAmountRub, netAmountRub, rateBps },
+      calculationJson: calculationBase,
     },
   });
 
@@ -89,7 +146,11 @@ export async function recalculateCommissionForBooking(bookingId: string, actor: 
       commission_amount: commission.commissionAmountRub ?? undefined,
       commission_rate: commission.commissionRateBps ?? undefined,
       net_amount: commission.gmvRub ?? undefined,
-      properties_json: { reconciliation_status: status },
+      properties_json: {
+        reconciliation_status: status,
+        platform_mode: platformMode,
+        financial_due_rub: platformMode === "launch" ? 0 : commission.commissionAmountRub ?? undefined,
+      },
     });
   }
   if (status === "reversed") {
@@ -107,7 +168,7 @@ export async function recalculateCommissionForBooking(bookingId: string, actor: 
       commission_amount: commission.commissionAmountRub ?? undefined,
       commission_rate: commission.commissionRateBps ?? undefined,
       net_amount: commission.gmvRub ?? undefined,
-      properties_json: { reconciliation_status: status },
+      properties_json: { reconciliation_status: status, platform_mode: platformMode },
     });
   }
 
@@ -165,7 +226,9 @@ export async function recordPayment(input: RecordPaymentInput, actor: Actor) {
   const refundedAmountRub = booking.refundedAmountRub ?? 0;
   const netAmountRub = Math.max(0, paidAmountRub - refundedAmountRub);
   const bookingStatus = deriveBookingStatus(paidAmountRub, refundedAmountRub);
+  const prevBookingStatus = booking.bookingStatus;
 
+  // ADR-007: billing-derived path — `bookingStatus` только из `deriveBookingStatus` + событие `booking_payment_derived_status`.
   await prisma.booking.update({
     where: { id: booking.id },
     data: {
@@ -174,6 +237,22 @@ export async function recordPayment(input: RecordPaymentInput, actor: Actor) {
       bookingStatus,
     },
   });
+
+  if (prevBookingStatus !== bookingStatus) {
+    await recordDomainStatusEvent(prisma, {
+      eventType: "booking_payment_derived_status",
+      entityType: "booking",
+      entityId: booking.id,
+      fromStatus: prevBookingStatus,
+      toStatus: bookingStatus,
+      triggerMode: "auto",
+      actorId: actor,
+      actorMarker: actor ? null : "system:billing",
+      source: "billing/recordPayment",
+      payloadJson: { paidAmountRub, netAmountRub, paymentId: payment.id },
+      idempotencyKey: `billing_payment_status:${booking.id}:${payment.id}`,
+    });
+  }
 
   await writeAuditLog({
     entityType: "payment",
@@ -233,6 +312,9 @@ export async function recordRefund(input: RecordRefundInput, actor: Actor) {
 
   const netAmountRub = Math.max(0, paidAmountRub - nextRefundedAmountRub);
   const bookingStatus = deriveBookingStatus(paidAmountRub, nextRefundedAmountRub);
+  const prevBookingStatus = booking.bookingStatus;
+
+  // ADR-007: billing-derived path (refund) — см. `deriveBookingStatus`.
   await prisma.booking.update({
     where: { id: booking.id },
     data: {
@@ -241,6 +323,22 @@ export async function recordRefund(input: RecordRefundInput, actor: Actor) {
       bookingStatus,
     },
   });
+
+  if (prevBookingStatus !== bookingStatus) {
+    await recordDomainStatusEvent(prisma, {
+      eventType: "booking_payment_derived_status",
+      entityType: "booking",
+      entityId: booking.id,
+      fromStatus: prevBookingStatus,
+      toStatus: bookingStatus,
+      triggerMode: "auto",
+      actorId: actor,
+      actorMarker: actor ? null : "system:billing",
+      source: "billing/recordRefund",
+      payloadJson: { paidAmountRub, refundedAmountRub: nextRefundedAmountRub, netAmountRub, refundId: refund.id },
+      idempotencyKey: `billing_refund_status:${booking.id}:${refund.id}`,
+    });
+  }
 
   await writeAuditLog({
     entityType: "refund",
@@ -257,6 +355,7 @@ export async function recordRefund(input: RecordRefundInput, actor: Actor) {
 }
 
 export async function generateMonthlyStatement(input: GenerateStatementInput, actor: Actor) {
+  const platformMode = parsePlatformMode(process.env.PLATFORM_MODE);
   const periodStart = new Date(input.periodStart);
   const periodEnd = new Date(input.periodEnd);
   if (Number.isNaN(periodStart.valueOf()) || Number.isNaN(periodEnd.valueOf())) {
@@ -295,7 +394,13 @@ export async function generateMonthlyStatement(input: GenerateStatementInput, ac
     const grossPaidRub = items.reduce((sum, c) => sum + (c.booking.paidAmountRub ?? 0), 0);
     const refundedRub = items.reduce((sum, c) => sum + (c.booking.refundedAmountRub ?? 0), 0);
     const netSalesRub = items.reduce((sum, c) => sum + (c.booking.netAmountRub ?? 0), 0);
-    const commissionTotalRub = items.reduce((sum, c) => sum + (c.commissionAmountRub ?? 0), 0);
+    const commissionCalculatedRub = items.reduce((sum, c) => sum + (c.commissionAmountRub ?? 0), 0);
+    const commissionTotalRub = platformMode === "launch" ? 0 : commissionCalculatedRub;
+    const launchNote =
+      platformMode === "launch"
+        ? "Launch mode: строки содержат рассчитанную комиссию; итог к оплате по платформе = 0 ₽."
+        : null;
+    const mergedNotes = [input.notes?.trim(), launchNote].filter(Boolean).join("\n") || null;
     const statement = await prisma.billingStatement.create({
       data: {
         organizerId,
@@ -306,7 +411,7 @@ export async function generateMonthlyStatement(input: GenerateStatementInput, ac
         refundedRub,
         netSalesRub,
         commissionTotalRub,
-        notes: input.notes ?? null,
+        notes: mergedNotes,
         lines: {
           create: items.map((c) => ({
             commissionId: c.id,
@@ -323,6 +428,39 @@ export async function generateMonthlyStatement(input: GenerateStatementInput, ac
     });
 
     for (const commission of items) {
+      const fromStatus = commission.reconciliationStatus ?? "";
+      if (
+        isCommissionReconciliationStatus(fromStatus) &&
+        !isValidCommissionReconciliationBillingTransition(fromStatus, "invoiced", "statement_invoiced")
+      ) {
+        console.warn("[billing] statement invoiced policy mismatch (logged, update continues)", {
+          commissionId: commission.id,
+          fromStatus,
+          to: "invoiced",
+        });
+        await recordCommissionTransitionViolationDetected(prisma, {
+          commissionId: commission.id,
+          fromStatus,
+          toStatus: "invoiced",
+          reason: "billing_statement_invoiced_policy_mismatch_soft_allow",
+          actorId: actor,
+          actorMarker: "system:billing",
+          source: "billing",
+          billingKind: "statement_invoiced",
+          triggerMode: "auto",
+        });
+        emitCommissionPolicyViolationAnalyticsBestEffort({
+          commissionId: commission.id,
+          organizerId: commission.organizerId,
+          programId: commission.programId,
+          bookingId: commission.bookingId,
+          fromStatus,
+          toStatus: "invoiced",
+          source: "billing",
+          billingKind: "statement_invoiced",
+          idempotencySuffix: `${statement.id}:${commission.id}`,
+        });
+      }
       await prisma.commission.update({
         where: { id: commission.id },
         data: { reconciliationStatus: "invoiced", invoicedAt: new Date() },
@@ -360,6 +498,8 @@ export async function generateMonthlyStatement(input: GenerateStatementInput, ac
         period_end: input.periodEnd,
         commission_count: items.length,
         status: statement.status,
+        platform_mode: platformMode,
+        commission_calculated_rub: commissionCalculatedRub,
       },
     });
     created.push(statement);

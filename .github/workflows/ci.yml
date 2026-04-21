@@ -1,0 +1,133 @@
+# Blocking checks for merge: API typecheck + admin production build.
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build @mywave/config (sync dist vs src for consumers)
+        run: pnpm --filter @mywave/config build
+
+      - name: Prisma generate (api)
+        run: pnpm db:generate
+
+      - name: Typecheck API
+        run: pnpm --filter api exec tsc --noEmit
+
+      - name: Unit tests (api)
+        run: pnpm --filter api test
+
+      - name: Build admin
+        run: pnpm --filter admin build
+
+  e2e-admin:
+    runs-on: ubuntu-latest
+    needs: [build]
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: mywave
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      APP_ENV: ci
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/mywave
+      JWT_SECRET: ci-jwt-secret-for-github-actions-min-32-chars
+      ADMIN_JWT_SECRET: ci-admin-jwt-secret-for-github-actions-min-32
+      PLATFORM_MODE: launch
+      NEXT_PUBLIC_API_URL: http://127.0.0.1:3001
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build @mywave/config (sync dist vs src for consumers)
+        run: pnpm --filter @mywave/config build
+
+      - name: Prisma generate (api)
+        run: pnpm db:generate
+
+      - name: Migrate (deploy)
+        run: pnpm --filter api db:migrate:deploy
+
+      - name: Seed (admin + conversion fixture)
+        run: pnpm --filter api db:seed
+
+      - name: Build API
+        run: pnpm --filter api build
+
+      - name: Build admin (API URL for browser)
+        run: pnpm --filter admin build
+        env:
+          NEXT_PUBLIC_API_URL: http://127.0.0.1:3001
+
+      - name: Start API and admin (background)
+        run: |
+          pnpm --filter api start &
+          pnpm --filter admin start &
+          sleep 2
+
+      - name: Wait for servers
+        run: |
+          for i in $(seq 1 45); do
+            curl -sf http://127.0.0.1:3001/health >/dev/null && curl -sf http://127.0.0.1:3002/ >/dev/null && exit 0
+            sleep 2
+          done
+          echo "servers not ready"; exit 1
+
+      - name: Install Playwright Chromium
+        run: pnpm --filter admin exec playwright install chromium
+
+      - name: E2E admin (Playwright)
+        env:
+          PLAYWRIGHT_API_URL: http://127.0.0.1:3001
+        run: |
+          TOKEN=$(curl -sS -X POST http://127.0.0.1:3001/auth/login \
+            -H 'Content-Type: application/json' \
+            -d '{"email":"admin@mywave.local","password":"admin123"}' \
+            | node -e "const fs=require('fs');const j=JSON.parse(fs.readFileSync(0,'utf8'));if(!j.token){console.error(j);process.exit(1)};process.stdout.write(j.token)")
+          export ADMIN_E2E_TOKEN="$TOKEN"
+          pnpm e2e:admin

@@ -12,3 +12,5 @@ coverage
 .prisma
 __pycache__/
 *.pyc
+*.tsbuildinfo
+apps/admin/test-results/

@@ -1,10 +1,17 @@
 import { NextResponse } from "next/server";
+import { getAnalyticsProxyEnv } from "../../../../lib/analytics/serverProxyEnv";
 
 export async function POST(req: Request) {
-  const apiUrl = process.env.API_INTERNAL_BASE_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
-  const token = process.env.INTERNAL_ANALYTICS_TOKEN;
+  const { apiUrl, token } = getAnalyticsProxyEnv();
   if (!token) {
-    return NextResponse.json({ ok: false, error: "INTERNAL_ANALYTICS_TOKEN is not configured" }, { status: 503 });
+    return NextResponse.json(
+      {
+        ok: false,
+        error:
+          "INTERNAL_ANALYTICS_TOKEN (or TARGET_INTERNAL_TOKEN) is not configured for apps/web server env — see apps/web/.env.example",
+      },
+      { status: 503 }
+    );
   }
 
   const body = await req.json().catch(() => null);

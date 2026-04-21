@@ -1,10 +1,15 @@
 #!/usr/bin/env node
+import { loadRepoRuntimeEnv } from "./loadRepoRuntimeEnv.mjs";
+
+loadRepoRuntimeEnv();
+
 const localBase = process.env.LOCAL_BASE_URL || "http://localhost:3001";
 const targetBase = process.env.TARGET_BASE_URL;
 const localAdminToken = process.env.LOCAL_ADMIN_TOKEN || "";
 const localInternalToken = process.env.LOCAL_INTERNAL_TOKEN || "";
 const targetAdminToken = process.env.TARGET_ADMIN_TOKEN || "";
-const targetInternalToken = process.env.TARGET_INTERNAL_TOKEN || "";
+const targetInternalToken =
+  process.env.TARGET_INTERNAL_TOKEN || process.env.INTERNAL_ANALYTICS_TOKEN || "";
 
 if (!targetBase || !targetAdminToken || !targetInternalToken) {
   console.error("Missing TARGET_BASE_URL/TARGET_ADMIN_TOKEN/TARGET_INTERNAL_TOKEN");

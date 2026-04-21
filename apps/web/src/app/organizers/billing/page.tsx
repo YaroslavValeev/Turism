@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   getOrganizerBillingStatusLabel,
   getOrganizerContractStatusLabel,
@@ -9,6 +9,8 @@ import {
 } from "@mywave/shared-types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+
+type PublicPlatform = { platformMode: string; launchMode: boolean };
 
 type Privileges = {
   organizerId: string;
@@ -32,6 +34,24 @@ export default function OrganizerBillingPage() {
   const [profile, setProfile] = useState<BillingProfile | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [platform, setPlatform] = useState<PublicPlatform | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`${API_URL}/public/platform`);
+        if (!res.ok || cancelled) return;
+        const j = (await res.json()) as PublicPlatform;
+        if (!cancelled) setPlatform(j);
+      } catch {
+        /* ignore */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const load = async () => {
     setLoading(true);
@@ -64,8 +84,22 @@ export default function OrganizerBillingPage() {
     <main className="mw-container" style={{ paddingTop: 24, paddingBottom: 40 }}>
       <h1 className="mw-h2">Договор и реквизиты</h1>
       <p className="mw-lead" style={{ maxWidth: 760 }}>
-        MVP режим для организатора: read-only просмотр статусов договора, подключения billing и привилегий.
+        Read-only статусы договора, подключения billing и привилегий. В режиме запуска комиссия и счета к оплате не выставляются — подготовка реквизитов всё равно ускорит переход к договору после этапа доказательства ценности.
       </p>
+      {platform?.launchMode && (
+        <section
+          className="mw-card"
+          style={{
+            marginBottom: 20,
+            borderLeft: "4px solid var(--mw-accent, #2563eb)",
+            background: "rgba(37, 99, 235, 0.06)",
+          }}
+        >
+          <p style={{ margin: 0, lineHeight: 1.65 }}>
+            <strong>Launch mode:</strong> размещение и работа через платформу сейчас без комиссии к оплате. Внутри системы комиссия может рассчитываться для аналитики; выставление счетов включится в режиме monetization после договорённостей.
+          </p>
+        </section>
+      )}
       <div style={{ display: "flex", gap: 12, alignItems: "end", flexWrap: "wrap", marginBottom: 20 }}>
         <label>
           Organizer ID

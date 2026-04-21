@@ -28,3 +28,12 @@
 3. Заполни organizer_pipeline.csv по первым 30 кандидатам.
 4. Пропусти каждого через organizer_scoring_sheet.csv.
 5. Используй weekly_founder_dashboard.csv как основной еженедельный контур управления.
+
+## Архитектурная опора (обновлено)
+- Главный навигатор: [`docs/PROJECT_SOURCEBOOK.md`](docs/PROJECT_SOURCEBOOK.md)
+- Закрытие разработческого этапа Stage 4.1 (status backbone, ADR-007/008, guard, platform mode, UI/API, QA): см. раздел «Версия» в sourcebook и конец [`docs/migration/STAGE4_1_START_EXECUTION_REPORT.md`](docs/migration/STAGE4_1_START_EXECUTION_REPORT.md) (раздел «Закрытие разработческого этапа»); далее — эксплуатация и доказательство ценности данными, без включения commission strict-mode до отдельного решения.
+- Stage-0 execution pack: [`docs/migration/EXECUTION_START_PACK.md`](docs/migration/EXECUTION_START_PACK.md)
+- DoD для запуска реализации: [`docs/migration/STAGE_DOD_1_3.md`](docs/migration/STAGE_DOD_1_3.md)
+- Legacy migration policy: [`docs/migration/LEGACY_CONTENT_MIGRATION_POLICY.md`](docs/migration/LEGACY_CONTENT_MIGRATION_POLICY.md)
+- Терминология lead/booking: [`docs/decisions/ADR-005-lead-vs-booking.md`](docs/decisions/ADR-005-lead-vs-booking.md)
+- Idempotency для delivery/sync: [`docs/architecture/IDEMPOTENCY_DELIVERY_AND_SYNC.md`](docs/architecture/IDEMPOTENCY_DELIVERY_AND_SYNC.md)

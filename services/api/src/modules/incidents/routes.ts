@@ -22,6 +22,7 @@ export function incidentsRoutes(env: Env): Router {
         booking: { select: { id: true, guestContact: true, bookingStatus: true } },
         organizer: { select: { id: true, displayName: true } },
         program: { select: { id: true, title: true } },
+        governanceAlert: { select: { id: true, alertType: true, title: true, fingerprint: true } },
       },
       orderBy: { createdAt: "desc" },
     });
@@ -35,6 +36,7 @@ export function incidentsRoutes(env: Env): Router {
         booking: true,
         organizer: { select: { id: true, displayName: true, contactEmail: true } },
         program: { select: { id: true, title: true } },
+        governanceAlert: { select: { id: true, alertType: true, title: true, fingerprint: true, severity: true, status: true } },
       },
     });
     if (!inc) {
@@ -53,10 +55,33 @@ export function incidentsRoutes(env: Env): Router {
       severity: string;
       summary: string;
       incidentStatus?: string;
+      governanceAlertId?: string | null;
+      slaDueAt?: string | null;
     };
     if (!body.organizerId || !body.type || !body.severity || !body.summary) {
       res.status(400).json({ error: "organizerId, type, severity, summary required" });
       return;
+    }
+    let governanceAlertId: string | null = null;
+    if (body.governanceAlertId != null && String(body.governanceAlertId).trim() !== "") {
+      const ga = await prisma.governanceAlert.findUnique({
+        where: { id: String(body.governanceAlertId).trim() },
+        select: { id: true },
+      });
+      if (!ga) {
+        res.status(400).json({ error: "governance_alert_not_found" });
+        return;
+      }
+      governanceAlertId = ga.id;
+    }
+    let slaDueAt: Date | null = null;
+    if (body.slaDueAt != null && String(body.slaDueAt).trim() !== "") {
+      const d = new Date(String(body.slaDueAt));
+      if (Number.isNaN(d.getTime())) {
+        res.status(400).json({ error: "invalid_sla_due_at" });
+        return;
+      }
+      slaDueAt = d;
     }
     const status = body.incidentStatus && isIncidentStatus(body.incidentStatus) ? body.incidentStatus : "open";
     const inc = await prisma.incident.create({
@@ -68,8 +93,15 @@ export function incidentsRoutes(env: Env): Router {
         severity: body.severity,
         summary: body.summary,
         incidentStatus: status,
+        governanceAlertId,
+        slaDueAt,
       },
-      include: { organizer: { select: { displayName: true } }, program: { select: { title: true } }, booking: { select: { id: true } } },
+      include: {
+        organizer: { select: { displayName: true } },
+        program: { select: { title: true } },
+        booking: { select: { id: true } },
+        governanceAlert: { select: { id: true, alertType: true, title: true, fingerprint: true } },
+      },
     });
     await writeAuditLog({
       entityType: "incident",

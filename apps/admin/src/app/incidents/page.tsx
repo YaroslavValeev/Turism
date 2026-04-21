@@ -37,6 +37,9 @@ type Incident = {
   summary: string;
   incidentStatus: string;
   createdAt: string;
+  slaDueAt?: string | null;
+  governanceAlertId?: string | null;
+  governanceAlert?: { id: string; alertType: string; title: string; fingerprint: string } | null;
   organizer?: { id: string; displayName: string };
   program?: { id: string; title: string };
   booking?: { id: string; bookingStatus: string };
@@ -49,6 +52,8 @@ type CreateIncidentForm = {
   type: string;
   severity: string;
   summary: string;
+  governanceAlertId: string;
+  slaDueAt: string;
 };
 
 export default function IncidentsQueuePage() {
@@ -68,6 +73,8 @@ export default function IncidentsQueuePage() {
     type: "complaint",
     severity: "medium",
     summary: "",
+    governanceAlertId: "",
+    slaDueAt: "",
   });
   const [creating, setCreating] = useState(false);
   const [savingId, setSavingId] = useState<string | null>(null);
@@ -161,6 +168,9 @@ export default function IncidentsQueuePage() {
           type: createForm.type.trim(),
           severity: createForm.severity,
           summary: createForm.summary.trim(),
+          governanceAlertId: createForm.governanceAlertId.trim() || undefined,
+          slaDueAt:
+            createForm.slaDueAt.trim() !== "" ? new Date(createForm.slaDueAt).toISOString() : undefined,
         }),
       });
       const body = await res.json().catch(() => null);
@@ -208,7 +218,8 @@ export default function IncidentsQueuePage() {
   return (
     <main style={{ padding: 24 }}>
       <p>
-        <Link href="/organizers">Организаторы</Link> | <Link href="/programs">Программы</Link> | <Link href="/bookings">Заявки</Link> | <strong>Инциденты</strong> | <Link href="/reviews">Отзывы</Link> | <Link href="/commissions">Комиссии</Link>
+        <Link href="/organizers">Организаторы</Link> | <Link href="/programs">Программы</Link> | <Link href="/bookings">Заявки</Link> | <strong>Инциденты</strong> |{" "}
+        <Link href="/alerts">Алерты</Link> | <Link href="/reviews">Отзывы</Link> | <Link href="/commissions">Комиссии</Link>
       </p>
       <h1>Очередь инцидентов</h1>
       <p style={{ fontSize: 14, color: "#555" }}>
@@ -249,6 +260,18 @@ export default function IncidentsQueuePage() {
             ))}
           </select>
           <textarea value={createForm.summary} onChange={(e) => setCreateForm((current) => ({ ...current, summary: e.target.value }))} placeholder="Краткое описание" rows={3} style={{ padding: 10 }} />
+          <input
+            value={createForm.governanceAlertId}
+            onChange={(e) => setCreateForm((current) => ({ ...current, governanceAlertId: e.target.value }))}
+            placeholder="ID governance alert (опционально)"
+            style={{ padding: 10 }}
+          />
+          <input
+            type="datetime-local"
+            value={createForm.slaDueAt}
+            onChange={(e) => setCreateForm((current) => ({ ...current, slaDueAt: e.target.value }))}
+            style={{ padding: 10 }}
+          />
           <button type="submit" disabled={creating || !createForm.organizerId || !createForm.type.trim() || !createForm.summary.trim()} style={{ padding: 10 }}>
             {creating ? "Создание..." : "Создать инцидент"}
           </button>
@@ -272,6 +295,7 @@ export default function IncidentsQueuePage() {
               <th style={{ textAlign: "left", padding: 8 }}>Тип / приоритет</th>
               <th style={{ textAlign: "left", padding: 8 }}>Описание</th>
               <th style={{ textAlign: "left", padding: 8 }}>Организатор</th>
+              <th style={{ textAlign: "left", padding: 8 }}>Алерт / SLA</th>
               <th style={{ textAlign: "left", padding: 8 }}>Статус</th>
               <th style={{ textAlign: "left", padding: 8 }}>Создан</th>
               <th style={{ textAlign: "left", padding: 8 }}>Действие</th>
@@ -283,6 +307,21 @@ export default function IncidentsQueuePage() {
                 <td style={{ padding: 8 }}>{getIncidentTypeLabel(incident.type)} / {getSeverityLabel(incident.severity)}</td>
                 <td style={{ padding: 8, maxWidth: 300 }}>{incident.summary.slice(0, 80)}{incident.summary.length > 80 ? "…" : ""}</td>
                 <td style={{ padding: 8 }}>{incident.organizer?.displayName ?? "—"}</td>
+                <td style={{ padding: 8, fontSize: 13 }}>
+                  {incident.governanceAlert ? (
+                    <>
+                      <Link href="/alerts">{incident.governanceAlert.alertType}</Link>
+                      <span style={{ color: "#666" }}> · {incident.governanceAlert.title.slice(0, 40)}
+                        {incident.governanceAlert.title.length > 40 ? "…" : ""}
+                      </span>
+                    </>
+                  ) : (
+                    "—"
+                  )}
+                  {incident.slaDueAt ? (
+                    <div style={{ marginTop: 4, color: "#a60" }}>SLA: {new Date(incident.slaDueAt).toLocaleString("ru-RU")}</div>
+                  ) : null}
+                </td>
                 <td style={{ padding: 8 }}>
                   <select
                     value={statusDrafts[incident.id] ?? incident.incidentStatus}

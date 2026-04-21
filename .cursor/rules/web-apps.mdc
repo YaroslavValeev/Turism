@@ -1,0 +1,11 @@
+---
+description: Соглашения для Next.js (apps/web, apps/admin)
+globs: apps/**/*.{tsx,ts}
+alwaysApply: false
+---
+
+# Frontend (Next.js App Router)
+
+- Не дублировать финальную бизнес-логику сделок/комиссий только в UI — отображать состояние с API.
+- Trust-сигналы (verified, страховка и т.д.) — только при наличии данных с бэкенда; не обещать то, чего нет в модели.
+- Перед релизом UI проверять маршруты из `docs/qa/BROWSER_CHECK_ROUTES.md`.

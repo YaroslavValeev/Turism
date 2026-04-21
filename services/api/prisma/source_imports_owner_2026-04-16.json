@@ -1,0 +1,132 @@
+[
+  {
+    "type": "instagram",
+    "name": "Rodeo Park (ref reel DXCBtTsh_oI)",
+    "urlOrHandle": "https://www.instagram.com/rodeopark/",
+    "discipline": "Wake / multi",
+    "country": "Russia",
+    "region": "",
+    "language": "ru",
+    "priority": 72,
+    "trustScore": 0.55,
+    "parserProfile": "instagram_public_profile",
+    "fetchIntervalMinutes": 1440,
+    "isActive": true,
+    "metaJson": {
+      "autoPublish": false,
+      "notes": [
+        "Owner batch 2026-04-16. Permalink резолвится в профиль через instagram.com/.../embed/captioned/",
+        "Исходная ссылка: https://www.instagram.com/reel/DXCBtTsh_oI/"
+      ],
+      "referencePermalinks": ["https://www.instagram.com/reel/DXCBtTsh_oI/"],
+      "sports": ["Wakesurf", "Camp"]
+    }
+  },
+  {
+    "type": "instagram",
+    "name": "twiglles (ref post DW38LrwiAuo)",
+    "urlOrHandle": "https://www.instagram.com/twiglles/",
+    "discipline": "SUP / festival",
+    "country": "Russia",
+    "region": "",
+    "language": "ru",
+    "priority": 72,
+    "trustScore": 0.55,
+    "parserProfile": "instagram_public_profile",
+    "fetchIntervalMinutes": 1440,
+    "isActive": true,
+    "metaJson": {
+      "autoPublish": false,
+      "notes": [
+        "Owner batch 2026-04-16",
+        "Исходная ссылка: https://www.instagram.com/p/DW38LrwiAuo/"
+      ],
+      "referencePermalinks": ["https://www.instagram.com/p/DW38LrwiAuo/"],
+      "sports": ["SUP"]
+    }
+  },
+  {
+    "type": "instagram",
+    "name": "borisov_sergei (ref reel DXHtd3aNsCU)",
+    "urlOrHandle": "https://www.instagram.com/borisov_sergei/",
+    "discipline": "Kite / camp",
+    "country": "Russia",
+    "region": "",
+    "language": "ru",
+    "priority": 72,
+    "trustScore": 0.55,
+    "parserProfile": "instagram_public_profile",
+    "fetchIntervalMinutes": 1440,
+    "isActive": true,
+    "metaJson": {
+      "autoPublish": false,
+      "notes": [
+        "Owner batch 2026-04-16",
+        "Исходная ссылка: https://www.instagram.com/reel/DXHtd3aNsCU/"
+      ],
+      "referencePermalinks": ["https://www.instagram.com/reel/DXHtd3aNsCU/"],
+      "sports": ["Kitesurf", "Camp"]
+    }
+  },
+  {
+    "type": "instagram",
+    "name": "freeride_in_siberia (ref reel DW02R0RiJNu)",
+    "urlOrHandle": "https://www.instagram.com/freeride_in_siberia/",
+    "discipline": "Freeride",
+    "country": "Russia",
+    "region": "",
+    "language": "ru",
+    "priority": 72,
+    "trustScore": 0.55,
+    "parserProfile": "instagram_public_profile",
+    "fetchIntervalMinutes": 1440,
+    "isActive": true,
+    "metaJson": {
+      "autoPublish": false,
+      "notes": [
+        "Owner batch 2026-04-16",
+        "Исходная ссылка: https://www.instagram.com/reel/DW02R0RiJNu/"
+      ],
+      "referencePermalinks": ["https://www.instagram.com/reel/DW02R0RiJNu/"],
+      "sports": ["Freeride", "Ski"]
+    }
+  },
+  {
+    "type": "site",
+    "name": "J-Trip",
+    "urlOrHandle": "https://j-trip.ru/",
+    "discipline": null,
+    "country": "Russia",
+    "region": "",
+    "language": "ru",
+    "priority": 80,
+    "trustScore": 0.5,
+    "parserProfile": null,
+    "fetchIntervalMinutes": 1440,
+    "isActive": true,
+    "metaJson": {
+      "autoPublish": false,
+      "notes": ["Owner batch 2026-04-16 — сайт-источник"],
+      "fetchUrls": ["https://j-trip.ru/"]
+    }
+  },
+  {
+    "type": "site",
+    "name": "ATV51",
+    "urlOrHandle": "https://atv51.ru/",
+    "discipline": null,
+    "country": "Russia",
+    "region": "",
+    "language": "ru",
+    "priority": 80,
+    "trustScore": 0.5,
+    "parserProfile": null,
+    "fetchIntervalMinutes": 1440,
+    "isActive": true,
+    "metaJson": {
+      "autoPublish": false,
+      "notes": ["Owner batch 2026-04-16 — сайт-источник"],
+      "fetchUrls": ["https://atv51.ru/"]
+    }
+  }
+]

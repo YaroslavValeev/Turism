@@ -6,6 +6,7 @@ import { Prisma, Source, EventCandidate, NormalizedItem, RawItem } from "@prisma
 import { prisma } from "../../lib/prisma";
 import { writeAuditLog } from "../../lib/audit";
 import { canPublish } from "../programs/publishGate";
+import { applyProgramPublishTransition } from "../status-engine/applyProgramPublishTransition";
 import { buildProgramDedupKey, pickPreferredProgram, type ProgramDedupShape } from "../programs/dedup";
 import { cacheExternalProgramMediaForWeb } from "./mediaCache";
 import {
@@ -15,6 +16,7 @@ import {
   type EventCandidateStatus,
   type SourceType,
 } from "./constants";
+import { SOURCE_LIFECYCLE } from "../sources/sourceRegistry";
 
 type SourceWithOrganizer = Source & {
   organizer: { id: string; displayName: string } | null;
@@ -356,6 +358,7 @@ function getPrimarySourceDiscipline(source: SourceWithOrganizer): string | null 
 
 function isSourceDueForCollection(source: Source, now = new Date()): boolean {
   if (!source.isActive) return false;
+  if (source.lifecycleState === SOURCE_LIFECYCLE.ARCHIVED) return false;
   if (!source.lastCheckedAt) return true;
   const intervalMinutes = Math.max(source.fetchIntervalMinutes, 15);
   return now.getTime() - source.lastCheckedAt.getTime() >= intervalMinutes * 60 * 1000;
@@ -3344,7 +3347,10 @@ export async function runSourceCollection(sourceId: string, actorId: string | nu
   const runId = await createSourceRun(source.id, "collect");
   await prisma.source.update({
     where: { id: source.id },
-    data: { lastCheckedAt: new Date() },
+    data: {
+      lastCheckedAt: new Date(),
+      nextScheduledAt: new Date(Date.now() + Math.max(15, source.fetchIntervalMinutes) * 60 * 1000),
+    },
   });
 
   try {
@@ -3353,7 +3359,7 @@ export async function runSourceCollection(sourceId: string, actorId: string | nu
     await finalizeSourceRun(runId, "success", { itemsFound: items.length, itemsCreated: created });
     await prisma.source.update({
       where: { id: source.id },
-      data: { lastSuccessAt: new Date() },
+      data: { lastSuccessAt: new Date(), lastErrorAt: null, lastErrorSnippet: null },
     });
     return {
       runId,
@@ -3362,8 +3368,16 @@ export async function runSourceCollection(sourceId: string, actorId: string | nu
       created,
     };
   } catch (error) {
+    const errMsg = error instanceof Error ? error.message : String(error);
     await finalizeSourceRun(runId, "failed", {
-      errorMessage: error instanceof Error ? error.message : String(error),
+      errorMessage: errMsg,
+    });
+    await prisma.source.update({
+      where: { id: source.id },
+      data: {
+        lastErrorAt: new Date(),
+        lastErrorSnippet: errMsg.slice(0, 500),
+      },
     });
     throw error;
   }
@@ -3690,13 +3704,23 @@ export async function publishCandidateToDraft(
     if (autoPublishRequested) {
       const publishCheck = await tx.program.findUnique({
         where: { id: program.id },
-        include: { media: true },
+        include: { media: true, organizer: { select: { verificationStatus: true } } },
       });
       if (publishCheck && canPublish(publishCheck).ok) {
-        await tx.program.update({
-          where: { id: program.id },
-          data: { publishStatus: "published" },
+        const pub = await applyProgramPublishTransition({
+          db: tx,
+          programId: program.id,
+          toStatus: "published",
+          actor: { actorId: actorId, actorMarker: actorId ? null : "system:ingestion-auto-publish" },
+          triggerMode: "auto",
+          reason: "ingestion auto publish after canPublish",
+          source: "ingestion/publishCandidateToDraft",
+          idempotencyKey: `ingestion_auto_publish:${candidate.id}:${program.id}`,
+          transitionContext: { ingestionAutoPublish: true },
         });
+        if (!pub.ok) {
+          throw new Error(`ingestion publish transition failed: ${pub.error}`);
+        }
         linkStatus = "published";
       }
     }

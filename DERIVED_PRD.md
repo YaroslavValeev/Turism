@@ -90,4 +90,4 @@
 
 ---
 
-*Source: IMPLEMENTATION_BLUEPRINT, canonical_entity_model, canonical_status_models, first_100_bookings_plan, north_star_tree, decision_log, legal docs.*
+*Source: IMPLEMENTATION_BLUEPRINT, canonical_entity_model, canonical_status_models, first_100_bookings_plan, north_star_tree, decision_log, legal docs, docs/decisions/ADR-005-lead-vs-booking.md.*

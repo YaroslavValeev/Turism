@@ -23,6 +23,7 @@ type Program = {
   startDate: string;
   endDate: string;
   durationDays: number;
+  formatType: string | null;
   levelRequired: string | null;
   riskLevel: string | null;
   priceFromRub: number | null;
@@ -38,14 +39,46 @@ type Program = {
   trustReason: string | null;
   whatHappensAfterBooking: string | null;
   cta: string | null;
-  organizer?: { id: string; displayName: string; verificationStatus: string };
+  packingListNotes: string | null;
+  accommodationNotes: string | null;
+  transportNotes: string | null;
+  sightsNotes: string | null;
+  planBWeatherNotes: string | null;
+  platformTravelTips: string | null;
+  organizer?: {
+    id: string;
+    displayName: string;
+    verificationStatus: string;
+    certificatesSummary?: string | null;
+    insuranceSummary?: string | null;
+    emergencyPlanSummary?: string | null;
+    equipmentSummary?: string | null;
+  };
   media: { id: string; url: string; caption: string | null; mediaType: string }[];
 };
+
+function buildCatalogHref(next: { discipline?: string; country?: string; region?: string }): string {
+  const params = new URLSearchParams();
+  if (next.discipline?.trim()) params.set("discipline", next.discipline.trim());
+  if (next.country?.trim()) params.set("country", next.country.trim());
+  if (next.region?.trim()) params.set("region", next.region.trim());
+  const qs = params.toString();
+  return qs ? `/?${qs}#programs` : "/#programs";
+}
 
 type PublicReview = {
   id: string;
   rating: number;
   comment: string | null;
+  createdAt: string;
+};
+
+type PublicUgc = {
+  id: string;
+  authorName: string;
+  textReview: string;
+  rating: number | null;
+  mediaUrls: string[];
   createdAt: string;
 };
 
@@ -66,15 +99,38 @@ function Prose({ text }: { text: string }) {
   );
 }
 
+function organizerVerificationShort(status: string | null | undefined): string {
+  switch (status) {
+    case "trusted_by_platform":
+      return "trusted (платформа)";
+    case "verified":
+      return "verified (платформа)";
+    case "checked":
+      return "checked (платформа)";
+    case "listed":
+      return "listed";
+    case "paused":
+      return "paused";
+    case "rejected":
+      return "rejected";
+    default:
+      return status ?? "—";
+  }
+}
+
 export default function ProgramPage() {
   const params = useParams();
   const id = params?.id as string;
   const [program, setProgram] = useState<Program | null>(null);
   const [reviews, setReviews] = useState<PublicReview[]>([]);
+  const [ugc, setUgc] = useState<PublicUgc[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
+  const [guestName, setGuestName] = useState("");
   const [guestContact, setGuestContact] = useState("");
   const [notes, setNotes] = useState("");
+  const [confirmInterest, setConfirmInterest] = useState(false);
+  const [idempotencyKey, setIdempotencyKey] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [submitSuccess, setSubmitSuccess] = useState("");
@@ -85,9 +141,10 @@ export default function ProgramPage() {
     (async () => {
       try {
         setLoadError("");
-        const [progRes, revRes] = await Promise.all([
+        const [progRes, revRes, ugcRes] = await Promise.all([
           fetch(`${API_URL}/programs/${id}`),
           fetch(`${API_URL}/reviews/public?programId=${encodeURIComponent(id)}`),
+          fetch(`${API_URL}/public/program-ugc?programId=${encodeURIComponent(id)}`),
         ]);
         if (cancelled) return;
         if (progRes.ok) {
@@ -118,10 +175,17 @@ export default function ProgramPage() {
         } else {
           setReviews([]);
         }
+        if (ugcRes.ok) {
+          const u = await ugcRes.json();
+          setUgc(Array.isArray(u) ? u : []);
+        } else {
+          setUgc([]);
+        }
       } catch {
         if (!cancelled) {
           setProgram(null);
           setReviews([]);
+          setUgc([]);
           setLoadError("Сервис программ временно недоступен. Обновите страницу через несколько секунд.");
         }
       } finally {
@@ -132,6 +196,20 @@ export default function ProgramPage() {
       cancelled = true;
     };
   }, [id]);
+
+  useEffect(() => {
+    if (!program?.id || typeof window === "undefined") return;
+    const storageKey = `mw_booking_idem:${program.id}`;
+    const existing = window.sessionStorage.getItem(storageKey);
+    if (existing) {
+      setIdempotencyKey(existing);
+      return;
+    }
+    const created =
+      typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    window.sessionStorage.setItem(storageKey, created);
+    setIdempotencyKey(created);
+  }, [program?.id]);
 
   const overrides = useMemo(() => (program ? getProgramFieldOverrides(program.title) : {}), [program]);
 
@@ -160,28 +238,41 @@ export default function ProgramPage() {
   const gear = mergeProgramField(program.gearRequirements, overrides.gearRequirements);
   const medical = mergeProgramField(program.medicalLimitations, overrides.medicalLimitations);
   const discipline = getDisciplineDisplay(program.discipline);
+  const disciplineCatalogHref = buildCatalogHref({ discipline: discipline.original });
+  const regionCatalogHref = buildCatalogHref({
+    region: program.exactLocation?.trim() ? `${program.region} · ${program.exactLocation}` : program.region,
+  });
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!guestContact.trim()) return;
+    if (!guestName.trim() || !guestContact.trim() || !confirmInterest || !idempotencyKey.trim()) return;
     setSubmitting(true);
     setSubmitError("");
     setSubmitSuccess("");
     try {
+      const refMatch = typeof document !== "undefined"
+        ? document.cookie.match(/(?:^|;\s*)mw_ref=([^;]+)/)
+        : null;
+      const referralCode = refMatch ? decodeURIComponent(refMatch[1]!) : undefined;
       const res = await fetch(`${API_URL}/bookings`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "X-Idempotency-Key": idempotencyKey.trim() },
         body: JSON.stringify({
           programId: program.id,
+          guestName: guestName.trim(),
           guestContact: guestContact.trim(),
+          confirmInterest: true,
           notes: notes.trim() || undefined,
           sourceChannel: "program_page",
+          idempotencyKey: idempotencyKey.trim(),
+          referralCode,
         }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => null);
         throw new Error(body?.error ?? "Не удалось отправить заявку");
       }
+      const created = await res.json().catch(() => null);
       void trackProductEvent("program_submitted", {
         page_type: "program_detail",
         program_id: program.id,
@@ -190,9 +281,15 @@ export default function ProgramPage() {
         region: program.region,
         traffic_source: "program_page_booking",
       });
+      setGuestName("");
       setGuestContact("");
       setNotes("");
-      setSubmitSuccess("Заявка отправлена. Оператор MyWave свяжется с вами в течение 24 часов.");
+      setConfirmInterest(false);
+      setSubmitSuccess(
+        created?.idempotentReplay
+          ? "Мы уже получили эту заявку — повторная отправка не создаёт дубликат. Если нужно что-то уточнить, напишите в том же чате/контакте."
+          : "Заявка принята. Оператор MyWave свяжется с вами и передаст следующий шаг организатору.",
+      );
     } catch (error) {
       setSubmitError(error instanceof Error ? error.message : "Не удалось отправить заявку");
     } finally {
@@ -205,17 +302,47 @@ export default function ProgramPage() {
   return (
     <main style={{ padding: "clamp(1.5rem, 4vw, 2rem) 0 4rem", background: "var(--mw-bg)" }}>
       <div className="mw-container" style={{ maxWidth: 720 }}>
-        <Link href="/" className="mw-page-back" style={{ color: "var(--mw-accent)" }}>
+        <Link href={disciplineCatalogHref} className="mw-page-back" style={{ color: "var(--mw-accent)" }}>
           ← К каталогу
         </Link>
 
         <header className="mw-program-hero">
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 14 }}>
-            <span className="mw-badge mw-badge--pilot mw-discipline-badge">
+            <Link
+              href={disciplineCatalogHref}
+              className="mw-badge mw-badge--pilot mw-discipline-badge"
+              title="Показать программы по этой дисциплине"
+              onClick={() =>
+                void trackProductEvent("catalog_filter_click", {
+                  page_type: "program_detail",
+                  program_id: program.id,
+                  organizer_id: program.organizer?.id,
+                  filter_type: "discipline",
+                  filter_value: discipline.original,
+                  traffic_source: "program_detail_chip",
+                })
+              }
+            >
               <span>{discipline.original}</span>
               {discipline.translation && <span className="mw-discipline-badge__translation">{discipline.translation}</span>}
-            </span>
-            <span className="mw-badge mw-badge--pilot">{program.region}</span>
+            </Link>
+            <Link
+              href={regionCatalogHref}
+              className="mw-badge mw-badge--pilot"
+              title="Показать программы в этом регионе / локации"
+              onClick={() =>
+                void trackProductEvent("catalog_filter_click", {
+                  page_type: "program_detail",
+                  program_id: program.id,
+                  organizer_id: program.organizer?.id,
+                  filter_type: "region",
+                  filter_value: program.exactLocation?.trim() ? `${program.region} · ${program.exactLocation}` : program.region,
+                  traffic_source: "program_detail_chip",
+                })
+              }
+            >
+              {program.region}
+            </Link>
             {program.levelRequired && <span className="mw-badge mw-badge--soon">Уровень: {getProgramLevelLabel(program.levelRequired)}</span>}
           </div>
           <h1 className="mw-h1" style={{ maxWidth: "none" }}>
@@ -232,7 +359,8 @@ export default function ProgramPage() {
               </span>
             )}
             <span style={{ color: "var(--mw-muted)", fontSize: "0.95rem" }}>
-              {datesLine} · {program.durationDays} дн. · {getProgramLevelLabel(program.levelRequired)}
+              {datesLine} · {program.durationDays} дн.
+              {program.levelRequired ? ` · ${getProgramLevelLabel(program.levelRequired)}` : ""}
             </span>
           </div>
           <a href="#request" className="mw-btn mw-btn--primary">
@@ -253,30 +381,66 @@ export default function ProgramPage() {
           </p>
         </div>
 
+        <SectionBlock title="Ключевые параметры">
+          <div style={{ display: "grid", gap: 10 }}>
+            <p style={{ margin: 0, color: "var(--mw-muted)" }}>
+              <strong style={{ color: "var(--mw-text)" }}>Дисциплина:</strong>{" "}
+              <Link href={disciplineCatalogHref} style={{ color: "var(--mw-accent)" }}>
+                {discipline.translation ? `${discipline.original} / ${discipline.translation}` : discipline.original}
+              </Link>
+            </p>
+            <p style={{ margin: 0, color: "var(--mw-muted)" }}>
+              <strong style={{ color: "var(--mw-text)" }}>Регион / место:</strong>{" "}
+              <Link href={regionCatalogHref} style={{ color: "var(--mw-accent)" }}>
+                {program.exactLocation?.trim() ? `${program.region} · ${program.exactLocation}` : program.region}
+              </Link>
+            </p>
+            <p style={{ margin: 0, color: "var(--mw-muted)" }}>
+              <strong style={{ color: "var(--mw-text)" }}>Даты:</strong> {datesLine}
+            </p>
+            <p style={{ margin: 0, color: "var(--mw-muted)" }}>
+              <strong style={{ color: "var(--mw-text)" }}>Длительность:</strong> {program.durationDays} дн.
+            </p>
+            {program.formatType && (
+              <p style={{ margin: 0, color: "var(--mw-muted)" }}>
+                <strong style={{ color: "var(--mw-text)" }}>Формат:</strong> {program.formatType}
+              </p>
+            )}
+            {program.priceFromRub != null && (
+              <p style={{ margin: 0, color: "var(--mw-muted)" }}>
+                <strong style={{ color: "var(--mw-text)" }}>Стоимость:</strong> от{" "}
+                {program.priceFromRub.toLocaleString("ru-RU")} {program.currency ?? "₽"}
+              </p>
+            )}
+          </div>
+        </SectionBlock>
+
         {audienceFit && (
           <SectionBlock title="Для кого программа">
             <Prose text={audienceFit} />
           </SectionBlock>
         )}
 
-        {itinerary && (
-          <SectionBlock title="По дням">
-            <Prose text={itinerary} />
+        {program.levelRequired && (
+          <SectionBlock title="Уровень подготовки">
+            <p style={{ margin: 0, color: "var(--mw-muted)" }}>
+              <strong style={{ color: "var(--mw-text)" }}>Уровень:</strong> {getProgramLevelLabel(program.levelRequired)}
+            </p>
           </SectionBlock>
         )}
 
         {(program.inclusions || program.exclusions) && (
-          <SectionBlock title="Что включено и что нет">
+          <SectionBlock title="Что включено и что не включено">
             {program.inclusions && (
               <>
-                <h3 className="mw-h3">Включено</h3>
+                <h3 className="mw-h3">Что включено</h3>
                 <Prose text={program.inclusions} />
               </>
             )}
             {program.exclusions && (
               <>
                 <h3 className="mw-h3" style={{ marginTop: program.inclusions ? 16 : 0 }}>
-                  Не включено
+                  Что не включено
                 </h3>
                 <Prose text={program.exclusions} />
               </>
@@ -284,22 +448,143 @@ export default function ProgramPage() {
           </SectionBlock>
         )}
 
-        <SectionBlock title="Уровень и безопасность">
-          <p style={{ margin: "0 0 8px", color: "var(--mw-muted)" }}>
-            <strong style={{ color: "var(--mw-text)" }}>Уровень:</strong> {getProgramLevelLabel(program.levelRequired)}
-          </p>
-          {program.riskLevel && (
-            <p style={{ margin: 0, color: "var(--mw-muted)" }}>
-              <strong style={{ color: "var(--mw-text)" }}>Оценка риска / интенсивности:</strong> {getSeverityLabel(program.riskLevel)}
+        {(program.packingListNotes?.trim() ||
+          program.accommodationNotes?.trim() ||
+          program.transportNotes?.trim() ||
+          program.sightsNotes?.trim() ||
+          program.planBWeatherNotes?.trim()) && (
+          <SectionBlock title="Поездка: практические детали (организатор)">
+            <p style={{ margin: "0 0 14px", color: "var(--mw-muted)", fontSize: "0.95rem", lineHeight: 1.55 }}>
+              Блоки ниже заполняет организатор. Уточняйте спорные моменты напрямую перед оплатой / подтверждением участия.
             </p>
-          )}
-        </SectionBlock>
+            {program.packingListNotes?.trim() && (
+              <>
+                <h3 className="mw-h3">Что взять с собой</h3>
+                <Prose text={program.packingListNotes.trim()} />
+              </>
+            )}
+            {program.accommodationNotes?.trim() && (
+              <>
+                <h3 className="mw-h3" style={{ marginTop: program.packingListNotes?.trim() ? 16 : 0 }}>
+                  Где жить
+                </h3>
+                <Prose text={program.accommodationNotes.trim()} />
+              </>
+            )}
+            {program.transportNotes?.trim() && (
+              <>
+                <h3 className="mw-h3" style={{ marginTop: 16 }}>
+                  Как добраться
+                </h3>
+                <Prose text={program.transportNotes.trim()} />
+              </>
+            )}
+            {program.sightsNotes?.trim() && (
+              <>
+                <h3 className="mw-h3" style={{ marginTop: 16 }}>
+                  Что посмотреть рядом
+                </h3>
+                <Prose text={program.sightsNotes.trim()} />
+              </>
+            )}
+            {program.planBWeatherNotes?.trim() && (
+              <>
+                <h3 className="mw-h3" style={{ marginTop: 16 }}>
+                  План Б (погода и форс-мажор)
+                </h3>
+                <Prose text={program.planBWeatherNotes.trim()} />
+              </>
+            )}
+          </SectionBlock>
+        )}
 
-        {(gear || medical) && (
-          <SectionBlock title="Экипировка и ограничения">
+        {program.platformTravelTips?.trim() && (
+          <section className="mw-content-section">
+            <h2 className="mw-h2">Подсказки MyWave</h2>
+            <div
+              className="mw-card"
+              style={{
+                marginTop: 8,
+                background: "rgba(99, 102, 241, 0.06)",
+                borderColor: "rgba(99, 102, 241, 0.22)",
+              }}
+            >
+              <p style={{ margin: "0 0 10px", color: "var(--mw-muted)", fontSize: "0.92rem", lineHeight: 1.55 }}>
+                Нейтральные ориентиры платформы. Они <strong>не заменяют</strong> ответ организатора и не являются договором.
+              </p>
+              <Prose text={program.platformTravelTips.trim()} />
+            </div>
+          </section>
+        )}
+
+        {itinerary && (
+          <SectionBlock title="Программа / план">
+            <Prose text={itinerary} />
+          </SectionBlock>
+        )}
+
+        {(program.organizerName || program.organizer) && (
+          <SectionBlock title="Организатор">
+            <p style={{ margin: 0, color: "var(--mw-muted)", lineHeight: 1.55 }}>
+              {program.organizerName ?? program.organizer?.displayName}
+            </p>
+            {program.organizer?.verificationStatus && (
+              <p style={{ margin: "10px 0 0", color: "var(--mw-muted)", lineHeight: 1.55 }}>
+                <strong style={{ color: "var(--mw-text)" }}>Статус проверки:</strong>{" "}
+                {organizerVerificationShort(program.organizer.verificationStatus)}
+              </p>
+            )}
+            {(program.organizer?.certificatesSummary?.trim() ||
+              program.organizer?.insuranceSummary?.trim() ||
+              program.organizer?.emergencyPlanSummary?.trim() ||
+              program.organizer?.equipmentSummary?.trim()) && (
+              <div style={{ marginTop: 14 }}>
+                <h3 className="mw-h3">Безопасность и подготовка (по данным организатора)</h3>
+                {program.organizer.certificatesSummary?.trim() && (
+                  <>
+                    <p style={{ margin: "12px 0 4px", fontWeight: 650, color: "var(--mw-text)" }}>Сертификаты / квалификация</p>
+                    <Prose text={program.organizer.certificatesSummary.trim()} />
+                  </>
+                )}
+                {program.organizer.insuranceSummary?.trim() && (
+                  <>
+                    <p style={{ margin: "12px 0 4px", fontWeight: 650, color: "var(--mw-text)" }}>Страхование</p>
+                    <Prose text={program.organizer.insuranceSummary.trim()} />
+                  </>
+                )}
+                {program.organizer.emergencyPlanSummary?.trim() && (
+                  <>
+                    <p style={{ margin: "12px 0 4px", fontWeight: 650, color: "var(--mw-text)" }}>План на случай ЧП</p>
+                    <Prose text={program.organizer.emergencyPlanSummary.trim()} />
+                  </>
+                )}
+                {program.organizer.equipmentSummary?.trim() && (
+                  <>
+                    <p style={{ margin: "12px 0 4px", fontWeight: 650, color: "var(--mw-text)" }}>Оборудование и резерв</p>
+                    <Prose text={program.organizer.equipmentSummary.trim()} />
+                  </>
+                )}
+              </div>
+            )}
+          </SectionBlock>
+        )}
+
+        {program.cancellationRules && (
+          <SectionBlock title="Условия участия / отмены">
+            <Prose text={program.cancellationRules} />
+          </SectionBlock>
+        )}
+
+        {(program.riskLevel || medical || gear) && (
+          <SectionBlock title="Риски / безопасность / ограничения">
+            {program.riskLevel && (
+              <p style={{ margin: "0 0 10px", color: "var(--mw-muted)" }}>
+                <strong style={{ color: "var(--mw-text)" }}>Оценка риска / интенсивности:</strong> {getSeverityLabel(program.riskLevel)}
+              </p>
+            )}
             {gear && (
               <>
-                <h3 className="mw-h3">Экипировка</h3>
+                <h3 className="mw-h3">Экипировка и требования (организатор)</h3>
                 <Prose text={gear} />
               </>
             )}
@@ -314,29 +599,21 @@ export default function ProgramPage() {
           </SectionBlock>
         )}
 
+        {afterBooking && (
+          <SectionBlock title="Что происходит после заявки">
+            <Prose text={afterBooking} />
+          </SectionBlock>
+        )}
+
         {trustReason && (
           <SectionBlock title="Почему этой программе можно доверять">
             <Prose text={trustReason} />
           </SectionBlock>
         )}
 
-        {program.cancellationRules && (
-          <SectionBlock title="Условия отмены">
-            <Prose text={program.cancellationRules} />
-          </SectionBlock>
-        )}
-
-        {afterBooking && (
-          <SectionBlock title="Что будет после заявки">
-            <Prose text={afterBooking} />
-          </SectionBlock>
-        )}
-
-        {(program.organizerName || program.organizer) && (
-          <SectionBlock title="Организатор">
-            <p style={{ margin: 0, color: "var(--mw-muted)", lineHeight: 1.55 }}>
-              {program.organizerName ?? program.organizer?.displayName}
-            </p>
+        {program.cta && (
+          <SectionBlock title="Следующий шаг">
+            <Prose text={program.cta} />
           </SectionBlock>
         )}
 
@@ -354,6 +631,81 @@ export default function ProgramPage() {
               </div>
             ))}
           </SectionBlock>
+        )}
+
+        {ugc.length > 0 && (
+          <section className="mw-content-section">
+            <h2 className="mw-h2">Реальные участники</h2>
+            <p style={{ color: "var(--mw-muted)", margin: "0 0 16px", lineHeight: 1.55 }}>
+              Отзывы и медиа от людей, которые уже завершили поездку. Публикуются после модерации и только с согласием автора.
+            </p>
+            <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+              {ugc.map((entry) => (
+                <li key={entry.id} className="mw-card" style={{ marginBottom: 16 }}>
+                  <p style={{ margin: "0 0 6px", fontWeight: 650 }}>
+                    {entry.authorName}
+                    {entry.rating != null && (
+                      <span style={{ marginLeft: 10, color: "var(--mw-muted)", fontWeight: 500 }}>
+                        {"★".repeat(entry.rating)}
+                      </span>
+                    )}
+                    <span style={{ fontWeight: 500, color: "var(--mw-muted)", marginLeft: 10 }}>
+                      {new Date(entry.createdAt).toLocaleDateString("ru-RU")}
+                    </span>
+                  </p>
+                  <Prose text={entry.textReview} />
+                  {Array.isArray(entry.mediaUrls) && entry.mediaUrls.length > 0 && (
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))",
+                        gap: 8,
+                        marginTop: 12,
+                      }}
+                    >
+                      {entry.mediaUrls.map((url, idx) => {
+                        const isImage = /\.(png|jpe?g|gif|webp|avif)(\?|$)/i.test(url);
+                        if (isImage) {
+                          return (
+                            <a key={idx} href={url} target="_blank" rel="noreferrer">
+                              <img
+                                src={url}
+                                alt={`${entry.authorName} — медиа ${idx + 1}`}
+                                style={{ width: "100%", height: 120, objectFit: "cover", borderRadius: 8 }}
+                                loading="lazy"
+                              />
+                            </a>
+                          );
+                        }
+                        return (
+                          <a
+                            key={idx}
+                            href={url}
+                            target="_blank"
+                            rel="noreferrer"
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              height: 120,
+                              border: "1px dashed var(--mw-border, #d1d5db)",
+                              borderRadius: 8,
+                              fontSize: 13,
+                              color: "var(--mw-accent)",
+                              padding: 8,
+                              textAlign: "center",
+                            }}
+                          >
+                            Медиафайл
+                          </a>
+                        );
+                      })}
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </section>
         )}
 
         <section className="mw-content-section">
@@ -388,6 +740,19 @@ export default function ProgramPage() {
           {submitSuccess && <p style={{ color: "#047857", marginBottom: 12, fontWeight: 600 }}>{submitSuccess}</p>}
           <form onSubmit={handleSubmit}>
             <div className="mw-field" style={{ marginBottom: 16 }}>
+              <label htmlFor="guestName">Как к вам обращаться</label>
+              <input
+                id="guestName"
+                className="mw-input"
+                style={{ width: "100%", minWidth: 0 }}
+                value={guestName}
+                onChange={(e) => setGuestName(e.target.value)}
+                placeholder="Имя или короткое обращение"
+                disabled={submitting}
+                autoComplete="name"
+              />
+            </div>
+            <div className="mw-field" style={{ marginBottom: 16 }}>
               <label htmlFor="guestContact">Телефон, Telegram или email</label>
               <input
                 id="guestContact"
@@ -412,11 +777,28 @@ export default function ProgramPage() {
                 disabled={submitting}
               />
             </div>
-            <button type="submit" disabled={submitting || !guestContact.trim()} className="mw-btn mw-btn--primary">
+            <label className="mw-field" style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 18 }}>
+              <input
+                type="checkbox"
+                checked={confirmInterest}
+                onChange={(e) => setConfirmInterest(e.target.checked)}
+                disabled={submitting}
+                style={{ marginTop: 4 }}
+              />
+              <span style={{ color: "var(--mw-muted)", lineHeight: 1.55 }}>
+                Подтверждаю, что хочу узнать детали участия именно в этой программе и согласен(на) на связь по указанному контакту.
+              </span>
+            </label>
+            <button
+              type="submit"
+              disabled={submitting || !guestName.trim() || !guestContact.trim() || !confirmInterest || !idempotencyKey.trim()}
+              className="mw-btn mw-btn--primary"
+            >
               {submitting ? "Отправляем…" : "Отправить заявку"}
             </button>
             <p className="mw-form-note">
-              После отправки мы подтверждаем детали участия и следующий шаг по бронированию.
+              После отправки оператор уточнит детали и передаст следующий шаг организатору. Повторная отправка с этой страницы не создаёт дубликат
+              заявки.
             </p>
           </form>
         </section>

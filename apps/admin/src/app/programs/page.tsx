@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { Fragment, Suspense, useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { adminJson } from "../../lib/admin";
 import {
   PILOT_SCOPE_LABEL,
@@ -15,6 +16,7 @@ import {
   getSeverityLabel,
   isPilotProgramScope,
 } from "@mywave/shared-types";
+import { ProgramStatusTimelineBlock } from "../../components/ProgramStatusTimelineBlock";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 
@@ -38,6 +40,8 @@ type Program = {
   discipline: string;
   region: string;
   publishStatus: string;
+  /** С сервера (?all=1): допустимые следующие publishStatus (policy). */
+  nextPublishStatuses?: string[];
   intakeSource: string | null;
   startDate: string;
   endDate: string;
@@ -47,7 +51,165 @@ type Program = {
   isStarred: boolean;
   media: unknown[];
   organizer?: { id: string; displayName: string; verificationStatus: string };
+  packingListNotes?: string | null;
+  accommodationNotes?: string | null;
+  transportNotes?: string | null;
+  sightsNotes?: string | null;
+  planBWeatherNotes?: string | null;
+  platformTravelTips?: string | null;
+  exactLocation?: string | null;
+  formatType?: string | null;
+  levelRequired?: string | null;
+  riskLevel?: string | null;
+  currency?: string | null;
+  priceFromRub?: number | null;
+  audienceFit?: string | null;
+  exclusions?: string | null;
+  inclusions?: string | null;
+  gearRequirements?: string | null;
+  medicalLimitations?: string | null;
+  cancellationRules?: string | null;
+  itineraryDayByDay?: string | null;
+  organizerName?: string | null;
+  trustReason?: string | null;
+  reviewsSummary?: string | null;
+  whatHappensAfterBooking?: string | null;
+  cta?: string | null;
 };
+
+function publishStatusSelectOptions(program: Program): readonly string[] {
+  const next = program.nextPublishStatuses;
+  if (Array.isArray(next)) {
+    return Array.from(new Set<string>([program.publishStatus, ...next]));
+  }
+  return PROGRAM_PUBLISH_STATUSES;
+}
+
+type TravelCardDraft = {
+  packingListNotes: string;
+  accommodationNotes: string;
+  transportNotes: string;
+  sightsNotes: string;
+  planBWeatherNotes: string;
+  platformTravelTips: string;
+};
+
+function strNorm(s: string | null | undefined): string {
+  return typeof s === "string" ? s.trim() : "";
+}
+
+function travelDraftFromProgram(p: Program): TravelCardDraft {
+  return {
+    packingListNotes: strNorm(p.packingListNotes),
+    accommodationNotes: strNorm(p.accommodationNotes),
+    transportNotes: strNorm(p.transportNotes),
+    sightsNotes: strNorm(p.sightsNotes),
+    planBWeatherNotes: strNorm(p.planBWeatherNotes),
+    platformTravelTips: strNorm(p.platformTravelTips),
+  };
+}
+
+/** Редактируемые через PATCH без смены дат (длительность считается отдельно). */
+type ProgramContentDraft = {
+  title: string;
+  discipline: string;
+  region: string;
+  exactLocation: string;
+  formatType: string;
+  levelRequired: string;
+  riskLevel: string;
+  currency: string;
+  priceFromRub: string;
+  audienceFit: string;
+  exclusions: string;
+  inclusions: string;
+  gearRequirements: string;
+  medicalLimitations: string;
+  cancellationRules: string;
+  itineraryDayByDay: string;
+  organizerName: string;
+  trustReason: string;
+  reviewsSummary: string;
+  whatHappensAfterBooking: string;
+  cta: string;
+};
+
+function contentDraftFromProgram(p: Program): ProgramContentDraft {
+  return {
+    title: typeof p.title === "string" ? p.title : "",
+    discipline: typeof p.discipline === "string" ? p.discipline : "",
+    region: typeof p.region === "string" ? p.region : "",
+    exactLocation: strNorm(p.exactLocation),
+    formatType: strNorm(p.formatType),
+    levelRequired: strNorm(p.levelRequired),
+    riskLevel: strNorm(p.riskLevel),
+    currency: strNorm(p.currency) || "RUB",
+    priceFromRub: p.priceFromRub != null && !Number.isNaN(Number(p.priceFromRub)) ? String(p.priceFromRub) : "",
+    audienceFit: strNorm(p.audienceFit),
+    exclusions: strNorm(p.exclusions),
+    inclusions: strNorm(p.inclusions),
+    gearRequirements: strNorm(p.gearRequirements),
+    medicalLimitations: p.medicalLimitations == null ? "" : String(p.medicalLimitations),
+    cancellationRules: strNorm(p.cancellationRules),
+    itineraryDayByDay: strNorm(p.itineraryDayByDay),
+    organizerName: strNorm(p.organizerName),
+    trustReason: strNorm(p.trustReason),
+    reviewsSummary: strNorm(p.reviewsSummary),
+    whatHappensAfterBooking: strNorm(p.whatHappensAfterBooking),
+    cta: strNorm(p.cta),
+  };
+}
+
+function programContentDirty(p: Program, d: ProgramContentDraft): boolean {
+  const cur = contentDraftFromProgram(p);
+  return (Object.keys(cur) as (keyof ProgramContentDraft)[]).some((k) => cur[k] !== d[k]);
+}
+
+function parsePriceDraft(raw: string): number | null {
+  const t = raw.trim();
+  if (t === "") return null;
+  const n = Number(t);
+  return Number.isFinite(n) && n >= 0 ? n : NaN;
+}
+
+/** Значение для `<input type="date">` из ISO строки API. */
+function isoToDateInput(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+type ProgramDateDraft = {
+  startDate: string;
+  endDate: string;
+};
+
+function dateDraftFromProgram(p: Program): ProgramDateDraft {
+  return { startDate: isoToDateInput(p.startDate), endDate: isoToDateInput(p.endDate) };
+}
+
+/** Совпадает с сервером `inclusiveDurationDaysUTC` при PATCH дат. */
+function previewInclusiveDays(startYmd: string, endYmd: string): number | null {
+  if (!startYmd || !endYmd) return null;
+  const ps = startYmd.split("-").map(Number);
+  const pe = endYmd.split("-").map(Number);
+  if (ps.length !== 3 || pe.length !== 3 || ps.some((n) => Number.isNaN(n)) || pe.some((n) => Number.isNaN(n))) {
+    return null;
+  }
+  const [ys, ms, ds] = ps;
+  const [ye, me, de] = pe;
+  const s = Date.UTC(ys, ms - 1, ds);
+  const e = Date.UTC(ye, me - 1, de);
+  if (e < s) return null;
+  return Math.floor((e - s) / 86400000) + 1;
+}
+
+function programDateDirty(p: Program, d: ProgramDateDraft): boolean {
+  return isoToDateInput(p.startDate) !== d.startDate.trim() || isoToDateInput(p.endDate) !== d.endDate.trim();
+}
 
 type ProgramForm = {
   organizerId: string;
@@ -58,7 +220,6 @@ type ProgramForm = {
   exactLocation: string;
   startDate: string;
   endDate: string;
-  durationDays: string;
   levelRequired: string;
   riskLevel: string;
   capacityTotal: string;
@@ -70,6 +231,12 @@ type ProgramForm = {
   itineraryDayByDay: string;
   inclusions: string;
   priceFromRub: string;
+  packingListNotes: string;
+  accommodationNotes: string;
+  transportNotes: string;
+  sightsNotes: string;
+  planBWeatherNotes: string;
+  platformTravelTips: string;
 };
 
 type MediaDraft = {
@@ -147,7 +314,8 @@ function moderationPriorityForProgram(score: ProgramScoreSnap | undefined): { la
   return { label: "P3 · monitor", color: "#1d6f42" };
 }
 
-export default function AdminProgramsPage() {
+function AdminProgramsPageInner() {
+  const searchParams = useSearchParams();
   const [programs, setPrograms] = useState<Program[]>([]);
   const [programScores, setProgramScores] = useState<Record<string, ProgramScoreSnap>>({});
   const [organizers, setOrganizers] = useState<OrganizerOption[]>([]);
@@ -166,6 +334,12 @@ export default function AdminProgramsPage() {
   const [savingAvailabilityId, setSavingAvailabilityId] = useState<string | null>(null);
   const [spotlightDrafts, setSpotlightDrafts] = useState<Record<string, SpotlightDraft>>({});
   const [savingSpotlightId, setSavingSpotlightId] = useState<string | null>(null);
+  const [travelCardDrafts, setTravelCardDrafts] = useState<Record<string, TravelCardDraft>>({});
+  const [savingTravelId, setSavingTravelId] = useState<string | null>(null);
+  const [programContentDrafts, setProgramContentDrafts] = useState<Record<string, ProgramContentDraft>>({});
+  const [savingContentId, setSavingContentId] = useState<string | null>(null);
+  const [programDateDrafts, setProgramDateDrafts] = useState<Record<string, ProgramDateDraft>>({});
+  const [savingDatesId, setSavingDatesId] = useState<string | null>(null);
   const [createForm, setCreateForm] = useState<ProgramForm>({
     organizerId: "",
     intakeSource: "admin_manual",
@@ -175,7 +349,6 @@ export default function AdminProgramsPage() {
     exactLocation: "",
     startDate: "",
     endDate: "",
-    durationDays: "3",
     levelRequired: "intermediate",
     riskLevel: "medium",
     capacityTotal: "",
@@ -187,9 +360,30 @@ export default function AdminProgramsPage() {
     itineraryDayByDay: "День 1: знакомство и брифинг. День 2-3: катание, разбор техники, восстановление.",
     inclusions: "Тренировки, сопровождение организатора, координация от MyWave.",
     priceFromRub: "",
+    packingListNotes: "",
+    accommodationNotes: "",
+    transportNotes: "",
+    sightsNotes: "",
+    planBWeatherNotes: "",
+    platformTravelTips: "",
   });
 
   const getToken = () => (typeof window !== "undefined" ? window.localStorage.getItem("admin_token") : null);
+
+  useEffect(() => {
+    const pid = searchParams?.get("program")?.trim();
+    if (!pid || programs.length === 0) return;
+    const el = document.getElementById(`admin-program-${pid}`);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      (el as HTMLElement).style.outline = "2px solid #0d9488";
+      const t = window.setTimeout(() => {
+        (el as HTMLElement).style.outline = "";
+      }, 2600);
+      return () => window.clearTimeout(t);
+    }
+    return undefined;
+  }, [searchParams, programs]);
 
   const loadPrograms = async () => {
     const token = getToken();
@@ -235,6 +429,9 @@ export default function AdminProgramsPage() {
           ]),
         ),
       );
+      setTravelCardDrafts(Object.fromEntries(list.map((program) => [program.id, travelDraftFromProgram(program)])));
+      setProgramContentDrafts(Object.fromEntries(list.map((program) => [program.id, contentDraftFromProgram(program)])));
+      setProgramDateDrafts(Object.fromEntries(list.map((program) => [program.id, dateDraftFromProgram(program)])));
     } catch (fetchError) {
       setError(fetchError instanceof Error ? fetchError.message : String(fetchError));
     } finally {
@@ -299,6 +496,13 @@ export default function AdminProgramsPage() {
     setError("");
     setMessage("");
     try {
+      if (!createForm.startDate.trim() || !createForm.endDate.trim()) {
+        throw new Error("Укажите даты старта и окончания.");
+      }
+      const createDurationPreview = previewInclusiveDays(createForm.startDate.trim(), createForm.endDate.trim());
+      if (createDurationPreview == null) {
+        throw new Error("Некорректный диапазон дат: конец раньше начала.");
+      }
       const organizer = organizers.find((item) => item.id === createForm.organizerId);
       const res = await fetch(`${API_URL}/programs`, {
         method: "POST",
@@ -314,7 +518,6 @@ export default function AdminProgramsPage() {
           exactLocation: createForm.exactLocation.trim() || undefined,
           startDate: createForm.startDate,
           endDate: createForm.endDate,
-          durationDays: Number(createForm.durationDays),
           levelRequired: createForm.levelRequired.trim(),
           riskLevel: createForm.riskLevel.trim(),
           capacityTotal: createForm.capacityTotal ? Number(createForm.capacityTotal) : null,
@@ -328,13 +531,22 @@ export default function AdminProgramsPage() {
           priceFromRub: createForm.priceFromRub ? Number(createForm.priceFromRub) : undefined,
           organizerName: organizer?.displayName,
           intakeSource: createForm.intakeSource || undefined,
+          packingListNotes: createForm.packingListNotes.trim() || undefined,
+          accommodationNotes: createForm.accommodationNotes.trim() || undefined,
+          transportNotes: createForm.transportNotes.trim() || undefined,
+          sightsNotes: createForm.sightsNotes.trim() || undefined,
+          planBWeatherNotes: createForm.planBWeatherNotes.trim() || undefined,
+          platformTravelTips: createForm.platformTravelTips.trim() || undefined,
         }),
       });
       const body = await res.json().catch(() => null);
       if (!res.ok) {
         throw new Error(body?.error ?? "Не удалось создать программу");
       }
-      setMessage(`Программа создана в статусе «${getProgramPublishStatusLabel("draft")}».`);
+      const savedDays = typeof body?.durationDays === "number" ? body.durationDays : createDurationPreview;
+      setMessage(
+        `Программа создана в статусе «${getProgramPublishStatusLabel("draft")}». Длительность по датам: ${savedDays} дн. (считает API).`,
+      );
       setCreateForm((current) => ({
         ...current,
         title: "",
@@ -372,7 +584,9 @@ export default function AdminProgramsPage() {
       const body = await res.json().catch(() => null);
       if (!res.ok) {
         const missing = Array.isArray(body?.missing) ? `: ${body.missing.join(", ")}` : "";
-        throw new Error((body?.error ?? "Не удалось сменить статус публикации") + missing);
+        const transition =
+          body?.from != null && body?.to != null ? ` (${String(body.from)} → ${String(body.to)})` : "";
+        throw new Error((body?.error ?? "Не удалось сменить статус публикации") + missing + transition);
       }
       setMessage("Статус публикации обновлён.");
       await loadPrograms();
@@ -478,6 +692,150 @@ export default function AdminProgramsPage() {
     }
   };
 
+  const handleSaveProgramContent = async (programId: string) => {
+    const token = getToken();
+    if (!token) return;
+    const program = programs.find((p) => p.id === programId);
+    if (!program) return;
+    const draft = programContentDrafts[programId] ?? contentDraftFromProgram(program);
+    if (!draft.title.trim() || !draft.discipline.trim() || !draft.region.trim()) {
+      setError("Название, дисциплина и регион не могут быть пустыми.");
+      return;
+    }
+    const priceVal = parsePriceDraft(draft.priceFromRub);
+    if (Number.isNaN(priceVal)) {
+      setError("Цена «от» должна быть пустой или неотрицательным числом.");
+      return;
+    }
+    setSavingContentId(programId);
+    setError("");
+    setMessage("");
+    try {
+      const res = await fetch(`${API_URL}/programs/${programId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          title: draft.title.trim(),
+          discipline: draft.discipline.trim(),
+          region: draft.region.trim(),
+          exactLocation: draft.exactLocation.trim() || null,
+          formatType: draft.formatType.trim() || null,
+          levelRequired: draft.levelRequired.trim() || null,
+          riskLevel: draft.riskLevel.trim() || null,
+          currency: draft.currency.trim() || "RUB",
+          priceFromRub: priceVal,
+          audienceFit: draft.audienceFit.trim() || null,
+          exclusions: draft.exclusions.trim() || null,
+          inclusions: draft.inclusions.trim() || null,
+          gearRequirements: draft.gearRequirements.trim() || null,
+          medicalLimitations: draft.medicalLimitations,
+          cancellationRules: draft.cancellationRules.trim() || null,
+          itineraryDayByDay: draft.itineraryDayByDay.trim() || null,
+          organizerName: draft.organizerName.trim() || null,
+          trustReason: draft.trustReason.trim() || null,
+          reviewsSummary: draft.reviewsSummary.trim() || null,
+          whatHappensAfterBooking: draft.whatHappensAfterBooking.trim() || null,
+          cta: draft.cta.trim() || null,
+        }),
+      });
+      const body = await res.json().catch(() => null);
+      if (!res.ok) {
+        throw new Error(body?.error ?? "Не удалось сохранить контент программы");
+      }
+      setMessage("Контент карточки программы обновлён.");
+      await loadPrograms();
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : "Не удалось сохранить контент программы");
+    } finally {
+      setSavingContentId(null);
+    }
+  };
+
+  const handleSaveProgramDates = async (programId: string) => {
+    const token = getToken();
+    if (!token) return;
+    const program = programs.find((p) => p.id === programId);
+    if (!program) return;
+    const draft = programDateDrafts[programId] ?? dateDraftFromProgram(program);
+    if (!draft.startDate.trim() || !draft.endDate.trim()) {
+      setError("Укажите дату старта и окончания.");
+      return;
+    }
+    const preview = previewInclusiveDays(draft.startDate.trim(), draft.endDate.trim());
+    if (preview == null) {
+      setError("Некорректный диапазон дат: конец раньше начала или неверный формат.");
+      return;
+    }
+    setSavingDatesId(programId);
+    setError("");
+    setMessage("");
+    try {
+      const res = await fetch(`${API_URL}/programs/${programId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          startDate: draft.startDate.trim(),
+          endDate: draft.endDate.trim(),
+        }),
+      });
+      const body = await res.json().catch(() => null);
+      if (!res.ok) {
+        throw new Error(body?.error ?? "Не удалось сохранить даты");
+      }
+      const saved = typeof body?.durationDays === "number" ? body.durationDays : preview;
+      setMessage(`Даты обновлены; длительность в БД: ${saved} дн. (совпадает с календарём, включительно).`);
+      await loadPrograms();
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : "Не удалось сохранить даты");
+    } finally {
+      setSavingDatesId(null);
+    }
+  };
+
+  const handleSaveTravelCard = async (programId: string) => {
+    const token = getToken();
+    if (!token) return;
+    const program = programs.find((p) => p.id === programId);
+    if (!program) return;
+    const draft = travelCardDrafts[programId] ?? travelDraftFromProgram(program);
+    setSavingTravelId(programId);
+    setError("");
+    setMessage("");
+    try {
+      const res = await fetch(`${API_URL}/programs/${programId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          packingListNotes: draft.packingListNotes.trim() || null,
+          accommodationNotes: draft.accommodationNotes.trim() || null,
+          transportNotes: draft.transportNotes.trim() || null,
+          sightsNotes: draft.sightsNotes.trim() || null,
+          planBWeatherNotes: draft.planBWeatherNotes.trim() || null,
+          platformTravelTips: draft.platformTravelTips.trim() || null,
+        }),
+      });
+      const body = await res.json().catch(() => null);
+      if (!res.ok) {
+        throw new Error(body?.error ?? "Не удалось сохранить блок карточки тура");
+      }
+      setMessage("Поля «карточка тура» обновлены.");
+      await loadPrograms();
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : "Не удалось сохранить блок карточки тура");
+    } finally {
+      setSavingTravelId(null);
+    }
+  };
+
   const handleSaveSpotlight = async (programId: string) => {
     const token = getToken();
     if (!token) return;
@@ -546,7 +904,25 @@ export default function AdminProgramsPage() {
           <input value={createForm.exactLocation} onChange={(e) => setCreateForm((current) => ({ ...current, exactLocation: e.target.value }))} placeholder="Точная локация" style={{ padding: 10 }} />
           <input type="date" value={createForm.startDate} onChange={(e) => setCreateForm((current) => ({ ...current, startDate: e.target.value }))} style={{ padding: 10 }} />
           <input type="date" value={createForm.endDate} onChange={(e) => setCreateForm((current) => ({ ...current, endDate: e.target.value }))} style={{ padding: 10 }} />
-          <input value={createForm.durationDays} onChange={(e) => setCreateForm((current) => ({ ...current, durationDays: e.target.value }))} placeholder="Длительность, дней" style={{ padding: 10 }} />
+          <div style={{ padding: "10px 4px", fontSize: 13, color: "#444", gridColumn: "span 1" }}>
+            {(() => {
+              const prev =
+                createForm.startDate.trim() && createForm.endDate.trim()
+                  ? previewInclusiveDays(createForm.startDate.trim(), createForm.endDate.trim())
+                  : null;
+              if (!createForm.startDate.trim() && !createForm.endDate.trim()) {
+                return <span>Длительность рассчитывается автоматически по датам (включительно).</span>;
+              }
+              if (prev == null) {
+                return <span style={{ color: "#b42318" }}>Исправьте даты: окончание не может быть раньше старта.</span>;
+              }
+              return (
+                <span>
+                  Предпросмотр: <strong>{prev}</strong> дн. — в БД запишет API (вручную durationDays не задаётся).
+                </span>
+              );
+            })()}
+          </div>
           <select value={createForm.levelRequired} onChange={(e) => setCreateForm((current) => ({ ...current, levelRequired: e.target.value }))} style={{ padding: 10 }}>
             {LEVEL_OPTIONS.map((level) => (
               <option key={level} value={level}>{getProgramLevelLabel(level)}</option>
@@ -573,6 +949,54 @@ export default function AdminProgramsPage() {
           <textarea value={createForm.cancellationRules} onChange={(e) => setCreateForm((current) => ({ ...current, cancellationRules: e.target.value }))} placeholder="Правила отмены" rows={3} style={{ padding: 10 }} />
           <textarea value={createForm.itineraryDayByDay} onChange={(e) => setCreateForm((current) => ({ ...current, itineraryDayByDay: e.target.value }))} placeholder="Программа по дням" rows={3} style={{ padding: 10 }} />
           <textarea value={createForm.inclusions} onChange={(e) => setCreateForm((current) => ({ ...current, inclusions: e.target.value }))} placeholder="Что включено" rows={3} style={{ padding: 10 }} />
+          <div style={{ gridColumn: "1 / -1", marginTop: 8 }}>
+            <h3 style={{ margin: "0 0 8px", fontSize: 16 }}>Карточка тура: логистика (опционально)</h3>
+            <p style={{ margin: "0 0 10px", fontSize: 13, color: "#555" }}>
+              Поля ниже попадают в публичную карточку, если заполнены. Редактирование существующих программ — через PATCH API или будущий экран карточки.
+            </p>
+          </div>
+          <textarea
+            value={createForm.packingListNotes}
+            onChange={(e) => setCreateForm((current) => ({ ...current, packingListNotes: e.target.value }))}
+            placeholder="Что взять с собой (текст организатора)"
+            rows={2}
+            style={{ padding: 10, gridColumn: "1 / -1" }}
+          />
+          <textarea
+            value={createForm.accommodationNotes}
+            onChange={(e) => setCreateForm((current) => ({ ...current, accommodationNotes: e.target.value }))}
+            placeholder="Где жить"
+            rows={2}
+            style={{ padding: 10, gridColumn: "1 / -1" }}
+          />
+          <textarea
+            value={createForm.transportNotes}
+            onChange={(e) => setCreateForm((current) => ({ ...current, transportNotes: e.target.value }))}
+            placeholder="Как добраться"
+            rows={2}
+            style={{ padding: 10, gridColumn: "1 / -1" }}
+          />
+          <textarea
+            value={createForm.sightsNotes}
+            onChange={(e) => setCreateForm((current) => ({ ...current, sightsNotes: e.target.value }))}
+            placeholder="Что посмотреть рядом"
+            rows={2}
+            style={{ padding: 10, gridColumn: "1 / -1" }}
+          />
+          <textarea
+            value={createForm.planBWeatherNotes}
+            onChange={(e) => setCreateForm((current) => ({ ...current, planBWeatherNotes: e.target.value }))}
+            placeholder="План Б (погода / форс-мажор)"
+            rows={2}
+            style={{ padding: 10, gridColumn: "1 / -1" }}
+          />
+          <textarea
+            value={createForm.platformTravelTips}
+            onChange={(e) => setCreateForm((current) => ({ ...current, platformTravelTips: e.target.value }))}
+            placeholder="Мягкие подсказки платформы (необязательно)"
+            rows={2}
+            style={{ padding: 10, gridColumn: "1 / -1" }}
+          />
           <button
             type="submit"
             disabled={creating || !createForm.organizerId || !createForm.title.trim() || !createForm.startDate || !createForm.endDate}
@@ -633,12 +1057,38 @@ export default function AdminProgramsPage() {
               const scoreMeta = programBandMeta(score?.scoreBand ?? "unknown");
               const hints = programHints(program, score);
               const priority = moderationPriorityForProgram(score);
+              const travelDraft = travelCardDrafts[program.id] ?? travelDraftFromProgram(program);
+              const travelDirty =
+                strNorm(program.packingListNotes) !== travelDraft.packingListNotes.trim()
+                || strNorm(program.accommodationNotes) !== travelDraft.accommodationNotes.trim()
+                || strNorm(program.transportNotes) !== travelDraft.transportNotes.trim()
+                || strNorm(program.sightsNotes) !== travelDraft.sightsNotes.trim()
+                || strNorm(program.planBWeatherNotes) !== travelDraft.planBWeatherNotes.trim()
+                || strNorm(program.platformTravelTips) !== travelDraft.platformTravelTips.trim();
+              const contentDraft = programContentDrafts[program.id] ?? contentDraftFromProgram(program);
+              const contentDirty = programContentDirty(program, contentDraft);
+              const dateDraft = programDateDrafts[program.id] ?? dateDraftFromProgram(program);
+              const datesDirty = programDateDirty(program, dateDraft);
+              const datesPreview = previewInclusiveDays(dateDraft.startDate.trim(), dateDraft.endDate.trim());
+              const datesRangeInvalid =
+                Boolean(dateDraft.startDate.trim()) &&
+                Boolean(dateDraft.endDate.trim()) &&
+                datesPreview == null;
+              const dateFieldErrorStyle = datesRangeInvalid
+                ? { outline: "2px solid #b42318", outlineOffset: 2 } as const
+                : {};
               return (
-                <tr key={program.id} style={{ borderBottom: "1px solid #ccc" }}>
+                <Fragment key={program.id}>
+                <tr id={`admin-program-${program.id}`} style={{ borderBottom: "1px solid #ccc" }}>
                   <td style={{ padding: 8 }}>
                     <strong>{program.isStarred ? "⭐ " : ""}{program.title}</strong>
                     <div style={{ color: "#666", fontSize: 12 }}>
                       {program.organizer?.displayName ?? "—"} · {program.discipline}
+                    </div>
+                    <div style={{ marginTop: 6, fontSize: 12 }}>
+                      <Link href={`/admin/economics/programs/${program.id}`}>Economics / guardrails</Link>
+                      {" · "}
+                      <Link href={`/admin/conversion-drafts?programId=${encodeURIComponent(program.id)}`}>Conversion drafts</Link>
                     </div>
                   </td>
                   <td style={{ padding: 8, fontSize: 13, color: "#444", whiteSpace: "nowrap" }}>
@@ -769,7 +1219,7 @@ export default function AdminProgramsPage() {
                       onChange={(e) => setStatusDrafts((current) => ({ ...current, [program.id]: e.target.value }))}
                       style={{ padding: 6, minWidth: 180 }}
                     >
-                      {PROGRAM_PUBLISH_STATUSES.map((status) => (
+                      {publishStatusSelectOptions(program).map((status) => (
                         <option key={status} value={status}>{getProgramPublishStatusLabel(status)}</option>
                       ))}
                     </select>
@@ -788,6 +1238,7 @@ export default function AdminProgramsPage() {
                     >
                       {savingStatusId === program.id ? "Сохраняем..." : "Сохранить статус"}
                     </button>
+                    <ProgramStatusTimelineBlock programId={program.id} />
                     <div style={{ display: "grid", gap: 8 }}>
                       <input
                         value={mediaDraft.url}
@@ -827,6 +1278,467 @@ export default function AdminProgramsPage() {
                     </div>
                   </td>
                 </tr>
+                <tr style={{ borderBottom: "1px solid #ccc" }}>
+                  <td colSpan={11} style={{ padding: "10px 14px", background: "#f8f9fa", verticalAlign: "top" }}>
+                    <details>
+                      <summary style={{ cursor: "pointer", fontWeight: 600, fontSize: 14 }}>
+                        Карточка тура: логистика и подсказки платформы
+                      </summary>
+                      <p style={{ margin: "10px 0 8px", fontSize: 13, color: "#555", maxWidth: "80ch" }}>
+                        Тексты уходят в публичную страницу программы (если заполнены). Пустые поля снимают блок на сайте.
+                      </p>
+                      <div style={{ display: "grid", gap: 8, maxWidth: 900 }}>
+                        <label style={{ fontSize: 12, fontWeight: 600 }}>Что взять с собой</label>
+                        <textarea
+                          value={travelDraft.packingListNotes}
+                          onChange={(e) =>
+                            setTravelCardDrafts((current) => ({
+                              ...current,
+                              [program.id]: { ...travelDraft, packingListNotes: e.target.value },
+                            }))
+                          }
+                          rows={2}
+                          style={{ padding: 8, width: "100%" }}
+                        />
+                        <label style={{ fontSize: 12, fontWeight: 600 }}>Где жить</label>
+                        <textarea
+                          value={travelDraft.accommodationNotes}
+                          onChange={(e) =>
+                            setTravelCardDrafts((current) => ({
+                              ...current,
+                              [program.id]: { ...travelDraft, accommodationNotes: e.target.value },
+                            }))
+                          }
+                          rows={2}
+                          style={{ padding: 8, width: "100%" }}
+                        />
+                        <label style={{ fontSize: 12, fontWeight: 600 }}>Как добраться</label>
+                        <textarea
+                          value={travelDraft.transportNotes}
+                          onChange={(e) =>
+                            setTravelCardDrafts((current) => ({
+                              ...current,
+                              [program.id]: { ...travelDraft, transportNotes: e.target.value },
+                            }))
+                          }
+                          rows={2}
+                          style={{ padding: 8, width: "100%" }}
+                        />
+                        <label style={{ fontSize: 12, fontWeight: 600 }}>Что посмотреть рядом</label>
+                        <textarea
+                          value={travelDraft.sightsNotes}
+                          onChange={(e) =>
+                            setTravelCardDrafts((current) => ({
+                              ...current,
+                              [program.id]: { ...travelDraft, sightsNotes: e.target.value },
+                            }))
+                          }
+                          rows={2}
+                          style={{ padding: 8, width: "100%" }}
+                        />
+                        <label style={{ fontSize: 12, fontWeight: 600 }}>План Б (погода / форс-мажор)</label>
+                        <textarea
+                          value={travelDraft.planBWeatherNotes}
+                          onChange={(e) =>
+                            setTravelCardDrafts((current) => ({
+                              ...current,
+                              [program.id]: { ...travelDraft, planBWeatherNotes: e.target.value },
+                            }))
+                          }
+                          rows={2}
+                          style={{ padding: 8, width: "100%" }}
+                        />
+                        <label style={{ fontSize: 12, fontWeight: 600 }}>Подсказки платформы (мягкие)</label>
+                        <textarea
+                          value={travelDraft.platformTravelTips}
+                          onChange={(e) =>
+                            setTravelCardDrafts((current) => ({
+                              ...current,
+                              [program.id]: { ...travelDraft, platformTravelTips: e.target.value },
+                            }))
+                          }
+                          rows={2}
+                          style={{ padding: 8, width: "100%" }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleSaveTravelCard(program.id)}
+                          disabled={savingTravelId === program.id || !travelDirty}
+                          style={{ padding: "8px 12px", justifySelf: "start" }}
+                        >
+                          {savingTravelId === program.id ? "Сохраняем…" : "Сохранить блок карточки"}
+                        </button>
+                      </div>
+                    </details>
+                  </td>
+                </tr>
+                <tr style={{ borderBottom: "1px solid #ccc" }}>
+                  <td colSpan={11} style={{ padding: "10px 14px", background: "#fffefb", verticalAlign: "top" }}>
+                    <details>
+                      <summary style={{ cursor: "pointer", fontWeight: 600, fontSize: 14 }}>
+                        Контент карточки и ключевые поля (без дат)
+                      </summary>
+                      <p style={{ margin: "10px 0 8px", fontSize: 13, color: "#555", maxWidth: "90ch" }}>
+                        Даты здесь не меняются — правьте их в блоке «Даты поездки». <code>durationDays</code> всегда считает API по датам (включительно). Остальное уходит в публичную карточку через PATCH.
+                      </p>
+                      <div style={{ display: "grid", gap: 10, maxWidth: 960 }}>
+                        <label style={{ fontSize: 12, fontWeight: 600 }}>Название</label>
+                        <input
+                          value={contentDraft.title}
+                          onChange={(e) =>
+                            setProgramContentDrafts((current) => ({
+                              ...current,
+                              [program.id]: { ...contentDraft, title: e.target.value },
+                            }))
+                          }
+                          style={{ padding: 8, width: "100%" }}
+                        />
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                          <div>
+                            <label style={{ fontSize: 12, fontWeight: 600 }}>Дисциплина</label>
+                            <input
+                              value={contentDraft.discipline}
+                              onChange={(e) =>
+                                setProgramContentDrafts((current) => ({
+                                  ...current,
+                                  [program.id]: { ...contentDraft, discipline: e.target.value },
+                                }))
+                              }
+                              style={{ padding: 8, width: "100%", marginTop: 4 }}
+                            />
+                          </div>
+                          <div>
+                            <label style={{ fontSize: 12, fontWeight: 600 }}>Регион</label>
+                            <input
+                              value={contentDraft.region}
+                              onChange={(e) =>
+                                setProgramContentDrafts((current) => ({
+                                  ...current,
+                                  [program.id]: { ...contentDraft, region: e.target.value },
+                                }))
+                              }
+                              style={{ padding: 8, width: "100%", marginTop: 4 }}
+                            />
+                          </div>
+                        </div>
+                        <label style={{ fontSize: 12, fontWeight: 600 }}>Точная локация</label>
+                        <input
+                          value={contentDraft.exactLocation}
+                          onChange={(e) =>
+                            setProgramContentDrafts((current) => ({
+                              ...current,
+                              [program.id]: { ...contentDraft, exactLocation: e.target.value },
+                            }))
+                          }
+                          style={{ padding: 8, width: "100%" }}
+                        />
+                        <label style={{ fontSize: 12, fontWeight: 600 }}>Формат (camp / tour / …)</label>
+                        <input
+                          value={contentDraft.formatType}
+                          onChange={(e) =>
+                            setProgramContentDrafts((current) => ({
+                              ...current,
+                              [program.id]: { ...contentDraft, formatType: e.target.value },
+                            }))
+                          }
+                          style={{ padding: 8, width: "100%" }}
+                        />
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                          <div>
+                            <label style={{ fontSize: 12, fontWeight: 600 }}>Уровень</label>
+                            <select
+                              value={contentDraft.levelRequired}
+                              onChange={(e) =>
+                                setProgramContentDrafts((current) => ({
+                                  ...current,
+                                  [program.id]: { ...contentDraft, levelRequired: e.target.value },
+                                }))
+                              }
+                              style={{ padding: 8, width: "100%", marginTop: 4 }}
+                            >
+                              <option value="">—</option>
+                              {LEVEL_OPTIONS.map((level) => (
+                                <option key={level} value={level}>{getProgramLevelLabel(level)}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <label style={{ fontSize: 12, fontWeight: 600 }}>Риск</label>
+                            <select
+                              value={contentDraft.riskLevel}
+                              onChange={(e) =>
+                                setProgramContentDrafts((current) => ({
+                                  ...current,
+                                  [program.id]: { ...contentDraft, riskLevel: e.target.value },
+                                }))
+                              }
+                              style={{ padding: 8, width: "100%", marginTop: 4 }}
+                            >
+                              <option value="">—</option>
+                              {RISK_LEVEL_OPTIONS.map((level) => (
+                                <option key={level} value={level}>{getSeverityLabel(level)}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                        <div style={{ display: "grid", gridTemplateColumns: "120px 1fr", gap: 10, alignItems: "end" }}>
+                          <div>
+                            <label style={{ fontSize: 12, fontWeight: 600 }}>Валюта</label>
+                            <input
+                              value={contentDraft.currency}
+                              onChange={(e) =>
+                                setProgramContentDrafts((current) => ({
+                                  ...current,
+                                  [program.id]: { ...contentDraft, currency: e.target.value },
+                                }))
+                              }
+                              style={{ padding: 8, width: "100%", marginTop: 4 }}
+                            />
+                          </div>
+                          <div>
+                            <label style={{ fontSize: 12, fontWeight: 600 }}>Цена от (число, пусто = нет)</label>
+                            <input
+                              value={contentDraft.priceFromRub}
+                              onChange={(e) =>
+                                setProgramContentDrafts((current) => ({
+                                  ...current,
+                                  [program.id]: { ...contentDraft, priceFromRub: e.target.value },
+                                }))
+                              }
+                              style={{ padding: 8, width: "100%", marginTop: 4 }}
+                            />
+                          </div>
+                        </div>
+                        <label style={{ fontSize: 12, fontWeight: 600 }}>Для кого (audience)</label>
+                        <textarea
+                          value={contentDraft.audienceFit}
+                          onChange={(e) =>
+                            setProgramContentDrafts((current) => ({
+                              ...current,
+                              [program.id]: { ...contentDraft, audienceFit: e.target.value },
+                            }))
+                          }
+                          rows={3}
+                          style={{ padding: 8, width: "100%" }}
+                        />
+                        <label style={{ fontSize: 12, fontWeight: 600 }}>Что включено</label>
+                        <textarea
+                          value={contentDraft.inclusions}
+                          onChange={(e) =>
+                            setProgramContentDrafts((current) => ({
+                              ...current,
+                              [program.id]: { ...contentDraft, inclusions: e.target.value },
+                            }))
+                          }
+                          rows={3}
+                          style={{ padding: 8, width: "100%" }}
+                        />
+                        <label style={{ fontSize: 12, fontWeight: 600 }}>Что не включено</label>
+                        <textarea
+                          value={contentDraft.exclusions}
+                          onChange={(e) =>
+                            setProgramContentDrafts((current) => ({
+                              ...current,
+                              [program.id]: { ...contentDraft, exclusions: e.target.value },
+                            }))
+                          }
+                          rows={2}
+                          style={{ padding: 8, width: "100%" }}
+                        />
+                        <label style={{ fontSize: 12, fontWeight: 600 }}>Программа по дням</label>
+                        <textarea
+                          value={contentDraft.itineraryDayByDay}
+                          onChange={(e) =>
+                            setProgramContentDrafts((current) => ({
+                              ...current,
+                              [program.id]: { ...contentDraft, itineraryDayByDay: e.target.value },
+                            }))
+                          }
+                          rows={4}
+                          style={{ padding: 8, width: "100%" }}
+                        />
+                        <label style={{ fontSize: 12, fontWeight: 600 }}>Экипировка / снаряжение</label>
+                        <textarea
+                          value={contentDraft.gearRequirements}
+                          onChange={(e) =>
+                            setProgramContentDrafts((current) => ({
+                              ...current,
+                              [program.id]: { ...contentDraft, gearRequirements: e.target.value },
+                            }))
+                          }
+                          rows={3}
+                          style={{ padding: 8, width: "100%" }}
+                        />
+                        <label style={{ fontSize: 12, fontWeight: 600 }}>Мед. ограничения (можно пусто)</label>
+                        <textarea
+                          value={contentDraft.medicalLimitations}
+                          onChange={(e) =>
+                            setProgramContentDrafts((current) => ({
+                              ...current,
+                              [program.id]: { ...contentDraft, medicalLimitations: e.target.value },
+                            }))
+                          }
+                          rows={2}
+                          style={{ padding: 8, width: "100%" }}
+                        />
+                        <label style={{ fontSize: 12, fontWeight: 600 }}>Отмена / условия</label>
+                        <textarea
+                          value={contentDraft.cancellationRules}
+                          onChange={(e) =>
+                            setProgramContentDrafts((current) => ({
+                              ...current,
+                              [program.id]: { ...contentDraft, cancellationRules: e.target.value },
+                            }))
+                          }
+                          rows={3}
+                          style={{ padding: 8, width: "100%" }}
+                        />
+                        <label style={{ fontSize: 12, fontWeight: 600 }}>Имя организатора на карточке</label>
+                        <input
+                          value={contentDraft.organizerName}
+                          onChange={(e) =>
+                            setProgramContentDrafts((current) => ({
+                              ...current,
+                              [program.id]: { ...contentDraft, organizerName: e.target.value },
+                            }))
+                          }
+                          style={{ padding: 8, width: "100%" }}
+                        />
+                        <label style={{ fontSize: 12, fontWeight: 600 }}>Почему можно доверять</label>
+                        <textarea
+                          value={contentDraft.trustReason}
+                          onChange={(e) =>
+                            setProgramContentDrafts((current) => ({
+                              ...current,
+                              [program.id]: { ...contentDraft, trustReason: e.target.value },
+                            }))
+                          }
+                          rows={2}
+                          style={{ padding: 8, width: "100%" }}
+                        />
+                        <label style={{ fontSize: 12, fontWeight: 600 }}>Сводка отзывов (текст)</label>
+                        <textarea
+                          value={contentDraft.reviewsSummary}
+                          onChange={(e) =>
+                            setProgramContentDrafts((current) => ({
+                              ...current,
+                              [program.id]: { ...contentDraft, reviewsSummary: e.target.value },
+                            }))
+                          }
+                          rows={2}
+                          style={{ padding: 8, width: "100%" }}
+                        />
+                        <label style={{ fontSize: 12, fontWeight: 600 }}>Что после заявки</label>
+                        <textarea
+                          value={contentDraft.whatHappensAfterBooking}
+                          onChange={(e) =>
+                            setProgramContentDrafts((current) => ({
+                              ...current,
+                              [program.id]: { ...contentDraft, whatHappensAfterBooking: e.target.value },
+                            }))
+                          }
+                          rows={3}
+                          style={{ padding: 8, width: "100%" }}
+                        />
+                        <label style={{ fontSize: 12, fontWeight: 600 }}>CTA / следующий шаг</label>
+                        <textarea
+                          value={contentDraft.cta}
+                          onChange={(e) =>
+                            setProgramContentDrafts((current) => ({
+                              ...current,
+                              [program.id]: { ...contentDraft, cta: e.target.value },
+                            }))
+                          }
+                          rows={2}
+                          style={{ padding: 8, width: "100%" }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleSaveProgramContent(program.id)}
+                          disabled={savingContentId === program.id || !contentDirty}
+                          style={{ padding: "8px 12px", justifySelf: "start" }}
+                        >
+                          {savingContentId === program.id ? "Сохраняем…" : "Сохранить контент карточки"}
+                        </button>
+                      </div>
+                    </details>
+                  </td>
+                </tr>
+                <tr style={{ borderBottom: "1px solid #ccc" }}>
+                  <td colSpan={11} style={{ padding: "10px 14px", background: "#f0f7ff", verticalAlign: "top" }}>
+                    <details>
+                      <summary style={{ cursor: "pointer", fontWeight: 600, fontSize: 14 }}>
+                        Даты поездки и длительность
+                      </summary>
+                      <p style={{ margin: "10px 0 8px", fontSize: 13, color: "#555", maxWidth: "80ch" }}>
+                        Длительность рассчитывается автоматически по датам (включительно, UTC, как на API). Поле{" "}
+                        <code>durationDays</code> с клиента не принимается — только <code>startDate</code> и{" "}
+                        <code>endDate</code>.
+                      </p>
+                      <p style={{ margin: "0 0 10px", fontSize: 13, color: "#8a5800", maxWidth: "80ch", background: "#fff8e6", padding: "8px 10px", borderRadius: 6 }}>
+                        Смена дат влияет на <strong>каталог</strong> (сезон, «ближайшие старты», видимость после окончания) и на ожидания по <strong>заявкам</strong>. Проверьте опубликованные программы и активные брони перед сохранением.
+                      </p>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 16, alignItems: "flex-end", maxWidth: 640 }}>
+                        <div style={{ minWidth: 160 }}>
+                          <label htmlFor={`dt-start-${program.id}`} style={{ fontSize: 12, fontWeight: 600 }}>
+                            Старт
+                          </label>
+                          <input
+                            id={`dt-start-${program.id}`}
+                            type="date"
+                            value={dateDraft.startDate}
+                            onChange={(e) =>
+                              setProgramDateDrafts((current) => ({
+                                ...current,
+                                [program.id]: { ...dateDraft, startDate: e.target.value },
+                              }))
+                            }
+                            style={{ padding: 8, marginTop: 4, ...dateFieldErrorStyle }}
+                          />
+                        </div>
+                        <div style={{ minWidth: 160 }}>
+                          <label htmlFor={`dt-end-${program.id}`} style={{ fontSize: 12, fontWeight: 600 }}>
+                            Окончание
+                          </label>
+                          <input
+                            id={`dt-end-${program.id}`}
+                            type="date"
+                            value={dateDraft.endDate}
+                            onChange={(e) =>
+                              setProgramDateDrafts((current) => ({
+                                ...current,
+                                [program.id]: { ...dateDraft, endDate: e.target.value },
+                              }))
+                            }
+                            style={{ padding: 8, marginTop: 4, ...dateFieldErrorStyle }}
+                          />
+                        </div>
+                        <div style={{ fontSize: 13, color: "#444", paddingBottom: 4, maxWidth: 360 }}>
+                          {datesRangeInvalid ? (
+                            <span style={{ color: "#b42318" }}>
+                              Окончание раньше старта — исправьте даты. Сохранение заблокировано.
+                            </span>
+                          ) : datesPreview != null ? (
+                            <>
+                              Предпросмотр: <strong>{datesPreview}</strong> дн.; в БД сейчас <strong>{program.durationDays}</strong> дн. После сохранения совпадёт с календарём.
+                            </>
+                          ) : (
+                            <span style={{ color: "#a45c00" }}>Укажите обе даты.</span>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleSaveProgramDates(program.id)}
+                          disabled={savingDatesId === program.id || !datesDirty || datesPreview == null}
+                          style={{ padding: "8px 12px" }}
+                        >
+                          {savingDatesId === program.id ? "Сохраняем…" : "Сохранить даты"}
+                        </button>
+                      </div>
+                    </details>
+                  </td>
+                </tr>
+                </Fragment>
               );
             })}
           </tbody>
@@ -834,5 +1746,13 @@ export default function AdminProgramsPage() {
       )}
       {!loading && programs.length === 0 && <p>Нет программ.</p>}
     </main>
+  );
+}
+
+export default function AdminProgramsPage() {
+  return (
+    <Suspense fallback={<main style={{ padding: 24 }}>Загрузка…</main>}>
+      <AdminProgramsPageInner />
+    </Suspense>
   );
 }

@@ -32,16 +32,25 @@ export const ALLOWED_EVENT_NAMES = new Set<string>([
   "refund_recorded",
   "commission_accrued",
   "commission_reversed",
+  /** Stage 4.1: soft-mode / billing mismatch observability (дубль доменного события). */
+  "commission_transition_violation_detected",
   "statement_generated",
   "invoice_paid",
   "organizer_verified",
   "organizer_trusted",
   "contract_signed",
   "billing_connected",
+  "intake_created",
   "complaint_created",
   "complaint_resolved",
   "review_submitted",
   "nps_submitted",
+  /** Реферальный переход по /public/referral/:code (для funnel economics по периоду). */
+  "referral_landing",
+  /** Порог ценности по программе (воронка организатора). */
+  "value_threshold_reached",
+  "organizer_conversion_stage_sent",
+  "organizer_conversion_followup_sent",
 ]);
 
 const ALLOWED_EVENT_SOURCES = new Set(["frontend", "backend", "system"]);

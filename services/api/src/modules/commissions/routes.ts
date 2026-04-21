@@ -9,6 +9,7 @@ import { requireAdmin } from "../../middleware/auth";
 import { isCommissionReconciliationStatus } from "@mywave/shared-types";
 import type { Env } from "@mywave/config";
 import { recalculateCommissionForBooking } from "../billing/service";
+import { applyCommissionReconciliationPatch } from "../status-engine/applyCommissionReconciliationPatch";
 
 export function commissionsRoutes(env: Env): Router {
   const router = Router();
@@ -116,50 +117,40 @@ export function commissionsRoutes(env: Env): Router {
   });
 
   router.patch("/:id/reconciliation", admin, async (req: Request, res: Response) => {
-    const existing = await prisma.commission.findUnique({ where: { id: req.params.id } });
-    if (!existing) {
-      res.status(404).json({ error: "Not found" });
-      return;
-    }
     const body = req.body as {
       reconciliationStatus?: string;
       commissionCollectedRub?: number;
       invoiceStatus?: string;
       paymentReceivedDate?: string;
+      idempotencyKey?: string;
     };
-    const reconciliationStatus =
-      body.reconciliationStatus && isCommissionReconciliationStatus(body.reconciliationStatus) ? body.reconciliationStatus : undefined;
-    const data: {
-      reconciliationStatus?: string;
-      commissionCollectedRub?: number | null;
-      invoiceStatus?: string | null;
-      paymentReceivedDate?: Date | null;
-    } = {};
-    if (reconciliationStatus) data.reconciliationStatus = reconciliationStatus;
-    if (body.commissionCollectedRub != null) data.commissionCollectedRub = body.commissionCollectedRub;
-    if (body.invoiceStatus !== undefined) data.invoiceStatus = body.invoiceStatus || null;
-    if (body.paymentReceivedDate !== undefined) data.paymentReceivedDate = body.paymentReceivedDate ? new Date(body.paymentReceivedDate) : null;
-    if (Object.keys(data).length === 0) {
+    const strictMode = process.env.COMMISSION_RECONCILIATION_STRICT_MODE === "true";
+    const result = await applyCommissionReconciliationPatch({
+      prisma,
+      commissionId: req.params.id,
+      body,
+      actor: { actorId: req.adminUserId ?? null },
+      triggerMode: "manual",
+      source: "PATCH /commissions/:id/reconciliation",
+      idempotencyKey: typeof body.idempotencyKey === "string" && body.idempotencyKey.trim() ? body.idempotencyKey.trim() : null,
+      strictMode,
+    });
+    if (!result.ok) {
+      if (result.error === "not_found") {
+        res.status(404).json({ error: "Not found" });
+        return;
+      }
+      if (result.error === "invalid_transition") {
+        res.status(400).json({ error: "Invalid status transition", from: result.from, to: result.to });
+        return;
+      }
       res.status(400).json({ error: "No valid fields to update" });
       return;
     }
-    const c = await prisma.commission.update({
-      where: { id: req.params.id },
-      data,
-      include: { booking: { select: { id: true } }, organizer: { select: { displayName: true } }, program: { select: { title: true } } },
-    });
-    if (reconciliationStatus) {
-      await writeAuditLog({
-        entityType: "commission",
-        entityId: c.id,
-        changedField: "commission_reconciliation_change",
-        oldValue: existing.reconciliationStatus,
-        newValue: c.reconciliationStatus,
-        changedBy: req.adminUserId ?? null,
-        reason: "reconciliation update",
-      });
+    if (result.ok && result.transitionViolationObserved) {
+      res.setHeader("X-Commission-Policy-Violation-Observed", "1");
     }
-    res.json(c);
+    res.json(result.commission);
   });
 
   router.post("/:id/recalculate", admin, async (req: Request, res: Response) => {

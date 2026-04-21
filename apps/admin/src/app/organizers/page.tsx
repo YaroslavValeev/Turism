@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { adminJson } from "../../lib/admin";
 import {
   ORGANIZER_VERIFICATION_STATUSES,
@@ -24,7 +24,31 @@ type Organizer = {
   billingStatus: string;
   privilegeStatus: string;
   createdAt: string;
+  certificatesSummary?: string | null;
+  insuranceSummary?: string | null;
+  emergencyPlanSummary?: string | null;
+  equipmentSummary?: string | null;
 };
+
+type OrganizerTrustDraft = {
+  certificatesSummary: string;
+  insuranceSummary: string;
+  emergencyPlanSummary: string;
+  equipmentSummary: string;
+};
+
+function orgStr(s: string | null | undefined): string {
+  return typeof s === "string" ? s.trim() : "";
+}
+
+function trustDraftFromOrganizer(o: Organizer): OrganizerTrustDraft {
+  return {
+    certificatesSummary: orgStr(o.certificatesSummary),
+    insuranceSummary: orgStr(o.insuranceSummary),
+    emergencyPlanSummary: orgStr(o.emergencyPlanSummary),
+    equipmentSummary: orgStr(o.equipmentSummary),
+  };
+}
 
 type OrganizerScoreRow = {
   organizerId: string;
@@ -70,7 +94,9 @@ function organizerHints(o: Organizer, score: OrganizerScoreRow | undefined): str
   if (Number(c.paid_to_completed_score ?? 100) < 60) hints.push("Провал paid→completed: проверить post-booking коммуникацию и completion ops.");
   if (Number(c.refund_penalty ?? 0) > 12) hints.push("Высокий refund penalty: сверить причины отмен и billing policy.");
   if (Number(c.complaint_penalty ?? 0) > 10) hints.push("Высокий complaint penalty: вынести в trust/moderation разбор.");
-  if (o.verificationStatus !== "verified" && o.verificationStatus !== "trusted") hints.push("Довести verification до verified/trusted для снижения операционных рисков.");
+  if (o.verificationStatus !== "verified" && o.verificationStatus !== "trusted_by_platform") {
+    hints.push("Довести verification до verified/trusted для снижения операционных рисков.");
+  }
   return hints.slice(0, 3);
 }
 
@@ -78,7 +104,7 @@ function moderationPriority(o: Organizer, score: OrganizerScoreRow | undefined):
   if (!score) return { label: "P3 · ждём snapshot", color: "#666" };
   if (score.scoreBand === "low") return { label: "P1 · manual moderation", color: "#9f1d1d" };
   if (score.scoreBand === "unknown") return { label: "P2 · data follow-up", color: "#364fc7" };
-  if (o.verificationStatus !== "trusted") return { label: "P2 · verify before scale", color: "#8a5800" };
+  if (o.verificationStatus !== "trusted_by_platform") return { label: "P2 · verify before scale", color: "#8a5800" };
   return { label: "P3 · monitor", color: "#1d6f42" };
 }
 
@@ -88,6 +114,42 @@ export default function OrganizersQueuePage() {
   const [filter, setFilter] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [trustDrafts, setTrustDrafts] = useState<Record<string, OrganizerTrustDraft>>({});
+  const [savingTrustId, setSavingTrustId] = useState<string | null>(null);
+  const [message, setMessage] = useState("");
+  const [hashFocusOrganizerId, setHashFocusOrganizerId] = useState<string | null>(null);
+  const hashHighlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (loading) return;
+    const applyHashFromLocation = () => {
+      if (hashHighlightTimerRef.current) {
+        clearTimeout(hashHighlightTimerRef.current);
+        hashHighlightTimerRef.current = null;
+      }
+      const hash = typeof window !== "undefined" ? window.location.hash : "";
+      const m = /^#organizer-row-(.+)$/.exec(hash);
+      if (!m?.[1]) {
+        setHashFocusOrganizerId(null);
+        return;
+      }
+      const id = m[1];
+      setHashFocusOrganizerId(id);
+      requestAnimationFrame(() => {
+        document.getElementById(`organizer-row-${id}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+      });
+      hashHighlightTimerRef.current = setTimeout(() => {
+        setHashFocusOrganizerId(null);
+        hashHighlightTimerRef.current = null;
+      }, 5000);
+    };
+    applyHashFromLocation();
+    window.addEventListener("hashchange", applyHashFromLocation);
+    return () => {
+      window.removeEventListener("hashchange", applyHashFromLocation);
+      if (hashHighlightTimerRef.current) clearTimeout(hashHighlightTimerRef.current);
+    };
+  }, [loading, organizers]);
 
   useEffect(() => {
     const token = typeof window !== "undefined" ? window.localStorage.getItem("admin_token") : null;
@@ -108,7 +170,9 @@ export default function OrganizersQueuePage() {
         return res.json();
       })
       .then((data) => {
-        setOrganizers(Array.isArray(data) ? data : []);
+        const list = Array.isArray(data) ? data : [];
+        setOrganizers(list);
+        setTrustDrafts(Object.fromEntries(list.map((o: Organizer) => [o.id, trustDraftFromOrganizer(o)])));
       })
       .catch((e) => setError(String(e)))
       .finally(() => setLoading(false));
@@ -132,13 +196,60 @@ export default function OrganizersQueuePage() {
     };
   }, [loading, organizers]);
 
+  const handleSaveOrganizerTrust = async (organizerId: string) => {
+    const token = typeof window !== "undefined" ? window.localStorage.getItem("admin_token") : null;
+    if (!token) return;
+    const o = organizers.find((item) => item.id === organizerId);
+    if (!o) return;
+    const draft = trustDrafts[organizerId] ?? trustDraftFromOrganizer(o);
+    setSavingTrustId(organizerId);
+    setError("");
+    setMessage("");
+    try {
+      const res = await fetch(`${API_URL}/organizers/${organizerId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          certificatesSummary: draft.certificatesSummary.trim() || null,
+          insuranceSummary: draft.insuranceSummary.trim() || null,
+          emergencyPlanSummary: draft.emergencyPlanSummary.trim() || null,
+          equipmentSummary: draft.equipmentSummary.trim() || null,
+        }),
+      });
+      const body = await res.json().catch(() => null);
+      if (!res.ok) {
+        throw new Error(body?.error ?? "Не удалось сохранить блок доверия");
+      }
+      setError("");
+      setMessage("Тексты доверия организатора обновлены.");
+      const q = filter ? `?verification_status=${encodeURIComponent(filter)}` : "";
+      const reload = await fetch(`${API_URL}/organizers${q}`, { headers: { Authorization: `Bearer ${token}` } });
+      const data = await reload.json();
+      const list = Array.isArray(data) ? data : [];
+      setOrganizers(list);
+      setTrustDrafts(Object.fromEntries(list.map((row: Organizer) => [row.id, trustDraftFromOrganizer(row)])));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setSavingTrustId(null);
+    }
+  };
+
   if (loading) return <p>Загрузка…</p>;
-  if (error) return <p style={{ color: "red" }}>{error}</p>;
 
   return (
     <main style={{ padding: 24 }}>
-      <p><strong>Организаторы</strong> | <a href="/programs">Программы</a> | <a href="/bookings">Заявки</a> | <a href="/incidents">Инциденты</a> | <a href="/reviews">Отзывы</a> | <a href="/commissions">Комиссии</a></p>
+      <p>
+        <strong>Организаторы</strong> | <a href="/programs">Программы</a> | <a href="/sources">Источники</a> |{" "}
+        <a href="/bookings">Заявки</a> | <a href="/incidents">Инциденты</a> | <a href="/reviews">Отзывы</a> |{" "}
+        <a href="/commissions">Комиссии</a>
+      </p>
       <h1>Очередь организаторов</h1>
+      {error && <p style={{ color: "red" }}>{error}</p>}
+      {message && <p style={{ color: "#1d6f42" }}>{message}</p>}
       <p style={{ fontSize: 14, color: "#555" }}>Верификация ведётся по внутренним runbook команды. Базовый порядок статусов: evidence → listed → checked → verified → trusted.</p>
       <p>
         Фильтр по верификации:{" "}
@@ -175,8 +286,23 @@ export default function OrganizersQueuePage() {
             const scoreMeta = scoreBandMeta(score?.scoreBand ?? "unknown");
             const priority = moderationPriority(o, score);
             const hints = organizerHints(o, score);
+            const trustDraft = trustDrafts[o.id] ?? trustDraftFromOrganizer(o);
+            const trustDirty =
+              orgStr(o.certificatesSummary) !== trustDraft.certificatesSummary.trim()
+              || orgStr(o.insuranceSummary) !== trustDraft.insuranceSummary.trim()
+              || orgStr(o.emergencyPlanSummary) !== trustDraft.emergencyPlanSummary.trim()
+              || orgStr(o.equipmentSummary) !== trustDraft.equipmentSummary.trim();
             return (
-            <tr key={o.id} style={{ borderBottom: "1px solid #ccc" }}>
+            <Fragment key={o.id}>
+            <tr
+              id={`organizer-row-${o.id}`}
+              style={{
+                borderBottom: "1px solid #ccc",
+                ...(hashFocusOrganizerId === o.id
+                  ? { boxShadow: "inset 0 0 0 2px #364fc7", background: "#f0f4ff" }
+                  : {}),
+              }}
+            >
               <td style={{ padding: 8 }}>{o.displayName}</td>
               <td style={{ padding: 8 }}>{o.contactEmail}</td>
               <td style={{ padding: 8 }}>{getOrganizerVerificationStatusLabel(o.verificationStatus)}</td>
@@ -208,6 +334,77 @@ export default function OrganizersQueuePage() {
               </td>
               <td style={{ padding: 8 }}>{new Date(o.createdAt).toLocaleDateString()}</td>
             </tr>
+            <tr style={{ borderBottom: "1px solid #ccc" }}>
+              <td colSpan={9} style={{ padding: "10px 14px", background: "#f8f9fa", verticalAlign: "top" }}>
+                <details>
+                  <summary style={{ cursor: "pointer", fontWeight: 600, fontSize: 14 }}>
+                    Карточка доверия (тексты для публичной программы)
+                  </summary>
+                  <p style={{ margin: "10px 0 8px", fontSize: 13, color: "#555", maxWidth: "80ch" }}>
+                    Показываются на странице программы рядом с организатором. Не подменяют юридические документы — только операционное описание для гостя.
+                  </p>
+                  <div style={{ display: "grid", gap: 8, maxWidth: 900 }}>
+                    <label style={{ fontSize: 12, fontWeight: 600 }}>Сертификаты / квалификация</label>
+                    <textarea
+                      value={trustDraft.certificatesSummary}
+                      onChange={(e) =>
+                        setTrustDrafts((current) => ({
+                          ...current,
+                          [o.id]: { ...trustDraft, certificatesSummary: e.target.value },
+                        }))
+                      }
+                      rows={2}
+                      style={{ padding: 8, width: "100%" }}
+                    />
+                    <label style={{ fontSize: 12, fontWeight: 600 }}>Страхование</label>
+                    <textarea
+                      value={trustDraft.insuranceSummary}
+                      onChange={(e) =>
+                        setTrustDrafts((current) => ({
+                          ...current,
+                          [o.id]: { ...trustDraft, insuranceSummary: e.target.value },
+                        }))
+                      }
+                      rows={2}
+                      style={{ padding: 8, width: "100%" }}
+                    />
+                    <label style={{ fontSize: 12, fontWeight: 600 }}>План на случай ЧП</label>
+                    <textarea
+                      value={trustDraft.emergencyPlanSummary}
+                      onChange={(e) =>
+                        setTrustDrafts((current) => ({
+                          ...current,
+                          [o.id]: { ...trustDraft, emergencyPlanSummary: e.target.value },
+                        }))
+                      }
+                      rows={2}
+                      style={{ padding: 8, width: "100%" }}
+                    />
+                    <label style={{ fontSize: 12, fontWeight: 600 }}>Оборудование и резерв</label>
+                    <textarea
+                      value={trustDraft.equipmentSummary}
+                      onChange={(e) =>
+                        setTrustDrafts((current) => ({
+                          ...current,
+                          [o.id]: { ...trustDraft, equipmentSummary: e.target.value },
+                        }))
+                      }
+                      rows={2}
+                      style={{ padding: 8, width: "100%" }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleSaveOrganizerTrust(o.id)}
+                      disabled={savingTrustId === o.id || !trustDirty}
+                      style={{ padding: "8px 12px", justifySelf: "start" }}
+                    >
+                      {savingTrustId === o.id ? "Сохраняем…" : "Сохранить блок доверия"}
+                    </button>
+                  </div>
+                </details>
+              </td>
+            </tr>
+            </Fragment>
           )})}
         </tbody>
       </table>

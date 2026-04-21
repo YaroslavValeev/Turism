@@ -1,6 +1,10 @@
 #!/usr/bin/env node
+import { loadRepoRuntimeEnv } from "./loadRepoRuntimeEnv.mjs";
+
+loadRepoRuntimeEnv();
+
 const base = process.env.TARGET_BASE_URL;
-const internalToken = process.env.TARGET_INTERNAL_TOKEN;
+const internalToken = process.env.TARGET_INTERNAL_TOKEN || process.env.INTERNAL_ANALYTICS_TOKEN || "";
 
 if (!base || !internalToken) {
   console.error("Missing TARGET_BASE_URL/TARGET_INTERNAL_TOKEN");

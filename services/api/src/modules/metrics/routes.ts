@@ -6,7 +6,7 @@ import { Router, Request, Response } from "express";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
 import { requireAdmin } from "../../middleware/auth";
-import type { Env } from "@mywave/config";
+import { type Env, isLaunchMode } from "@mywave/config";
 import { computeDqMetrics } from "../analytics/dqMetrics";
 import { buildFounderSummary } from "./founderSummary";
 
@@ -32,6 +32,14 @@ function isMissingAnalyticsMartError(error: unknown, martName: string): boolean 
 export function metricsRoutes(env: Env): Router {
   const router = Router();
   const admin = requireAdmin(env);
+
+  /** Глобальный режим платформы (launch vs monetization). Admin-only. */
+  router.get("/admin/platform-mode", admin, async (_req: Request, res: Response) => {
+    res.json({
+      platformMode: env.PLATFORM_MODE,
+      launchMode: isLaunchMode(env.PLATFORM_MODE),
+    });
+  });
 
   router.get("/admin/funnel", admin, async (_req: Request, res: Response) => {
     try {

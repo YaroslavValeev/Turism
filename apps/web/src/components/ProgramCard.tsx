@@ -18,14 +18,48 @@ export type ProgramCardProgram = {
   durationDays: number;
   priceFromRub: number | null;
   levelRequired?: string | null;
-  organizer?: { displayName: string };
+  organizer?: {
+    displayName: string;
+    verificationStatus?: string;
+    reviewCount?: number;
+    ratingAvg?: number | null;
+    verificationBadge?: string | null;
+  };
   media?: ProgramMediaItem[];
 };
 
 type Props = {
   program: ProgramCardProgram;
   levelLabel: string;
+  catalogHrefBuilder?: (next: { discipline?: string; country?: string; region?: string }) => string;
 };
+
+function reviewWord(count: number): string {
+  const mod10 = count % 10;
+  const mod100 = count % 100;
+  if (mod10 === 1 && mod100 !== 11) return "отзыв";
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return "отзыва";
+  return "отзывов";
+}
+
+function organizerVerificationLabel(status: string | null | undefined): string {
+  switch (status) {
+    case "trusted_by_platform":
+      return "Проверка платформы: trusted";
+    case "verified":
+      return "Проверка платформы: verified";
+    case "checked":
+      return "Проверка платформы: checked";
+    case "listed":
+      return "Проверка платформы: базовый листинг";
+    case "paused":
+      return "Проверка платформы: приостановлена";
+    case "rejected":
+      return "Проверка платформы: отклонено";
+    default:
+      return "Проверка платформы: нет данных";
+  }
+}
 
 function sanitizeLocation(value: string | null | undefined): string | null {
   const normalized = String(value ?? "")
@@ -58,13 +92,28 @@ function resolveLocation(program: ProgramCardProgram): { primary: string; second
   return { primary: "Уточняется", secondary: null };
 }
 
-export function ProgramCard({ program, levelLabel }: Props) {
+export function ProgramCard({ program, levelLabel, catalogHrefBuilder }: Props) {
   const dates = `${new Date(program.startDate).toLocaleDateString("ru-RU")} – ${new Date(program.endDate).toLocaleDateString("ru-RU")}`;
   const coverUrl = firstProgramCoverImageUrl(program.media);
   const coverFit = programCardCoverFit(coverUrl, program.title, program.organizer?.displayName);
   const placeholderMod = programCardCoverPlaceholderClass(program.title, program.id);
   const location = resolveLocation(program);
   const discipline = getDisciplineDisplay(program.discipline);
+  const disciplineCatalogHref = catalogHrefBuilder?.({ discipline: discipline.original });
+  const regionCatalogHref = catalogHrefBuilder?.({
+    region: program.exactLocation?.trim() ? `${program.region} · ${program.exactLocation}` : program.region,
+  });
+  const reviewCount = program.organizer?.reviewCount ?? 0;
+  const hasStableRating = reviewCount >= 3 && typeof program.organizer?.ratingAvg === "number";
+  const reviewSummaryLabel = hasStableRating
+    ? `${program.organizer?.ratingAvg?.toFixed(1)} ★ (${reviewCount} ${reviewWord(reviewCount)})`
+    : reviewCount > 0
+      ? `Новый на платформе · ${reviewCount} ${reviewWord(reviewCount)}`
+      : "Новый на платформе";
+  const averageRatingLabel = hasStableRating ? `Средний рейтинг: ${program.organizer?.ratingAvg?.toFixed(1)}` : "Средний рейтинг: —";
+  const verificationLabel =
+    program.organizer?.verificationBadge ??
+    organizerVerificationLabel(program.organizer?.verificationStatus);
 
   return (
     <article className="mw-program-card">
@@ -93,12 +142,24 @@ export function ProgramCard({ program, levelLabel }: Props) {
         <div className="mw-program-card__fact-grid">
           <div className="mw-program-card__fact">
             <span className="mw-program-card__fact-label">Дисциплина</span>
-            <span className="mw-program-card__fact-value">{discipline.original}</span>
+            {disciplineCatalogHref ? (
+              <Link className="mw-program-card__fact-value" href={disciplineCatalogHref} title="Показать программы по этой дисциплине">
+                {discipline.original}
+              </Link>
+            ) : (
+              <span className="mw-program-card__fact-value">{discipline.original}</span>
+            )}
             {discipline.translation && <span className="mw-program-card__fact-note">{discipline.translation}</span>}
           </div>
           <div className="mw-program-card__fact">
             <span className="mw-program-card__fact-label">Место</span>
-            <span className="mw-program-card__fact-value">{location.primary}</span>
+            {regionCatalogHref ? (
+              <Link className="mw-program-card__fact-value" href={regionCatalogHref} title="Показать программы в этом регионе / локации">
+                {location.primary}
+              </Link>
+            ) : (
+              <span className="mw-program-card__fact-value">{location.primary}</span>
+            )}
             {location.secondary && <span className="mw-program-card__fact-note">{location.secondary}</span>}
           </div>
           <div className="mw-program-card__fact">
@@ -114,6 +175,9 @@ export function ProgramCard({ program, levelLabel }: Props) {
           <span className="mw-program-card__secondary-item">{program.durationDays} дн.</span>
           {program.levelRequired && <span className="mw-program-card__secondary-item">Уровень: {levelLabel}</span>}
           {program.organizer && <span className="mw-program-card__secondary-item">{program.organizer.displayName}</span>}
+          <span className="mw-program-card__secondary-item">{reviewSummaryLabel}</span>
+          <span className="mw-program-card__secondary-item">{averageRatingLabel}</span>
+          <span className="mw-program-card__secondary-item">{verificationLabel}</span>
         </div>
 
         <Link href={`/program/${program.id}`} className="mw-btn mw-btn--primary" style={{ alignSelf: "flex-start", marginTop: "auto" }}>

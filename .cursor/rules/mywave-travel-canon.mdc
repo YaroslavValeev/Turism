@@ -1,0 +1,34 @@
+---
+description: Канон MyWave Travel, стек репозитория и рабочий конвейер AI
+alwaysApply: true
+---
+
+# MyWave Travel — правила для агента
+
+## Продукт
+
+- Платформа — **информационный посредник** (не туроператор). Монетизация: **комиссия с состоявшейся сделки**. MVP: **assisted booking**, **verification** организаторов.
+- Ранний intake: стадии **Booking**; не вводить параллельную «истину» Lead в домене без миграции (см. `docs/decisions/ADR-005-lead-vs-booking.md`).
+- Discovery / ingestion **≠** публикация в каталог без гейта (`docs/INGESTION_POLICY.md`).
+
+## Репозиторий
+
+- Web: `apps/web`, Admin: `apps/admin`, API: `services/api`, Prisma: `services/api/prisma/`.
+- Сводка и указатель: `docs/PROJECT_SOURCEBOOK.md`.
+
+## Изменения кода
+
+- Минимальный дифф под задачу; бизнес-правила и деньги — валидация на сервере.
+- Не класть секреты в клиент; не логировать PII.
+
+## AI в продукте
+
+- Модель: **AI proposes → Rules validate → Human override**; для записей в прод учитывать **audit**, **confidence**, **shadow mode** где применимо.
+
+## Конвейер сессии
+
+`PLAN → AGENTS → TASKS → EXECUTION → VALIDATION → REPORT`. Старт фичи: `docs/development/FEATURE_CHAT_TEMPLATE.md`. Перед merge: `docs/qa/MERGE_CHECKLIST.md`; затем при необходимости `docs/development/PROMPT_QA_AUDIT.md`; при спорном scope — `docs/development/PROMPT_DEVILS_ADVOCATE.md`.
+
+## Язык
+
+- Ответы пользователю — **русский** (если не попросили иное).

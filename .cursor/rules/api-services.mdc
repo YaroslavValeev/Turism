@@ -1,0 +1,12 @@
+---
+description: Соглашения для services/api (Express, Prisma)
+globs: services/api/**/*.ts
+alwaysApply: false
+---
+
+# API (`services/api`)
+
+- Схема и миграции — только в `services/api/prisma/`.
+- Статусы Booking / Program / Organizer — сверять с `canonical_status_models.md` и контрактами в `docs/PROJECT_SOURCEBOOK.md`.
+- Финансовые и критичные переходы — с возможностью аудита (не «тихие» обновления без события, если в проекте уже заведён audit trail).
+- Ошибки API: предсказуемые коды и тело; валидация входа на границе маршрута.

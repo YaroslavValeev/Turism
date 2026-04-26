@@ -4,8 +4,10 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { getBookingStatusLabel, getSourceChannelLabel } from "@mywave/shared-types";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+import { adminJson, getAdminToken } from "../../../lib/admin";
+import { AdminPageHeader } from "../../../components/admin/AdminPageHeader";
+import { AdminSectionCard } from "../../../components/admin/AdminSectionCard";
+import { AdminLoadingState } from "../../../components/admin/AdminLoadingState";
 
 type BookingDetail = {
   id: string;
@@ -29,99 +31,156 @@ export default function BookingDetailPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    const token = typeof window !== "undefined" ? window.localStorage.getItem("admin_token") : null;
-    if (!token || !id) {
-      if (!token) window.location.href = "/login";
+    if (!getAdminToken()) {
+      window.location.href = "/login";
       return;
     }
-    fetch(`${API_URL}/bookings/${id}`, { headers: { Authorization: `Bearer ${token}` } })
-      .then((res) => {
-        if (res.status === 401) {
-          window.localStorage.removeItem("admin_token");
-          window.location.href = "/login";
-          return null;
-        }
-        if (!res.ok) return null;
-        return res.json();
-      })
+    if (!id) return;
+    setLoading(true);
+    setError("");
+    adminJson<BookingDetail>(`/bookings/${id}`)
       .then((data) => {
-        if (data) {
-          setBooking(data);
-          setSelectedStatus(data.bookingStatus);
-        } else setBooking(null);
+        setBooking(data);
+        setSelectedStatus(data.bookingStatus);
       })
-      .catch((e) => setError(String(e)))
+      .catch((e) => {
+        setBooking(null);
+        setError(e instanceof Error ? e.message : String(e));
+      })
       .finally(() => setLoading(false));
   }, [id]);
 
   const handleStatusChange = () => {
     if (!booking || selectedStatus === booking.bookingStatus || !booking.nextStatuses.includes(selectedStatus)) return;
-    const token = window.localStorage.getItem("admin_token");
-    if (!token) return;
     setSaving(true);
     setError("");
-    fetch(`${API_URL}/bookings/${id}/status`, {
+    adminJson<BookingDetail>(`/bookings/${id}/status`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       body: JSON.stringify({ bookingStatus: selectedStatus }),
     })
-      .then((res) => {
-        if (res.status === 401) {
-          window.localStorage.removeItem("admin_token");
-          window.location.href = "/login";
-          return null;
-        }
-        if (!res.ok) return res.json().then((b) => { setError(b?.error ?? res.statusText); return null; });
-        return res.json();
-      })
       .then((data) => {
-        if (data) {
-          setBooking({ ...data, nextStatuses: data.nextStatuses ?? booking?.nextStatuses ?? [] });
-        }
+        setBooking({ ...data, nextStatuses: data.nextStatuses ?? booking.nextStatuses ?? [] });
       })
+      .catch((e) => setError(e instanceof Error ? e.message : String(e)))
       .finally(() => setSaving(false));
   };
 
-  if (loading) return <main style={{ padding: 24 }}><p>Загрузка...</p></main>;
-  if (!booking) return <main style={{ padding: 24 }}><p>Заявка не найдена.</p><Link href="/bookings">← К списку</Link></main>;
+  if (loading) {
+    return (
+      <main className="mw-admin-page">
+        <AdminPageHeader title="Заявка" description="Загрузка карточки бронирования…" />
+        <AdminLoadingState />
+      </main>
+    );
+  }
 
-  const canChange = booking.nextStatuses.length > 0 && booking.nextStatuses.includes(selectedStatus) && selectedStatus !== booking.bookingStatus;
+  if (!booking) {
+    return (
+      <main className="mw-admin-page">
+        <AdminPageHeader
+          title="Заявка"
+          description="Карточка не найдена или нет доступа."
+          actions={
+            <Link className="mw-admin-btn mw-admin-btn--ghost" href="/bookings">
+              ← К списку
+            </Link>
+          }
+        />
+        {error ? <div className="mw-admin-alert mw-admin-alert--error">{error}</div> : null}
+      </main>
+    );
+  }
+
+  const canChange =
+    booking.nextStatuses.length > 0 &&
+    booking.nextStatuses.includes(selectedStatus) &&
+    selectedStatus !== booking.bookingStatus;
 
   return (
-    <main style={{ padding: 24 }}>
-      <p>
-        <Link href="/organizers">Организаторы</Link> | <Link href="/programs">Программы</Link> | <Link href="/bookings">Заявки</Link> | <Link href="/incidents">Инциденты</Link> | <Link href="/reviews">Отзывы</Link> | <Link href="/commissions">Комиссии</Link>
-      </p>
-      <h1>Заявка: {booking.id.slice(0, 8)}…</h1>
-      <p><Link href="/bookings">← К списку заявок</Link></p>
-      {error && <p style={{ color: "red" }}>{error}</p>}
-      <table style={{ borderCollapse: "collapse", marginTop: 16 }}>
-        <tbody>
-          <tr><td style={{ padding: 6, fontWeight: "bold" }}>Гость</td><td style={{ padding: 6 }}>{booking.guestContact}</td></tr>
-          <tr><td style={{ padding: 6, fontWeight: "bold" }}>Программа</td><td style={{ padding: 6 }}>{booking.program?.title ?? "—"}</td></tr>
-          <tr><td style={{ padding: 6, fontWeight: "bold" }}>Организатор</td><td style={{ padding: 6 }}>{booking.organizer?.displayName} ({booking.organizer?.contactEmail})</td></tr>
-          <tr><td style={{ padding: 6, fontWeight: "bold" }}>Текущий статус</td><td style={{ padding: 6 }}>{getBookingStatusLabel(booking.bookingStatus)}</td></tr>
-          <tr><td style={{ padding: 6, fontWeight: "bold" }}>Источник</td><td style={{ padding: 6 }}>{getSourceChannelLabel(booking.sourceChannel)}</td></tr>
-          <tr><td style={{ padding: 6, fontWeight: "bold" }}>Комментарий</td><td style={{ padding: 6, whiteSpace: "pre-wrap" }}>{booking.notes ?? "—"}</td></tr>
-        </tbody>
-      </table>
-      <div style={{ marginTop: 24 }}>
-        <label style={{ marginRight: 8 }}>Сменить статус:</label>
-        <select
-          value={selectedStatus}
-          onChange={(e) => setSelectedStatus(e.target.value)}
-          style={{ padding: 6, marginRight: 8 }}
-        >
-          <option value={booking.bookingStatus}>{getBookingStatusLabel(booking.bookingStatus)} (текущий)</option>
-          {booking.nextStatuses.map((s) => (
-            <option key={s} value={s}>{getBookingStatusLabel(s)}</option>
-          ))}
-        </select>
-        <button onClick={handleStatusChange} disabled={!canChange || saving} style={{ padding: 6 }}>
-          {saving ? "Сохранение…" : "Применить"}
-        </button>
-        {booking.nextStatuses.length === 0 && <span style={{ marginLeft: 8, color: "#666" }}>Нет допустимых переходов</span>}
-      </div>
+    <main className="mw-admin-page">
+      <AdminPageHeader
+        title={`Заявка ${booking.id.slice(0, 8)}…`}
+        description={`Создана: ${new Date(booking.createdAt).toLocaleString("ru-RU")}`}
+        actions={
+          <Link className="mw-admin-btn mw-admin-btn--ghost" href="/bookings">
+            ← К списку заявок
+          </Link>
+        }
+      />
+
+      {error && <div className="mw-admin-alert mw-admin-alert--error">{error}</div>}
+
+      <AdminSectionCard title="Данные заявки" style={{ marginBottom: 0 }}>
+        <div style={{ overflowX: "auto" }}>
+          <table className="mw-admin-table" style={{ margin: 0, maxWidth: 720 }}>
+            <thead>
+              <tr>
+                <th style={{ width: 200 }}>Поле</th>
+                <th>Значение</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style={{ fontWeight: 700, color: "var(--mw-muted2)", fontSize: "0.82rem" }}>Гость</td>
+                <td>{booking.guestContact}</td>
+              </tr>
+              <tr>
+                <td style={{ fontWeight: 700, color: "var(--mw-muted2)", fontSize: "0.82rem" }}>Программа</td>
+                <td>{booking.program?.title ?? "—"}</td>
+              </tr>
+              <tr>
+                <td style={{ fontWeight: 700, color: "var(--mw-muted2)", fontSize: "0.82rem" }}>Организатор</td>
+                <td>
+                  {booking.organizer?.displayName ?? "—"}{" "}
+                  {booking.organizer?.contactEmail ? (
+                    <span className="mw-admin-prose">({booking.organizer.contactEmail})</span>
+                  ) : null}
+                </td>
+              </tr>
+              <tr>
+                <td style={{ fontWeight: 700, color: "var(--mw-muted2)", fontSize: "0.82rem" }}>Статус</td>
+                <td>{getBookingStatusLabel(booking.bookingStatus)}</td>
+              </tr>
+              <tr>
+                <td style={{ fontWeight: 700, color: "var(--mw-muted2)", fontSize: "0.82rem" }}>Источник</td>
+                <td>{getSourceChannelLabel(booking.sourceChannel)}</td>
+              </tr>
+              <tr>
+                <td style={{ fontWeight: 700, color: "var(--mw-muted2)", fontSize: "0.82rem", verticalAlign: "top" }}>
+                  Комментарий
+                </td>
+                <td style={{ whiteSpace: "pre-wrap" }}>{booking.notes ?? "—"}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </AdminSectionCard>
+
+      <AdminSectionCard title="Смена статуса">
+        <div className="mw-admin-toolbar" style={{ marginBottom: 0 }}>
+          <label className="mw-admin-label" style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 220 }}>
+            Новый статус
+            <select value={selectedStatus} onChange={(e) => setSelectedStatus(e.target.value)}>
+              <option value={booking.bookingStatus}>{getBookingStatusLabel(booking.bookingStatus)} (текущий)</option>
+              {booking.nextStatuses.map((s) => (
+                <option key={s} value={s}>
+                  {getBookingStatusLabel(s)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="mw-admin-toolbar__actions" style={{ alignSelf: "flex-end" }}>
+            <button type="button" className="mw-admin-btn" onClick={handleStatusChange} disabled={!canChange || saving}>
+              {saving ? "Сохранение…" : "Применить"}
+            </button>
+          </div>
+        </div>
+        {booking.nextStatuses.length === 0 && (
+          <p className="mw-admin-prose" style={{ margin: "12px 0 0" }}>
+            Нет допустимых переходов для этого статуса.
+          </p>
+        )}
+      </AdminSectionCard>
     </main>
   );
 }

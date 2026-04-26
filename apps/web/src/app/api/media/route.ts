@@ -29,7 +29,7 @@ function buildPlaceholderSvg(url: string): string {
   </defs>
   <rect width="1200" height="900" rx="48" fill="url(#bg)"/>
   <rect x="72" y="72" width="1056" height="756" rx="36" fill="#F8FBFA" stroke="#BFE8E3" stroke-width="4"/>
-  <text x="108" y="184" fill="#147A78" font-family="Arial, sans-serif" font-size="36" font-weight="700">MyWave Travel</text>
+  <text x="108" y="184" fill="#147A78" font-family="Arial, sans-serif" font-size="36" font-weight="700">MyWaveTour</text>
   <text x="108" y="248" fill="#22313F" font-family="Arial, sans-serif" font-size="66" font-weight="700">Изображение недоступно</text>
   <text x="108" y="326" fill="#5E6B73" font-family="Arial, sans-serif" font-size="32">Источник не отдал обложку или ссылка устарела.</text>
   <text x="108" y="410" fill="#7A8A94" font-family="Arial, sans-serif" font-size="28">Источник: ${host}</text>
@@ -56,19 +56,24 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const referer =
-      parsed.hostname.includes("instagram.com") ||
-      parsed.hostname.includes("cdninstagram.com") ||
-      parsed.hostname.includes("fbcdn.net")
+    const isUnsplash =
+      parsed.hostname === "images.unsplash.com" || parsed.hostname.endsWith(".unsplash.com");
+    const referer = isUnsplash
+      ? "https://unsplash.com/"
+      : parsed.hostname.includes("instagram.com") ||
+          parsed.hostname.includes("cdninstagram.com") ||
+          parsed.hostname.includes("fbcdn.net")
         ? "https://www.instagram.com/"
         : parsed.hostname.includes("telesco.pe") || parsed.hostname.includes("telegram.org")
           ? "https://t.me/"
           : `${parsed.protocol}//${parsed.hostname}/`;
 
+    // Unsplash отдаёт AVIF, если в Accept первым стоит avif — часть WebView/браузеров плохо рендерит AVIF в <img>.
+    // WebP в приоритете: совместимость лучше при том же проксировании.
     const response = await fetch(parsed.toString(), {
       headers: {
         "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135 Safari/537.36",
-        accept: "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
+        accept: "image/webp,image/avif,image/apng,image/svg+xml,image/*,*/*;q=0.8",
         referer,
       },
       cache: "no-store",

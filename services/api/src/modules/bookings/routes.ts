@@ -12,6 +12,8 @@ import { isProgramPubliclyVisible } from "../programs/publicVisibility";
 import { emitBackendAnalyticsEventBestEffort } from "../analytics/service";
 import { computeTravelerKeyHash } from "../../lib/travelerKey";
 import { ensureReviewRequestForCompletedBooking } from "../reviews/reviewRequests";
+import { createDealForBooking, resolveContentItemIdForAttribution, syncDealFromBooking } from "../deals/dealService";
+import { addRevenueToContentMetrics } from "../content-pipeline/contentRevenue";
 
 export function bookingsRoutes(env: Env): Router {
   const router = Router();
@@ -19,7 +21,19 @@ export function bookingsRoutes(env: Env): Router {
 
   // Assisted booking intake: public can create inquiry (new). organizer_id from program.
   router.post("/", async (req: Request, res: Response) => {
-    const body = req.body as { programId?: string; guestContact?: string; sourceChannel?: string; notes?: string };
+    const body = req.body as {
+      programId?: string;
+      guestContact?: string;
+      sourceChannel?: string;
+      sourceCampaign?: string;
+      notes?: string;
+      entryType?: string;
+      entryId?: string;
+      utmSource?: string;
+      utmMedium?: string;
+      exploreType?: string;
+      exploreSlug?: string;
+    };
     if (!body.programId || !body.guestContact) {
       res.status(400).json({ error: "programId and guestContact required" });
       return;
@@ -33,6 +47,48 @@ export function bookingsRoutes(env: Env): Router {
       return;
     }
     const travelerKeyHash = computeTravelerKeyHash(env, body.guestContact);
+    const duplicateWindowStart = new Date(Date.now() - 2 * 60 * 1000);
+    const duplicate = await prisma.booking.findFirst({
+      where: {
+        programId: body.programId,
+        guestContact: body.guestContact,
+        createdAt: { gte: duplicateWindowStart },
+      },
+      select: { id: true },
+      orderBy: { createdAt: "desc" },
+    });
+    if (duplicate) {
+      res.status(409).json({ error: "Duplicate booking request", bookingId: duplicate.id });
+      return;
+    }
+    const sourceCampaignParts = [
+      body.sourceCampaign?.trim(),
+      body.utmSource?.trim() ? `utm_source=${body.utmSource.trim()}` : "",
+      body.utmMedium?.trim() ? `utm_medium=${body.utmMedium.trim()}` : "",
+      body.entryType?.trim() ? `entry_type=${body.entryType.trim()}` : "",
+      body.entryId?.trim() ? `entry_id=${body.entryId.trim()}` : "",
+      body.exploreType?.trim() ? `explore_type=${body.exploreType.trim()}` : "",
+      body.exploreSlug?.trim() ? `explore_slug=${body.exploreSlug.trim()}` : "",
+    ].filter(Boolean);
+    const sourceCampaign = sourceCampaignParts.join("|") || null;
+    const trackingNote = [
+      body.entryType?.trim() ? `entry_type=${body.entryType.trim()}` : "",
+      body.entryId?.trim() ? `entry_id=${body.entryId.trim()}` : "",
+      body.utmSource?.trim() ? `utm_source=${body.utmSource.trim()}` : "",
+      body.utmMedium?.trim() ? `utm_medium=${body.utmMedium.trim()}` : "",
+    ]
+      .filter(Boolean)
+      .join(", ");
+    const mergedNotes = [body.notes?.trim() || "", trackingNote ? `[tracking] ${trackingNote}` : ""]
+      .filter(Boolean)
+      .join("\n\n");
+
+    let contentItemId: string | null = resolveContentItemIdForAttribution(body.entryType, body.entryId);
+    if (contentItemId) {
+      const ex = await prisma.contentItem.findUnique({ where: { id: contentItemId }, select: { id: true } });
+      if (!ex) contentItemId = null;
+    }
+
     const b = await prisma.booking.create({
       data: {
         programId: program.id,
@@ -40,11 +96,25 @@ export function bookingsRoutes(env: Env): Router {
         guestContact: body.guestContact,
         travelerKeyHash: travelerKeyHash ?? undefined,
         sourceChannel: body.sourceChannel ?? null,
-        notes: body.notes?.trim() ? body.notes.trim() : null,
+        sourceCampaign,
+        notes: mergedNotes || null,
         bookingStatus: "new",
+        contentItemId,
+        entryType: body.entryType?.trim() || null,
+        entryId: body.entryId?.trim() || null,
+        exploreType: body.exploreType?.trim() || null,
+        exploreSlug: body.exploreSlug?.trim() || null,
+        utmSource: body.utmSource?.trim() || null,
+        utmMedium: body.utmMedium?.trim() || null,
       },
       include: { program: { select: { title: true } }, organizer: { select: { displayName: true } } },
     });
+
+    try {
+      await createDealForBooking(b.id, contentItemId);
+    } catch {
+      // идемпотентность / гонки
+    }
 
     emitBackendAnalyticsEventBestEffort({
       event_name: "booking_created",
@@ -58,6 +128,13 @@ export function bookingsRoutes(env: Env): Router {
       properties_json: {
         booking_status: b.bookingStatus,
         source_channel: b.sourceChannel ?? null,
+        source_campaign: b.sourceCampaign ?? null,
+        entry_type: body.entryType?.trim() ?? null,
+        entry_id: body.entryId?.trim() ?? null,
+        utm_source: body.utmSource?.trim() ?? null,
+        utm_medium: body.utmMedium?.trim() ?? null,
+        explore_type: body.exploreType?.trim() ?? null,
+        explore_slug: body.exploreSlug?.trim() ?? null,
       },
     });
     res.status(201).json(b);
@@ -171,6 +248,30 @@ export function bookingsRoutes(env: Env): Router {
     if (bookingStatus === "completed") {
       await ensureReviewRequestForCompletedBooking(b);
     }
+
+    const org = await prisma.organizer.findUnique({
+      where: { id: b.organizerId },
+      select: { verificationStatus: true },
+    });
+    if (org) {
+      await syncDealFromBooking(
+        {
+          id: b.id,
+          bookingStatus: b.bookingStatus,
+          gmvRub: b.gmvRub,
+          netAmountRub: b.netAmountRub,
+          contentItemId: b.contentItemId,
+        },
+        org.verificationStatus,
+      );
+    }
+    if (bookingStatus === "completed" && b.contentItemId) {
+      const amt = Math.max(0, b.gmvRub ?? b.netAmountRub ?? 0);
+      if (amt > 0) {
+        await addRevenueToContentMetrics(b.contentItemId, amt);
+      }
+    }
+
     res.json({ ...b, nextStatuses });
   });
 

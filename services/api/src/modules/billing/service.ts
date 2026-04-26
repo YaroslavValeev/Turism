@@ -11,6 +11,7 @@ import {
 import { prisma } from "../../lib/prisma";
 import { writeAuditLog } from "../../lib/audit";
 import { emitBackendAnalyticsEventBestEffort } from "../analytics/service";
+import { createDealForBooking, syncDealFromBooking, commissionEligible } from "../deals/dealService";
 
 type Actor = string | null;
 
@@ -31,7 +32,71 @@ export async function recalculateCommissionForBooking(bookingId: string, actor: 
     throw new Error("Booking not found");
   }
   const organizer = await prisma.organizer.findUnique({ where: { id: booking.organizerId } });
-  const rateBps = organizer?.commissionRateBps ?? DEFAULT_COMMISSION_RATE_BPS;
+  if (!organizer) {
+    throw new Error("Organizer not found");
+  }
+
+  let deal = await prisma.deal.findUnique({ where: { bookingId } });
+  if (!deal) {
+    try {
+      await createDealForBooking(bookingId, booking.contentItemId ?? null);
+    } catch {
+      /* already exists */
+    }
+    deal = await prisma.deal.findUnique({ where: { bookingId } });
+  }
+  if (deal) {
+    await syncDealFromBooking(
+      {
+        id: booking.id,
+        bookingStatus: booking.bookingStatus,
+        gmvRub: booking.gmvRub,
+        netAmountRub: booking.netAmountRub,
+        contentItemId: booking.contentItemId,
+      },
+      organizer.verificationStatus,
+    );
+    deal = await prisma.deal.findUnique({ where: { bookingId } });
+  }
+  const dealStatus = deal?.dealStatus ?? "new";
+  if (booking.bookingStatus !== "disputed" && !commissionEligible(organizer.verificationStatus, dealStatus)) {
+    const zero = await prisma.commission.upsert({
+      where: { bookingId },
+      create: {
+        bookingId,
+        leadId: booking.leadId,
+        organizerId: booking.organizerId,
+        programId: booking.programId,
+        gmvRub: 0,
+        commissionRateBps: organizer.commissionRateBps ?? DEFAULT_COMMISSION_RATE_BPS,
+        commissionBaseRub: 0,
+        commissionAmountRub: 0,
+        commissionAccruedRub: 0,
+        reconciliationStatus: "reversed",
+        calculationJson: {
+          reason: "not_eligible",
+          need_verified_organizer_and_deal_confirmed_or_completed: true,
+          dealStatus,
+          verificationStatus: organizer.verificationStatus,
+        },
+      },
+      update: {
+        gmvRub: 0,
+        commissionBaseRub: 0,
+        commissionAmountRub: 0,
+        commissionAccruedRub: 0,
+        reconciliationStatus: "reversed",
+        calculationJson: {
+          reason: "not_eligible",
+          dealStatus,
+          verificationStatus: organizer.verificationStatus,
+        },
+      },
+    });
+    return zero;
+  }
+
+  const rateBps = organizer.commissionRateBps ?? DEFAULT_COMMISSION_RATE_BPS;
   const paidAmountRub = booking.paidAmountRub ?? 0;
   const refundedAmountRub = booking.refundedAmountRub ?? 0;
   const netAmountRub = Math.max(0, paidAmountRub - refundedAmountRub);

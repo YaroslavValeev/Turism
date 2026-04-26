@@ -1,8 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AdminNav } from "../../components/AdminNav";
 import { adminJson, getAdminToken } from "../../lib/admin";
+import { AdminPageHeader } from "../../components/admin/AdminPageHeader";
+import { AdminSectionCard } from "../../components/admin/AdminSectionCard";
+import { AdminStatCard, AdminStatGrid } from "../../components/admin/AdminStatCard";
+import { AdminLoadingState } from "../../components/admin/AdminLoadingState";
+import { AdminEmptyState } from "../../components/admin/AdminEmptyState";
 
 type Dashboard = {
   jobs: Array<{ key: string; label: string; description: string }>;
@@ -14,6 +18,7 @@ type Dashboard = {
     needsReview: number;
     approved: number;
     published: number;
+    contentDrafts?: number;
   };
   recentRuns: Array<{
     id: string;
@@ -80,106 +85,143 @@ export default function JobsPage() {
     }
   }
 
-  if (loading) return <p>Загрузка…</p>;
-  if (!dashboard) return <p>Нет данных</p>;
+  if (loading) {
+    return (
+      <main className="mw-admin-page">
+        <AdminPageHeader
+          title="Jobs и ingestion"
+          description="Счётчики витрины и последние source runs. Триггеры — вручную, для срезов v1 / контент-черновиков."
+        />
+        <AdminLoadingState label="Загружаем дашборд…" />
+      </main>
+    );
+  }
+  if (!dashboard) {
+    return (
+      <main className="mw-admin-page">
+        <p className="mw-admin-prose">Нет данных. Проверьте токен и API.</p>
+        {error && <div className="mw-admin-alert mw-admin-alert--error">{error}</div>}
+      </main>
+    );
+  }
 
   return (
-    <main style={{ padding: 24 }}>
-      <AdminNav current="/jobs" />
-      <h1>Jobs и ingestion dashboard</h1>
-      <p style={{ fontSize: 14, color: "#555", maxWidth: 900 }}>
-        Ручные триггеры для вертикального среза ingestion v1. Здесь запускаются collect, normalize и dedup, а также
-        видно текущее состояние очереди модерации.
-      </p>
-      {error && <p style={{ color: "red" }}>{error}</p>}
-      {message && <p style={{ color: "green" }}>{message}</p>}
+    <main className="mw-admin-page">
+      <AdminPageHeader
+        title="Jobs и ingestion"
+        description="Ручные триггеры вертикального среза ingestion: collect, normalize, dedup, content_drafts. Не полный дашборд source→publish — см. `docs/OPEN_STATUS_CHECKPOINT.md`."
+        actions={
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            <button
+              type="button"
+              className="mw-admin-btn"
+              onClick={() => void runJob("/jobs/run-daily-sync", "run-daily-sync")}
+              disabled={busy !== ""}
+            >
+              {busy === "run-daily-sync" ? "…" : "Daily sync"}
+            </button>
+            <button
+              type="button"
+              className="mw-admin-btn"
+              onClick={() => void runJob("/jobs/run-ingestion", "run-ingestion")}
+              disabled={busy !== ""}
+            >
+              {busy === "run-ingestion" ? "…" : "Ingestion"}
+            </button>
+            <button
+              type="button"
+              className="mw-admin-btn"
+              onClick={() => void runJob("/jobs/run-normalization", "run-normalization")}
+              disabled={busy !== ""}
+            >
+              {busy === "run-normalization" ? "…" : "Normalization"}
+            </button>
+            <button
+              type="button"
+              className="mw-admin-btn"
+              onClick={() => void runJob("/jobs/run-dedup", "run-dedup")}
+              disabled={busy !== ""}
+            >
+              {busy === "run-dedup" ? "…" : "Dedup"}
+            </button>
+            <button
+              type="button"
+              className="mw-admin-btn"
+              onClick={() => void runJob("/jobs/run-content-drafts", "run-content-drafts")}
+              disabled={busy !== ""}
+            >
+              {busy === "run-content-drafts" ? "…" : "Content drafts (D)"}
+            </button>
+            <button type="button" className="mw-admin-btn mw-admin-btn--ghost" onClick={() => void loadData()}>
+              Обновить
+            </button>
+          </div>
+        }
+      />
+      {error && <div className="mw-admin-alert mw-admin-alert--error">{error}</div>}
+      {message && <div className="mw-admin-alert mw-admin-alert--success">{message}</div>}
 
-      <div style={{ display: "flex", gap: 12, marginBottom: 20 }}>
-        <button type="button" onClick={() => void runJob("/jobs/run-daily-sync", "run-daily-sync")} disabled={busy !== ""} style={{ padding: "8px 16px" }}>
-          {busy === "run-daily-sync" ? "Выполняется..." : "Run daily sync"}
-        </button>
-        <button type="button" onClick={() => void runJob("/jobs/run-ingestion", "run-ingestion")} disabled={busy !== ""} style={{ padding: "8px 16px" }}>
-          {busy === "run-ingestion" ? "Выполняется..." : "Run ingestion"}
-        </button>
-        <button type="button" onClick={() => void runJob("/jobs/run-normalization", "run-normalization")} disabled={busy !== ""} style={{ padding: "8px 16px" }}>
-          {busy === "run-normalization" ? "Выполняется..." : "Run normalization"}
-        </button>
-        <button type="button" onClick={() => void runJob("/jobs/run-dedup", "run-dedup")} disabled={busy !== ""} style={{ padding: "8px 16px" }}>
-          {busy === "run-dedup" ? "Выполняется..." : "Run dedup"}
-        </button>
-        <button type="button" onClick={() => void loadData()} style={{ padding: "8px 16px" }}>
-          Обновить
-        </button>
-      </div>
+      <AdminSectionCard title="Счётчики" style={{ marginBottom: 0 }}>
+        <AdminStatGrid>
+          <AdminStatCard label="Источники" value={dashboard.counters.sources} />
+          <AdminStatCard label="Raw" value={dashboard.counters.rawItems} />
+          <AdminStatCard label="Normalized" value={dashboard.counters.normalizedItems} />
+          <AdminStatCard label="Кандидаты" value={dashboard.counters.candidates} />
+          <AdminStatCard label="Needs review" value={dashboard.counters.needsReview} />
+          <AdminStatCard label="Approved" value={dashboard.counters.approved} />
+          <AdminStatCard label="Published" value={dashboard.counters.published} />
+          <AdminStatCard
+            label="Content drafts"
+            value={dashboard.counters.contentDrafts ?? "—"}
+          />
+        </AdminStatGrid>
+      </AdminSectionCard>
 
-      <section style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(140px, 1fr))", gap: 12, marginBottom: 24 }}>
-        <div style={{ border: "1px solid #ddd", borderRadius: 12, padding: 16 }}>
-          <strong>Источники</strong>
-          <div style={{ fontSize: 28 }}>{dashboard.counters.sources}</div>
-        </div>
-        <div style={{ border: "1px solid #ddd", borderRadius: 12, padding: 16 }}>
-          <strong>Raw items</strong>
-          <div style={{ fontSize: 28 }}>{dashboard.counters.rawItems}</div>
-        </div>
-        <div style={{ border: "1px solid #ddd", borderRadius: 12, padding: 16 }}>
-          <strong>Normalized</strong>
-          <div style={{ fontSize: 28 }}>{dashboard.counters.normalizedItems}</div>
-        </div>
-        <div style={{ border: "1px solid #ddd", borderRadius: 12, padding: 16 }}>
-          <strong>Candidates</strong>
-          <div style={{ fontSize: 28 }}>{dashboard.counters.candidates}</div>
-        </div>
-        <div style={{ border: "1px solid #ddd", borderRadius: 12, padding: 16 }}>
-          <strong>Needs review</strong>
-          <div style={{ fontSize: 28 }}>{dashboard.counters.needsReview}</div>
-        </div>
-        <div style={{ border: "1px solid #ddd", borderRadius: 12, padding: 16 }}>
-          <strong>Approved</strong>
-          <div style={{ fontSize: 28 }}>{dashboard.counters.approved}</div>
-        </div>
-        <div style={{ border: "1px solid #ddd", borderRadius: 12, padding: 16 }}>
-          <strong>Published</strong>
-          <div style={{ fontSize: 28 }}>{dashboard.counters.published}</div>
-        </div>
-      </section>
-
-      <h2>Последние source runs</h2>
-      <table style={{ width: "100%", borderCollapse: "collapse" }}>
-        <thead>
-          <tr>
-            <th align="left">Источник</th>
-            <th align="left">Run</th>
-            <th align="left">Результат</th>
-            <th align="left">Ошибка</th>
-          </tr>
-        </thead>
-        <tbody>
-          {dashboard.recentRuns.map((run) => (
-            <tr key={run.id} style={{ borderTop: "1px solid #eee" }}>
-              <td style={{ padding: "10px 8px" }}>
-                <strong>{run.source.name}</strong>
-                <br />
-                <span style={{ fontSize: 12, color: "#666" }}>{run.source.type}</span>
-              </td>
-              <td style={{ padding: "10px 8px" }}>
-                {run.runType} · {run.status}
-                <br />
-                <span style={{ fontSize: 12, color: "#666" }}>
-                  {formatDate(run.startedAt)} → {formatDate(run.finishedAt)}
-                </span>
-              </td>
-              <td style={{ padding: "10px 8px" }}>
-                found {run.itemsFound}
-                <br />
-                created {run.itemsCreated}
-              </td>
-              <td style={{ padding: "10px 8px", color: run.errorMessage ? "red" : "#666" }}>
-                {run.errorMessage || "—"}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <AdminSectionCard title="Последние source runs">
+        {dashboard.recentRuns.length === 0 ? (
+          <AdminEmptyState
+            title="Пока нет source runs"
+            description="После запуска ingestion / daily sync здесь появятся последние прогоны по источникам."
+          />
+        ) : (
+          <div style={{ overflowX: "auto" }}>
+            <table className="mw-admin-table" style={{ margin: 0 }}>
+              <thead>
+                <tr>
+                  <th>Источник</th>
+                  <th>Run</th>
+                  <th>Результат</th>
+                  <th>Ошибка</th>
+                </tr>
+              </thead>
+              <tbody>
+                {dashboard.recentRuns.map((run) => (
+                  <tr key={run.id}>
+                    <td>
+                      <strong>{run.source.name}</strong>
+                      <div className="mw-admin-prose" style={{ fontSize: "0.85rem", marginTop: 4 }}>
+                        {run.source.type}
+                      </div>
+                    </td>
+                    <td>
+                      {run.runType} · {run.status}
+                      <div className="mw-admin-prose" style={{ fontSize: "0.85rem", marginTop: 4 }}>
+                        {formatDate(run.startedAt)} → {formatDate(run.finishedAt)}
+                      </div>
+                    </td>
+                    <td>
+                      found {run.itemsFound} · created {run.itemsCreated}
+                    </td>
+                    <td style={{ color: run.errorMessage ? "#991b1b" : "var(--mw-muted2)" }}>
+                      {run.errorMessage || "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </AdminSectionCard>
     </main>
   );
 }

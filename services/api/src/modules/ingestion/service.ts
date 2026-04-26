@@ -5,7 +5,7 @@ import { spawnSync } from "child_process";
 import { Prisma, Source, EventCandidate, NormalizedItem, RawItem } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
 import { writeAuditLog } from "../../lib/audit";
-import { canPublish } from "../programs/publishGate";
+import { canPublishAutopilot } from "../programs/publishGate";
 import { buildProgramDedupKey, pickPreferredProgram, type ProgramDedupShape } from "../programs/dedup";
 import { cacheExternalProgramMediaForWeb } from "./mediaCache";
 import {
@@ -15,6 +15,52 @@ import {
   type EventCandidateStatus,
   type SourceType,
 } from "./constants";
+
+function toWellFormedString(s: string): string {
+  const asAny = s as string & { toWellFormed?: () => string };
+  if (typeof asAny.toWellFormed === "function") return asAny.toWellFormed();
+  return s.replace(/[\uD800-\uDFFF]/g, (ch, i, str) => {
+    if (ch >= "\uD800" && ch <= "\uDBFF" && str[i + 1] && str[i + 1] >= "\uDC00" && str[i + 1] <= "\uDFFF") {
+      return ch;
+    }
+    if (ch >= "\uDC00" && ch <= "\uDFFF" && str[i - 1] && str[i - 1] >= "\uD800" && str[i - 1] <= "\uDBFF") {
+      return ch;
+    }
+    return "\uFFFD";
+  });
+}
+
+function wellFormedJsonValue(value: unknown): unknown {
+  if (value === null || value === undefined) return value;
+  if (typeof value === "string") return toWellFormedString(value);
+  if (typeof value === "number" || typeof value === "boolean") return value;
+  if (Array.isArray(value)) return value.map((v) => wellFormedJsonValue(v));
+  if (value !== null && typeof value === "object") {
+    const o: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+      o[k] = wellFormedJsonValue(v);
+    }
+    return o;
+  }
+  return String(value);
+}
+
+/** jsonb: без суррогатов/битых escape (ошибка Postgres "unexpected end of hex escape"). */
+function jsonForJsonb(value: Prisma.InputJsonValue): Prisma.InputJsonValue {
+  try {
+    const s = JSON.stringify(wellFormedJsonValue(value) as object | unknown[], (_k, v) =>
+      typeof v === "bigint" ? v.toString() : v,
+    );
+    return JSON.parse(s) as Prisma.InputJsonValue;
+  } catch {
+    return { _roundtrip: "failed" } as Prisma.InputJsonValue;
+  }
+}
+
+function textWellFormed(s: string | null | undefined): string | null {
+  if (s == null) return s ?? null;
+  return toWellFormedString(s);
+}
 
 type SourceWithOrganizer = Source & {
   organizer: { id: string; displayName: string } | null;
@@ -39,7 +85,44 @@ type CandidateWithRelations = EventCandidate & {
 };
 
 type PublishedProgramLink = NonNullable<CandidateWithRelations["publishedProgram"]>;
-type PublishCandidateResult = PublishedProgramLink & { duplicateSkipped?: boolean };
+
+/** Метрики для батч-статистики автопубликации (только при autoPublishEnabled в вызове). */
+export type AutopilotPublishMeta = {
+  path: "create" | "duplicate_merge";
+  programId: string;
+  /** Итоговый publishStatus у Program после обработки */
+  programPublishStatus: string;
+  autoPublishRequested: boolean;
+  /** Гейт canPublishAutopilot: пройден (public) / не вызывался / провал */
+  gate: "passed" | "skipped_no_request" | "failed" | "not_applicable";
+  gateMissing?: string[];
+};
+
+type PublishCandidateResult = PublishedProgramLink & {
+  duplicateSkipped?: boolean;
+  autopilot?: AutopilotPublishMeta;
+};
+
+/** Агрегат по autoPublishReadyCandidates (и лог-контракт для мониторинга) */
+export type AutopilotBatchStats = {
+  checked: number;
+  /** Кандидаты в выборке до фильтра по источнику и isAutoPublishEligible */
+  sourceOptOut: number;
+  notEligible: number;
+  autoCreated: number;
+  /** Обновления существующей программы по duplicate merge path */
+  autoUpdated: number;
+  autoCreatedPublished: number;
+  autoCreatedGateSkipped: number;
+  duplicateMerged: number;
+  /** Дубликат: программа в итоге в published (в т.ч. удержанная) */
+  duplicatePublishedOrRetained: number;
+  /** Дубликат: гейт не прошли, публикация не усилена, но витрина осталась от прошлого */
+  duplicateRetainedOnly: number;
+  gateSkipped: number;
+  /** Исключения при publishCandidateToDraft */
+  publishFailed: number;
+};
 
 type CollectedItem = {
   externalItemId?: string | null;
@@ -341,6 +424,13 @@ function getSourceBooleanMeta(source: Source, key: string): boolean {
   return value === true || value === "true" || value === "1";
 }
 
+/** Глобальный autopublish: все активные источники по умолчанию; opt-out: `metaJson.autoPublish: false`. */
+export function shouldRunAutoPublishForSource(source: Source, globalEnabled: boolean): boolean {
+  if (!globalEnabled) return false;
+  if (getMetaObject(source.metaJson).autoPublish === false) return false;
+  return true;
+}
+
 function getSourceStringArrayMeta(source: Source, key: string): string[] {
   const value = getMetaObject(source.metaJson)[key];
   if (!Array.isArray(value)) return [];
@@ -365,16 +455,92 @@ function extractUrls(text: string): string[] {
   return [...text.matchAll(/https?:\/\/[^\s"'<>)\]]+/gi)].map((match) => match[0]);
 }
 
+/** Посты-«инфографика/климат» в TG часто кладут картинку-таблицу первой; фото с берега — ниже. */
+function isLikelyStatsOrClimateInfographicPostText(text: string): boolean {
+  const t = normalizeText(text).toLowerCase();
+  if (t.length < 24) return false;
+  if (/температур(а|ы)?\s+воды|воды.*температур|средн(яя|ей)\s+температур|таблиц\w*\s+месяц|по\s+месяц\w*.*градус|в\s+течени[еи]\s+года|график\w*.*температур/i.test(t)) {
+    return true;
+  }
+  const hits = [
+    /температур/i,
+    /таблиц/i,
+    /график/i,
+    /средн(яя|ей)/i,
+    /градус\w*/i,
+    /январ\w*.*феврал\w*.*март/i,
+  ].filter((p) => p.test(t)).length;
+  return hits >= 2;
+}
+
+function orderMediaUrlsForCoverPreference(urls: string[], contextText: string): string[] {
+  if (urls.length <= 1) return urls;
+  if (isLikelyStatsOrClimateInfographicPostText(contextText)) return [...urls].reverse();
+  return urls;
+}
+
+/** Дисциплина упоминается в теле поста, а не только приписана из метаданных Source. */
+function disciplineMentionedInPostText(text: string): boolean {
+  const t = text.toLowerCase();
+  return Object.values(DISCIPLINE_KEYWORDS).some((keywords) => keywords.some((k) => t.includes(k)));
+}
+
+/**
+ * Сигнал формата пилотного каталога: выезд/кэмп/тренировка/набор/бронь — см. SITE_IA, taxonomy (camp/trip/…).
+ * Не путать с generic travel news.
+ */
+function hasEventTypeKeywordHit(text: string): boolean {
+  return Object.values(EVENT_TYPE_KEYWORDS)
+    .flat()
+    .some((keyword) => text.includes(keyword));
+}
+
+function hasPilotProgramFormatIntent(text: string): boolean {
+  if (detectEventType(text)) return true;
+  if (hasEventTypeKeywordHit(text)) return true;
+  return /(выезд|кэмп|кемп|лагер\w*|тренировк|сбор\s+на|набор\s+на|клиник\w*|интенсив\w*|программ\w*\s+на|мест\w*\s+остал|бронир|участ\w*\s+в|следующ\w+\s+этап|открытие\s+сезона|старт\s+сезона)/i.test(
+    text,
+  );
+}
+
+/** Жёсткий оффтоп для витрины «спортивные выезды / программы» (таблицы климата, статистика без события). */
+function buildOffTopicScoutingBundle(partial: {
+  eventLikelihoodScore: number;
+  futureEventScore: number;
+  completenessScore: number;
+  sourceTrustScore: number;
+}): ScoreBundle {
+  return {
+    confidenceScore: 0.08,
+    eventLikelihoodScore: 0.1,
+    futureEventScore: Math.min(0.1, partial.futureEventScore),
+    completenessScore: partial.completenessScore,
+    sourceTrustScore: partial.sourceTrustScore,
+    tourismFitScore: 0.04,
+    trustScore: partial.sourceTrustScore,
+    fitScore: 0.04,
+    duplicateScore: 0,
+    finalScore: 0.12,
+    reviewPriority: 12,
+    routedStatus: "archived",
+  };
+}
+
 function extractImageUrl(rawMedia: unknown, text: string): string | null {
+  const fromArray: string[] = [];
   if (Array.isArray(rawMedia)) {
     for (const item of rawMedia) {
-      if (typeof item === "string" && item.trim() && !/\/\/telegram\.org\/img\/emoji\//i.test(item)) return item.trim();
-      if (item && typeof item === "object") {
+      if (typeof item === "string" && item.trim() && !/\/\/telegram\.org\/img\/emoji\//i.test(item)) {
+        fromArray.push(item.trim());
+      } else if (item && typeof item === "object") {
         const url = (item as { url?: string }).url;
-        if (url?.trim() && !/\/\/telegram\.org\/img\/emoji\//i.test(url)) return url.trim();
+        if (url?.trim() && !/\/\/telegram\.org\/img\/emoji\//i.test(url)) fromArray.push(url.trim());
       }
     }
   }
+  const unique = [...new Set(fromArray)];
+  const ranked = orderMediaUrlsForCoverPreference(unique, text);
+  if (ranked.length > 0) return ranked[0] ?? null;
   const imageMatches = [...text.matchAll(/https?:\/\/[^\s"']+\.(?:jpg|jpeg|png|webp)/gi)];
   return imageMatches[0]?.[0] ?? null;
 }
@@ -2112,15 +2278,15 @@ function scoreNormalizedItem(source: SourceWithOrganizer, normalized: Omit<Norma
       ? 0.08
       : !hasExplicitDate
         ? 0.08
-      : daysToEnd < 0
-        ? 0
-        : daysToStart != null && daysToStart < 0
-          ? 0.92
-        : daysToStart != null && daysToStart <= 7
-          ? 1
-          : daysToStart != null && daysToStart <= 45
-            ? 0.82
-            : 0.55;
+        : daysToEnd < 0
+          ? 0
+          : daysToStart != null && daysToStart < 0
+            ? 0.92
+            : daysToStart != null && daysToStart <= 7
+              ? 1
+              : daysToStart != null && daysToStart <= 45
+                ? 0.82
+                : 0.55;
 
   const completenessFields = [
     normalized.eventType,
@@ -2136,13 +2302,23 @@ function scoreNormalizedItem(source: SourceWithOrganizer, normalized: Omit<Norma
   ].filter(Boolean).length;
   const completenessScore = clampScore(completenessFields / 10);
   const sourceTrustScore = clampScore(source.trustScore);
+
+  if (isLikelyStatsOrClimateInfographicPostText(text)) {
+    return buildOffTopicScoutingBundle({
+      eventLikelihoodScore,
+      futureEventScore,
+      completenessScore,
+      sourceTrustScore,
+    });
+  }
+
+  const sportMentionedInPost = disciplineMentionedInPostText(text);
+  const formatIntent = Boolean(normalized.eventType) || hasPilotProgramFormatIntent(text);
+  const sourceDisciplinePrior = Boolean(getPrimarySourceDiscipline(source));
+  const disciplineTourism = sportMentionedInPost ? 0.24 : sourceDisciplinePrior ? 0.08 : 0;
+  const eventTourism = formatIntent ? 0.18 : 0;
   const tourismFitScore = clampScore(
-    0.2 +
-      (normalized.discipline ? 0.22 : 0) +
-      (normalized.eventType ? 0.18 : 0) +
-      (normalized.startDate ? 0.12 : 0) +
-      (normalized.region ? 0.12 : 0) +
-      (normalized.bookingUrl ? 0.08 : 0),
+    0.12 + disciplineTourism + eventTourism + (normalized.startDate ? 0.12 : 0) + (normalized.region ? 0.1 : 0) + (normalized.bookingUrl ? 0.08 : 0),
   );
   const duplicateScore = 0;
   const trustScore = sourceTrustScore;
@@ -2266,20 +2442,30 @@ function sourceRank(sourceType: string): number {
 
 function createDraftProgramPayload(candidate: CandidateWithRelations, organizerId: string): Prisma.ProgramCreateInput {
   const normalized = candidate.normalizedItem;
+  const raw = normalized.rawItem;
+  const src = raw.source;
   const startDate = normalized.startDate ?? new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
   const endDate = normalized.endDate ?? normalized.startDate ?? startDate;
-  const organizerName = normalized.organizerName ?? candidate.normalizedItem.rawItem.source.name;
+  const organizerName = normalized.organizerName ?? src.name;
   const extractedJson =
     typeof normalized.extractedJson === "object" && normalized.extractedJson && !Array.isArray(normalized.extractedJson)
       ? (normalized.extractedJson as Record<string, unknown>)
       : {};
   const suggestedInclusions = typeof extractedJson.suggestedInclusions === "string" ? extractedJson.suggestedInclusions.trim() : "";
+  const now = new Date();
+  const sourceUrl = firstNonEmpty(raw.sourceUrl, src.urlOrHandle, null);
 
   return {
     organizer: { connect: { id: organizerId } },
+    source: { connect: { id: src.id } },
+    sourceType: src.type,
+    sourceUrl: sourceUrl ?? undefined,
+    ingestedAt: now,
+    reviewStatus: "auto_pending",
+    autoPublished: true,
     title: normalized.title ?? `${organizerName} — программа`,
-    discipline: normalized.discipline ?? candidate.normalizedItem.rawItem.source.discipline ?? "Unknown",
-    region: normalized.region ?? normalized.country ?? candidate.normalizedItem.rawItem.source.region ?? "Unknown",
+    discipline: normalized.discipline ?? src.discipline ?? "Unknown",
+    region: normalized.region ?? normalized.country ?? src.region ?? "Unknown",
     exactLocation: firstNonEmpty(normalized.city, normalized.venue),
     startDate,
     endDate,
@@ -2299,8 +2485,50 @@ function createDraftProgramPayload(candidate: CandidateWithRelations, organizerI
     cancellationRules: "Требует ручного заполнения оператором.",
     whatHappensAfterBooking: "После заявки оператор уточняет детали и переводит в следующий шаг.",
     cta: normalized.bookingUrl,
-    intakeSource: "admin_manual",
+    intakeSource: "ingestion_auto",
     publishStatus: "draft",
+  };
+}
+
+function buildAutopilotMergeUpdate(
+  programPayload: Prisma.ProgramCreateInput,
+  source: Source,
+  raw: RawItem,
+  existing: { id: string; ingestedAt: Date | null },
+): Prisma.ProgramUpdateInput {
+  const now = new Date();
+  const sourceUrl = firstNonEmpty(raw.sourceUrl, source.urlOrHandle, null);
+  return {
+    title: programPayload.title as string,
+    discipline: programPayload.discipline as string,
+    region: programPayload.region as string,
+    exactLocation: (programPayload.exactLocation as string | null | undefined) ?? null,
+    startDate: programPayload.startDate as Date,
+    endDate: programPayload.endDate as Date,
+    durationDays: programPayload.durationDays as number,
+    formatType: (programPayload.formatType as string | null | undefined) ?? undefined,
+    audienceFit: (programPayload.audienceFit as string | null | undefined) ?? undefined,
+    levelRequired: (programPayload.levelRequired as string | null | undefined) ?? undefined,
+    riskLevel: (programPayload.riskLevel as string | null | undefined) ?? undefined,
+    priceFromRub: (programPayload.priceFromRub as number | null | undefined) ?? null,
+    currency: (programPayload.currency as string | null | undefined) ?? undefined,
+    inclusions: (programPayload.inclusions as string | null | undefined) ?? undefined,
+    exclusions: (programPayload.exclusions as string | null | undefined) ?? null,
+    gearRequirements: (programPayload.gearRequirements as string | null | undefined) ?? undefined,
+    medicalLimitations: (programPayload.medicalLimitations as string | null | undefined) ?? undefined,
+    itineraryDayByDay: (programPayload.itineraryDayByDay as string | null | undefined) ?? undefined,
+    organizerName: (programPayload.organizerName as string | null | undefined) ?? undefined,
+    cancellationRules: (programPayload.cancellationRules as string | null | undefined) ?? undefined,
+    whatHappensAfterBooking: (programPayload.whatHappensAfterBooking as string | null | undefined) ?? undefined,
+    cta: (programPayload.cta as string | null | undefined) ?? undefined,
+    source: { connect: { id: source.id } },
+    sourceType: source.type,
+    sourceUrl: sourceUrl ?? undefined,
+    ingestedAt: existing.ingestedAt ?? now,
+    updatedFromSourceAt: now,
+    reviewStatus: "auto_pending",
+    autoPublished: true,
+    intakeSource: "ingestion_auto",
   };
 }
 
@@ -2967,8 +3195,17 @@ function extractInstagramUsername(value: string): string | null {
     try {
       const url = new URL(normalized);
       if (!/instagram\.com$/i.test(normalizeHost(url.hostname))) return null;
-      const segment = url.pathname.split("/").filter(Boolean)[0] ?? null;
-      return segment ? segment.replace(/^@/, "") : null;
+      const parts = url.pathname.split("/").filter(Boolean);
+      if (parts.length === 0) return null;
+      const head = parts[0].toLowerCase();
+      // Пост/рил/клип — не профиль; сбор идёт по HTML snapshot, а не web_profile_info.
+      if (["reel", "reels", "p", "tv"].includes(head) && parts[1]) {
+        return null;
+      }
+      if (head === "stories" && parts[1]) {
+        return null;
+      }
+      return parts[0].replace(/^@/, "") || null;
     } catch {
       return null;
     }
@@ -3306,21 +3543,32 @@ async function persistCollectedItems(source: Source, items: CollectedItem[], act
       },
     });
     if (existing) continue;
-    const raw = await prisma.rawItem.create({
-      data: {
-        sourceId: source.id,
-        externalItemId: item.externalItemId ?? null,
-        sourceType: source.type,
-        sourceUrl: item.sourceUrl ?? normalizeSourceUrl(source),
-        authorName: item.authorName ?? source.name,
-        publishedAt: item.publishedAt ?? null,
-        rawTitle: item.rawTitle ?? null,
-        rawText: item.rawText ?? null,
-        rawMediaJson: (item.rawMedia ?? []) as Prisma.InputJsonValue,
-        rawPayloadJson: (item.rawPayload ?? {}) as Prisma.InputJsonValue,
-        contentHash,
-        fetchedAt: new Date(),
-      },
+    const raw = await prisma.$transaction(async (tx) => {
+      const r = await tx.rawItem.create({
+        data: {
+          sourceId: source.id,
+          externalItemId: item.externalItemId ?? null,
+          sourceType: source.type,
+          sourceUrl: item.sourceUrl ?? normalizeSourceUrl(source),
+          authorName: item.authorName ?? source.name,
+          publishedAt: item.publishedAt ?? null,
+          rawTitle: item.rawTitle ?? null,
+          rawText: item.rawText ?? null,
+          rawMediaJson: (item.rawMedia ?? []) as Prisma.InputJsonValue,
+          rawPayloadJson: (item.rawPayload ?? {}) as Prisma.InputJsonValue,
+          contentHash,
+          parseStatus: "ok",
+          fetchedAt: new Date(),
+        },
+      });
+      await tx.contentItem.create({
+        data: {
+          rawItemId: r.id,
+          idempotencyKey: `ingest:raw:${r.id}`,
+          workflowStatus: "ingest_collected",
+        },
+      });
+      return r;
     });
     created += 1;
     await writeAuditLog({
@@ -3414,30 +3662,31 @@ export async function runNormalizationJob(actorId: string | null, sourceIds?: st
     const normalizedItem = await prisma.normalizedItem.create({
       data: {
         rawItemId: rawItem.id,
-        eventType: normalized.eventType,
-        discipline: normalized.discipline,
-        title: normalized.title,
-        descriptionShort: normalized.descriptionShort,
-        descriptionFull: normalized.descriptionFull,
-        country: normalized.country,
-        region: normalized.region,
-        city: normalized.city,
-        venue: normalized.venue,
+        eventType: textWellFormed(normalized.eventType),
+        discipline: textWellFormed(normalized.discipline),
+        title: textWellFormed(normalized.title),
+        descriptionShort: textWellFormed(normalized.descriptionShort),
+        descriptionFull: textWellFormed(normalized.descriptionFull),
+        country: textWellFormed(normalized.country),
+        region: textWellFormed(normalized.region),
+        city: textWellFormed(normalized.city),
+        venue: textWellFormed(normalized.venue),
         startDate: normalized.startDate,
         endDate: normalized.endDate,
         durationDays: normalized.durationDays,
-        level: normalized.level,
+        level: textWellFormed(normalized.level),
         priceFrom: normalized.priceFrom,
-        currency: normalized.currency,
-        organizerName: normalized.organizerName,
-        bookingUrl: normalized.bookingUrl,
-        imageUrl: normalized.imageUrl,
+        currency: textWellFormed(normalized.currency),
+        organizerName: textWellFormed(normalized.organizerName),
+        bookingUrl: textWellFormed(normalized.bookingUrl),
+        imageUrl: textWellFormed(normalized.imageUrl),
         confidenceScore: normalized.confidenceScore,
+        relevanceScore: normalized.scores.tourismFitScore,
         parseVersion: normalized.parseVersion,
-        extractedJson: normalized.extractedJson,
+        extractedJson: jsonForJsonb(normalized.extractedJson),
       },
     });
-    await prisma.eventCandidate.create({
+    const eventCandidate = await prisma.eventCandidate.create({
       data: {
         normalizedItemId: normalizedItem.id,
         status: normalized.scores.routedStatus,
@@ -3451,6 +3700,21 @@ export async function runNormalizationJob(actorId: string | null, sourceIds?: st
         completenessScore: normalized.scores.completenessScore,
         sourceTrustScore: normalized.scores.sourceTrustScore,
         tourismFitScore: normalized.scores.tourismFitScore,
+      },
+    });
+    await prisma.contentItem.upsert({
+      where: { rawItemId: rawItem.id },
+      create: {
+        rawItemId: rawItem.id,
+        idempotencyKey: `ingest:raw:${rawItem.id}`,
+        workflowStatus: "draft",
+        normalizedItemId: normalizedItem.id,
+        eventCandidateId: eventCandidate.id,
+      },
+      update: {
+        normalizedItemId: normalizedItem.id,
+        eventCandidateId: eventCandidate.id,
+        workflowStatus: "draft",
       },
     });
     created += 1;
@@ -3639,7 +3903,9 @@ export async function publishCandidateToDraft(
     originalImageUrl;
 
   const published: PublishCandidateResult = await prisma.$transaction(async (tx): Promise<PublishCandidateResult> => {
-    const autoPublishRequested = Boolean(options?.autoPublishEnabled) && getSourceBooleanMeta(source, "autoPublish");
+    /** Только при явном вызове (sync job / autoPublishReady), не при ручном publish без options */
+    const globalApOn = options?.autoPublishEnabled === true;
+    const autoPublishRequested = shouldRunAutoPublishForSource(source, globalApOn);
     const organizerId = await resolveOrganizerForCandidate(tx, candidate);
     const programPayload = createDraftProgramPayload(candidate, organizerId);
     const duplicateProgram = await findExistingPublishedProgramDuplicate(
@@ -3651,6 +3917,14 @@ export async function publishCandidateToDraft(
       if (!duplicateLink) {
         throw new Error(`Duplicate program ${duplicateProgram.id} has no published link`);
       }
+      const raw = candidate.normalizedItem.rawItem;
+      await tx.program.update({
+        where: { id: duplicateProgram.id },
+        data: buildAutopilotMergeUpdate(programPayload, source, raw, {
+          id: duplicateProgram.id,
+          ingestedAt: duplicateProgram.ingestedAt,
+        }),
+      });
       if (resolvedImageUrl && !duplicateProgram.media.some((media) => media.url === resolvedImageUrl)) {
         await tx.programMedia.create({
           data: {
@@ -3661,6 +3935,69 @@ export async function publishCandidateToDraft(
           },
         });
       }
+      let outLink = duplicateLink;
+      let gateResult: { ok: boolean; missing: string[] } | null = null;
+      if (autoPublishRequested) {
+        const publishCheck = await tx.program.findUnique({
+          where: { id: duplicateProgram.id },
+          include: { media: true },
+        });
+        if (publishCheck) {
+          gateResult = canPublishAutopilot(publishCheck);
+          if (gateResult.ok) {
+            await tx.program.update({ where: { id: duplicateProgram.id }, data: { publishStatus: "published" } });
+            if (duplicateLink.publishStatus !== "published") {
+              outLink = await tx.publishedProgram.update({
+                where: { id: duplicateLink.id },
+                data: { publishStatus: "published" },
+              });
+            } else {
+              outLink = duplicateLink;
+            }
+            console.log(
+              JSON.stringify({
+                event: "ingestion_autopublish",
+                kind: "auto_published",
+                path: "duplicate_merge",
+                candidateId: candidate.id,
+                programId: duplicateProgram.id,
+                sourceId: source.id,
+              }),
+            );
+          } else {
+            console.log(
+              JSON.stringify({
+                event: "ingestion_autopublish",
+                kind: "autopublish_skipped",
+                path: "duplicate_merge",
+                programId: duplicateProgram.id,
+                candidateId: candidate.id,
+                sourceId: source.id,
+                reason: "gate",
+                missing: gateResult.missing,
+              }),
+            );
+          }
+        }
+      }
+      const progRowDup = await tx.program.findUnique({
+        where: { id: duplicateProgram.id },
+        select: { publishStatus: true },
+      });
+      const wasPublishedBefore = duplicateProgram.publishStatus === "published";
+      const duplicateEndsPublished = progRowDup?.publishStatus === "published";
+      console.log(
+        JSON.stringify({
+          event: "ingestion_autopublish",
+          kind: "duplicate_merged",
+          candidateId: candidate.id,
+          programId: duplicateProgram.id,
+          sourceId: source.id,
+          programUpdated: true,
+          publishedOrRetained: duplicateEndsPublished,
+          retainedWithoutGatePass: wasPublishedBefore && Boolean(gateResult && !gateResult.ok),
+        }),
+      );
       await tx.eventCandidate.update({
         where: { id: candidate.id },
         data: {
@@ -3671,7 +4008,27 @@ export async function publishCandidateToDraft(
           decisionNotes: editorNotes ?? `Дубликат опубликованной программы ${duplicateProgram.id}`,
         },
       });
-      return { ...duplicateLink, duplicateSkipped: true };
+      const dupGate: AutopilotPublishMeta["gate"] = !autoPublishRequested
+        ? "skipped_no_request"
+        : gateResult
+          ? gateResult.ok
+            ? "passed"
+            : "failed"
+          : "not_applicable";
+      return {
+        ...outLink,
+        duplicateSkipped: true,
+        autopilot: globalApOn
+          ? {
+              path: "duplicate_merge",
+              programId: duplicateProgram.id,
+              programPublishStatus: progRowDup?.publishStatus ?? "unknown",
+              autoPublishRequested,
+              gate: dupGate,
+              gateMissing: gateResult && !gateResult.ok ? gateResult.missing : undefined,
+            }
+          : undefined,
+      };
     }
     const program = await tx.program.create({
       data: programPayload,
@@ -3687,17 +4044,44 @@ export async function publishCandidateToDraft(
       });
     }
     let linkStatus = "draft_created";
+    let createGate: { ok: boolean; missing: string[] } | null = null;
     if (autoPublishRequested) {
       const publishCheck = await tx.program.findUnique({
         where: { id: program.id },
         include: { media: true },
       });
-      if (publishCheck && canPublish(publishCheck).ok) {
-        await tx.program.update({
-          where: { id: program.id },
-          data: { publishStatus: "published" },
-        });
-        linkStatus = "published";
+      if (publishCheck) {
+        createGate = canPublishAutopilot(publishCheck);
+        if (createGate.ok) {
+          await tx.program.update({
+            where: { id: program.id },
+            data: { publishStatus: "published" },
+          });
+          linkStatus = "published";
+          console.log(
+            JSON.stringify({
+              event: "ingestion_autopublish",
+              kind: "auto_published",
+              path: "create",
+              candidateId: candidate.id,
+              programId: program.id,
+              sourceId: source.id,
+            }),
+          );
+        } else {
+          console.log(
+            JSON.stringify({
+              event: "ingestion_autopublish",
+              kind: "autopublish_skipped",
+              path: "create",
+              programId: program.id,
+              candidateId: candidate.id,
+              sourceId: source.id,
+              reason: "gate",
+              missing: createGate.missing,
+            }),
+          );
+        }
       }
     }
     const link = await tx.publishedProgram.create({
@@ -3717,7 +4101,30 @@ export async function publishCandidateToDraft(
         decisionNotes: editorNotes ?? candidate.decisionNotes ?? null,
       },
     });
-    return link;
+    const progRowNew = await tx.program.findUnique({
+      where: { id: program.id },
+      select: { publishStatus: true },
+    });
+    const createG: AutopilotPublishMeta["gate"] = !autoPublishRequested
+      ? "skipped_no_request"
+      : createGate
+        ? createGate.ok
+          ? "passed"
+          : "failed"
+        : "not_applicable";
+    return {
+      ...link,
+      autopilot: globalApOn
+        ? {
+            path: "create",
+            programId: program.id,
+            programPublishStatus: progRowNew?.publishStatus ?? "unknown",
+            autoPublishRequested,
+            gate: createG,
+            gateMissing: createGate && !createGate.ok ? createGate.missing : undefined,
+          }
+        : undefined,
+    };
   });
 
   if (published.duplicateSkipped) {
@@ -3805,11 +4212,17 @@ function isPhoneLikeTitle(value: string | null): boolean {
 function isAutoPublishEligible(candidate: CandidateWithRelations): boolean {
   const normalized = candidate.normalizedItem;
   const sourceUrl = (normalized.rawItem.sourceUrl ?? "").toLowerCase();
+  const narrative = normalizeText(
+    `${normalized.title ?? ""} ${normalized.descriptionFull ?? ""} ${normalized.descriptionShort ?? ""}`.toLowerCase(),
+  );
   const daysToStart = daysFromToday(normalized.startDate);
   const daysToEnd = daysFromToday(normalized.endDate ?? normalized.startDate);
   const hasExplicitDate = getExtractedJsonFlag(normalized.extractedJson, "hasExplicitDateSignal");
-  if (candidate.finalScore < 0.65) return false;
-  if (!hasExplicitDate) return false;
+  if (isLikelyStatsOrClimateInfographicPostText(narrative)) return false;
+  if (candidate.tourismFitScore < 0.28) return false;
+  if (!disciplineMentionedInPostText(narrative) && !hasPilotProgramFormatIntent(narrative) && !normalized.eventType) return false;
+  if (candidate.finalScore < 0.62) return false;
+  if (!hasExplicitDate && !normalized.startDate) return false;
   if ((!normalized.startDate && !normalized.endDate) || daysToEnd == null || daysToEnd < 0) return false;
   if (daysToStart != null && daysToStart > 400) return false;
   if (!normalized.title || normalizeText(normalized.title).length < 8 || isPhoneLikeTitle(normalized.title)) return false;
@@ -3909,9 +4322,28 @@ export async function mergeCandidateIntoCanonical(
   return updated;
 }
 
-export async function autoPublishReadyCandidates(actorId: string | null, options?: DailySyncOptions) {
-  if (!options?.autoPublishEnabled) {
-    return { checked: 0, published: 0 };
+export async function autoPublishReadyCandidates(
+  actorId: string | null,
+  options?: DailySyncOptions,
+): Promise<AutopilotBatchStats & { published: number }> {
+  const globalOn = options?.autoPublishEnabled !== false;
+  if (!globalOn) {
+    const empty: AutopilotBatchStats & { published: number } = {
+      checked: 0,
+      sourceOptOut: 0,
+      notEligible: 0,
+      autoCreated: 0,
+      autoUpdated: 0,
+      autoCreatedPublished: 0,
+      autoCreatedGateSkipped: 0,
+      duplicateMerged: 0,
+      duplicatePublishedOrRetained: 0,
+      duplicateRetainedOnly: 0,
+      gateSkipped: 0,
+      publishFailed: 0,
+      published: 0,
+    };
+    return empty;
   }
 
   const candidates = (await prisma.eventCandidate.findMany({
@@ -3942,22 +4374,94 @@ export async function autoPublishReadyCandidates(actorId: string | null, options
     orderBy: [{ finalScore: "desc" }, { createdAt: "asc" }],
   })) as CandidateWithRelations[];
 
-  let published = 0;
+  const stats: AutopilotBatchStats & { published: number } = {
+    checked: candidates.length,
+    sourceOptOut: 0,
+    notEligible: 0,
+    autoCreated: 0,
+    autoUpdated: 0,
+    autoCreatedPublished: 0,
+    autoCreatedGateSkipped: 0,
+    duplicateMerged: 0,
+    duplicatePublishedOrRetained: 0,
+    duplicateRetainedOnly: 0,
+    gateSkipped: 0,
+    publishFailed: 0,
+    published: 0,
+  };
+
   for (const candidate of candidates) {
-    if (!getSourceBooleanMeta(candidate.normalizedItem.rawItem.source, "autoPublish")) continue;
-    if (!isAutoPublishEligible(candidate)) continue;
-    const result = await publishCandidateToDraft(
-      candidate.id,
-      actorId,
-      "Auto-published from scheduled ingestion cycle",
-      options,
-    );
-    if (result.publishStatus === "published" && !result.duplicateSkipped) {
-      published += 1;
+    const src = candidate.normalizedItem.rawItem.source;
+    if (!shouldRunAutoPublishForSource(src, globalOn)) {
+      stats.sourceOptOut += 1;
+      console.log(
+        JSON.stringify({
+          event: "ingestion_autopublish",
+          kind: "source_disabled",
+          candidateId: candidate.id,
+          sourceId: src.id,
+          sourceName: src.name,
+        }),
+      );
+      continue;
+    }
+    if (!isAutoPublishEligible(candidate)) {
+      stats.notEligible += 1;
+      continue;
+    }
+    let result: PublishCandidateResult;
+    try {
+      result = await publishCandidateToDraft(
+        candidate.id,
+        actorId,
+        "Auto-published from scheduled ingestion cycle",
+        { ...options, autoPublishEnabled: true },
+      );
+    } catch (error) {
+      stats.publishFailed += 1;
+      console.log(
+        JSON.stringify({
+          event: "ingestion_autopublish",
+          kind: "publish_failed",
+          candidateId: candidate.id,
+          error: error instanceof Error ? error.message : String(error),
+        }),
+      );
+      continue;
+    }
+    const ap = result.autopilot;
+    if (result.duplicateSkipped) {
+      stats.duplicateMerged += 1;
+      stats.autoUpdated += 1;
+      if (ap?.programPublishStatus === "published") {
+        stats.duplicatePublishedOrRetained += 1;
+        if (ap.gate === "failed") stats.duplicateRetainedOnly += 1;
+        stats.published += 1;
+      }
+    } else {
+      stats.autoCreated += 1;
+      if (ap?.programPublishStatus === "published" && ap.path === "create") {
+        stats.autoCreatedPublished += 1;
+        stats.published += 1;
+      }
+      if (ap?.path === "create" && ap.gate === "failed") {
+        stats.autoCreatedGateSkipped += 1;
+        stats.gateSkipped += 1;
+      }
+    }
+    if (result.duplicateSkipped && ap?.gate === "failed" && ap.path === "duplicate_merge") {
+      stats.gateSkipped += 1;
     }
   }
 
-  return { checked: candidates.length, published };
+  console.log(
+    JSON.stringify({
+      event: "ingestion_autopublish_batch_summary",
+      ...stats,
+    }),
+  );
+
+  return stats;
 }
 
 export async function runDailySyncJob(actorId: string | null, options?: DailySyncOptions) {
@@ -3968,12 +4472,27 @@ export async function runDailySyncJob(actorId: string | null, options?: DailySyn
   const dueSourceIds = sources.filter((source) => isSourceDueForCollection(source)).map((source) => source.id);
 
   if (dueSourceIds.length === 0) {
+    const apZero: AutopilotBatchStats & { published: number } = {
+      checked: 0,
+      sourceOptOut: 0,
+      notEligible: 0,
+      autoCreated: 0,
+      autoUpdated: 0,
+      autoCreatedPublished: 0,
+      autoCreatedGateSkipped: 0,
+      duplicateMerged: 0,
+      duplicatePublishedOrRetained: 0,
+      duplicateRetainedOnly: 0,
+      gateSkipped: 0,
+      publishFailed: 0,
+      published: 0,
+    };
     return {
       scope: "sources:0",
       collect: { scope: "sources:0", processed: 0, created: 0 },
       normalize: { scope: "sources:0", processed: 0, created: 0 },
       dedup: { scope: "sources:0", processed: 0, created: 0, updated: 0 },
-      autoPublish: { checked: 0, published: 0 },
+      autoPublish: apZero,
     };
   }
 
@@ -4008,6 +4527,7 @@ export async function getJobDashboard() {
       prisma.eventCandidate.count({ where: { status: "approved" } }),
       prisma.eventCandidate.count(),
       prisma.publishedProgram.count(),
+      prisma.contentDraft.count(),
     ]),
   ]);
   return {
@@ -4032,6 +4552,21 @@ export async function getJobDashboard() {
         label: "Run dedup",
         description: "Group overlapping candidates and mark duplicates",
       },
+      {
+        key: "run-content-pipeline",
+        label: "Run content pipeline (unified)",
+        description: "collect → normalize → dedup → draft; owner + publish вручную (см. pipeline.runner)",
+      },
+      {
+        key: "run-content-drafts",
+        label: "Generate content drafts",
+        description: "Deterministic AI-stage drafts (telegram/vk/blog/announce) for normalized content_items",
+      },
+      {
+        key: "send-content-draft-to-telegram",
+        label: "Send content draft to Telegram (owner E)",
+        description: "Push preview to TELEGRAM_CONTENT_OWNER_CHAT_ID / ALERT; buttons approve/rewrite/reject/skip",
+      },
     ],
     counters: {
       sources: counters[0],
@@ -4041,9 +4576,17 @@ export async function getJobDashboard() {
       approved: counters[4],
       candidates: counters[5],
       published: counters[6],
+      contentDrafts: counters[7],
     },
     recentRuns: lastRuns,
-    availableJobs: ["run-daily-sync", "run-ingestion", "run-normalization", "run-dedup"],
+    availableJobs: [
+      "run-daily-sync",
+      "run-ingestion",
+      "run-normalization",
+      "run-dedup",
+      "run-content-drafts",
+      "send-content-draft-to-telegram",
+    ],
     backlog: {
       activeSources: counters[0],
       rawPendingNormalization: counters[1] - counters[2],

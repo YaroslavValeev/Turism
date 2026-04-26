@@ -1,0 +1,26 @@
+{
+  "name": "@mywave/analytics-agent",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "run": "tsx analytics/run-once.ts",
+    "cron": "tsx analytics/cron-disabled.ts",
+    "marketing:run": "tsx marketing/run-once.ts",
+    "marketing:cron": "tsx marketing/cron-disabled.ts",
+    "orchestrator:run": "tsx orchestrator/run-once.ts",
+    "orchestrator:cron": "tsx orchestrator/index.ts"
+  },
+  "dependencies": {
+    "axios": "^1.7.7",
+    "dotenv": "^16.4.5",
+    "openai": "^4.77.0",
+    "node-cron": "^3.0.3"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "@types/node-cron": "^3.0.11",
+    "tsx": "^4.21.0",
+    "typescript": "^5.3.0"
+  }
+}

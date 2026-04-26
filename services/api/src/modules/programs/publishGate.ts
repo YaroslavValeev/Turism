@@ -31,3 +31,27 @@ export function canPublish(program: ProgramWithMedia): { ok: boolean; missing: s
     missing,
   };
 }
+
+/** Публикация в витрину из ingestion без ручного approve (мягче, чем canPublish). */
+export function canPublishAutopilot(program: ProgramWithMedia): { ok: boolean; missing: string[] } {
+  if (process.env.INGESTION_E2E_FORCE_GATE === "1") {
+    return { ok: false, missing: ["e2e_forced_gate"] };
+  }
+  const missing: string[] = [];
+  if (!filled(program.title) || String(program.title).trim().length < 2) missing.push("title");
+  if (!program.organizerId) missing.push("organizer");
+  if (!filled(program.discipline)) missing.push("discipline");
+  if (!filled(program.region)) missing.push("region");
+  if (!program.startDate || !program.endDate) missing.push("date_range");
+  if (!filled(program.levelRequired)) missing.push("level");
+  if (!filled(program.riskLevel)) missing.push("risk");
+  if (program.medicalLimitations === undefined || program.medicalLimitations === null) missing.push("medical");
+  if (!filled(program.cancellationRules)) missing.push("cancellation");
+  const hasLink = filled(program.sourceUrl) || filled(program.cta);
+  const hasDetailBlock =
+    filled(program.audienceFit) || filled(program.itineraryDayByDay) || filled(program.inclusions);
+  if (!hasLink && !hasDetailBlock && !(program.media?.length)) {
+    missing.push("source_url_or_content_or_media");
+  }
+  return { ok: missing.length === 0, missing };
+}

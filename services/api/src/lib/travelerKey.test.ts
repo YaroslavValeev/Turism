@@ -13,6 +13,7 @@ const baseEnv = {
   ANALYTICS_ENABLED: false,
   ANALYTICS_ALERT_COOLDOWN_SECONDS: 3600,
   TRAVELER_KEY_SALT: "test-salt-please-change",
+  SOURCES_LINKAGE_BACKFILL_WRITE_ENABLED: false,
 } as Env;
 
 describe("travelerKey", () => {

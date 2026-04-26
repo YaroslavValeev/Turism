@@ -4,9 +4,9 @@ import { ContractDownloadBlock } from "../../../components/organizers/ContractDo
 import { ProgramIntakeForm } from "../../../components/organizers/ProgramIntakeForm";
 
 export const metadata: Metadata = {
-  title: "Подать программу — организаторам | MyWave Travel",
+  title: "Подать программу — организаторам | MyWaveTour",
   description:
-    "Заявка на публикацию программы в каталоге MyWave Travel: контакты, описание выезда и следующий шаг с командой платформы.",
+    "Подача программы в MyWaveTour: контакты, формат выезда и следующий шаг до публикации в витрине.",
 };
 
 export default function OrganizerProgramPage() {
@@ -14,7 +14,7 @@ export default function OrganizerProgramPage() {
     <OrganizerPageShell
       kicker="Организаторам"
       title="Подать программу"
-      lead="Один шаг — заявка на размещение. После отправки оператор свяжется по email, уточнит детали карточки и подскажет, что нужно для публикации и верификации."
+      lead="Один шаг — и ваша программа в работе. После отправки оператор свяжется по email, уточнит детали карточки и подскажет следующий шаг до публикации."
     >
       <ContractDownloadBlock page="program" />
       <ProgramIntakeForm />

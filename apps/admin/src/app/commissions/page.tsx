@@ -1,11 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   COMMISSION_RECONCILIATION_STATUSES,
   getCommissionReconciliationStatusLabel,
 } from "@mywave/shared-types";
-import Link from "next/link";
+import { AdminEmptyState } from "../../components/admin/AdminEmptyState";
+import { AdminFilterField, AdminFiltersBar } from "../../components/admin/AdminFiltersBar";
+import { AdminLoadingState } from "../../components/admin/AdminLoadingState";
+import { AdminMessage } from "../../components/admin/AdminMessage";
+import { AdminPageHeader } from "../../components/admin/AdminPageHeader";
+import { AdminStatCard, AdminStatGrid } from "../../components/admin/AdminStatCard";
+import { AdminStatusBadge } from "../../components/admin/AdminStatusBadge";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 
@@ -26,6 +32,7 @@ export default function CommissionsQueuePage() {
   const [commissions, setCommissions] = useState<Commission[]>([]);
   const [filter, setFilter] = useState<string>("");
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     const token = typeof window !== "undefined" ? window.localStorage.getItem("admin_token") : null;
@@ -33,6 +40,8 @@ export default function CommissionsQueuePage() {
       window.location.href = "/login";
       return;
     }
+    setLoading(true);
+    setError("");
     const q = filter ? `?reconciliation_status=${encodeURIComponent(filter)}` : "";
     fetch(`${API_URL}/commissions${q}`, { headers: { Authorization: `Bearer ${token}` } })
       .then((res) => {
@@ -41,63 +50,107 @@ export default function CommissionsQueuePage() {
           window.location.href = "/login";
           return [];
         }
+        if (!res.ok) {
+          return res.text().then((t) => {
+            throw new Error(t || res.statusText);
+          });
+        }
         return res.json();
       })
       .then((data) => setCommissions(Array.isArray(data) ? data : []))
+      .catch((e) => setError(e instanceof Error ? e.message : String(e)))
       .finally(() => setLoading(false));
   }, [filter]);
 
+  const stats = useMemo(() => {
+    const totalBase = commissions.reduce((sum, c) => sum + (c.commissionBaseRub ?? 0), 0);
+    const totalCommission = commissions.reduce((sum, c) => sum + (c.commissionAmountRub ?? 0), 0);
+    const collected = commissions.filter((c) => c.reconciliationStatus === "paid").length;
+    const disputed = commissions.filter((c) => c.reconciliationStatus === "disputed").length;
+    return { count: commissions.length, totalBase, totalCommission, collected, disputed };
+  }, [commissions]);
+
+  function reconciliationTone(status: string): "ok" | "warn" | "danger" | "muted" {
+    if (status === "paid") return "ok";
+    if (status === "disputed" || status === "reversed" || status === "written_off") return "danger";
+    if (status === "pending_evidence" || status === "accrued" || status === "approved" || status === "invoiced") {
+      return "warn";
+    }
+    return "muted";
+  }
+
   return (
-    <main style={{ padding: 24 }}>
-      <p>
-        <Link href="/organizers">Организаторы</Link> | <Link href="/programs">Программы</Link> | <Link href="/bookings">Заявки</Link> | <Link href="/incidents">Инциденты</Link> | <Link href="/reviews">Отзывы</Link> | <strong>Комиссии</strong>
-      </p>
-      <h1>Доходы: очередь комиссий</h1>
-      <p><em>Продажи и начисления: net-база, ставка и итог комиссии.</em></p>
-      <p style={{ fontSize: 14, color: "#555" }}>Начисление и сверка: runbook <code>docs/COMMISSION_RUNBOOK.md</code> (completed booking → POST /commissions → PATCH reconciliation).</p>
-      <p>
-        Фильтр по статусу сверки:{" "}
-        <select value={filter} onChange={(e) => setFilter(e.target.value)} style={{ padding: 6 }}>
-          <option value="">Все</option>
-          {COMMISSION_RECONCILIATION_STATUSES.map((s) => (
-            <option key={s} value={s}>
-              {getCommissionReconciliationStatusLabel(s)}
-            </option>
-          ))}
-        </select>
-      </p>
-      {loading && <p>Загрузка…</p>}
-      {!loading && (
-        <table style={{ borderCollapse: "collapse", width: "100%" }}>
-          <thead>
-            <tr style={{ borderBottom: "2px solid #333" }}>
-              <th style={{ textAlign: "left", padding: 8 }}>Net база (₽)</th>
-              <th style={{ textAlign: "left", padding: 8 }}>Ставка</th>
-              <th style={{ textAlign: "left", padding: 8 }}>Комиссия (₽)</th>
-              <th style={{ textAlign: "left", padding: 8 }}>Собрано (₽)</th>
-              <th style={{ textAlign: "left", padding: 8 }}>Организатор</th>
-              <th style={{ textAlign: "left", padding: 8 }}>Программа</th>
-              <th style={{ textAlign: "left", padding: 8 }}>Сверка</th>
-              <th style={{ textAlign: "left", padding: 8 }}>Создан</th>
-            </tr>
-          </thead>
-          <tbody>
-            {commissions.map((c) => (
-              <tr key={c.id} style={{ borderBottom: "1px solid #ccc" }}>
-                <td style={{ padding: 8 }}>{c.commissionBaseRub ?? 0}</td>
-                <td style={{ padding: 8 }}>{((c.commissionRateBps ?? 300) / 100).toFixed(2)}%</td>
-                <td style={{ padding: 8 }}>{c.commissionAmountRub ?? 0}</td>
-                <td style={{ padding: 8 }}>{c.commissionCollectedRub ?? "—"}</td>
-                <td style={{ padding: 8 }}>{c.organizer?.displayName ?? "—"}</td>
-                <td style={{ padding: 8 }}>{c.program?.title ?? "—"}</td>
-                <td style={{ padding: 8 }}>{getCommissionReconciliationStatusLabel(c.reconciliationStatus)}</td>
-                <td style={{ padding: 8 }}>{new Date(c.createdAt).toLocaleString()}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+    <main className="mw-admin-page">
+      <AdminPageHeader
+        title="Доходы: очередь комиссий"
+        description="Продажи и начисления: net-база, ставка и итог комиссии. Runbook: docs/COMMISSION_RUNBOOK.md."
+      />
+      {error ? <AdminMessage type="error">{error}</AdminMessage> : null}
+
+      {loading ? (
+        <AdminLoadingState label="Загружаем комиссии…" />
+      ) : (
+        <>
+          <AdminStatGrid>
+            <AdminStatCard label="Записей" value={stats.count} />
+            <AdminStatCard label="Net база (₽)" value={new Intl.NumberFormat("ru-RU").format(stats.totalBase)} />
+            <AdminStatCard label="Комиссия (₽)" value={new Intl.NumberFormat("ru-RU").format(stats.totalCommission)} />
+            <AdminStatCard label="Paid / disputed" value={`${stats.collected} / ${stats.disputed}`} />
+          </AdminStatGrid>
+
+          <AdminFiltersBar title="Фильтры">
+            <AdminFilterField label="Статус сверки">
+              <select className="mw-admin-input" value={filter} onChange={(e) => setFilter(e.target.value)} style={{ minWidth: 240 }}>
+                <option value="">Все</option>
+                {COMMISSION_RECONCILIATION_STATUSES.map((s) => (
+                  <option key={s} value={s}>
+                    {getCommissionReconciliationStatusLabel(s)}
+                  </option>
+                ))}
+              </select>
+            </AdminFilterField>
+          </AdminFiltersBar>
+
+          {commissions.length === 0 ? (
+            <AdminEmptyState title="Нет записей комиссий" description="По текущему фильтру или в целом очередь комиссий пуста." />
+          ) : (
+            <div style={{ overflowX: "auto" }}>
+              <table className="mw-admin-table">
+                <thead>
+                  <tr>
+                    <th>Net база (₽)</th>
+                    <th>Ставка</th>
+                    <th>Комиссия (₽)</th>
+                    <th>Собрано (₽)</th>
+                    <th>Организатор</th>
+                    <th>Программа</th>
+                    <th>Сверка</th>
+                    <th>Создан</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {commissions.map((c) => (
+                    <tr key={c.id}>
+                      <td>{new Intl.NumberFormat("ru-RU").format(c.commissionBaseRub ?? 0)}</td>
+                      <td>{((c.commissionRateBps ?? 300) / 100).toFixed(2)}%</td>
+                      <td>{new Intl.NumberFormat("ru-RU").format(c.commissionAmountRub ?? 0)}</td>
+                      <td>{c.commissionCollectedRub == null ? "—" : new Intl.NumberFormat("ru-RU").format(c.commissionCollectedRub)}</td>
+                      <td className="mw-admin-muted">{c.organizer?.displayName ?? "—"}</td>
+                      <td className="mw-admin-muted">{c.program?.title ?? "—"}</td>
+                      <td>
+                        <AdminStatusBadge tone={reconciliationTone(c.reconciliationStatus)}>
+                          {getCommissionReconciliationStatusLabel(c.reconciliationStatus)}
+                        </AdminStatusBadge>
+                      </td>
+                      <td className="mw-admin-muted">{new Date(c.createdAt).toLocaleString("ru-RU")}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
       )}
-      {!loading && commissions.length === 0 && <p>Нет записей комиссий.</p>}
     </main>
   );
 }

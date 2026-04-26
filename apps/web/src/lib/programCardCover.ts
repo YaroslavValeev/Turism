@@ -25,10 +25,51 @@ export function presentProgramMediaUrl(url: string | null | undefined): string |
   return `/api/media?url=${encodeURIComponent(normalized)}`;
 }
 
-export function firstProgramCoverImageUrl(media: ProgramMediaItem[] | undefined): string | null {
+function isLikelyStatsOrClimateInfographicContext(text: string): boolean {
+  const t = String(text ?? "")
+    .trim()
+    .toLowerCase();
+  if (t.length < 24) return false;
+  if (/температур(а|ы)?\s+воды|воды.*температур|средн(яя|ей)\s+температур|таблиц\w*\s+месяц|по\s+месяц\w*.*градус|в\s+течени[еи]\s+года|график\w*.*температур/i.test(t)) {
+    return true;
+  }
+  const hits = [
+    /температур/i,
+    /таблиц/i,
+    /график/i,
+    /средн(яя|ей)/i,
+    /градус\w*/i,
+  ].filter((p) => p.test(t)).length;
+  return hits >= 2;
+}
+
+/** Первое фото в альбоме TG нередко — инфографика; при «климатическом» тексте берём изображения в обратном порядке. */
+export function pickBestProgramCoverImageUrl(
+  media: ProgramMediaItem[] | undefined,
+  contextHint: string | null | undefined,
+): string | null {
   if (!media?.length) return null;
-  const img = media.find((m) => m.mediaType === "image" && m.url?.trim());
-  return presentProgramMediaUrl(img?.url ?? null);
+  const images = media.filter((m) => m.mediaType === "image" && m.url?.trim());
+  if (images.length === 0) return null;
+  const climate = isLikelyStatsOrClimateInfographicContext(String(contextHint ?? ""));
+  if (climate && images.length === 1) return null;
+  const ordered = climate ? [...images].reverse() : images;
+  const u = ordered[0]?.url;
+  return presentProgramMediaUrl(u ?? null);
+}
+
+export function firstProgramCoverImageUrl(media: ProgramMediaItem[] | undefined): string | null {
+  return pickBestProgramCoverImageUrl(media, null);
+}
+
+/** Для галереи на PDP: при «инфографичном» тексте показывать снимки в порядке, удобном глазу (не с таблицы первой). */
+export function orderProgramMediaForDisplay<T extends ProgramMediaItem & { id?: string }>(
+  media: T[] | undefined,
+  contextHint: string | null | undefined,
+): T[] {
+  if (!media?.length || media.length <= 1) return media ?? [];
+  if (!isLikelyStatsOrClimateInfographicContext(String(contextHint ?? ""))) return media;
+  return [...media].reverse();
 }
 
 function normalizeUrl(value: string | null | undefined): string {

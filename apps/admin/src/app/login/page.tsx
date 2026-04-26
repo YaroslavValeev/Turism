@@ -37,37 +37,50 @@ export default function LoginPage() {
   }
 
   return (
-    <main style={{ padding: 24, maxWidth: 400, margin: "0 auto" }}>
-      <h1>Вход в админ-панель</h1>
-      <p>Только для внутренней команды. Публичной регистрации нет.</p>
-      <form onSubmit={handleSubmit}>
-        <div style={{ marginBottom: 12 }}>
-          <label>Электронная почта</label>
-          <br />
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            style={{ width: "100%", padding: 8 }}
-          />
-        </div>
-        <div style={{ marginBottom: 12 }}>
-          <label>Пароль</label>
-          <br />
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            style={{ width: "100%", padding: 8 }}
-          />
-        </div>
-        {error && <p style={{ color: "red", marginBottom: 12 }}>{error}</p>}
-        <button type="submit" disabled={loading} style={{ padding: "8px 16px" }}>
-          {loading ? "Входим..." : "Войти"}
-        </button>
-      </form>
-    </main>
+    <div className="mw-admin-login">
+      <div className="mw-admin-login__card" style={{ maxWidth: 400, width: "100%" }}>
+        <p style={{ margin: 0, fontSize: "0.8rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--mw-accent)" }}>
+          MyWave
+        </p>
+        <h1 className="mw-admin-login__title">Админ-панель</h1>
+        <p className="mw-admin-login__subtitle">
+          Вход только для внутренней команды MyWave. Публичной регистрации нет — используйте учётную запись, выданную администратором.
+        </p>
+        <form onSubmit={handleSubmit} noValidate>
+          <div className="mw-admin-field">
+            <label className="mw-admin-label" htmlFor="admin-email">
+              Электронная почта
+            </label>
+            <input
+              id="admin-email"
+              className="mw-admin-input"
+              type="email"
+              autoComplete="username"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+          </div>
+          <div className="mw-admin-field">
+            <label className="mw-admin-label" htmlFor="admin-password">
+              Пароль
+            </label>
+            <input
+              id="admin-password"
+              className="mw-admin-input"
+              type="password"
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+          </div>
+          {error ? <div className="mw-admin-alert mw-admin-alert--error">{error}</div> : null}
+          <button className="mw-admin-btn" type="submit" disabled={loading} style={{ width: "100%", marginTop: 4 }}>
+            {loading ? "Вход…" : "Войти"}
+          </button>
+        </form>
+      </div>
+    </div>
   );
 }

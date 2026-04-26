@@ -1,0 +1,5 @@
+# Next.js / tooling (дубли с корнем — локальный кэш не путать с путями в индексе)
+.next/
+out/
+.turbo/
+*.tsbuildinfo

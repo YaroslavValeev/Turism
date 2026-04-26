@@ -6,9 +6,9 @@ import { ContractDownloadBlock } from "../../../components/organizers/ContractDo
 import { verificationPage } from "../../../content/organizerFlows";
 
 export const metadata: Metadata = {
-  title: "Верификация организатора | MyWave Travel",
+  title: "Верификация организатора | MyWaveTour",
   description:
-    "Как устроена проверка организаторов в MyWave Travel и как запросить консультацию.",
+    "Как устроена проверка организаторов в MyWaveTour и как запросить консультацию.",
 };
 
 export default function OrganizerVerificationPage() {

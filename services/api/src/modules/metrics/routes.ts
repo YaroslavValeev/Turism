@@ -6,9 +6,11 @@ import { Router, Request, Response } from "express";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
 import { requireAdmin } from "../../middleware/auth";
+import { requireAdminOrInternalAnalytics } from "../../middleware/metricsInternalAccess";
 import type { Env } from "@mywave/config";
 import { computeDqMetrics } from "../analytics/dqMetrics";
 import { buildFounderSummary } from "./founderSummary";
+import { aggregateContentEntryBookings } from "../../lib/bookingEntryTracking";
 
 function parseDay(value: string | undefined): Date | null {
   if (!value) return null;
@@ -32,6 +34,7 @@ function isMissingAnalyticsMartError(error: unknown, martName: string): boolean 
 export function metricsRoutes(env: Env): Router {
   const router = Router();
   const admin = requireAdmin(env);
+  const adminOrInternal = requireAdminOrInternalAnalytics(env);
 
   router.get("/admin/funnel", admin, async (_req: Request, res: Response) => {
     try {
@@ -280,6 +283,132 @@ export function metricsRoutes(env: Env): Router {
     } catch (e) {
       console.error("metrics ops/score-actions error", e);
       res.status(500).json({ error: "Failed to build score-driven ops actions" });
+    }
+  });
+
+  /**
+   * G4.1: заявки (bookings) по паре `entry_type` + `entry_id`, сырые данные из `sourceCampaign` + fallback в `notes`.
+   * Пример: `GET /metrics/content-entries?from=2026-01-01&to=2026-04-30` (даты UTC YYYY-MM-DD, конец `to` включён).
+   */
+  router.get("/content-entries", adminOrInternal, async (req: Request, res: Response) => {
+    const toDay = parseDay(req.query.to as string | undefined) ?? new Date();
+    const fromDay =
+      parseDay(req.query.from as string | undefined) ??
+      new Date(toDay.getTime() - 29 * 24 * 60 * 60 * 1000);
+    const rangeEnd = new Date(toDay);
+    rangeEnd.setUTCDate(rangeEnd.getUTCDate() + 1);
+    try {
+      const bookings = await prisma.booking.findMany({
+        where: {
+          createdAt: { gte: fromDay, lt: rangeEnd },
+        },
+        select: {
+          id: true,
+          sourceCampaign: true,
+          notes: true,
+          createdAt: true,
+        },
+        orderBy: { createdAt: "desc" },
+        take: 20_000,
+      });
+      const { totals, rows } = aggregateContentEntryBookings(bookings);
+      res.json({
+        from: fromDay.toISOString(),
+        toInclusive: toDay.toISOString(),
+        note: "Одна заявка учитывается в строке, если в разборе есть и entry_type, и entry_id (см. G4.1).",
+        totals,
+        rows,
+        truncated: bookings.length >= 20_000,
+      });
+    } catch (e) {
+      console.error("metrics content-entries error", e);
+      res.status(500).json({ error: "Failed to aggregate content entry bookings" });
+    }
+  });
+
+  /** Сводка content_items: трафик + лиды + выручка (revenueRub в content_metrics). */
+  /**
+   * Пилот: shadow GMV/комиссия, счётчики броней (счета/инвойсы не ведутся в пилоте).
+   * Реальные деньги на MyWave: только после снятия пилот-режима и договорённостей.
+   */
+  router.get("/pilot-kpi", admin, async (_req: Request, res: Response) => {
+    try {
+      const pilotMode = env.PILOT_MODE_ENABLED === true;
+      const [bookings, deals, agg] = await Promise.all([
+        prisma.booking.count(),
+        prisma.deal.count(),
+        prisma.booking.aggregate({ _sum: { gmvRub: true, netAmountRub: true, paidAmountRub: true } }),
+      ]);
+      const dealAgg = await prisma.deal.aggregate({
+        _sum: { dealAmountRub: true, commissionAmountRub: true },
+      });
+      res.json({
+        pilotMode,
+        note: pilotMode
+          ? "PILOT_MODE: платежи/инвойсы выключены; суммы — shadow-учёт для аналитики."
+          : "PILOT_MODE off",
+        shadow: {
+          bookingsTotal: bookings,
+          dealsTotal: deals,
+          sumGmvRub: agg._sum.gmvRub ?? 0,
+          sumNetRub: agg._sum.netAmountRub ?? 0,
+          sumPaidRub: agg._sum.paidAmountRub ?? 0,
+          dealAmountRub: dealAgg._sum.dealAmountRub ?? 0,
+          shadowCommissionRub: dealAgg._sum.commissionAmountRub ?? 0,
+        },
+      });
+    } catch (e) {
+      console.error("metrics pilot-kpi error", e);
+      res.status(500).json({ error: "Failed to load pilot KPI" });
+    }
+  });
+
+  router.get("/content-performance", admin, async (req: Request, res: Response) => {
+    try {
+      const take = Math.min(
+        500,
+        Math.max(1, parseInt(String(req.query.limit || "100"), 10) || 100),
+      );
+      const rows = await prisma.contentMetric.groupBy({
+        by: ["contentItemId"],
+        _sum: {
+          views: true,
+          clicks: true,
+          leads: true,
+          bookingCount: true,
+          revenueRub: true,
+        },
+      });
+      const scored = rows
+        .map((r) => ({
+          r,
+          revenueRub: r._sum.revenueRub ?? 0,
+        }))
+        .sort((a, b) => b.revenueRub - a.revenueRub);
+      const top = scored.slice(0, take);
+      const withMeta = await Promise.all(
+        top.map(async ({ r }) => {
+          const item = await prisma.contentItem.findUnique({
+            where: { id: r.contentItemId },
+            select: { id: true, workflowStatus: true, programId: true, rawItem: { select: { rawTitle: true } } },
+          });
+          return {
+            contentItemId: r.contentItemId,
+            workflowStatus: item?.workflowStatus,
+            programId: item?.programId,
+            titleHint: item?.rawItem?.rawTitle ?? null,
+            views: r._sum.views ?? 0,
+            clicks: r._sum.clicks ?? 0,
+            leads: r._sum.leads ?? 0,
+            bookingCount: r._sum.bookingCount ?? 0,
+            revenueRub: r._sum.revenueRub ?? 0,
+          };
+        }),
+      );
+      res.json({ items: withMeta, note: "revenueRub накапливается при completed booking с contentItemId." });
+    } catch (e) {
+      console.error("metrics content-performance error", e);
+      res.status(500).json({ error: "Failed to aggregate content performance" });
     }
   });
 

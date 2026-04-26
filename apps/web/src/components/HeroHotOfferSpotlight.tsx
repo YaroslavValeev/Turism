@@ -50,7 +50,7 @@ export function HeroHotOfferSpotlight({ slides }: Props) {
             Как только программа будет отмечена звёздочкой и откроется к заявкам, она появится здесь автоматически.
           </p>
           <a href="#programs" className="mw-btn mw-btn--primary">
-            Смотреть каталог
+            Найти свой выезд
           </a>
         </div>
       </aside>
@@ -94,7 +94,7 @@ export function HeroHotOfferSpotlight({ slides }: Props) {
 
       <div className="mw-hot-offer__footer">
         <Link href={active.href} className="mw-btn mw-btn--primary">
-          Открыть программу
+          Разобрать программу
         </Link>
         {canRotate && (
           <div className="mw-hot-offer__controls">

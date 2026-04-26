@@ -17,6 +17,7 @@ import type { Env } from "@mywave/config";
 import type { AdminPayload } from "../../middleware/auth";
 import { getProgramVisibilityThresholdDate, isProgramPubliclyVisible } from "./publicVisibility";
 import { dedupeProgramsByEventKey } from "./dedup";
+import { notifySubscribersOnProgramPublished } from "../subscriptions/notifier";
 
 function isAdminRequest(req: Request, env: Env): boolean {
   const token = req.headers.authorization?.replace(/^Bearer\s+/, "");
@@ -311,6 +312,15 @@ export function programsRoutes(env: Env): Router {
       changedBy: req.adminUserId ?? null,
       reason: "publish workflow",
     });
+    if (existing.publishStatus !== "published" && p.publishStatus === "published") {
+      void notifySubscribersOnProgramPublished(env, {
+        id: p.id,
+        title: p.title,
+        discipline: p.discipline,
+        region: p.region,
+        startDate: p.startDate,
+      });
+    }
     res.json(p);
   });
 

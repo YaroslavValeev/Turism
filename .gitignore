@@ -1,11 +1,15 @@
 node_modules
 .env
+.env.production
 .env.local
 .env.*.local
 dist
 .next
+**/.next/
 out
+**/out/
 .turbo
+**/.turbo/
 *.log
 .DS_Store
 coverage
@@ -14,3 +18,4 @@ __pycache__/
 *.pyc
 *.tsbuildinfo
 apps/admin/test-results/
+tmp/subscriptions_export.csv

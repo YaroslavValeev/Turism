@@ -185,6 +185,7 @@ Stage A считается **готовым**, когда выполнено в�
 |---------|--------|
 | FK | `Source.externalChannelId` → `OrganizerExternalChannel` (миграция `20260503120000_source_external_channel_fk`); synthetic telegram → `null`. |
 | PR1 gate | Чеклист [`WAVE1_STAGEA_PR1_CHECKLIST.md`](../migration/WAVE1_STAGEA_PR1_CHECKLIST.md) — выполнен в репозитории; unit: `services/api/src/modules/sources/sourceRegistry.upsert.test.ts` (create/update/null/undefined для `externalChannelId`). |
+| PR2 backfill | [`WAVE1_STAGEA_PR2_LINKAGE_BACKFILL.md`](../migration/WAVE1_STAGEA_PR2_LINKAGE_BACKFILL.md): `POST /sources/linkage-backfill` (явный `mode`: dry_run / apply под `SOURCES_LINKAGE_BACKFILL_WRITE_ENABLED`), отчёт `summary` + `rows`; админка: `/sources`, блок linkage. |
 | Upsert | `syncOrganizerContractAutoSources` передаёт `externalChannelId` для реальных каналов. |
 | Хук | `PATCH /organizers/:id` при изменении **`telegramChatId`** вызывает `syncOrganizerContractAutoSources` (раньше не вызывался). |
 | Ручной sync | `POST /sources/contract-auto-sync` с телом `{ "organizerId": "<id>" }` — пересборка contract-auto sources + audit `contract_auto_sources_manual_sync`. |

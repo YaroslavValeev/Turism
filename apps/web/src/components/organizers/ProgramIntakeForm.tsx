@@ -9,13 +9,18 @@ const DISCIPLINES = [
   { value: "Wakesurf", label: "Wakesurf / вейксерф" },
   { value: "SUP", label: "SUP / сапбординг" },
   { value: "MTB", label: "MTB / маунтинбайк" },
+  { value: "Ski", label: "Горные лыжи / ски-тур" },
+  { value: "Snowboard", label: "Сноуборд" },
   { value: "other", label: "Другое (указать в описании)" },
 ];
 
 const REGION_PRESETS = [
-  { value: "Krasnodar", label: "Россия · Краснодар" },
-  { value: "Dubai", label: "ОАЭ · Дубай" },
-  { value: "Bodrum", label: "Турция · Бодрум" },
+  { value: "Krasnodar", label: "Россия · Краснодарский край" },
+  { value: "Sochi", label: "Россия · Сочи / Красная Поляна" },
+  { value: "Karelia", label: "Россия · Карелия" },
+  { value: "Altai", label: "Россия · Алтай" },
+  { value: "Kamchatka", label: "Россия · Камчатка" },
+  { value: "Moscow", label: "Россия · Подмосковье / Москва" },
 ] as const;
 
 const REGION_CUSTOM = "custom" as const;
@@ -97,7 +102,7 @@ export function ProgramIntakeForm() {
           Номер заявки: <strong style={{ color: "var(--mw-text)" }}>{successId}</strong>. Сохраните его для переписки с оператором.
         </p>
         <p style={{ color: "var(--mw-muted)", marginBottom: 24 }}>
-          Дальше оператор MyWave Travel свяжется с вами по указанному email, уточнит детали программы и подскажет шаги публикации
+          Дальше оператор MyWaveTour свяжется с вами по указанному email, уточнит детали программы и подскажет шаги публикации
           и верификации.
         </p>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
@@ -118,14 +123,14 @@ export function ProgramIntakeForm() {
   return (
     <form className="mw-organizer-form" onSubmit={onSubmit}>
       <p style={{ color: "var(--mw-muted)", maxWidth: "62ch", marginTop: 0 }}>
-        Заполните форму — данные попадут команде MyWave. Публикация в каталоге возможна после проверки и согласования карточки
-        программы.
+        Заполните форму — данные попадут команде MyWaveTour. Публикация в каталоге по России возможна после согласования карточки
+        программы с оператором.
       </p>
 
       <fieldset className="mw-organizer-form__fieldset">
         <legend>Контакты</legend>
         <div className="mw-field">
-          <label htmlFor="pi-name">Имя и фамилия / контактное лицо *</label>
+          <label htmlFor="pi-name">Как к тебе обращаться *</label>
           <input
             id="pi-name"
             className="mw-input"
@@ -182,7 +187,7 @@ export function ProgramIntakeForm() {
             </select>
           </div>
           <div className="mw-field">
-            <label htmlFor="pi-region">Направление (локация) *</label>
+            <label htmlFor="pi-region">Регион / локация в России *</label>
             <select
               id="pi-region"
               className="mw-select"
@@ -206,12 +211,12 @@ export function ProgramIntakeForm() {
                   required
                   value={regionCustom}
                   onChange={(e) => setRegionCustom(e.target.value)}
-                  placeholder="Например: Индонезия · Бали, Испания · Тарифа"
+                  placeholder="Например: Россия · Санкт-Петербург, Россия · Шерегеш"
                   maxLength={200}
                   autoComplete="off"
                 />
                 <p style={{ color: "var(--mw-muted)", fontSize: "0.9rem", margin: "8px 0 0", lineHeight: 1.45 }}>
-                  Введите страну и город или район — так локация попадёт в заявку и в дальнейшую карточку программы.
+                  Укажите регион и населённый пункт или курорт в РФ — так локация попадёт в заявку и в карточку программы.
                 </p>
               </div>
             )}
@@ -228,7 +233,7 @@ export function ProgramIntakeForm() {
           />
         </div>
         <div className="mw-field">
-          <label htmlFor="pi-msg">Описание формата, уровня, что входит</label>
+          <label htmlFor="pi-msg">Что важно для тебя в этом выезде</label>
           <textarea
             id="pi-msg"
             className="mw-textarea"
@@ -247,7 +252,7 @@ export function ProgramIntakeForm() {
       <label className="mw-organizer-form__consent">
         <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} />
         <span>
-          Соглашаюсь на обработку данных по заявке MyWave Travel и контакт оператора по указанному email / телефону.
+          Соглашаюсь на обработку данных по заявке MyWaveTour и контакт оператора по указанному email / телефону.
         </span>
       </label>
 

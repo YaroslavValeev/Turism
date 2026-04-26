@@ -5,6 +5,8 @@
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import "../src/env/loadProcessEnv";
+import { loadEnv } from "@mywave/config";
 import { prisma } from "../src/lib/prisma";
 import {
   runDedupJob,
@@ -14,6 +16,7 @@ import {
 } from "../src/modules/ingestion/service";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const env = loadEnv();
 
 async function main() {
   const jsonPath = path.join(__dirname, "source_imports_owner_2026-04-16.json");
@@ -36,8 +39,8 @@ async function main() {
   const normalize = await runNormalizationJob("system", ids);
   const dedup = await runDedupJob("system", ids);
   const autoPublish = await autoPublishReadyCandidates("system", {
-    autoPublishEnabled: false,
-    fallbackImageUrl: null,
+    autoPublishEnabled: env.INGESTION_AUTOPUBLISH_ENABLED,
+    fallbackImageUrl: env.INGESTION_DEFAULT_FALLBACK_IMAGE_URL ?? null,
   });
 
   console.log(JSON.stringify({ sourceIds: ids, collect, normalize, dedup, autoPublish }, null, 2));

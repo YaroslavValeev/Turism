@@ -9,6 +9,7 @@ export const PROGRAM_INTAKE_SOURCES = [
   "telegram",
   "sheets_csv",
   "seed",
+  "ingestion_auto",
 ] as const;
 
 export type ProgramIntakeSource = (typeof PROGRAM_INTAKE_SOURCES)[number];
@@ -20,6 +21,7 @@ const LABELS: Record<ProgramIntakeSource, string> = {
   telegram: "Telegram / мессенджер (intake)",
   sheets_csv: "Импорт Sheets / CSV (trusted)",
   seed: "Сид / тестовые данные",
+  ingestion_auto: "Автопублика из ingestion (collect→normalize→dedup)",
 };
 
 export function isProgramIntakeSource(value: string | null | undefined): value is ProgramIntakeSource {

@@ -1,3 +1,4 @@
+import "../src/env/loadProcessEnv";
 import fs from "fs/promises";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../src/lib/prisma";

@@ -20,3 +20,6 @@ for (const rel of targets) {
 }
 
 console.log("[clean:web-cache] done");
+console.log(
+  "[clean:web-cache] подсказка: не запускайте `next build` в apps/web, пока работает `next dev` на той же копии — иначе можно сломать согласованность чанков в .next",
+);

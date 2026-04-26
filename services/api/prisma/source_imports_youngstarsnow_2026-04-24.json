@@ -1,0 +1,23 @@
+[
+  {
+    "type": "instagram",
+    "name": "youngstarsnow",
+    "urlOrHandle": "https://www.instagram.com/youngstarsnow/",
+    "discipline": "Snow / multi",
+    "country": "Russia",
+    "region": "",
+    "language": "ru",
+    "priority": 72,
+    "trustScore": 0.55,
+    "parserProfile": "instagram_public_profile",
+    "fetchIntervalMinutes": 1440,
+    "isActive": true,
+    "metaJson": {
+      "autoPublish": false,
+      "notes": [
+        "Добавлено 2026-04-24. Исходная ссылка: https://www.instagram.com/youngstarsnow?igsh=bTB1YXRqb3l5dnJo"
+      ],
+      "referencePermalinks": ["https://www.instagram.com/youngstarsnow/"]
+    }
+  }
+]

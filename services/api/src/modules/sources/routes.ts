@@ -6,6 +6,8 @@ import { prisma } from "../../lib/prisma";
 import { writeAuditLog } from "../../lib/audit";
 import { isSourceType } from "../ingestion/constants";
 import { runDedupJob, runNormalizationJob, runSourceCollection } from "../ingestion/service";
+import { runLinkageBackfillReport } from "./sourceLinkageBackfill";
+import { safeError } from "../../lib/safeLogger";
 
 export function sourcesRoutes(env: Env): Router {
   const router = Router();
@@ -134,6 +136,43 @@ export function sourcesRoutes(env: Env): Router {
     res.json(source);
   });
 
+  /**
+   * PR2: dry-run / apply backfill metaJson.channelId → externalChannelId.
+   * Body: `{ "mode": "dry_run" | "apply", "organizerId"?: string }`
+   * Apply требует `SOURCES_LINKAGE_BACKFILL_WRITE_ENABLED=1` в окружении API.
+   */
+  router.post("/linkage-backfill", admin, async (req: Request, res: Response) => {
+    const body = req.body as Record<string, unknown>;
+    const modeRaw = body.mode;
+    const mode = modeRaw === "apply" ? "apply" : "dry_run";
+    const organizerId = typeof body.organizerId === "string" && body.organizerId.trim() ? body.organizerId.trim() : null;
+
+    if (mode === "apply" && !env.SOURCES_LINKAGE_BACKFILL_WRITE_ENABLED) {
+      res.status(403).json({
+        error: "apply_disabled",
+        message: "Установите SOURCES_LINKAGE_BACKFILL_WRITE_ENABLED=1 для режима apply",
+      });
+      return;
+    }
+
+    try {
+      const report = await runLinkageBackfillReport(prisma, env, {
+        mode,
+        organizerId,
+        changedBy: req.adminUserId ?? null,
+      });
+      res.json(report);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "";
+      if (msg.includes("apply_requires_SOURCES_LINKAGE_BACKFILL_WRITE_ENABLED")) {
+        res.status(403).json({ error: "apply_disabled" });
+        return;
+      }
+      safeError("sources.linkage-backfill failed", e);
+      res.status(500).json({ error: "linkage_backfill_failed" });
+    }
+  });
+
   router.post("/:id/run", admin, async (req: Request, res: Response) => {
     const source = await prisma.source.findUnique({ where: { id: req.params.id } });
     if (!source) {
@@ -146,7 +185,8 @@ export function sourcesRoutes(env: Env): Router {
       const dedup = await runDedupJob(req.adminUserId ?? null, [source.id]);
       res.json({ collect, normalize, dedup });
     } catch (error) {
-      res.status(400).json({ error: error instanceof Error ? error.message : "Source run failed" });
+      safeError("sources.run failed", error);
+      res.status(400).json({ error: "Source run failed" });
     }
   });
 

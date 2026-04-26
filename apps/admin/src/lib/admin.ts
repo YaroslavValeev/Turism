@@ -38,8 +38,9 @@ export async function adminJson<T>(path: string, init: RequestInit = {}): Promis
   const response = await adminFetch(path, init);
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    const message =
-      typeof data?.error === "string" ? data.error : `Запрос ${response.status} завершился ошибкой`;
+    const code = typeof data?.error === "string" ? data.error : `http_${response.status}`;
+    const hint = typeof data?.message === "string" ? data.message : "";
+    const message = hint ? `${code}: ${hint}` : code || `Запрос ${response.status} завершился ошибкой`;
     throw new Error(message);
   }
   return data as T;

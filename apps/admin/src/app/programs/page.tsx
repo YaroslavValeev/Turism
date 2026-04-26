@@ -1,156 +1,32 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
-import Link from "next/link";
-import { adminJson } from "../../lib/admin";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { getProgramPublishStatusLabel, PILOT_SCOPE_LABEL, PROGRAM_PUBLISH_STATUSES } from "@mywave/shared-types";
+import { adminJson, getAdminToken } from "../../lib/admin";
+import { AdminEmptyState } from "../../components/admin/AdminEmptyState";
+import { AdminFilterField, AdminFiltersBar } from "../../components/admin/AdminFiltersBar";
+import { AdminLoadingState } from "../../components/admin/AdminLoadingState";
+import { AdminMessage } from "../../components/admin/AdminMessage";
+import { AdminPageHeader } from "../../components/admin/AdminPageHeader";
+import { AdminStatCard, AdminStatGrid } from "../../components/admin/AdminStatCard";
+import { ProgramCatalogTable } from "../../components/admin/programs/ProgramCatalogTable";
+import { ProgramCreateFormCard } from "../../components/admin/programs/ProgramCreateFormCard";
 import {
-  PILOT_SCOPE_LABEL,
-  PROGRAM_INTAKE_SOURCES,
-  PROGRAM_PUBLISH_STATUSES,
-  getMediaTypeLabel,
-  getOrganizerVerificationStatusLabel,
-  getProgramIntakeSourceLabel,
-  getProgramLevelLabel,
-  getProgramPublishStatusLabel,
-  getSeverityLabel,
-  isPilotProgramScope,
-} from "@mywave/shared-types";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
-
-type OrganizerOption = {
-  id: string;
-  displayName: string;
-  verificationStatus: string;
-};
-
-type ProgramScoreSnap = {
-  programId: string;
-  totalProgramScore: number;
-  scoreBand: string;
-  sampleViews?: number;
-  componentsJson?: Record<string, number | null>;
-};
-
-type Program = {
-  id: string;
-  title: string;
-  discipline: string;
-  region: string;
-  publishStatus: string;
-  intakeSource: string | null;
-  startDate: string;
-  endDate: string;
-  durationDays: number;
-  capacityTotal: number | null;
-  spotsAvailable: number | null;
-  isStarred: boolean;
-  media: unknown[];
-  organizer?: { id: string; displayName: string; verificationStatus: string };
-};
-
-type ProgramForm = {
-  organizerId: string;
-  intakeSource: string;
-  title: string;
-  discipline: string;
-  region: string;
-  exactLocation: string;
-  startDate: string;
-  endDate: string;
-  durationDays: string;
-  levelRequired: string;
-  riskLevel: string;
-  capacityTotal: string;
-  spotsAvailable: string;
-  isStarred: boolean;
-  gearRequirements: string;
-  medicalLimitations: string;
-  cancellationRules: string;
-  itineraryDayByDay: string;
-  inclusions: string;
-  priceFromRub: string;
-};
-
-type MediaDraft = {
-  mediaType: string;
-  url: string;
-  caption: string;
-};
-
-type AvailabilityDraft = {
-  capacityTotal: string;
-  spotsAvailable: string;
-};
-
-type SpotlightDraft = {
-  isStarred: boolean;
-};
-
-const EMPTY_MEDIA_DRAFT: MediaDraft = {
-  mediaType: "image",
-  url: "",
-  caption: "",
-};
-
-const LEVEL_OPTIONS = ["beginner", "intermediate", "advanced", "expert", "all_levels"];
-const RISK_LEVEL_OPTIONS = ["low", "medium", "high", "critical"];
-
-function programBandMeta(scoreBand: string): { label: string; bg: string; color: string } {
-  if (scoreBand === "low") return { label: "weak program", bg: "#ffe8e8", color: "#9f1d1d" };
-  if (scoreBand === "medium") return { label: "watchlist", bg: "#fff3dd", color: "#8a5800" };
-  if (scoreBand === "insufficient_data" || scoreBand === "unknown") {
-    return { label: "insufficient data", bg: "#eef1ff", color: "#364fc7" };
-  }
-  return { label: "stable", bg: "#eaf7ee", color: "#1d6f42" };
-}
-
-function programBreakdown(score: ProgramScoreSnap | undefined): string {
-  if (!score) return "Нет snapshot score.";
-  const c = score.componentsJson ?? {};
-  const content = Number(c.content_completeness_score ?? 0);
-  const media = Number(c.has_media_score ?? 0);
-  const safety = Number(c.has_safety_score ?? 0);
-  const cancellation = Number(c.has_cancellation_policy_score ?? 0);
-  const v2l = c.view_to_lead_score == null ? null : Number(c.view_to_lead_score);
-  const l2b = c.lead_to_booking_score == null ? null : Number(c.lead_to_booking_score);
-  const b2p = c.booking_to_paid_score == null ? null : Number(c.booking_to_paid_score);
-  return `Content ${content.toFixed(0)} · media ${media.toFixed(0)} · safety ${safety.toFixed(0)} · cancellation ${cancellation.toFixed(0)} · funnel: ${v2l == null ? "n/a" : v2l.toFixed(0)}/${l2b == null ? "n/a" : l2b.toFixed(0)}/${b2p == null ? "n/a" : b2p.toFixed(0)}`;
-}
-
-function programHints(program: Program, score: ProgramScoreSnap | undefined): string[] {
-  if (!score) return ["Снимок score ещё не создан — запустить recalculate."];
-  const hints: string[] = [];
-  const c = score.componentsJson ?? {};
-  if (score.scoreBand === "insufficient_data" || score.scoreBand === "unknown") {
-    hints.push("Недостаточно трафика для performance score: нужна выборка просмотров.");
-  }
-  if (Number(c.content_completeness_score ?? 100) < 70) hints.push("Низкая completeness: дополнить audience/inclusions/gear/after-booking.");
-  if (Number(c.has_media_score ?? 100) < 100) hints.push("Добавить медиа (фото/видео), иначе карточка теряет конверсию.");
-  if (Number(c.has_schedule_score ?? 100) < 100) hints.push("Добавить программу по дням (itinerary).");
-  if (Number(c.has_safety_score ?? 100) < 100) hints.push("Заполнить risk + medical ограничения для trust.");
-  if (Number(c.has_cancellation_policy_score ?? 100) < 100) hints.push("Заполнить cancellation policy.");
-  if ((c.booking_to_paid_score ?? 100) !== null && Number(c.booking_to_paid_score ?? 100) < 55) {
-    hints.push("Провал booking→paid: проверить оффер/оплату/следующий шаг после заявки.");
-  }
-  if (program.publishStatus !== "published") hints.push("Карточка не published: проверить blockers публикации.");
-  return hints.slice(0, 3);
-}
-
-function moderationPriorityForProgram(score: ProgramScoreSnap | undefined): { label: string; color: string } {
-  if (!score) return { label: "P3 · ждём snapshot", color: "#666" };
-  if (score.scoreBand === "low") return { label: "P1 · moderation review", color: "#9f1d1d" };
-  if (score.scoreBand === "insufficient_data" || score.scoreBand === "unknown") {
-    return { label: "P2 · data/traffic check", color: "#364fc7" };
-  }
-  if (score.scoreBand === "medium") return { label: "P2 · quality follow-up", color: "#8a5800" };
-  return { label: "P3 · monitor", color: "#1d6f42" };
-}
+  EMPTY_MEDIA_DRAFT,
+  INITIAL_PROGRAM_FORM,
+  type AvailabilityDraft,
+  type MediaDraft,
+  type OrganizerOption,
+  type Program,
+  type ProgramForm,
+  type ProgramScoreSnap,
+  type SpotlightDraft,
+} from "../../components/admin/programs/programModel";
 
 export default function AdminProgramsPage() {
   const [programs, setPrograms] = useState<Program[]>([]);
-  const [programScores, setProgramScores] = useState<Record<string, ProgramScoreSnap>>({});
   const [organizers, setOrganizers] = useState<OrganizerOption[]>([]);
+  const [programScores, setProgramScores] = useState<Record<string, ProgramScoreSnap>>({});
   const [filter, setFilter] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
@@ -166,34 +42,21 @@ export default function AdminProgramsPage() {
   const [savingAvailabilityId, setSavingAvailabilityId] = useState<string | null>(null);
   const [spotlightDrafts, setSpotlightDrafts] = useState<Record<string, SpotlightDraft>>({});
   const [savingSpotlightId, setSavingSpotlightId] = useState<string | null>(null);
-  const [createForm, setCreateForm] = useState<ProgramForm>({
-    organizerId: "",
-    intakeSource: "admin_manual",
-    title: "",
-    discipline: "Wakesurf",
-    region: "Krasnodar",
-    exactLocation: "",
-    startDate: "",
-    endDate: "",
-    durationDays: "3",
-    levelRequired: "intermediate",
-    riskLevel: "medium",
-    capacityTotal: "",
-    spotsAvailable: "",
-    isStarred: false,
-    gearRequirements: "Доска/оборудование согласуются с организатором",
-    medicalLimitations: "",
-    cancellationRules: "Бесплатная отмена за 14 дней, далее по договорённости с организатором.",
-    itineraryDayByDay: "День 1: знакомство и брифинг. День 2-3: катание, разбор техники, восстановление.",
-    inclusions: "Тренировки, сопровождение организатора, координация от MyWave.",
-    priceFromRub: "",
-  });
+  const [createForm, setCreateForm] = useState<ProgramForm>(INITIAL_PROGRAM_FORM);
 
-  const getToken = () => (typeof window !== "undefined" ? window.localStorage.getItem("admin_token") : null);
+  const loadOrganizers = async () => {
+    if (!getAdminToken()) return;
+    try {
+      const list = await adminJson<OrganizerOption[]>("/organizers");
+      setOrganizers(list);
+      setCreateForm((c) => ({ ...c, organizerId: c.organizerId || list[0]?.id || "" }));
+    } catch {
+      setOrganizers([]);
+    }
+  };
 
   const loadPrograms = async () => {
-    const token = getToken();
-    if (!token) {
+    if (!getAdminToken()) {
       window.location.href = "/login";
       return;
     }
@@ -201,38 +64,24 @@ export default function AdminProgramsPage() {
     setError("");
     const q = "?all=1" + (filter ? `&publish_status=${encodeURIComponent(filter)}` : "");
     try {
-      const res = await fetch(`${API_URL}/programs${q}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.status === 403 || res.status === 401) {
-        if (res.status === 401) window.localStorage.removeItem("admin_token");
-        window.location.href = "/login";
-        return;
-      }
-      const data = await res.json();
-      const list = Array.isArray(data) ? data : [];
+      const list = await adminJson<Program[]>(`/programs${q}`);
       setPrograms(list);
-      setStatusDrafts(Object.fromEntries(list.map((program) => [program.id, program.publishStatus])));
-      setIntakeDrafts(Object.fromEntries(list.map((program) => [program.id, program.intakeSource ?? ""])));
+      setStatusDrafts(Object.fromEntries(list.map((p) => [p.id, p.publishStatus])));
+      setIntakeDrafts(Object.fromEntries(list.map((p) => [p.id, p.intakeSource ?? ""])));
       setAvailabilityDrafts(
         Object.fromEntries(
-          list.map((program) => [
-            program.id,
+          list.map((p) => [
+            p.id,
             {
-              capacityTotal: program.capacityTotal != null ? String(program.capacityTotal) : "",
-              spotsAvailable: program.spotsAvailable != null ? String(program.spotsAvailable) : "",
+              capacityTotal: p.capacityTotal != null ? String(p.capacityTotal) : "",
+              spotsAvailable: p.spotsAvailable != null ? String(p.spotsAvailable) : "",
             },
           ]),
         ),
       );
       setSpotlightDrafts(
         Object.fromEntries(
-          list.map((program) => [
-            program.id,
-            {
-              isStarred: program.isStarred,
-            },
-          ]),
+          list.map((p) => [p.id, { isStarred: p.isStarred }]),
         ),
       );
     } catch (fetchError) {
@@ -242,35 +91,30 @@ export default function AdminProgramsPage() {
     }
   };
 
-  const loadOrganizers = async () => {
-    try {
-      const res = await fetch(`${API_URL}/organizers`);
-      const data = await res.json();
-      const list = Array.isArray(data) ? data : [];
-      setOrganizers(list);
-      setCreateForm((current) => ({
-        ...current,
-        organizerId: current.organizerId || list[0]?.id || "",
-      }));
-    } catch {
-      setOrganizers([]);
+  useEffect(() => {
+    if (!getAdminToken()) {
+      window.location.href = "/login";
+      return;
     }
-  };
-
-  useEffect(() => {
-    loadPrograms();
-  }, [filter]);
-
-  useEffect(() => {
-    loadOrganizers();
+    void loadOrganizers();
   }, []);
+
+  useEffect(() => {
+    void loadPrograms();
+  }, [filter]);
 
   useEffect(() => {
     if (loading || programs.length === 0) return;
     let cancelled = false;
-    adminJson<{ rows: Array<{ programId: string; totalProgramScore: number; scoreBand: string; sampleViews?: number; componentsJson?: Record<string, number | null> }> }>(
-      "/metrics/programs/scores/latest"
-    )
+    adminJson<{
+      rows: Array<{
+        programId: string;
+        totalProgramScore: number;
+        scoreBand: string;
+        sampleViews?: number;
+        componentsJson?: Record<string, number | null>;
+      }>;
+    }>("/metrics/programs/scores/latest")
       .then((data) => {
         if (cancelled || !Array.isArray(data.rows)) return;
         const m: Record<string, ProgramScoreSnap> = {};
@@ -293,19 +137,14 @@ export default function AdminProgramsPage() {
 
   const handleCreateProgram = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const token = getToken();
-    if (!token) return;
+    if (!getAdminToken()) return;
     setCreating(true);
     setError("");
     setMessage("");
     try {
       const organizer = organizers.find((item) => item.id === createForm.organizerId);
-      const res = await fetch(`${API_URL}/programs`, {
+      await adminJson("/programs", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify({
           organizerId: createForm.organizerId,
           title: createForm.title.trim(),
@@ -330,21 +169,13 @@ export default function AdminProgramsPage() {
           intakeSource: createForm.intakeSource || undefined,
         }),
       });
-      const body = await res.json().catch(() => null);
-      if (!res.ok) {
-        throw new Error(body?.error ?? "Не удалось создать программу");
-      }
       setMessage(`Программа создана в статусе «${getProgramPublishStatusLabel("draft")}».`);
       setCreateForm((current) => ({
-        ...current,
-        title: "",
-        exactLocation: "",
-        startDate: "",
-        endDate: "",
-        priceFromRub: "",
-        capacityTotal: "",
-        spotsAvailable: "",
-        isStarred: false,
+        ...INITIAL_PROGRAM_FORM,
+        organizerId: current.organizerId,
+        intakeSource: current.intakeSource,
+        discipline: current.discipline,
+        region: current.region,
       }));
       await loadPrograms();
     } catch (createError) {
@@ -355,25 +186,15 @@ export default function AdminProgramsPage() {
   };
 
   const handleSaveStatus = async (programId: string) => {
-    const token = getToken();
-    if (!token) return;
+    if (!getAdminToken()) return;
     setSavingStatusId(programId);
     setError("");
     setMessage("");
     try {
-      const res = await fetch(`${API_URL}/programs/${programId}/publish-status`, {
+      await adminJson(`/programs/${programId}/publish-status`, {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify({ publishStatus: statusDrafts[programId] }),
       });
-      const body = await res.json().catch(() => null);
-      if (!res.ok) {
-        const missing = Array.isArray(body?.missing) ? `: ${body.missing.join(", ")}` : "";
-        throw new Error((body?.error ?? "Не удалось сменить статус публикации") + missing);
-      }
       setMessage("Статус публикации обновлён.");
       await loadPrograms();
     } catch (saveError) {
@@ -384,25 +205,16 @@ export default function AdminProgramsPage() {
   };
 
   const handleSaveIntake = async (programId: string) => {
-    const token = getToken();
-    if (!token) return;
+    if (!getAdminToken()) return;
     setSavingIntakeId(programId);
     setError("");
     setMessage("");
     const raw = intakeDrafts[programId] ?? "";
     try {
-      const res = await fetch(`${API_URL}/programs/${programId}`, {
+      await adminJson(`/programs/${programId}`, {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify({ intakeSource: raw === "" ? null : raw }),
       });
-      const body = await res.json().catch(() => null);
-      if (!res.ok) {
-        throw new Error(body?.error ?? "Не удалось сохранить источник");
-      }
       setMessage("Источник intake обновлён.");
       await loadPrograms();
     } catch (saveError) {
@@ -413,29 +225,20 @@ export default function AdminProgramsPage() {
   };
 
   const handleAddMedia = async (programId: string) => {
-    const token = getToken();
-    if (!token) return;
+    if (!getAdminToken()) return;
     const draft = mediaDrafts[programId] ?? EMPTY_MEDIA_DRAFT;
     setSavingMediaId(programId);
     setError("");
     setMessage("");
     try {
-      const res = await fetch(`${API_URL}/programs/${programId}/media`, {
+      await adminJson(`/programs/${programId}/media`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify({
           mediaType: draft.mediaType,
           url: draft.url.trim(),
           caption: draft.caption.trim() || undefined,
         }),
       });
-      const body = await res.json().catch(() => null);
-      if (!res.ok) {
-        throw new Error(body?.error ?? "Не удалось добавить медиа");
-      }
       setMediaDrafts((current) => ({ ...current, [programId]: EMPTY_MEDIA_DRAFT }));
       setMessage("Медиа добавлено.");
       await loadPrograms();
@@ -447,28 +250,19 @@ export default function AdminProgramsPage() {
   };
 
   const handleSaveAvailability = async (programId: string) => {
-    const token = getToken();
-    if (!token) return;
+    if (!getAdminToken()) return;
     setSavingAvailabilityId(programId);
     setError("");
     setMessage("");
     const draft = availabilityDrafts[programId] ?? { capacityTotal: "", spotsAvailable: "" };
     try {
-      const res = await fetch(`${API_URL}/programs/${programId}`, {
+      await adminJson(`/programs/${programId}`, {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify({
           capacityTotal: draft.capacityTotal === "" ? null : Number(draft.capacityTotal),
           spotsAvailable: draft.spotsAvailable === "" ? null : Number(draft.spotsAvailable),
         }),
       });
-      const body = await res.json().catch(() => null);
-      if (!res.ok) {
-        throw new Error(body?.error ?? "Не удалось сохранить наличие");
-      }
       setMessage("Наличие и лимит мест обновлены.");
       await loadPrograms();
     } catch (saveError) {
@@ -479,28 +273,21 @@ export default function AdminProgramsPage() {
   };
 
   const handleSaveSpotlight = async (programId: string) => {
-    const token = getToken();
-    if (!token) return;
+    if (!getAdminToken()) return;
     setSavingSpotlightId(programId);
     setError("");
     setMessage("");
     const draft = spotlightDrafts[programId] ?? { isStarred: false };
     try {
-      const res = await fetch(`${API_URL}/programs/${programId}`, {
+      await adminJson(`/programs/${programId}`, {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          isStarred: draft.isStarred,
-        }),
+        body: JSON.stringify({ isStarred: draft.isStarred }),
       });
-      const body = await res.json().catch(() => null);
-      if (!res.ok) {
-        throw new Error(body?.error ?? "Не удалось сохранить витрину");
-      }
-      setMessage(draft.isStarred ? "Программа отмечена звёздочкой для витрины." : "Звёздочка для витрины снята.");
+      setMessage(
+        draft.isStarred
+          ? "Программа отмечена звёздочкой для витрины."
+          : "Звёздочка для витрины снята.",
+      );
       await loadPrograms();
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : "Не удалось сохранить витрину");
@@ -509,330 +296,98 @@ export default function AdminProgramsPage() {
     }
   };
 
-  return (
-    <main style={{ padding: 24 }}>
-      <p><Link href="/organizers">Организаторы</Link> | <strong>Программы</strong> | <Link href="/bookings">Заявки</Link> | <Link href="/incidents">Инциденты</Link> | <Link href="/reviews">Отзывы</Link> | <Link href="/commissions">Комиссии</Link></p>
-      <h1>Программы</h1>
-      <p style={{ fontSize: 14, color: "#555" }}>
-        Текущий операционный фокус каталога — <strong>{PILOT_SCOPE_LABEL}</strong>. Новые публикации вне этого фокуса держим в подготовке до отдельного решения Owner. Канон источников intake программы: <code>docs/INGESTION_POLICY.md</code>.
-      </p>
-      {error && <p style={{ color: "red" }}>{error}</p>}
-      {message && <p style={{ color: "#1d6f42" }}>{message}</p>}
+  const programStats = useMemo(() => {
+    const total = programs.length;
+    const published = programs.filter((p) => p.publishStatus === "published").length;
+    const draft = programs.filter((p) => p.publishStatus === "draft").length;
+    const starred = programs.filter((p) => p.isStarred).length;
+    return { total, published, draft, starred };
+  }, [programs]);
 
-      <section style={{ margin: "20px 0", padding: 16, border: "1px solid #ddd", borderRadius: 8 }}>
-        <h2 style={{ marginTop: 0 }}>Создать программу</h2>
-        <form onSubmit={handleCreateProgram} style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
-          <select value={createForm.organizerId} onChange={(e) => setCreateForm((current) => ({ ...current, organizerId: e.target.value }))} style={{ padding: 10 }}>
-            <option value="">Выберите организатора</option>
-            {organizers.map((organizer) => (
-              <option key={organizer.id} value={organizer.id}>
-                {organizer.displayName} ({getOrganizerVerificationStatusLabel(organizer.verificationStatus)})
+  return (
+    <main className="mw-admin-page">
+      <AdminPageHeader
+        title="Программы"
+        description={
+          <>
+            Текущий операционный фокус каталога — <strong>{PILOT_SCOPE_LABEL}</strong>. Новые публикации вне этого фокуса
+            оставляем в подготовке до отдельного решения владельца. Политика источников intake:{" "}
+            <span className="mw-admin-code">docs/INGESTION_POLICY.md</span>.
+          </>
+        }
+      />
+      {error ? <AdminMessage type="error">{error}</AdminMessage> : null}
+      {message ? <AdminMessage type="success">{message}</AdminMessage> : null}
+
+      {!loading && (
+        <AdminStatGrid>
+          <AdminStatCard
+            label="В списке"
+            value={programStats.total}
+            hint={filter ? `Фильтр: ${getProgramPublishStatusLabel(filter)}` : "Все статусы публикации"}
+          />
+          <AdminStatCard label="Опубликовано" value={programStats.published} />
+          <AdminStatCard label="Черновики" value={programStats.draft} />
+          <AdminStatCard label="Витрина (⭐)" value={programStats.starred} />
+        </AdminStatGrid>
+      )}
+
+      <ProgramCreateFormCard
+        createForm={createForm}
+        setCreateForm={setCreateForm}
+        organizers={organizers}
+        creating={creating}
+        onSubmit={handleCreateProgram}
+      />
+
+      <AdminFiltersBar title="Каталог">
+        <AdminFilterField label="Статус публикации">
+          <select className="mw-admin-input mw-admin-minw-260" value={filter} onChange={(e) => setFilter(e.target.value)}>
+            <option value="">Все</option>
+            {PROGRAM_PUBLISH_STATUSES.map((status) => (
+              <option key={status} value={status}>
+                {getProgramPublishStatusLabel(status)}
               </option>
             ))}
           </select>
-          <select
-            value={createForm.intakeSource}
-            onChange={(e) => setCreateForm((current) => ({ ...current, intakeSource: e.target.value }))}
-            style={{ padding: 10 }}
-            title="Источник появления программы в каталоге (canonical intake)"
-          >
-            {PROGRAM_INTAKE_SOURCES.map((code) => (
-              <option key={code} value={code}>{getProgramIntakeSourceLabel(code)}</option>
-            ))}
-          </select>
-          <input value={createForm.title} onChange={(e) => setCreateForm((current) => ({ ...current, title: e.target.value }))} placeholder="Название программы" style={{ padding: 10 }} />
-          <input value={createForm.discipline} onChange={(e) => setCreateForm((current) => ({ ...current, discipline: e.target.value }))} placeholder="Дисциплина" style={{ padding: 10 }} />
-          <input value={createForm.region} onChange={(e) => setCreateForm((current) => ({ ...current, region: e.target.value }))} placeholder="Регион" style={{ padding: 10 }} />
-          <input value={createForm.exactLocation} onChange={(e) => setCreateForm((current) => ({ ...current, exactLocation: e.target.value }))} placeholder="Точная локация" style={{ padding: 10 }} />
-          <input type="date" value={createForm.startDate} onChange={(e) => setCreateForm((current) => ({ ...current, startDate: e.target.value }))} style={{ padding: 10 }} />
-          <input type="date" value={createForm.endDate} onChange={(e) => setCreateForm((current) => ({ ...current, endDate: e.target.value }))} style={{ padding: 10 }} />
-          <input value={createForm.durationDays} onChange={(e) => setCreateForm((current) => ({ ...current, durationDays: e.target.value }))} placeholder="Длительность, дней" style={{ padding: 10 }} />
-          <select value={createForm.levelRequired} onChange={(e) => setCreateForm((current) => ({ ...current, levelRequired: e.target.value }))} style={{ padding: 10 }}>
-            {LEVEL_OPTIONS.map((level) => (
-              <option key={level} value={level}>{getProgramLevelLabel(level)}</option>
-            ))}
-          </select>
-          <select value={createForm.riskLevel} onChange={(e) => setCreateForm((current) => ({ ...current, riskLevel: e.target.value }))} style={{ padding: 10 }}>
-            {RISK_LEVEL_OPTIONS.map((level) => (
-              <option key={level} value={level}>{getSeverityLabel(level)}</option>
-            ))}
-          </select>
-          <input type="number" min="0" value={createForm.capacityTotal} onChange={(e) => setCreateForm((current) => ({ ...current, capacityTotal: e.target.value }))} placeholder="Лимит мест" style={{ padding: 10 }} />
-          <input type="number" min="0" value={createForm.spotsAvailable} onChange={(e) => setCreateForm((current) => ({ ...current, spotsAvailable: e.target.value }))} placeholder="Мест осталось" style={{ padding: 10 }} />
-          <label style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 4px" }}>
-            <input
-              type="checkbox"
-              checked={createForm.isStarred}
-              onChange={(e) => setCreateForm((current) => ({ ...current, isStarred: e.target.checked }))}
-            />
-            ⭐ Горячее предложение
-          </label>
-          <input value={createForm.priceFromRub} onChange={(e) => setCreateForm((current) => ({ ...current, priceFromRub: e.target.value }))} placeholder="Цена от, ₽" style={{ padding: 10 }} />
-          <textarea value={createForm.gearRequirements} onChange={(e) => setCreateForm((current) => ({ ...current, gearRequirements: e.target.value }))} placeholder="Требования к снаряжению" rows={3} style={{ padding: 10 }} />
-          <textarea value={createForm.medicalLimitations} onChange={(e) => setCreateForm((current) => ({ ...current, medicalLimitations: e.target.value }))} placeholder="Медицинские ограничения (можно оставить пустым)" rows={3} style={{ padding: 10 }} />
-          <textarea value={createForm.cancellationRules} onChange={(e) => setCreateForm((current) => ({ ...current, cancellationRules: e.target.value }))} placeholder="Правила отмены" rows={3} style={{ padding: 10 }} />
-          <textarea value={createForm.itineraryDayByDay} onChange={(e) => setCreateForm((current) => ({ ...current, itineraryDayByDay: e.target.value }))} placeholder="Программа по дням" rows={3} style={{ padding: 10 }} />
-          <textarea value={createForm.inclusions} onChange={(e) => setCreateForm((current) => ({ ...current, inclusions: e.target.value }))} placeholder="Что включено" rows={3} style={{ padding: 10 }} />
-          <button
-            type="submit"
-            disabled={creating || !createForm.organizerId || !createForm.title.trim() || !createForm.startDate || !createForm.endDate}
-            style={{ padding: 10 }}
-          >
-            {creating ? "Создание..." : "Создать черновик"}
-          </button>
-        </form>
-      </section>
+        </AdminFilterField>
+      </AdminFiltersBar>
 
-      <p>Фильтр по статусу публикации:{" "}
-        <select value={filter} onChange={(e) => setFilter(e.target.value)} style={{ padding: 6 }}>
-          <option value="">Все</option>
-          {PROGRAM_PUBLISH_STATUSES.map((status) => (
-            <option key={status} value={status}>{getProgramPublishStatusLabel(status)}</option>
-          ))}
-        </select>
-      </p>
-      {loading && <p>Загрузка...</p>}
-      {!loading && (
-        <table style={{ borderCollapse: "collapse", width: "100%" }}>
-          <thead>
-            <tr style={{ borderBottom: "2px solid #333" }}>
-              <th style={{ textAlign: "left", padding: 8 }}>Название</th>
-              <th style={{ textAlign: "left", padding: 8 }}>Score (internal)</th>
-              <th style={{ textAlign: "left", padding: 8 }}>Фокус</th>
-              <th style={{ textAlign: "left", padding: 8 }}>Горячее предложение</th>
-              <th style={{ textAlign: "left", padding: 8 }}>Наличие</th>
-              <th style={{ textAlign: "left", padding: 8 }}>Источник (intake)</th>
-              <th style={{ textAlign: "left", padding: 8 }}>Статус публикации</th>
-              <th style={{ textAlign: "left", padding: 8 }}>Даты</th>
-              <th style={{ textAlign: "left", padding: 8 }}>Медиа</th>
-              <th style={{ textAlign: "left", padding: 8 }}>Moderation priority</th>
-              <th style={{ textAlign: "left", padding: 8 }}>Действия</th>
-            </tr>
-          </thead>
-          <tbody>
-            {programs.map((program) => {
-              const mediaDraft = mediaDrafts[program.id] ?? EMPTY_MEDIA_DRAFT;
-              const isPilot = isPilotProgramScope(program.discipline, program.region);
-              const availabilityDraft = availabilityDrafts[program.id] ?? {
-                capacityTotal: program.capacityTotal != null ? String(program.capacityTotal) : "",
-                spotsAvailable: program.spotsAvailable != null ? String(program.spotsAvailable) : "",
-              };
-              const spotlightDraft = spotlightDrafts[program.id] ?? {
-                isStarred: program.isStarred,
-              };
-              const availabilityDirty =
-                availabilityDraft.capacityTotal !== (program.capacityTotal != null ? String(program.capacityTotal) : "")
-                || availabilityDraft.spotsAvailable !== (program.spotsAvailable != null ? String(program.spotsAvailable) : "");
-              const spotlightDirty = spotlightDraft.isStarred !== program.isStarred;
-              const today = new Date();
-              today.setHours(0, 0, 0, 0);
-              const isPast = new Date(program.endDate) < today;
-              const isFull = program.spotsAvailable != null && program.spotsAvailable <= 0;
-              const isPubliclyVisible = program.publishStatus === "published" && !isPast && !isFull;
-              const score = programScores[program.id];
-              const scoreMeta = programBandMeta(score?.scoreBand ?? "unknown");
-              const hints = programHints(program, score);
-              const priority = moderationPriorityForProgram(score);
-              return (
-                <tr key={program.id} style={{ borderBottom: "1px solid #ccc" }}>
-                  <td style={{ padding: 8 }}>
-                    <strong>{program.isStarred ? "⭐ " : ""}{program.title}</strong>
-                    <div style={{ color: "#666", fontSize: 12 }}>
-                      {program.organizer?.displayName ?? "—"} · {program.discipline}
-                    </div>
-                  </td>
-                  <td style={{ padding: 8, fontSize: 13, color: "#444", whiteSpace: "nowrap" }}>
-                    {score
-                      ? `${score.totalProgramScore.toFixed(1)} (${score.scoreBand})`
-                      : "—"}
-                    <div style={{ marginTop: 4 }}>
-                      <span style={{ background: scoreMeta.bg, color: scoreMeta.color, borderRadius: 999, padding: "2px 8px", fontSize: 12 }}>
-                        {scoreMeta.label}
-                      </span>
-                    </div>
-                    <div style={{ marginTop: 6, color: "#666", fontSize: 12, whiteSpace: "normal", maxWidth: 420 }}>
-                      {programBreakdown(score)}
-                    </div>
-                    {hints.length > 0 && (
-                      <ul style={{ margin: "6px 0 0", paddingLeft: 18, color: "#555", fontSize: 12, whiteSpace: "normal", maxWidth: 420 }}>
-                        {hints.map((h) => (
-                          <li key={h}>{h}</li>
-                        ))}
-                      </ul>
-                    )}
-                  </td>
-                  <td style={{ padding: 8 }}>
-                    <span style={{ color: isPilot ? "#1d6f42" : "#a45c00" }}>
-                      {program.region} {isPilot ? "· основной фокус" : "· подготовка"}
-                    </span>
-                  </td>
-                  <td style={{ padding: 8, minWidth: 220 }}>
-                    <div style={{ fontSize: 12, color: spotlightDraft.isStarred ? "#9a6700" : "#666", marginBottom: 6 }}>
-                      {program.isStarred ? "Витрина активна: программа участвует в блоке горячих предложений." : "Обычный показ без выделения."}
-                    </div>
-                    <label style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                      <input
-                        type="checkbox"
-                        checked={spotlightDraft.isStarred}
-                        onChange={(e) =>
-                          setSpotlightDrafts((current) => ({
-                            ...current,
-                            [program.id]: { isStarred: e.target.checked },
-                          }))
-                        }
-                      />
-                      ⭐ Выделить звёздочкой
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => handleSaveSpotlight(program.id)}
-                      disabled={savingSpotlightId === program.id || !spotlightDirty}
-                      style={{ padding: "6px 10px" }}
-                    >
-                      {savingSpotlightId === program.id ? "Сохраняем..." : "Сохранить витрину"}
-                    </button>
-                  </td>
-                  <td style={{ padding: 8, minWidth: 220 }}>
-                    <div style={{ fontSize: 12, color: "#666", marginBottom: 6 }}>
-                      {isPast
-                        ? "Скрыта на сайте: даты завершились"
-                        : isFull
-                          ? "Скрыта на сайте: мест не осталось"
-                          : isPubliclyVisible
-                            ? "Видна на сайте"
-                            : "Не видна на сайте"}
-                    </div>
-                    <div style={{ display: "grid", gap: 6 }}>
-                      <input
-                        type="number"
-                        min="0"
-                        value={availabilityDraft.capacityTotal}
-                        onChange={(e) =>
-                          setAvailabilityDrafts((current) => ({
-                            ...current,
-                            [program.id]: { ...availabilityDraft, capacityTotal: e.target.value },
-                          }))
-                        }
-                        placeholder="Лимит мест"
-                        style={{ padding: 6 }}
-                      />
-                      <input
-                        type="number"
-                        min="0"
-                        value={availabilityDraft.spotsAvailable}
-                        onChange={(e) =>
-                          setAvailabilityDrafts((current) => ({
-                            ...current,
-                            [program.id]: { ...availabilityDraft, spotsAvailable: e.target.value },
-                          }))
-                        }
-                        placeholder="Мест осталось"
-                        style={{ padding: 6 }}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => handleSaveAvailability(program.id)}
-                        disabled={savingAvailabilityId === program.id || !availabilityDirty}
-                        style={{ padding: "6px 10px" }}
-                      >
-                        {savingAvailabilityId === program.id ? "Сохраняем..." : "Сохранить наличие"}
-                      </button>
-                    </div>
-                  </td>
-                  <td style={{ padding: 8, minWidth: 220 }}>
-                    <div style={{ fontSize: 12, color: "#666", marginBottom: 4 }}>{getProgramIntakeSourceLabel(program.intakeSource)}</div>
-                    <select
-                      value={intakeDrafts[program.id] ?? program.intakeSource ?? ""}
-                      onChange={(e) => setIntakeDrafts((current) => ({ ...current, [program.id]: e.target.value }))}
-                      style={{ padding: 6, width: "100%", maxWidth: 280 }}
-                    >
-                      <option value="">Не задан</option>
-                      {PROGRAM_INTAKE_SOURCES.map((code) => (
-                        <option key={code} value={code}>{getProgramIntakeSourceLabel(code)}</option>
-                      ))}
-                    </select>
-                    <button
-                      type="button"
-                      onClick={() => handleSaveIntake(program.id)}
-                      disabled={
-                        savingIntakeId === program.id
-                        || (intakeDrafts[program.id] ?? program.intakeSource ?? "") === (program.intakeSource ?? "")
-                      }
-                      style={{ marginTop: 6, padding: "6px 10px" }}
-                    >
-                      {savingIntakeId === program.id ? "Сохраняем..." : "Сохранить источник"}
-                    </button>
-                  </td>
-                  <td style={{ padding: 8 }}>
-                    <select
-                      value={statusDrafts[program.id] ?? program.publishStatus}
-                      onChange={(e) => setStatusDrafts((current) => ({ ...current, [program.id]: e.target.value }))}
-                      style={{ padding: 6, minWidth: 180 }}
-                    >
-                      {PROGRAM_PUBLISH_STATUSES.map((status) => (
-                        <option key={status} value={status}>{getProgramPublishStatusLabel(status)}</option>
-                      ))}
-                    </select>
-                  </td>
-                  <td style={{ padding: 8 }}>{new Date(program.startDate).toLocaleDateString("ru-RU")} – {new Date(program.endDate).toLocaleDateString("ru-RU")}</td>
-                  <td style={{ padding: 8 }}>{Array.isArray(program.media) ? program.media.length : 0}</td>
-                  <td style={{ padding: 8 }}>
-                    <span style={{ color: priority.color, fontWeight: 600 }}>{priority.label}</span>
-                  </td>
-                  <td style={{ padding: 8, minWidth: 320 }}>
-                    <button
-                      type="button"
-                      onClick={() => handleSaveStatus(program.id)}
-                      disabled={savingStatusId === program.id || (statusDrafts[program.id] ?? program.publishStatus) === program.publishStatus}
-                      style={{ marginBottom: 8, padding: "6px 10px" }}
-                    >
-                      {savingStatusId === program.id ? "Сохраняем..." : "Сохранить статус"}
-                    </button>
-                    <div style={{ display: "grid", gap: 8 }}>
-                      <input
-                        value={mediaDraft.url}
-                        onChange={(e) => setMediaDrafts((current) => ({ ...current, [program.id]: { ...mediaDraft, url: e.target.value } }))}
-                        placeholder="Ссылка на медиа"
-                        style={{ padding: 8 }}
-                      />
-                      <input
-                        value={mediaDraft.caption}
-                        onChange={(e) => setMediaDrafts((current) => ({ ...current, [program.id]: { ...mediaDraft, caption: e.target.value } }))}
-                        placeholder="Подпись"
-                        style={{ padding: 8 }}
-                      />
-                      <div>
-                        <select
-                          value={mediaDraft.mediaType}
-                          onChange={(e) => setMediaDrafts((current) => ({ ...current, [program.id]: { ...mediaDraft, mediaType: e.target.value } }))}
-                          style={{ padding: 8, marginRight: 8 }}
-                        >
-                          <option value="image">{getMediaTypeLabel("image")}</option>
-                          <option value="video">{getMediaTypeLabel("video")}</option>
-                        </select>
-                        <button
-                          type="button"
-                          onClick={() => handleAddMedia(program.id)}
-                          disabled={savingMediaId === program.id || !mediaDraft.url.trim()}
-                          style={{ padding: "8px 10px" }}
-                        >
-                          {savingMediaId === program.id ? "Добавляем..." : "Добавить медиа"}
-                        </button>
-                      </div>
-                      {isPubliclyVisible && (
-                        <Link href={`http://localhost:3000/program/${program.id}`} target="_blank">
-                          Открыть карточку на сайте
-                        </Link>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+      {loading ? (
+        <AdminLoadingState label="Загружаем программы…" />
+      ) : programs.length === 0 ? (
+        <AdminEmptyState
+          title="Нет программ"
+          description="По выбранному фильтру или в целом в каталоге пока нет записей. Создайте черновик выше или смените фильтр."
+        />
+      ) : (
+        <div className="mw-admin-table-outer">
+          <ProgramCatalogTable
+            programs={programs}
+            programScores={programScores}
+            mediaDrafts={mediaDrafts}
+            setMediaDrafts={setMediaDrafts}
+            statusDrafts={statusDrafts}
+            setStatusDrafts={setStatusDrafts}
+            intakeDrafts={intakeDrafts}
+            setIntakeDrafts={setIntakeDrafts}
+            availabilityDrafts={availabilityDrafts}
+            setAvailabilityDrafts={setAvailabilityDrafts}
+            spotlightDrafts={spotlightDrafts}
+            setSpotlightDrafts={setSpotlightDrafts}
+            savingStatusId={savingStatusId}
+            savingMediaId={savingMediaId}
+            savingIntakeId={savingIntakeId}
+            savingAvailabilityId={savingAvailabilityId}
+            savingSpotlightId={savingSpotlightId}
+            onSaveStatus={handleSaveStatus}
+            onSaveIntake={handleSaveIntake}
+            onAddMedia={handleAddMedia}
+            onSaveAvailability={handleSaveAvailability}
+            onSaveSpotlight={handleSaveSpotlight}
+          />
+        </div>
       )}
-      {!loading && programs.length === 0 && <p>Нет программ.</p>}
     </main>
   );
 }

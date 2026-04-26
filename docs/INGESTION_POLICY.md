@@ -80,3 +80,11 @@
 **Phase 2 — scouting:** parsing RSS/Telegram/site → только очередь кандидатов.
 
 **Phase 3 — интеграции:** API, webhooks, ICS/partner feeds.
+
+## 7. Тематический фильтр (пилот MyWave Travel)
+
+Согласно [SOURCE_AND_PRESENTATION_POLICY_EMAIL.md](SOURCE_AND_PRESENTATION_POLICY_EMAIL.md) и [SITE_IA_WAKESURF_FIRST.md](SITE_IA_WAKESURF_FIRST.md), витрина про **тренировочные выезды, кэмпы и программы** (discipline + format), а не про generic travel news. В коде нормализации/скоринга кандидаты, похожие на **климатические/статистические посты** без события и с низким `tourismFit`, уходят в `archived`; автопубликация требует сигнала **дисциплины в тексте** и/или **формата программы** (кэмп, выезд, набор, …), а не только дисциплины из профиля канала.
+
+## 8. Canonical keys reference
+
+Детальная каноника по merge-key / idempotency / duplicate behavior / opt-out / gate / batch counters вынесена в отдельный reference: [INGESTION_AUTOPUBLISH_KEYS.md](INGESTION_AUTOPUBLISH_KEYS.md).

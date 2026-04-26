@@ -5,11 +5,12 @@
 import { Router, Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
+import bcrypt from "bcryptjs";
 import type { Env } from "@mywave/config";
 import { prisma } from "../../lib/prisma";
 import type { AdminPayload } from "../../middleware/auth";
 
-function hashPassword(password: string): string {
+function hashPasswordSha256(password: string): string {
   return crypto.createHash("sha256").update(password).digest("hex");
 }
 
@@ -28,9 +29,22 @@ export function authRoutes(env: Env): Router {
       return;
     }
     const passwordHash = user.passwordHash;
-    if (!passwordHash || hashPassword(password) !== passwordHash) {
+    if (!passwordHash) {
       res.status(401).json({ error: "Invalid credentials" });
       return;
+    }
+    const isBcryptHash = passwordHash.startsWith("$2");
+    const isValid = isBcryptHash ? await bcrypt.compare(password, passwordHash) : hashPasswordSha256(password) === passwordHash;
+    if (!isValid) {
+      res.status(401).json({ error: "Invalid credentials" });
+      return;
+    }
+    if (!isBcryptHash) {
+      const upgradedHash = await bcrypt.hash(password, 12);
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { passwordHash: upgradedHash },
+      });
     }
     const payload: AdminPayload = { sub: user.id, role: "admin" };
     const token = jwt.sign(payload, env.ADMIN_JWT_SECRET, { expiresIn: "24h" });

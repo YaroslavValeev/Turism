@@ -15,21 +15,30 @@
     "db:studio": "prisma studio",
     "db:seed": "tsx prisma/seed.ts",
     "db:import-sources": "tsx prisma/import_sources.ts",
-    "backfill:traveler-key": "tsx scripts/backfill-traveler-key.ts"
+    "backfill:traveler-key": "tsx scripts/backfill-traveler-key.ts",
+    "smoke:content-pipeline": "tsx scripts/smoke-content-pipeline.ts",
+    "smoke:pilot-e2e": "tsx scripts/pilot-e2e-smoke.ts",
+    "sprint3:email-e2e": "tsx scripts/sprint3_subscribe_notify_unsubscribe_e2e.ts"
   },
   "dependencies": {
+    "@mywave/explore-links": "workspace:*",
     "@mywave/config": "workspace:*",
     "@mywave/shared-types": "workspace:*",
     "@prisma/client": "^5.22.0",
+    "bcryptjs": "^3.0.3",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.21.0",
-    "jsonwebtoken": "^9.0.2"
+    "express-rate-limit": "^8.4.0",
+    "helmet": "^8.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "nodemailer": "^8.0.5"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",
     "@types/express": "^4.17.21",
     "@types/jsonwebtoken": "^9.0.5",
+    "@types/nodemailer": "^8.0.0",
     "prisma": "^5.22.0",
     "tsx": "^4.19.0",
     "typescript": "^5.3.0",

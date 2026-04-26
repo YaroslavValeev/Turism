@@ -57,44 +57,62 @@ export function AnalyticsRoot() {
         <div
           style={{
             position: "fixed",
-            left: 16,
-            right: 16,
-            bottom: 16,
-            padding: 14,
+            right: 14,
+            bottom: 14,
+            padding: 10,
             borderRadius: 12,
-            background: "rgba(10, 12, 18, 0.92)",
-            color: "#fff",
+            background: "rgba(240, 247, 246, 0.92)",
+            backdropFilter: "blur(4px)",
+            border: "1px solid rgba(22, 73, 67, 0.16)",
+            color: "#163c38",
             zIndex: 9999,
-            boxShadow: "0 10px 30px rgba(0,0,0,0.35)",
-            fontSize: 14,
-            lineHeight: 1.45,
+            boxShadow: "0 6px 18px rgba(16, 44, 40, 0.14)",
+            fontSize: 13,
+            lineHeight: 1.35,
+            maxWidth: 520,
           }}
         >
-          <div style={{ marginBottom: 10 }}>
-            Мы используем аналитику (GA4/Яндекс.Метрика) и серверные события <strong>без персональных данных</strong>, чтобы улучшать продукт.
-            Подробности: <code>docs/analytics/PRIVACY_AND_CONSENT.md</code>.
+          <div style={{ marginBottom: 8 }}>
+            Мы используем cookies и обезличенную аналитику, чтобы сайт работал стабильнее и показывал более полезный контент.
+            Персональные данные для рекламы не передаем.
+            {" "}
+            <a
+              href="/privacy-and-consent"
+              style={{ color: "#0b7f71", textDecoration: "underline", textUnderlineOffset: 2 }}
+            >
+              Подробнее о конфиденциальности и согласии
+            </a>
+            .
           </div>
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <button
               type="button"
               onClick={() => setAnalyticsConsent("accepted")}
-              style={{ padding: "8px 12px", borderRadius: 10, border: "none", cursor: "pointer" }}
+              style={{
+                padding: "6px 10px",
+                borderRadius: 9,
+                border: "none",
+                cursor: "pointer",
+                background: "#27c4a8",
+                color: "#041b19",
+                fontWeight: 600,
+              }}
             >
-              Принять
+              Принять и продолжить
             </button>
             <button
               type="button"
               onClick={() => setAnalyticsConsent("rejected")}
               style={{
-                padding: "8px 12px",
-                borderRadius: 10,
-                border: "1px solid rgba(255,255,255,0.35)",
+                padding: "6px 10px",
+                borderRadius: 9,
+                border: "1px solid rgba(22, 73, 67, 0.35)",
                 background: "transparent",
-                color: "#fff",
+                color: "#163c38",
                 cursor: "pointer",
               }}
             >
-              Отклонить
+              Только необходимые
             </button>
           </div>
         </div>

@@ -5,6 +5,7 @@
 import "./env/loadProcessEnv";
 import express from "express";
 import cors from "cors";
+import helmet from "helmet";
 import { loadEnv } from "@mywave/config";
 import { authRoutes } from "./modules/auth/routes";
 import { organizersRoutes } from "./modules/organizers/routes";
@@ -25,11 +26,31 @@ import { jobsRoutes } from "./modules/jobs/routes";
 import { startIngestionScheduler } from "./modules/ingestion/scheduler";
 import { startAnalyticsOpsScheduler } from "./modules/analytics/opsScheduler";
 import { internalAnalyticsRoutes } from "./modules/analytics/routes";
+import { publicSubscriptionsRoutes } from "./modules/subscriptions/routes";
+import { publicBlogRoutes } from "./modules/public-blog/routes";
+import { publicCollectionsRoutes } from "./modules/public-collections/routes";
+import { publicExploreRoutes } from "./modules/public-explore/routes";
+import { telegramContentPipelineRoutes } from "./modules/telegram/telegramContentRoutes";
+import { contentPipelineRoutes } from "./modules/content-pipeline/routes";
+import { internalContentPipelineRoutes } from "./modules/content-pipeline/internalMarketing.routes";
+import { organizerOutreachRoutes } from "./modules/organizer-outreach/routes";
+import { createPublicRateLimiter, isOriginAllowed } from "./middleware/security";
+import { safeError } from "./lib/safeLogger";
+import { assertPublicBaseUrlsForProduction } from "./lib/publicBaseUrlCheck";
 
 const env = loadEnv();
+assertPublicBaseUrlsForProduction(env);
 const app = express();
-app.use(cors({ origin: true }));
+app.use(helmet());
+app.use(
+  cors({
+    origin(origin, callback) {
+      callback(null, isOriginAllowed(origin, env));
+    },
+  }),
+);
 app.use(express.json());
+const publicRateLimiter = createPublicRateLimiter(env);
 
 app.get("/health", (_req, res) => {
   res.json({ status: "ok" });
@@ -51,15 +72,26 @@ app.use("/raw-items", rawItemsRoutes(env));
 app.use("/event-candidates", eventCandidatesRoutes(env));
 app.use("/jobs", jobsRoutes(env));
 app.use("/internal/analytics", internalAnalyticsRoutes(env));
+app.use("/internal/content-pipeline", internalContentPipelineRoutes(env));
 app.use("/api/sources", sourcesRoutes(env));
 app.use("/api/raw-items", rawItemsRoutes(env));
 app.use("/api/event-candidates", eventCandidatesRoutes(env));
 app.use("/api/jobs", jobsRoutes(env));
-app.use("/public/organizer-intake", publicOrganizerIntakeRoutes());
+app.use("/content-pipeline", contentPipelineRoutes(env));
+app.use("/api/content-pipeline", contentPipelineRoutes(env));
+app.use("/organizer-outreach", organizerOutreachRoutes(env));
+app.use("/api/organizer-outreach", organizerOutreachRoutes(env));
+app.use("/bookings", publicRateLimiter);
+app.use("/public/organizer-intake", publicRateLimiter, publicOrganizerIntakeRoutes());
+app.use("/public/subscriptions", publicRateLimiter, publicSubscriptionsRoutes(env));
+app.use("/public", publicRateLimiter, publicCollectionsRoutes(env));
+app.use("/public", publicRateLimiter, publicExploreRoutes(env));
+app.use("/public", publicRateLimiter, publicBlogRoutes(env));
+app.use("/public/telegram", publicRateLimiter, telegramContentPipelineRoutes(env));
 
 // Minimal observability: log unhandled errors (no PII in logs)
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-  console.error("API error", err.message);
+  safeError("API error", err);
   res.status(500).json({ error: "Internal server error" });
 });
 

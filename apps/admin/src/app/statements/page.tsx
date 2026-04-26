@@ -1,8 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { getBillingStatementStatusLabel } from "@mywave/shared-types";
-import { AdminNav } from "../../components/AdminNav";
+import { useEffect, useMemo, useState } from "react";
+import { AdminEmptyState } from "../../components/admin/AdminEmptyState";
+import { AdminFilterField, AdminFiltersBar } from "../../components/admin/AdminFiltersBar";
+import { AdminLoadingState } from "../../components/admin/AdminLoadingState";
+import { AdminMessage } from "../../components/admin/AdminMessage";
+import { AdminPageHeader } from "../../components/admin/AdminPageHeader";
+import { AdminStatCard, AdminStatGrid } from "../../components/admin/AdminStatCard";
+import { AdminStatusBadge } from "../../components/admin/AdminStatusBadge";
 import { adminJson } from "../../lib/admin";
 
 type Statement = {
@@ -18,56 +24,125 @@ type Statement = {
   organizer?: { displayName: string };
 };
 
+function formatRub(value: number | null | undefined) {
+  if (typeof value !== "number") return "—";
+  return `${new Intl.NumberFormat("ru-RU").format(value)} ₽`;
+}
+
+function statementTone(status: string): "ok" | "warn" | "danger" | "muted" {
+  if (status === "paid") return "ok";
+  if (status === "disputed" || status === "void") return "danger";
+  if (status === "review" || status === "invoiced") return "warn";
+  return "muted";
+}
+
 export default function StatementsPage() {
   const [items, setItems] = useState<Statement[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
 
   useEffect(() => {
+    setLoading(true);
+    setError("");
     adminJson<Statement[]>("/billing/statements")
       .then((data) => setItems(Array.isArray(data) ? data : []))
-      .catch((e) => setError(String(e)))
+      .catch((e) => setError(e instanceof Error ? e.message : String(e)))
       .finally(() => setLoading(false));
   }, []);
 
+  const statusOptions = useMemo(() => Array.from(new Set(items.map((item) => item.status))).sort(), [items]);
+  const filtered = useMemo(() => items.filter((item) => !statusFilter || item.status === statusFilter), [items, statusFilter]);
+
+  const stats = useMemo(() => {
+    const netTotal = filtered.reduce((sum, item) => sum + (item.netSalesRub ?? 0), 0);
+    const commissionTotal = filtered.reduce((sum, item) => sum + (item.commissionTotalRub ?? 0), 0);
+    const paid = filtered.filter((item) => item.status === "paid").length;
+    return { count: filtered.length, netTotal, commissionTotal, paid };
+  }, [filtered]);
+
   return (
-    <main style={{ padding: 24 }}>
-      <AdminNav current="/statements" />
-      <h1>Statements</h1>
-      <p>Месячные отчёты по eligible комиссиям (accrued/approved) с invoice статусом.</p>
-      {loading && <p>Загрузка…</p>}
-      {error && <p style={{ color: "red" }}>{error}</p>}
-      {!loading && !error && (
-        <table style={{ borderCollapse: "collapse", width: "100%" }}>
-          <thead>
-            <tr style={{ borderBottom: "2px solid #333" }}>
-              <th style={{ textAlign: "left", padding: 8 }}>Организатор</th>
-              <th style={{ textAlign: "left", padding: 8 }}>Период</th>
-              <th style={{ textAlign: "left", padding: 8 }}>Paid</th>
-              <th style={{ textAlign: "left", padding: 8 }}>Refunded</th>
-              <th style={{ textAlign: "left", padding: 8 }}>Net</th>
-              <th style={{ textAlign: "left", padding: 8 }}>Комиссия</th>
-              <th style={{ textAlign: "left", padding: 8 }}>Статус</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((item) => (
-              <tr key={item.id} style={{ borderBottom: "1px solid #ccc" }}>
-                <td style={{ padding: 8 }}>{item.organizer?.displayName ?? item.organizerId}</td>
-                <td style={{ padding: 8 }}>
-                  {new Date(item.periodStart).toLocaleDateString()} - {new Date(item.periodEnd).toLocaleDateString()}
-                </td>
-                <td style={{ padding: 8 }}>{item.grossPaidRub}</td>
-                <td style={{ padding: 8 }}>{item.refundedRub}</td>
-                <td style={{ padding: 8 }}>{item.netSalesRub}</td>
-                <td style={{ padding: 8 }}>{item.commissionTotalRub}</td>
-                <td style={{ padding: 8 }}>{getBillingStatementStatusLabel(item.status)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+    <main className="mw-admin-page">
+      <AdminPageHeader
+        title="Statements"
+        description="Месячные отчёты по eligible комиссиям с invoice-статусом и итогами paid/refunded/net."
+      />
+
+      {error ? <AdminMessage type="error">{error}</AdminMessage> : null}
+
+      {loading ? (
+        <AdminLoadingState label="Загружаем statements…" />
+      ) : (
+        <>
+          <AdminStatGrid>
+            <AdminStatCard label="Отчётов" value={stats.count} />
+            <AdminStatCard label="Net (₽)" value={formatRub(stats.netTotal)} />
+            <AdminStatCard label="Комиссия (₽)" value={formatRub(stats.commissionTotal)} />
+            <AdminStatCard label="Оплачено" value={stats.paid} />
+          </AdminStatGrid>
+
+          <AdminFiltersBar title="Фильтры">
+            <AdminFilterField label="Статус statement">
+              <select
+                className="mw-admin-input"
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                style={{ minWidth: 220 }}
+              >
+                <option value="">Все</option>
+                {statusOptions.map((status) => (
+                  <option key={status} value={status}>
+                    {getBillingStatementStatusLabel(status)}
+                  </option>
+                ))}
+              </select>
+            </AdminFilterField>
+          </AdminFiltersBar>
+
+          {filtered.length === 0 ? (
+            <AdminEmptyState
+              title="Нет отчётов"
+              description={statusFilter ? "По выбранному статусу отчётов нет." : "Statements пока не сформированы."}
+            />
+          ) : (
+            <div style={{ overflowX: "auto" }}>
+              <table className="mw-admin-table">
+                <thead>
+                  <tr>
+                    <th>Организатор</th>
+                    <th>Период</th>
+                    <th>Paid</th>
+                    <th>Refunded</th>
+                    <th>Net</th>
+                    <th>Комиссия</th>
+                    <th>Статус</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((item) => (
+                    <tr key={item.id}>
+                      <td>{item.organizer?.displayName ?? item.organizerId}</td>
+                      <td className="mw-admin-muted">
+                        {new Date(item.periodStart).toLocaleDateString("ru-RU")} -{" "}
+                        {new Date(item.periodEnd).toLocaleDateString("ru-RU")}
+                      </td>
+                      <td>{formatRub(item.grossPaidRub)}</td>
+                      <td>{formatRub(item.refundedRub)}</td>
+                      <td>{formatRub(item.netSalesRub)}</td>
+                      <td>{formatRub(item.commissionTotalRub)}</td>
+                      <td>
+                        <AdminStatusBadge tone={statementTone(item.status)}>
+                          {getBillingStatementStatusLabel(item.status)}
+                        </AdminStatusBadge>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
       )}
-      {!loading && !error && items.length === 0 && <p>Отчётов пока нет.</p>}
     </main>
   );
 }

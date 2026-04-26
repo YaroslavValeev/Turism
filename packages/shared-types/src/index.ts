@@ -8,3 +8,4 @@ export * from "./pilot";
 export * from "./intake-sources";
 export * from "./ui-labels";
 export * from "./billing";
+export * from "./content-pipeline";

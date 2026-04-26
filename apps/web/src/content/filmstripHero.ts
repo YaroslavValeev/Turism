@@ -1,6 +1,6 @@
 /**
- * Кадры hero-filmstrip: реальные JPEG из `public/media/filmstrip/`.
- * Порядок: вейксерф первым → ширина платформы.
+ * Кадры hero-filmstrip: web-ready JPEG в `public/media/filmstrip/`.
+ * Пересборка: `pnpm --filter web run filmstrip:build-assets` (см. scripts/build_filmstrip_web_images.mjs, README в каталоге filmstrip).
  */
 
 export type FilmstripEmphasis = "pilot" | "breadth";

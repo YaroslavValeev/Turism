@@ -1,3 +1,5 @@
+import "../src/env/loadProcessEnv";
+import { loadEnv } from "@mywave/config";
 import { prisma } from "../src/lib/prisma";
 import {
   autoPublishReadyCandidates,
@@ -5,6 +7,8 @@ import {
   runIngestionJob,
   runNormalizationJob,
 } from "../src/modules/ingestion/service";
+
+const env = loadEnv();
 
 function readFlag(flag: string): boolean {
   return process.argv.includes(flag);
@@ -19,7 +23,8 @@ function readOption(name: string): string | undefined {
 async function main() {
   const sourceType = readOption("--type");
   const singleSourceId = readOption("--source-id");
-  const autoPublish = readFlag("--auto-publish");
+  const autoPublish =
+    readFlag("--no-auto-publish") ? false : readFlag("--auto-publish") ? true : env.INGESTION_AUTOPUBLISH_ENABLED;
   const fallbackImageUrl = readOption("--fallback-image-url") ?? null;
 
   const sources = await prisma.source.findMany({

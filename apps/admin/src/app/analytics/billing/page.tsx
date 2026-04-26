@@ -1,10 +1,28 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { AdminNav } from "../../../components/AdminNav";
 import { adminJson } from "../../../lib/admin";
+import { AdminLoadingState } from "../../../components/admin/AdminLoadingState";
+import { AdminPageHeader } from "../../../components/admin/AdminPageHeader";
+import { AdminSectionCard } from "../../../components/admin/AdminSectionCard";
+import { AdminEmptyState } from "../../../components/admin/AdminEmptyState";
 
 type BillingRow = Record<string, unknown>;
+
+const COLUMNS: string[] = [
+  "day",
+  "organizerId",
+  "payments_amount_rub",
+  "payments_count",
+  "refunds_amount_rub",
+  "refunds_count",
+  "commissions_accrued_rub",
+  "commissions_approved_rub",
+  "commissions_invoiced_rub",
+  "commissions_paid_rub",
+  "commissions_reversed_rub",
+  "commissions_disputed_rub",
+];
 
 export default function BillingAnalyticsPage() {
   const [rows, setRows] = useState<BillingRow[]>([]);
@@ -26,69 +44,66 @@ export default function BillingAnalyticsPage() {
   }, [from, to]);
 
   return (
-    <main style={{ padding: 24 }}>
-      <AdminNav current="/analytics/billing" />
-      <h1>Analytics — Billing (daily × organizer)</h1>
-      <p style={{ color: "#555", maxWidth: 980 }}>
-        Источник: <code>mv_billing_daily</code>. Период: <strong>{from}</strong>…<strong>{to}</strong> (UTC даты).
-      </p>
-      {loading && <p>Загрузка…</p>}
-      {error && <p style={{ color: "red" }}>{error}</p>}
-      {!loading && !error && (
-        <div style={{ overflowX: "auto" }}>
-          <table style={{ borderCollapse: "collapse", width: "100%", minWidth: 1200 }}>
-            <thead>
-              <tr style={{ borderBottom: "2px solid #333" }}>
-                {[
-                  "day",
-                  "organizerId",
-                  "payments_amount_rub",
-                  "payments_count",
-                  "refunds_amount_rub",
-                  "refunds_count",
-                  "commissions_accrued_rub",
-                  "commissions_approved_rub",
-                  "commissions_invoiced_rub",
-                  "commissions_paid_rub",
-                  "commissions_reversed_rub",
-                  "commissions_disputed_rub",
-                ].map((c) => (
-                  <th key={c} style={{ textAlign: "left", padding: 8, whiteSpace: "nowrap" }}>
-                    {c}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {rows.length === 0 ? (
+    <main className="mw-admin-page">
+      <AdminPageHeader
+        title="Биллинг: дневной срез × организатор"
+        description={
+          <>
+            Источник mart: <code className="mw-admin-code">mv_billing_daily</code>
+            {". "}
+            Период: <strong>{from}</strong> — <strong>{to}</strong> (UTC, календарные даты).
+          </>
+        }
+      />
+      {error && <div className="mw-admin-alert mw-admin-alert--error">{error}</div>}
+      {loading && <AdminLoadingState label="Загружаем данные…" />}
+
+      {!loading && !error && rows.length === 0 && (
+        <AdminEmptyState
+          title="Нет строк в mart"
+          description="mv_billing_daily пустой или нет движения по платежам и комиссиям за период. На dev это нормально."
+        />
+      )}
+
+      {!loading && !error && rows.length > 0 && (
+        <AdminSectionCard title="Таблица" style={{ marginBottom: 0 }}>
+          <div style={{ overflowX: "auto" }}>
+            <table className="mw-admin-table" style={{ minWidth: 1200, margin: 0 }}>
+              <thead>
                 <tr>
-                  <td colSpan={12} style={{ padding: 12, color: "#666" }}>
-                    Пока нет строк (mart пустой или нет движения по платежам/комиссиям).
-                  </td>
+                  {COLUMNS.map((c) => (
+                    <th key={c} style={{ whiteSpace: "nowrap" }}>
+                      {c}
+                    </th>
+                  ))}
                 </tr>
-              ) : (
-                rows.map((r, idx) => (
-                  <tr key={idx} style={{ borderBottom: "1px solid #eee" }}>
-                    <td style={{ padding: 8, whiteSpace: "nowrap" }}>{String(r.day ?? "")}</td>
-                    <td style={{ padding: 8, fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}>
-                      {String(r.organizerId ?? "")}
-                    </td>
-                    <td style={{ padding: 8 }}>{String(r.payments_amount_rub ?? "")}</td>
-                    <td style={{ padding: 8 }}>{String(r.payments_count ?? "")}</td>
-                    <td style={{ padding: 8 }}>{String(r.refunds_amount_rub ?? "")}</td>
-                    <td style={{ padding: 8 }}>{String(r.refunds_count ?? "")}</td>
-                    <td style={{ padding: 8 }}>{String(r.commissions_accrued_rub ?? "")}</td>
-                    <td style={{ padding: 8 }}>{String(r.commissions_approved_rub ?? "")}</td>
-                    <td style={{ padding: 8 }}>{String(r.commissions_invoiced_rub ?? "")}</td>
-                    <td style={{ padding: 8 }}>{String(r.commissions_paid_rub ?? "")}</td>
-                    <td style={{ padding: 8 }}>{String(r.commissions_reversed_rub ?? "")}</td>
-                    <td style={{ padding: 8 }}>{String(r.commissions_disputed_rub ?? "")}</td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {rows.map((r, idx) => (
+                    <tr key={idx}>
+                      <td style={{ whiteSpace: "nowrap" }}>{String(r.day ?? "")}</td>
+                      <td
+                        className="mw-admin-code"
+                        style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" }}
+                      >
+                        {String(r.organizerId ?? "")}
+                      </td>
+                      <td>{String(r.payments_amount_rub ?? "")}</td>
+                      <td>{String(r.payments_count ?? "")}</td>
+                      <td>{String(r.refunds_amount_rub ?? "")}</td>
+                      <td>{String(r.refunds_count ?? "")}</td>
+                      <td>{String(r.commissions_accrued_rub ?? "")}</td>
+                      <td>{String(r.commissions_approved_rub ?? "")}</td>
+                      <td>{String(r.commissions_invoiced_rub ?? "")}</td>
+                      <td>{String(r.commissions_paid_rub ?? "")}</td>
+                      <td>{String(r.commissions_reversed_rub ?? "")}</td>
+                      <td>{String(r.commissions_disputed_rub ?? "")}</td>
+                    </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </AdminSectionCard>
       )}
     </main>
   );

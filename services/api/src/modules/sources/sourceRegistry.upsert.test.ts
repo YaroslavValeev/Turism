@@ -16,8 +16,8 @@ function mockDb(overrides: {
   } as unknown as PrismaClient;
 }
 
-describe("upsertSourceByTypeAndHandle — externalChannelId linkage", () => {
-  it("передаёт externalChannelId при create", async () => {
+describe("upsertSourceByTypeAndHandle — metaJson linkage", () => {
+  it("кладёт externalChannelId в metaJson при create", async () => {
     const create = vi.fn().mockResolvedValue({ id: "new-source" });
     const db = mockDb({ findFirst: null, create });
 
@@ -33,11 +33,11 @@ describe("upsertSourceByTypeAndHandle — externalChannelId linkage", () => {
     });
 
     expect(create).toHaveBeenCalledTimes(1);
-    const arg = create.mock.calls[0][0] as { data: { externalChannelId: string | null } };
-    expect(arg.data.externalChannelId).toBe("channel-1");
+    const arg = create.mock.calls[0][0] as { data: { metaJson: Record<string, unknown> } };
+    expect(arg.data.metaJson.externalChannelId).toBe("channel-1");
   });
 
-  it("обновляет externalChannelId, если передан явно (включая null)", async () => {
+  it("обновляет metaJson.externalChannelId, если передан явно (включая null)", async () => {
     const update = vi.fn().mockResolvedValue({ id: "existing" });
     const db = mockDb({
       findFirst: {
@@ -47,13 +47,10 @@ describe("upsertSourceByTypeAndHandle — externalChannelId linkage", () => {
         parserProfile: null,
         fetchIntervalMinutes: 1440,
         isActive: true,
-        sourceOrigin: SOURCE_ORIGIN.CONTRACT_AUTO,
-        lifecycleState: SOURCE_LIFECYCLE.ACTIVE,
         discipline: null,
         country: null,
         region: null,
-        importSessionId: null,
-        metaJson: { channelId: "legacy" },
+        metaJson: { channelId: "legacy", sourceOrigin: SOURCE_ORIGIN.CONTRACT_AUTO },
       },
       update,
     });
@@ -68,11 +65,11 @@ describe("upsertSourceByTypeAndHandle — externalChannelId linkage", () => {
     });
 
     expect(update).toHaveBeenCalledTimes(1);
-    const arg = update.mock.calls[0][0] as { data: { externalChannelId: null } };
-    expect(arg.data.externalChannelId).toBeNull();
+    const arg = update.mock.calls[0][0] as { data: { metaJson: Record<string, unknown> } };
+    expect(arg.data.metaJson.externalChannelId).toBeNull();
   });
 
-  it("не трогает externalChannelId в update, если поле undefined", async () => {
+  it("не затирает metaJson.externalChannelId в update, если поле undefined", async () => {
     const update = vi.fn().mockResolvedValue({ id: "existing" });
     const db = mockDb({
       findFirst: {
@@ -82,13 +79,10 @@ describe("upsertSourceByTypeAndHandle — externalChannelId linkage", () => {
         parserProfile: null,
         fetchIntervalMinutes: 1440,
         isActive: true,
-        sourceOrigin: SOURCE_ORIGIN.CONTRACT_AUTO,
-        lifecycleState: SOURCE_LIFECYCLE.ACTIVE,
         discipline: null,
         country: null,
         region: null,
-        importSessionId: null,
-        metaJson: {},
+        metaJson: { externalChannelId: "keep-me" },
       },
       update,
     });
@@ -100,7 +94,7 @@ describe("upsertSourceByTypeAndHandle — externalChannelId linkage", () => {
       organizerId: "org-1",
     });
 
-    const arg = update.mock.calls[0][0] as { data: Record<string, unknown> };
-    expect(arg.data.externalChannelId).toBeUndefined();
+    const arg = update.mock.calls[0][0] as { data: { metaJson: Record<string, unknown> } };
+    expect(arg.data.metaJson.externalChannelId).toBe("keep-me");
   });
 });

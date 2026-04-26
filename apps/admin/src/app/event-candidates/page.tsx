@@ -1,8 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { AdminNav } from "../../components/AdminNav";
 import { adminJson, getAdminToken } from "../../lib/admin";
+import { AdminEmptyState } from "../../components/admin/AdminEmptyState";
+import { AdminFilterField, AdminFiltersBar } from "../../components/admin/AdminFiltersBar";
+import { AdminLoadingState } from "../../components/admin/AdminLoadingState";
+import { AdminMessage } from "../../components/admin/AdminMessage";
+import { AdminPageHeader } from "../../components/admin/AdminPageHeader";
+import { AdminStatCard, AdminStatGrid } from "../../components/admin/AdminStatCard";
+import { AdminStatusBadge } from "../../components/admin/AdminStatusBadge";
 
 type SourceOption = {
   id: string;
@@ -127,6 +133,27 @@ export default function EventCandidatesPage() {
     return suffix ? `?${suffix}` : "";
   }, [sourceId, status]);
 
+  const stats = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const it of items) {
+      counts[it.status] = (counts[it.status] ?? 0) + 1;
+    }
+    return {
+      total: items.length,
+      counts,
+      needsReview: counts.needs_review ?? 0,
+      approved: counts.approved ?? 0,
+      published: counts.published ?? 0,
+    };
+  }, [items]);
+
+  function candidateStatusTone(s: string): "ok" | "warn" | "danger" | "muted" {
+    if (s === "approved" || s === "published") return "ok";
+    if (s === "rejected" || s === "archived") return "danger";
+    if (s === "needs_review" || s === "new") return "warn";
+    return "muted";
+  }
+
   async function loadList() {
     setLoading(true);
     setError("");
@@ -210,112 +237,129 @@ export default function EventCandidatesPage() {
     await runAction("publish", `/event-candidates/${selected.id}/publish`, { editorNotes });
   }
 
-  if (loading) return <p>Загрузка…</p>;
-
   return (
-    <main style={{ padding: 24 }}>
-      <AdminNav current="/event-candidates" />
-      <h1>Очередь кандидатов на публикацию</h1>
-      <p style={{ fontSize: 14, color: "#555", maxWidth: 980 }}>
-        Здесь живут нормализованные анонсы после scoring и dedup. Auto-publish отключён: оператор вручную принимает
-        решение approve / reject / merge, а затем при необходимости создаёт draft-карточку программы.
-      </p>
-      {error && <p style={{ color: "red" }}>{error}</p>}
-      {message && <p style={{ color: "green" }}>{message}</p>}
+    <main className="mw-admin-page">
+      <AdminPageHeader
+        title="Кандидаты на публикацию"
+        description="Нормализованные анонсы после scoring и dedup. Auto-publish выключен: approve / reject / merge и при необходимости draft-карточка программы."
+      />
+      {error ? <AdminMessage type="error">{error}</AdminMessage> : null}
+      {message ? <AdminMessage type="success">{message}</AdminMessage> : null}
 
-      <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 16 }}>
-        <select value={status} onChange={(e) => setStatus(e.target.value)} style={{ padding: 8 }}>
-          <option value="">Все статусы</option>
-          <option value="new">new</option>
-          <option value="needs_review">needs_review</option>
-          <option value="approved">approved</option>
-          <option value="rejected">rejected</option>
-          <option value="merged">merged</option>
-          <option value="published">published</option>
-          <option value="archived">archived</option>
-        </select>
-        <select value={sourceId} onChange={(e) => setSourceId(e.target.value)} style={{ padding: 8 }}>
-          <option value="">Все источники</option>
-          {sources.map((source) => (
-            <option key={source.id} value={source.id}>
-              {source.name}
-            </option>
-          ))}
-        </select>
-        <button type="button" onClick={() => void loadList()} style={{ padding: "8px 16px" }}>
-          Обновить
-        </button>
-      </div>
+      {loading ? (
+        <AdminLoadingState />
+      ) : (
+        <>
+          <AdminStatGrid>
+            <AdminStatCard label="В выборке" value={stats.total} hint="С учётом фильтров ниже" />
+            <AdminStatCard label="needs_review" value={stats.needsReview} />
+            <AdminStatCard label="approved" value={stats.approved} />
+            <AdminStatCard label="published" value={stats.published} />
+          </AdminStatGrid>
 
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.2fr) minmax(360px, 1fr)", gap: 24 }}>
-        <section>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead>
-              <tr>
-                <th align="left">Candidate</th>
-                <th align="left">Источник</th>
-                <th align="left">Scores</th>
-                <th align="left">Действия</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((item) => (
-                <tr key={item.id} style={{ borderTop: "1px solid #eee", verticalAlign: "top" }}>
-                  <td style={{ padding: "10px 8px", minWidth: 320 }}>
-                    <strong>{item.normalizedItem.title || "Без title"}</strong>
-                    <br />
-                    <span style={{ fontSize: 13, color: "#666" }}>
-                      {item.normalizedItem.discipline || "—"} · {item.normalizedItem.region || item.normalizedItem.country || "—"} · {formatDate(item.normalizedItem.startDate)}
-                    </span>
-                    <br />
-                    <span style={{ fontSize: 13, color: "#666" }}>
-                      organizer: {item.normalizedItem.organizerName || "—"}
-                    </span>
-                    <br />
-                    <span style={{ fontSize: 13 }}>
-                      status: <strong>{item.status}</strong>
-                      {item.publishedProgram && <> · draft: <a href="/programs">{item.publishedProgram.program.title}</a></>}
-                    </span>
-                  </td>
-                  <td style={{ padding: "10px 8px", minWidth: 180 }}>
-                    <strong>{item.normalizedItem.rawItem.source.name}</strong>
-                    <br />
-                    <span style={{ fontSize: 13, color: "#666" }}>
-                      {item.normalizedItem.rawItem.source.type} · trust {item.normalizedItem.rawItem.source.trustScore.toFixed(2)}
-                    </span>
-                    {item.dedupGroup && (
-                      <>
-                        <br />
-                        <span style={{ fontSize: 12, color: "#666" }}>
-                          group: {item.dedupGroup.mergeStatus}
-                        </span>
-                      </>
-                    )}
-                  </td>
-                  <td style={{ padding: "10px 8px", minWidth: 160 }}>
-                    final {item.finalScore.toFixed(2)}
-                    <br />
-                    future {item.futureEventScore.toFixed(2)}
-                    <br />
-                    fit {item.fitScore.toFixed(2)}
-                    <br />
-                    trust {item.trustScore.toFixed(2)}
-                  </td>
-                  <td style={{ padding: "10px 8px" }}>
-                    <button type="button" onClick={() => void openDetail(item.id)} style={{ padding: "8px 12px" }}>
-                      Открыть
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </section>
+          <AdminFiltersBar title="Фильтры">
+            <AdminFilterField label="Статус кандидата">
+              <select className="mw-admin-input" value={status} onChange={(e) => setStatus(e.target.value)} style={{ minWidth: 200 }}>
+                <option value="">Все статусы</option>
+                <option value="new">new</option>
+                <option value="needs_review">needs_review</option>
+                <option value="approved">approved</option>
+                <option value="rejected">rejected</option>
+                <option value="merged">merged</option>
+                <option value="published">published</option>
+                <option value="archived">archived</option>
+              </select>
+            </AdminFilterField>
+            <AdminFilterField label="Источник">
+              <select className="mw-admin-input" value={sourceId} onChange={(e) => setSourceId(e.target.value)} style={{ minWidth: 220 }}>
+                <option value="">Все источники</option>
+                {sources.map((source) => (
+                  <option key={source.id} value={source.id}>
+                    {source.name}
+                  </option>
+                ))}
+              </select>
+            </AdminFilterField>
+            <button type="button" className="mw-admin-btn mw-admin-btn--ghost" onClick={() => void loadList()}>
+              Обновить
+            </button>
+          </AdminFiltersBar>
 
-        <aside style={{ border: "1px solid #ddd", borderRadius: 12, padding: 16, alignSelf: "start", background: "#fafafa" }}>
-          <h2>Детали кандидата</h2>
+          <div className="mw-admin-split">
+            <section>
+              {items.length === 0 ? (
+                <AdminEmptyState
+                  title="Нет кандидатов"
+                  description="По текущим фильтрам список пуст. Измените статус или источник либо дождитесь нового ingestion-run."
+                />
+              ) : (
+                <div style={{ overflowX: "auto" }}>
+                  <table className="mw-admin-table">
+                    <thead>
+                      <tr>
+                        <th>Кандидат</th>
+                        <th>Источник</th>
+                        <th>Scores</th>
+                        <th>Действия</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {items.map((item) => (
+                        <tr key={item.id}>
+                          <td style={{ minWidth: 260 }}>
+                            <strong>{item.normalizedItem.title || "Без title"}</strong>
+                            <div className="mw-admin-muted" style={{ fontSize: "0.82rem", marginTop: 4 }}>
+                              {item.normalizedItem.discipline || "—"} · {item.normalizedItem.region || item.normalizedItem.country || "—"} · {formatDate(item.normalizedItem.startDate)}
+                            </div>
+                            <div className="mw-admin-muted" style={{ fontSize: "0.82rem", marginTop: 4 }}>
+                              {item.normalizedItem.organizerName || "—"}
+                            </div>
+                            <div style={{ marginTop: 8 }}>
+                              <AdminStatusBadge tone={candidateStatusTone(item.status)}>{item.status}</AdminStatusBadge>
+                              {item.publishedProgram ? (
+                                <span className="mw-admin-muted" style={{ marginLeft: 8, fontSize: "0.82rem" }}>
+                                  · draft: <a href="/programs">{item.publishedProgram.program.title}</a>
+                                </span>
+                              ) : null}
+                            </div>
+                          </td>
+                          <td style={{ minWidth: 160 }}>
+                            <strong>{item.normalizedItem.rawItem.source.name}</strong>
+                            <div className="mw-admin-muted" style={{ fontSize: "0.82rem", marginTop: 4 }}>
+                              {item.normalizedItem.rawItem.source.type} · trust {item.normalizedItem.rawItem.source.trustScore.toFixed(2)}
+                            </div>
+                            {item.dedupGroup ? (
+                              <div className="mw-admin-muted" style={{ fontSize: "0.78rem", marginTop: 4 }}>
+                                group: {item.dedupGroup.mergeStatus}
+                              </div>
+                            ) : null}
+                          </td>
+                          <td className="mw-admin-muted" style={{ minWidth: 120, fontSize: "0.86rem", whiteSpace: "nowrap" }}>
+                            final {item.finalScore.toFixed(2)}
+                            <br />
+                            future {item.futureEventScore.toFixed(2)}
+                            <br />
+                            fit {item.fitScore.toFixed(2)}
+                            <br />
+                            trust {item.trustScore.toFixed(2)}
+                          </td>
+                          <td>
+                            <button type="button" className="mw-admin-btn mw-admin-btn--ghost" onClick={() => void openDetail(item.id)} style={{ fontSize: "0.82rem", padding: "6px 12px" }}>
+                              Открыть
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </section>
+
+            <aside className="mw-admin-aside-panel">
+          <h2 style={{ marginTop: 0 }}>Детали кандидата</h2>
           {!selected ? (
-            <p style={{ color: "#666" }}>Выберите кандидата слева.</p>
+            <AdminEmptyState title="Ничего не выбрано" description="Выберите строку слева и нажмите «Открыть», чтобы увидеть полный контекст и действия." />
           ) : (
             <>
               <p><strong>{selected.normalizedItem.title || "Без title"}</strong></p>
@@ -368,24 +412,31 @@ export default function EventCandidatesPage() {
                 </p>
               )}
 
-              <div style={{ display: "grid", gap: 8, marginTop: 16 }}>
-                <button type="button" onClick={() => void handleApprove()} disabled={busyAction !== ""} style={{ padding: "8px 12px" }}>
-                  {busyAction === "approve" ? "Approve..." : "Approve"}
+              <div style={{ display: "grid", gap: 10, marginTop: 16 }}>
+                <button type="button" className="mw-admin-btn" onClick={() => void handleApprove()} disabled={busyAction !== ""}>
+                  {busyAction === "approve" ? "Approve…" : "Approve"}
                 </button>
-                <button type="button" onClick={() => void handleReject()} disabled={busyAction !== ""} style={{ padding: "8px 12px" }}>
-                  {busyAction === "reject" ? "Reject..." : "Reject"}
+                <button type="button" className="mw-admin-btn mw-admin-btn--ghost" onClick={() => void handleReject()} disabled={busyAction !== ""}>
+                  {busyAction === "reject" ? "Reject…" : "Reject"}
                 </button>
-                <button type="button" onClick={() => void handleMerge()} disabled={busyAction !== "" || !selected.dedupGroup} style={{ padding: "8px 12px" }}>
-                  {busyAction === "merge" ? "Merge..." : "Merge в canonical"}
+                <button
+                  type="button"
+                  className="mw-admin-btn mw-admin-btn--ghost"
+                  onClick={() => void handleMerge()}
+                  disabled={busyAction !== "" || !selected.dedupGroup}
+                >
+                  {busyAction === "merge" ? "Merge…" : "Merge в canonical"}
                 </button>
-                <button type="button" onClick={() => void handlePublish()} disabled={busyAction !== ""} style={{ padding: "8px 12px" }}>
-                  {busyAction === "publish" ? "Publish..." : "Создать draft card"}
+                <button type="button" className="mw-admin-btn" onClick={() => void handlePublish()} disabled={busyAction !== ""}>
+                  {busyAction === "publish" ? "Publish…" : "Создать draft card"}
                 </button>
               </div>
             </>
           )}
-        </aside>
-      </div>
+            </aside>
+          </div>
+        </>
+      )}
     </main>
   );
 }

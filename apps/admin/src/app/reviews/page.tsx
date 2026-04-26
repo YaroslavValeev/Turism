@@ -1,10 +1,17 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
-import Link from "next/link";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { getReviewModerationStatusLabel } from "@mywave/shared-types";
+import { adminJson, getAdminToken } from "../../lib/admin";
+import { AdminEmptyState } from "../../components/admin/AdminEmptyState";
+import { AdminFilterField, AdminFiltersBar } from "../../components/admin/AdminFiltersBar";
+import { AdminLoadingState } from "../../components/admin/AdminLoadingState";
+import { AdminMessage } from "../../components/admin/AdminMessage";
+import { AdminPageHeader } from "../../components/admin/AdminPageHeader";
+import { AdminSectionCard } from "../../components/admin/AdminSectionCard";
+import { AdminStatCard, AdminStatGrid } from "../../components/admin/AdminStatCard";
+import { AdminStatusBadge } from "../../components/admin/AdminStatusBadge";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 const MODERATION_STATUSES = ["pending", "approved", "rejected"];
 
 type BookingOption = {
@@ -43,11 +50,8 @@ export default function ReviewsQueuePage() {
   const [creating, setCreating] = useState(false);
   const [savingId, setSavingId] = useState<string | null>(null);
 
-  const getToken = () => (typeof window !== "undefined" ? window.localStorage.getItem("admin_token") : null);
-
   const loadReviews = async () => {
-    const token = getToken();
-    if (!token) {
+    if (!getAdminToken()) {
       window.location.href = "/login";
       return;
     }
@@ -55,14 +59,7 @@ export default function ReviewsQueuePage() {
     setError("");
     try {
       const q = filter ? `?moderation_status=${encodeURIComponent(filter)}` : "";
-      const res = await fetch(`${API_URL}/reviews${q}`, { headers: { Authorization: `Bearer ${token}` } });
-      if (res.status === 401) {
-        window.localStorage.removeItem("admin_token");
-        window.location.href = "/login";
-        return;
-      }
-      const data = await res.json();
-      const list = Array.isArray(data) ? data : [];
+      const list = await adminJson<Review[]>(`/reviews${q}`);
       setReviews(list);
       setModerationDrafts(Object.fromEntries(list.map((review) => [review.id, review.moderationStatus])));
     } catch (fetchError) {
@@ -73,12 +70,9 @@ export default function ReviewsQueuePage() {
   };
 
   const loadCompletedBookings = async () => {
-    const token = getToken();
-    if (!token) return;
+    if (!getAdminToken()) return;
     try {
-      const res = await fetch(`${API_URL}/bookings?booking_status=completed`, { headers: { Authorization: `Bearer ${token}` } });
-      const data = await res.json();
-      const list = Array.isArray(data) ? data : [];
+      const list = await adminJson<BookingOption[]>("/bookings?booking_status=completed");
       setCompletedBookings(list);
       setCreateForm((current) => ({ ...current, bookingId: current.bookingId || list[0]?.id || "" }));
     } catch {
@@ -87,37 +81,42 @@ export default function ReviewsQueuePage() {
   };
 
   useEffect(() => {
-    loadReviews();
+    void loadReviews();
   }, [filter]);
 
   useEffect(() => {
-    loadCompletedBookings();
+    void loadCompletedBookings();
   }, []);
+
+  const stats = useMemo(() => {
+    const pending = reviews.filter((r) => r.moderationStatus === "pending").length;
+    const approved = reviews.filter((r) => r.moderationStatus === "approved").length;
+    const rejected = reviews.filter((r) => r.moderationStatus === "rejected").length;
+    return { total: reviews.length, pending, approved, rejected };
+  }, [reviews]);
+
+  function moderationTone(status: string): "ok" | "warn" | "danger" | "muted" {
+    if (status === "approved") return "ok";
+    if (status === "rejected") return "danger";
+    if (status === "pending") return "warn";
+    return "muted";
+  }
 
   const handleCreateReview = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const token = getToken();
-    if (!token) return;
+    if (!getAdminToken()) return;
     setCreating(true);
     setError("");
     setMessage("");
     try {
-      const res = await fetch(`${API_URL}/reviews`, {
+      await adminJson("/reviews", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify({
           bookingId: createForm.bookingId,
           rating: Number(createForm.rating),
           comment: createForm.comment.trim() || undefined,
         }),
       });
-      const body = await res.json().catch(() => null);
-      if (!res.ok) {
-        throw new Error(body?.error ?? "Не удалось создать отзыв");
-      }
       setMessage("Отзыв создан и отправлен на модерацию.");
       setCreateForm((current) => ({ ...current, comment: "" }));
       await loadReviews();
@@ -129,24 +128,15 @@ export default function ReviewsQueuePage() {
   };
 
   const handleSaveModeration = async (reviewId: string) => {
-    const token = getToken();
-    if (!token) return;
+    if (!getAdminToken()) return;
     setSavingId(reviewId);
     setError("");
     setMessage("");
     try {
-      const res = await fetch(`${API_URL}/reviews/${reviewId}/moderation`, {
+      await adminJson(`/reviews/${reviewId}/moderation`, {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify({ moderationStatus: moderationDrafts[reviewId] }),
       });
-      const body = await res.json().catch(() => null);
-      if (!res.ok) {
-        throw new Error(body?.error ?? "Не удалось обновить статус модерации");
-      }
       setMessage("Модерация обновлена.");
       await loadReviews();
     } catch (saveError) {
@@ -157,21 +147,35 @@ export default function ReviewsQueuePage() {
   };
 
   return (
-    <main style={{ padding: 24 }}>
-      <p>
-        <Link href="/organizers">Организаторы</Link> | <Link href="/programs">Программы</Link> | <Link href="/bookings">Заявки</Link> | <Link href="/incidents">Инциденты</Link> | <strong>Отзывы</strong> | <Link href="/commissions">Комиссии</Link>
-      </p>
-      <h1>Очередь отзывов</h1>
-      <p style={{ fontSize: 14, color: "#555" }}>
-        Отзывы создаются только после завершённой заявки и затем проходят ручную модерацию по <code>docs/REVIEW_PUBLISH_POLICY.md</code>.
-      </p>
-      {error && <p style={{ color: "red" }}>{error}</p>}
-      {message && <p style={{ color: "#1d6f42" }}>{message}</p>}
+    <main className="mw-admin-page">
+      <AdminPageHeader
+        title="Очередь отзывов"
+        description={
+          <>
+            Отзывы создаются только после завершённой заявки и проходят ручную модерацию (см.{" "}
+            <span className="mw-admin-code">docs/REVIEW_PUBLISH_POLICY.md</span>).
+          </>
+        }
+      />
+      {error ? <AdminMessage type="error">{error}</AdminMessage> : null}
+      {message ? <AdminMessage type="success">{message}</AdminMessage> : null}
 
-      <section style={{ margin: "20px 0", padding: 16, border: "1px solid #ddd", borderRadius: 8 }}>
-        <h2 style={{ marginTop: 0 }}>Создать отзыв по завершённой заявке</h2>
-        <form onSubmit={handleCreateReview} style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
-          <select value={createForm.bookingId} onChange={(e) => setCreateForm((current) => ({ ...current, bookingId: e.target.value }))} style={{ padding: 10 }}>
+      {!loading && (
+        <AdminStatGrid>
+          <AdminStatCard label="Всего в списке" value={stats.total} />
+          <AdminStatCard label="На модерации" value={stats.pending} />
+          <AdminStatCard label="Одобрено" value={stats.approved} />
+          <AdminStatCard label="Отклонено" value={stats.rejected} />
+        </AdminStatGrid>
+      )}
+
+      <AdminSectionCard title="Создать отзыв по завершённой заявке">
+        <form className="mw-admin-form-grid" onSubmit={handleCreateReview}>
+          <select
+            className="mw-admin-input"
+            value={createForm.bookingId}
+            onChange={(e) => setCreateForm((current) => ({ ...current, bookingId: e.target.value }))}
+          >
             <option value="">Выберите завершённую заявку</option>
             {completedBookings.map((booking) => (
               <option key={booking.id} value={booking.id}>
@@ -179,82 +183,109 @@ export default function ReviewsQueuePage() {
               </option>
             ))}
           </select>
-          <select value={createForm.rating} onChange={(e) => setCreateForm((current) => ({ ...current, rating: e.target.value }))} style={{ padding: 10 }}>
+          <select
+            className="mw-admin-input"
+            value={createForm.rating}
+            onChange={(e) => setCreateForm((current) => ({ ...current, rating: e.target.value }))}
+          >
             {[5, 4, 3, 2, 1].map((rating) => (
-              <option key={rating} value={rating}>{rating}</option>
+              <option key={rating} value={rating}>
+                Оценка {rating}
+              </option>
             ))}
           </select>
           <textarea
+            className="mw-admin-textarea mw-admin-form-span-2"
             value={createForm.comment}
             onChange={(e) => setCreateForm((current) => ({ ...current, comment: e.target.value }))}
             placeholder="Комментарий гостя"
             rows={3}
-            style={{ padding: 10 }}
           />
-          <button type="submit" disabled={creating || !createForm.bookingId} style={{ padding: 10 }}>
-            {creating ? "Создание..." : "Создать отзыв"}
+          <button type="submit" className="mw-admin-btn" disabled={creating || !createForm.bookingId}>
+            {creating ? "Создаём…" : "Создать отзыв"}
           </button>
         </form>
-      </section>
+      </AdminSectionCard>
 
-      <p>
-        Фильтр по модерации:{" "}
-        <select value={filter} onChange={(e) => setFilter(e.target.value)} style={{ padding: 6 }}>
-          <option value="">Все</option>
-          {MODERATION_STATUSES.map((status) => (
-            <option key={status} value={status}>{getReviewModerationStatusLabel(status)}</option>
-          ))}
-        </select>
-      </p>
-      {loading && <p>Загрузка…</p>}
-      {!loading && (
-        <table style={{ borderCollapse: "collapse", width: "100%" }}>
-          <thead>
-            <tr style={{ borderBottom: "2px solid #333" }}>
-              <th style={{ textAlign: "left", padding: 8 }}>Рейтинг</th>
-              <th style={{ textAlign: "left", padding: 8 }}>Комментарий</th>
-              <th style={{ textAlign: "left", padding: 8 }}>Программа</th>
-              <th style={{ textAlign: "left", padding: 8 }}>Организатор</th>
-              <th style={{ textAlign: "left", padding: 8 }}>Модерация</th>
-              <th style={{ textAlign: "left", padding: 8 }}>Создан</th>
-              <th style={{ textAlign: "left", padding: 8 }}>Действие</th>
-            </tr>
-          </thead>
-          <tbody>
-            {reviews.map((review) => (
-              <tr key={review.id} style={{ borderBottom: "1px solid #ccc" }}>
-                <td style={{ padding: 8 }}>{review.rating}</td>
-                <td style={{ padding: 8, maxWidth: 250 }}>{(review.comment ?? "").slice(0, 60)}{(review.comment?.length ?? 0) > 60 ? "…" : ""}</td>
-                <td style={{ padding: 8 }}>{review.program?.title ?? "—"}</td>
-                <td style={{ padding: 8 }}>{review.organizer?.displayName ?? "—"}</td>
-                <td style={{ padding: 8 }}>
-                  <select
-                    value={moderationDrafts[review.id] ?? review.moderationStatus}
-                    onChange={(e) => setModerationDrafts((current) => ({ ...current, [review.id]: e.target.value }))}
-                    style={{ padding: 6 }}
-                  >
-                    {MODERATION_STATUSES.map((status) => (
-                      <option key={status} value={status}>{getReviewModerationStatusLabel(status)}</option>
-                    ))}
-                  </select>
-                </td>
-                <td style={{ padding: 8 }}>{new Date(review.createdAt).toLocaleString("ru-RU")}</td>
-                <td style={{ padding: 8 }}>
-                  <button
-                    type="button"
-                    onClick={() => handleSaveModeration(review.id)}
-                    disabled={savingId === review.id || (moderationDrafts[review.id] ?? review.moderationStatus) === review.moderationStatus}
-                    style={{ padding: "6px 10px" }}
-                  >
-                    {savingId === review.id ? "Сохраняем..." : "Сохранить"}
-                  </button>
-                </td>
-              </tr>
+      <AdminFiltersBar title="Фильтры">
+        <AdminFilterField label="Статус модерации">
+          <select className="mw-admin-input mw-admin-minw-220" value={filter} onChange={(e) => setFilter(e.target.value)}>
+            <option value="">Все</option>
+            {MODERATION_STATUSES.map((status) => (
+              <option key={status} value={status}>
+                {getReviewModerationStatusLabel(status)}
+              </option>
             ))}
-          </tbody>
-        </table>
+          </select>
+        </AdminFilterField>
+      </AdminFiltersBar>
+
+      {loading ? (
+        <AdminLoadingState label="Загружаем отзывы…" />
+      ) : reviews.length === 0 ? (
+        <AdminEmptyState
+          title="Нет отзывов"
+          description={filter ? "По выбранному фильтру модерации записей нет." : "Очередь отзывов пока пуста."}
+        />
+      ) : (
+        <div className="mw-admin-table-outer">
+          <table className="mw-admin-table">
+            <thead>
+              <tr>
+                <th>Рейтинг</th>
+                <th>Комментарий</th>
+                <th>Программа</th>
+                <th>Организатор</th>
+                <th>Модерация</th>
+                <th>Создан</th>
+                <th>Действия</th>
+              </tr>
+            </thead>
+            <tbody>
+              {reviews.map((review) => (
+                <tr key={review.id}>
+                  <td className="mw-admin-td-nowrap">{review.rating}</td>
+                  <td className="mw-admin-td-wrap mw-admin-minw-260">
+                    {(review.comment ?? "").slice(0, 70)}
+                    {(review.comment?.length ?? 0) > 70 ? "…" : ""}
+                  </td>
+                  <td className="mw-admin-muted">{review.program?.title ?? "—"}</td>
+                  <td className="mw-admin-muted">{review.organizer?.displayName ?? "—"}</td>
+                  <td>
+                    <div className="mw-admin-mb-6">
+                      <AdminStatusBadge tone={moderationTone(review.moderationStatus)}>
+                        {getReviewModerationStatusLabel(review.moderationStatus)}
+                      </AdminStatusBadge>
+                    </div>
+                    <select
+                      className="mw-admin-input mw-admin-minw-180"
+                      value={moderationDrafts[review.id] ?? review.moderationStatus}
+                      onChange={(e) => setModerationDrafts((current) => ({ ...current, [review.id]: e.target.value }))}
+                    >
+                      {MODERATION_STATUSES.map((status) => (
+                        <option key={status} value={status}>
+                          {getReviewModerationStatusLabel(status)}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
+                  <td className="mw-admin-muted">{new Date(review.createdAt).toLocaleString("ru-RU")}</td>
+                  <td className="mw-admin-actions-col">
+                    <button
+                      type="button"
+                      className="mw-admin-btn mw-admin-btn--ghost"
+                      onClick={() => void handleSaveModeration(review.id)}
+                      disabled={savingId === review.id || (moderationDrafts[review.id] ?? review.moderationStatus) === review.moderationStatus}
+                    >
+                      {savingId === review.id ? "Сохраняем…" : "Сохранить"}
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
-      {!loading && reviews.length === 0 && <p>Нет отзывов.</p>}
     </main>
   );
 }

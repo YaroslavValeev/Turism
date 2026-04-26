@@ -1,8 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { AdminNav } from "../../components/AdminNav";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { adminJson, getAdminToken } from "../../lib/admin";
+import { AdminPageHeader } from "../../components/admin/AdminPageHeader";
+import { AdminSectionCard } from "../../components/admin/AdminSectionCard";
+import { AdminFilterField, AdminFiltersBar } from "../../components/admin/AdminFiltersBar";
+import { AdminLoadingState } from "../../components/admin/AdminLoadingState";
+import { AdminEmptyState } from "../../components/admin/AdminEmptyState";
 
 type SourceOption = {
   id: string;
@@ -65,7 +69,7 @@ export default function RawItemsPage() {
     return suffix ? `?${suffix}` : "";
   }, [hasNormalized, sourceId]);
 
-  async function loadData() {
+  const loadData = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
@@ -81,7 +85,7 @@ export default function RawItemsPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [query]);
 
   useEffect(() => {
     if (!getAdminToken()) {
@@ -89,7 +93,7 @@ export default function RawItemsPage() {
       return;
     }
     void loadData();
-  }, [query]);
+  }, [loadData]);
 
   async function openDetail(id: string) {
     try {
@@ -100,118 +104,171 @@ export default function RawItemsPage() {
     }
   }
 
-  if (loading) return <p>Загрузка…</p>;
-
   return (
-    <main style={{ padding: 24 }}>
-      <AdminNav current="/raw-items" />
-      <h1>Сырые данные ingestion</h1>
-      <p style={{ fontSize: 14, color: "#555", maxWidth: 920 }}>
-        Здесь сохраняется входящий материал как есть. Этот слой ничего не “понимает”, а только хранит публикацию,
-        текст, медиа и payload для последующей нормализации и модерации.
-      </p>
-      {error && <p style={{ color: "red" }}>{error}</p>}
+    <main className="mw-admin-page">
+      <AdminPageHeader
+        title="Сырые данные ingestion"
+        description="Входящий материал как есть: публикация, текст, медиа и payload для нормализации и модерации."
+      />
 
-      <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 16 }}>
-        <select value={sourceId} onChange={(e) => setSourceId(e.target.value)} style={{ padding: 8 }}>
-          <option value="">Все источники</option>
-          {sources.map((source) => (
-            <option key={source.id} value={source.id}>
-              {source.name}
-            </option>
-          ))}
-        </select>
-        <select value={hasNormalized} onChange={(e) => setHasNormalized(e.target.value)} style={{ padding: 8 }}>
-          <option value="">Любой статус нормализации</option>
-          <option value="1">Только с normalized_item</option>
-          <option value="0">Только без normalized_item</option>
-        </select>
-        <button type="button" onClick={() => void loadData()} style={{ padding: "8px 16px" }}>
-          Обновить
-        </button>
-      </div>
+      {loading && <AdminLoadingState label="Загружаем список…" />}
+      {error && <div className="mw-admin-alert mw-admin-alert--error">{error}</div>}
 
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.35fr) minmax(360px, 1fr)", gap: 24 }}>
-        <section>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead>
-              <tr>
-                <th align="left">Источник</th>
-                <th align="left">Материал</th>
-                <th align="left">Нормализация</th>
-                <th align="left">Действия</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((item) => (
-                <tr key={item.id} style={{ borderTop: "1px solid #eee", verticalAlign: "top" }}>
-                  <td style={{ padding: "10px 8px", minWidth: 180 }}>
-                    <strong>{item.source.name}</strong>
-                    <br />
-                    <span style={{ fontSize: 12, color: "#666" }}>{item.source.type}</span>
-                    <br />
-                    <span style={{ fontSize: 12, color: "#666" }}>{formatDate(item.publishedAt)}</span>
-                  </td>
-                  <td style={{ padding: "10px 8px", minWidth: 280 }}>
-                    <div><strong>{item.rawTitle || "Без заголовка"}</strong></div>
-                    <div style={{ fontSize: 13, color: "#555", marginTop: 4 }}>{shortText(item.rawText)}</div>
-                    <div style={{ fontSize: 12, color: "#666", marginTop: 4 }}>
-                      автор: {item.authorName || "—"} · fetched: {formatDate(item.fetchedAt)}
-                    </div>
-                  </td>
-                  <td style={{ padding: "10px 8px", minWidth: 220 }}>
-                    {item.normalizedItem ? (
-                      <>
-                        <strong>{item.normalizedItem.title || "Без title"}</strong>
-                        <br />
-                        <span style={{ fontSize: 12, color: "#666" }}>
-                          {item.normalizedItem.discipline || "—"} · start {formatDate(item.normalizedItem.startDate)}
-                        </span>
-                        <br />
-                        <span style={{ fontSize: 12, color: "#666" }}>
-                          confidence {item.normalizedItem.confidenceScore.toFixed(2)}
-                        </span>
-                      </>
-                    ) : (
-                      <span style={{ color: "#666" }}>Ещё не нормализован</span>
-                    )}
-                  </td>
-                  <td style={{ padding: "10px 8px" }}>
-                    <button type="button" onClick={() => void openDetail(item.id)} style={{ padding: "8px 12px" }}>
-                      Открыть
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </section>
+      {!loading && (
+        <>
+          <AdminFiltersBar title="Фильтры">
+            <AdminFilterField label="Источник">
+              <select value={sourceId} onChange={(e) => setSourceId(e.target.value)}>
+                <option value="">Все источники</option>
+                {sources.map((source) => (
+                  <option key={source.id} value={source.id}>
+                    {source.name}
+                  </option>
+                ))}
+              </select>
+            </AdminFilterField>
+            <AdminFilterField label="Нормализация">
+              <select value={hasNormalized} onChange={(e) => setHasNormalized(e.target.value)}>
+                <option value="">Любой статус</option>
+                <option value="1">Только с normalized_item</option>
+                <option value="0">Только без normalized_item</option>
+              </select>
+            </AdminFilterField>
+            <div className="mw-admin-toolbar__actions" style={{ alignSelf: "flex-end", paddingTop: 0 }}>
+              <button type="button" className="mw-admin-btn mw-admin-btn--ghost" onClick={() => void loadData()}>
+                Обновить
+              </button>
+            </div>
+          </AdminFiltersBar>
 
-        <aside style={{ border: "1px solid #ddd", borderRadius: 12, padding: 16, alignSelf: "start", background: "#fafafa" }}>
-          <h2>Детали raw item</h2>
-          {!selected ? (
-            <p style={{ color: "#666" }}>Выберите материал слева.</p>
-          ) : (
-            <>
-              <p><strong>{selected.rawTitle || "Без заголовка"}</strong></p>
-              <p style={{ fontSize: 13, color: "#666" }}>
-                {selected.source.name} · {selected.source.type} · {formatDate(selected.publishedAt)}
-              </p>
-              <p style={{ whiteSpace: "pre-wrap" }}>{selected.rawText || "—"}</p>
-              <p><strong>Source URL:</strong><br />{selected.sourceUrl || "—"}</p>
-              <p><strong>Content hash:</strong><br />{selected.contentHash}</p>
-              <p><strong>Raw media JSON</strong></p>
-              <pre style={{ whiteSpace: "pre-wrap", overflowX: "auto", fontSize: 12 }}>
-                {JSON.stringify(selected.rawMediaJson, null, 2)}
-              </pre>
-              <p><strong>Raw payload JSON</strong></p>
-              <pre style={{ whiteSpace: "pre-wrap", overflowX: "auto", fontSize: 12 }}>
-                {JSON.stringify(selected.rawPayloadJson, null, 2)}
-              </pre>
-            </>
-          )}
-        </aside>
-      </div>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 320px), 1fr))",
+              gap: "clamp(16px, 2vw, 24px)",
+              alignItems: "start",
+            }}
+          >
+            <AdminSectionCard title="Материалы" style={{ marginBottom: 0 }}>
+              {items.length === 0 ? (
+                <AdminEmptyState
+                  title="Нет записей"
+                  description="По выбранным фильтрам raw items не найдены. Смените источник или статус нормализации."
+                />
+              ) : (
+                <div style={{ overflowX: "auto" }}>
+                  <table className="mw-admin-table" style={{ margin: 0, minWidth: 640 }}>
+                    <thead>
+                      <tr>
+                        <th>Источник</th>
+                        <th>Материал</th>
+                        <th>Нормализация</th>
+                        <th style={{ width: 120 }}>Действия</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {items.map((item) => (
+                        <tr key={item.id}>
+                          <td style={{ verticalAlign: "top" }}>
+                            <strong>{item.source.name}</strong>
+                            <div className="mw-admin-prose" style={{ fontSize: "0.85rem", marginTop: 4 }}>
+                              {item.source.type}
+                            </div>
+                            <div className="mw-admin-prose" style={{ fontSize: "0.85rem", marginTop: 2 }}>
+                              {formatDate(item.publishedAt)}
+                            </div>
+                          </td>
+                          <td style={{ verticalAlign: "top", minWidth: 220 }}>
+                            <div>
+                              <strong>{item.rawTitle || "Без заголовка"}</strong>
+                            </div>
+                            <div className="mw-admin-prose" style={{ marginTop: 6, fontSize: "0.9rem" }}>
+                              {shortText(item.rawText)}
+                            </div>
+                            <div className="mw-admin-prose" style={{ fontSize: "0.8rem", marginTop: 6 }}>
+                              автор: {item.authorName || "—"} · fetched: {formatDate(item.fetchedAt)}
+                            </div>
+                          </td>
+                          <td style={{ verticalAlign: "top", minWidth: 200 }}>
+                            {item.normalizedItem ? (
+                              <>
+                                <strong>{item.normalizedItem.title || "Без title"}</strong>
+                                <div className="mw-admin-prose" style={{ fontSize: "0.85rem", marginTop: 4 }}>
+                                  {item.normalizedItem.discipline || "—"} · start {formatDate(item.normalizedItem.startDate)}
+                                </div>
+                                <div className="mw-admin-prose" style={{ fontSize: "0.85rem", marginTop: 2 }}>
+                                  confidence {item.normalizedItem.confidenceScore.toFixed(2)}
+                                </div>
+                              </>
+                            ) : (
+                              <span className="mw-admin-prose">Ещё не нормализован</span>
+                            )}
+                          </td>
+                          <td style={{ verticalAlign: "top" }}>
+                            <button type="button" className="mw-admin-btn mw-admin-btn--ghost" onClick={() => void openDetail(item.id)}>
+                              Открыть
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </AdminSectionCard>
+
+            <AdminSectionCard title="Детали raw item" style={{ marginBottom: 0 }}>
+              {!selected ? (
+                <p className="mw-admin-prose" style={{ margin: 0 }}>
+                  Выберите строку слева и нажмите «Открыть».
+                </p>
+              ) : (
+                <>
+                  <p style={{ margin: "0 0 8px" }}>
+                    <strong>{selected.rawTitle || "Без заголовка"}</strong>
+                  </p>
+                  <p className="mw-admin-prose" style={{ margin: "0 0 12px", fontSize: "0.9rem" }}>
+                    {selected.source.name} · {selected.source.type} · {formatDate(selected.publishedAt)}
+                  </p>
+                  <p className="mw-admin-prose" style={{ whiteSpace: "pre-wrap", margin: "0 0 12px" }}>
+                    {selected.rawText || "—"}
+                  </p>
+                  <p className="mw-admin-prose" style={{ margin: "0 0 6px", fontSize: "0.88rem" }}>
+                    <strong>Source URL</strong>
+                  </p>
+                  <p className="mw-admin-prose" style={{ margin: "0 0 12px", wordBreak: "break-all" }}>
+                    {selected.sourceUrl || "—"}
+                  </p>
+                  <p className="mw-admin-prose" style={{ margin: "0 0 6px", fontSize: "0.88rem" }}>
+                    <strong>Content hash</strong>
+                  </p>
+                  <p className="mw-admin-code" style={{ margin: "0 0 16px", fontSize: "0.8rem", wordBreak: "break-all" }}>
+                    {selected.contentHash}
+                  </p>
+                  <p className="mw-admin-prose" style={{ margin: "0 0 6px", fontWeight: 650 }}>
+                    Raw media JSON
+                  </p>
+                  <pre
+                    className="mw-admin-code"
+                    style={{ whiteSpace: "pre-wrap", overflowX: "auto", fontSize: 12, margin: "0 0 16px", maxHeight: 240, overflowY: "auto" }}
+                  >
+                    {JSON.stringify(selected.rawMediaJson, null, 2)}
+                  </pre>
+                  <p className="mw-admin-prose" style={{ margin: "0 0 6px", fontWeight: 650 }}>
+                    Raw payload JSON
+                  </p>
+                  <pre
+                    className="mw-admin-code"
+                    style={{ whiteSpace: "pre-wrap", overflowX: "auto", fontSize: 12, margin: 0, maxHeight: 280, overflowY: "auto" }}
+                  >
+                    {JSON.stringify(selected.rawPayloadJson, null, 2)}
+                  </pre>
+                </>
+              )}
+            </AdminSectionCard>
+          </div>
+        </>
+      )}
     </main>
   );
 }

@@ -10,6 +10,76 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// --- Content pipeline (канон: docs/architecture/CONTENT_PIPELINE_DATA_MODEL.md) — сквозной content_item_id ---
+
+enum ContentWorkflowStatus {
+  ingest_collected
+  draft
+  pending_owner_review
+  /// Ожидаем ввод owner (текст/голос) для новой версии draft.
+  rewrite_requested
+  approved
+  scheduled
+  publishing
+  published
+  failed
+  rejected
+  skipped
+  archived
+}
+
+enum RawItemParseStatus {
+  pending
+  ok
+  partial
+  failed
+  skipped_duplicate
+}
+
+enum ContentDraftType {
+  telegram_post
+  vk_post
+  facebook_post
+  site_announce
+  blog_post
+  program_card_structured
+}
+
+enum ContentDraftStatus {
+  draft
+  pending_owner_review
+  ready
+  superseded
+  failed
+}
+
+enum ContentOwnerDecision {
+  pending
+  approved
+  rewrite_requested
+  rejected
+  deferred
+  skipped
+}
+
+enum ContentPublicationChannel {
+  telegram_channel
+  vk
+  facebook
+  site_blog
+  site_landing
+}
+
+enum ContentPublishState {
+  pending
+  scheduled
+  publishing
+  published
+  failed
+  cancelled
+  skipped
+}
+
 // Seed: pnpm --filter api db:seed (creates admin@mywave.local)
 
 model User {
@@ -52,8 +122,29 @@ model Organizer {
   billingStatements  BillingStatement[]
   scoreSnapshots     OrganizerScoreSnapshot[]
   reviewRequests     ReviewRequest[]
+  outreachCampaigns OrganizerOutreachCampaign[]
 
   @@map("organizers")
+}
+
+/// Коммерческий слой сделки (1:1 с booking). Статусы: new | contacted | confirmed | completed | canceled
+model Deal {
+  id                    String   @id @default(cuid())
+  bookingId             String   @unique
+  contentItemId         String?
+  dealStatus            String   @default("new")
+  dealAmountRub         Int      @default(0)
+  /// Процент, целое (3 = 3%)
+  commissionRatePct     Int      @default(3)
+  commissionAmountRub   Int      @default(0)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  booking               Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  contentItem           ContentItem? @relation(fields: [contentItemId], references: [id], onDelete: SetNull)
+
+  @@index([contentItemId])
+  @@index([dealStatus])
+  @@map("deals")
 }
 
 // program_card_schema.md, db_schema_draft. publish_status: canonical_status_models (Program Publication Status)
@@ -87,12 +178,23 @@ model Program {
   cancellationRules       String?   @db.Text  // required for publish
   whatHappensAfterBooking String?   @db.Text
   cta                     String?
-  // Canonical publish intake: organizer_form | admin_manual | email | telegram | sheets_csv | seed (see docs/INGESTION_POLICY.md)
+  // Canonical publish intake: organizer_form | admin_manual | email | telegram | sheets_csv | seed | ingestion_auto
   intakeSource            String?
+  // Данные с ingestion без ручного approve
+  autoPublished           Boolean   @default(false)
+  sourceId                String?
+  // denorm: instagram | telegram | rss | site
+  sourceType              String?
+  sourceUrl               String?   @db.Text
+  ingestedAt              DateTime?
+  updatedFromSourceAt     DateTime?
+  // auto_pending | ok | flagged
+  reviewStatus            String    @default("ok")
   publishStatus           String    // draft | internal_review | needs_fix | approved | published | paused | archived
   createdAt               DateTime  @default(now())
   updatedAt               DateTime  @updatedAt
   organizer               Organizer @relation(fields: [organizerId], references: [id], onDelete: Cascade)
+  source                  Source?   @relation(fields: [sourceId], references: [id], onDelete: SetNull)
   media                   ProgramMedia[]
   leads                   Lead[]
   bookings                Booking[]
@@ -104,7 +206,9 @@ model Program {
   publishedPrograms       PublishedProgram[]
   scoreSnapshots          ProgramScoreSnapshot[]
   reviewRequests          ReviewRequest[]
+  contentItems            ContentItem[]
 
+  @@index([sourceId])
   @@map("programs")
 }
 
@@ -120,6 +224,8 @@ model Source {
   priority             Int         @default(100)
   trustScore           Float       @default(0.5)
   parserProfile        String?
+  // Ключ адаптера/парсера (например telegram_channel_html). См. ingestion adapters.
+  adapterKey           String?
   fetchIntervalMinutes Int         @default(60)
   isActive             Boolean     @default(true)
   lastCheckedAt        DateTime?
@@ -129,8 +235,10 @@ model Source {
   createdAt            DateTime    @default(now())
   updatedAt            DateTime    @updatedAt
   organizer            Organizer?  @relation("SourceOrganizer", fields: [organizerId], references: [id], onDelete: SetNull)
+  programs              Program[]
   runs                 SourceRun[]
   rawItems             RawItem[]
+  contentMetrics       ContentMetric[]
 
   @@index([type, isActive])
   @@map("sources")
@@ -165,10 +273,13 @@ model RawItem {
   rawText        String?         @db.Text
   rawMediaJson   Json?
   rawPayloadJson Json?
+  /// Стабильный дедуп-ключ внутри источника (тот же смысл, что dedup_key в спеке).
   contentHash    String
   fetchedAt      DateTime        @default(now())
+  parseStatus    RawItemParseStatus @default(ok)
   source         Source          @relation(fields: [sourceId], references: [id], onDelete: Cascade)
   normalizedItem NormalizedItem?
+  contentItem    ContentItem?
 
   @@unique([sourceId, externalItemId])
   @@unique([sourceId, contentHash])
@@ -198,12 +309,18 @@ model NormalizedItem {
   bookingUrl       String?
   imageUrl         String?
   confidenceScore  Float?
+  // Релевантность для витрины/конвейера; отдельно от scoring на EventCandidate.
+  relevanceScore   Float?
+  moderationFlagsJson Json?
+  // Каноническая нормализованная структура; дублирует/дополняет extractedJson по мере внедрения.
+  normalizedPayloadJson Json?
   parseVersion     String
   extractedJson    Json?
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
   rawItem          RawItem          @relation(fields: [rawItemId], references: [id], onDelete: Cascade)
   candidates       EventCandidate[]
+  contentItem      ContentItem?
 
   @@index([discipline, startDate])
   @@map("normalized_items")
@@ -245,6 +362,7 @@ model EventCandidate {
   normalizedItem       NormalizedItem  @relation(fields: [normalizedItemId], references: [id], onDelete: Cascade)
   dedupGroup           EventGroup?     @relation(fields: [dedupGroupId], references: [id], onDelete: SetNull)
   publishedProgram     PublishedProgram?
+  contentItem          ContentItem?
 
   @@index([status, finalScore])
   @@index([normalizedItemId])
@@ -308,6 +426,14 @@ model Booking {
   sourceCampaign      String?
   partnerId           String?
   leadOwner           String?
+  /// Атрибуция контента / explore (G4.1), дублирует читаемые поля (не только sourceCampaign).
+  contentItemId       String?
+  entryType           String?
+  entryId             String?
+  exploreType         String?
+  exploreSlug         String?
+  utmSource           String?
+  utmMedium           String?
   bookingStatus       String    // created | booked | paid_partial | paid_full | completed | canceled | refunded_* | disputed (+ legacy statuses)
   attributionWindowDays Int     @default(60)
   firstResponseAt     DateTime?
@@ -329,6 +455,8 @@ model Booking {
   lead                Lead?     @relation(fields: [leadId], references: [id], onDelete: SetNull)
   program             Program   @relation(fields: [programId], references: [id], onDelete: Restrict)
   organizer           Organizer @relation(fields: [organizerId], references: [id], onDelete: Restrict)
+  contentItem         ContentItem? @relation(fields: [contentItemId], references: [id], onDelete: SetNull)
+  deal                Deal?
   payments            Payment[]
   refunds             Refund[]
   reviews             Review[]
@@ -339,6 +467,7 @@ model Booking {
   @@index([leadId])
   @@index([organizerId, bookingStatus])
   @@index([travelerKeyHash])
+  @@index([contentItemId])
   @@map("bookings")
 }
 
@@ -639,6 +768,30 @@ model PublicOrganizerIntake {
   @@map("public_organizer_intakes")
 }
 
+// Публичные подписки на обновления по новым программам (email / telegram).
+model UpdateSubscription {
+  id               String    @id @default(cuid())
+  email            String?
+  telegramUsername String?
+  channelEmail     Boolean   @default(false)
+  channelTelegram  Boolean   @default(false)
+  discipline       String?
+  region           String?
+  status           String    @default("active") // active | paused | unsubscribed
+  tgOptInUrl       String?
+  tgGroupInviteUrl String?
+  lastNotifiedAt   DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  metaJson         Json?
+
+  @@index([status, createdAt])
+  @@index([discipline, region, status])
+  @@index([email])
+  @@index([telegramUsername])
+  @@map("update_subscriptions")
+}
+
 // Analytics event store (non-PII). Source: docs/analytics/*
 model AnalyticsEvent {
   id               String   @id @default(cuid())
@@ -739,6 +892,36 @@ model OrganizerScoreSnapshot {
   @@map("organizer_score_snapshots")
 }
 
+/// Письма организаторам после free period: сначала review owner, потом send (MVP: без auto-send).
+model OrganizerOutreachCampaign {
+  id              String   @id @default(cuid())
+  organizerId     String
+  periodStart     DateTime
+  periodEnd       DateTime
+  viewsCount      Int      @default(0)
+  clicksCount     Int      @default(0)
+  leadsCount      Int      @default(0)
+  dealsCount      Int      @default(0)
+  dealAmountTotal Int      @default(0) // RUB, сумма GMV/сделки в периоде
+  /// A_soft | B_leads | C_deals
+  templateType    String
+  emailSubject    String
+  emailBody       String   @db.Text
+  /// draft | pending_owner_review | approved | sent | failed | skipped
+  status          String
+  ownerApprovedAt DateTime?
+  sentAt          DateTime?
+  errorMessage    String?  @db.Text
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  organizer       Organizer @relation(fields: [organizerId], references: [id], onDelete: Cascade)
+
+  @@unique([organizerId, periodStart, periodEnd])
+  @@index([status, createdAt])
+  @@index([organizerId])
+  @@map("organizer_outreach_campaigns")
+}
+
 model ProgramScoreSnapshot {
   id                      String   @id @default(cuid())
   programId               String
@@ -756,4 +939,231 @@ model ProgramScoreSnapshot {
   @@unique([programId, periodEnd])
   @@index([recalculatedAt])
   @@map("program_score_snapshots")
+}
+
+/// Сквозной идентификатор контент-конвейера (аналог content_item_id в ТЗ). Связывает raw → normalized → candidate → черновики → публикации.
+model ContentItem {
+  id     String @id @default(cuid())
+  /// Один content item на одну сырую запись ingestion.
+  rawItemId         String  @unique
+  normalizedItemId  String? @unique
+  eventCandidateId  String? @unique
+  // Связь с опубликованной в каталоге программой, если применимо.
+  programId         String?
+  workflowStatus    ContentWorkflowStatus @default(ingest_collected)
+  lastError         String?  @db.Text
+  idempotencyKey    String?  @unique
+  /// Draft, по которому ждём текст/голос owner после «Rewrite».
+  ownerReviewAwaitingDraftId String? @unique
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  rawItem           RawItem        @relation(fields: [rawItemId], references: [id], onDelete: Cascade)
+  normalizedItem    NormalizedItem? @relation(fields: [normalizedItemId], references: [id], onDelete: SetNull)
+  eventCandidate    EventCandidate? @relation(fields: [eventCandidateId], references: [id], onDelete: SetNull)
+  program           Program?    @relation(fields: [programId], references: [id], onDelete: SetNull)
+  ownerReviewAwaitingDraft   ContentDraft? @relation("OwnerReviewAwaiting", fields: [ownerReviewAwaitingDraftId], references: [id], onDelete: SetNull)
+  drafts            ContentDraft[]
+  approvals         ContentApproval[]
+  publications      ContentPublication[]
+  metrics           ContentMetric[]
+  blogPosts         BlogPost[]
+  bookings          Booking[]
+  deals             Deal[]
+
+  @@index([workflowStatus, updatedAt])
+  @@map("content_items")
+}
+
+model ContentDraft {
+  id               String   @id @default(cuid())
+  contentItemId    String
+  draftType        ContentDraftType
+  /// Целевые каналы (JSON: массив enum-значений ContentPublicationChannel).
+  channelTargetsJson Json?
+  generatedHeadline String? @db.Text
+  shortCopy         String? @db.Text
+  longCopy          String? @db.Text
+  cta               String? @db.Text
+  ownerNotes        String? @db.Text
+  voiceTranscript   String? @db.Text
+  aiModel           String?
+  aiPromptVersion   String?
+  inputPayloadJson  Json?
+  rawDraftText      String?  @db.Text
+  finalDraftText    String?  @db.Text
+  version           Int      @default(1)
+  status            ContentDraftStatus @default(draft)
+  /// Сообщение с превью в Telegram (owner)
+  telegramPreviewMessageId Int?
+  telegramPreviewChatId   String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  contentItem       ContentItem        @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
+  contentItemAwaitingInput ContentItem? @relation("OwnerReviewAwaiting")
+  approvals         ContentApproval[]
+  publications      ContentPublication[]
+  blogPosts         BlogPost[]
+
+  @@unique([contentItemId, draftType, version])
+  @@index([contentItemId, status])
+  @@map("content_drafts")
+}
+
+model ContentApproval {
+  id               String  @id @default(cuid())
+  contentItemId    String
+  contentDraftId   String?
+  decision         ContentOwnerDecision @default(pending)
+  comment          String?  @db.Text
+  // Решение owner: Telegram / админ (строка user id или username).
+  decidedBy        String?
+  // telegram | admin | system
+  source           String?  @default("telegram")
+  ownerVoiceFileId String?
+  decidedAt        DateTime?
+  createdAt        DateTime @default(now())
+  contentItem      ContentItem  @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
+  contentDraft     ContentDraft? @relation(fields: [contentDraftId], references: [id], onDelete: SetNull)
+
+  @@index([contentItemId, createdAt])
+  @@index([contentDraftId])
+  @@map("content_approvals")
+}
+
+model ContentPublication {
+  id                 String  @id @default(cuid())
+  contentItemId      String
+  contentDraftId     String
+  channel            ContentPublicationChannel
+  state              ContentPublishState @default(pending)
+  externalPostId     String?
+  externalUrl        String? @db.Text
+  idempotencyKey     String? @unique
+  publishedAt        DateTime?
+  errorCode          String?
+  errorDetail        String?  @db.Text
+  retryCount         Int     @default(0)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  contentItem        ContentItem   @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
+  contentDraft       ContentDraft  @relation(fields: [contentDraftId], references: [id], onDelete: Restrict)
+  metrics            ContentMetric[]
+
+  /// Идемпотентность публикации по задаче F.
+  @@unique([contentDraftId, channel])
+  @@index([channel, state])
+  @@index([externalPostId])
+  @@map("content_publications")
+}
+
+/// Срезы эффективности (агрегаты; детализация по UTM/сессиям — в analytics + propertiesJson).
+model ContentMetric {
+  id                    String  @id @default(cuid())
+  contentItemId         String
+  contentPublicationId  String?
+  sourceId              String?
+  channel               ContentPublicationChannel?
+  publishedAt           DateTime?
+  utmSource             String?
+  utmCampaign           String?
+  asOfDate              DateTime @db.Date
+  views                 Int     @default(0)
+  clicks                Int     @default(0)
+  leads                 Int     @default(0)
+  applications         Int     @default(0)
+  siteSessions          Int     @default(0)
+  bookingCount         Int     @default(0)
+  /// Агрегат выручки (₽), только проверенные сделки с атрибуцией к content_item
+  revenueRub            Int     @default(0)
+  propertiesJson        Json?
+  contentItem         ContentItem @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
+  contentPublication  ContentPublication? @relation(fields: [contentPublicationId], references: [id], onDelete: SetNull)
+  source                Source? @relation(fields: [sourceId], references: [id], onDelete: SetNull)
+
+  @@index([contentItemId, asOfDate])
+  @@index([sourceId, asOfDate])
+  @@index([channel, publishedAt])
+  @@map("content_metrics")
+}
+
+/// Идемпотентность: Telegram callback_query.id глобально уникален.
+model ProcessedTelegramCallback {
+  id               String   @id
+  contentDraftId   String?
+  contentItemId    String?
+  action           String?
+  createdAt        DateTime @default(now())
+
+  @@index([createdAt])
+  @@map("processed_telegram_callbacks")
+}
+
+model BlogPost {
+  id              String   @id @default(cuid())
+  contentItemId   String
+  contentDraftId  String
+  placement       String // blog | landing
+  slug            String
+  title           String
+  excerpt         String?  @db.Text
+  /// Основной текст (аналог "content" в продуктовой схеме)
+  body            String?  @db.Text
+  sourceUrl       String?  @db.Text
+  status          String    @default("published")
+  // --- G2: SEO (редактируемые; fallback на title/excerpt/URL в API) ---
+  seoTitle        String?  @db.Text
+  seoDescription  String?  @db.Text
+  canonicalUrl    String?  @db.Text
+  ogImage         String?  @db.Text
+  // --- G2: классификация и связи ---
+  tags            String[]  @default([])
+  discipline      String?
+  region          String?
+  country         String?
+  relatedProgramIds   String[] @default([])
+  relatedOrganizerIds String[] @default([])
+  relatedCollectionIds String[] @default([])
+  publishedAt     DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  contentItem     ContentItem @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
+  contentDraft    ContentDraft @relation(fields: [contentDraftId], references: [id], onDelete: Cascade)
+
+  @@unique([contentDraftId, placement])
+  @@unique([slug, placement])
+  @@index([slug])
+  @@index([discipline])
+  @@index([region])
+  @@map("blog_posts")
+}
+
+/// G3: тематические подборки (витринные входы: статьи + программы + организаторы).
+model ContentCollection {
+  id                  String    @id @default(cuid())
+  slug                String    @unique
+  title               String
+  description         String?   @db.Text
+  body                String?   @db.Text
+  status              String    @default("draft")
+  collectionType      String    @default("manual")
+  discipline          String?
+  region              String?
+  country             String?
+  season              String?
+  seoTitle            String?   @db.Text
+  seoDescription      String?   @db.Text
+  canonicalUrl        String?   @db.Text
+  ogImage             String?   @db.Text
+  tags                String[]  @default([])
+  relatedBlogPostIds  String[]  @default([])
+  relatedProgramIds   String[]  @default([])
+  relatedOrganizerIds String[]  @default([])
+  publishedAt         DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  @@index([status])
+  @@index([discipline])
+  @@index([region])
+  @@index([season])
+  @@map("content_collections")
 }

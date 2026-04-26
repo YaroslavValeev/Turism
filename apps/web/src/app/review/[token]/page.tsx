@@ -75,7 +75,7 @@ export default function ReviewRequestPage() {
             <input value={rating} onChange={(e) => setRating(e.target.value)} min={1} max={5} type="number" style={{ display: "block", padding: 8, width: 120 }} />
           </label>
           <label>
-            Комментарий
+            Что важно для тебя в этом выезде
             <textarea value={comment} onChange={(e) => setComment(e.target.value)} rows={5} style={{ display: "block", width: "100%", padding: 8 }} />
           </label>
           <button className="mw-btn mw-btn--primary" type="submit" disabled={submitting}>

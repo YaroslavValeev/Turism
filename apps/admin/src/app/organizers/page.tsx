@@ -1,7 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { adminJson } from "../../lib/admin";
+import { AdminEmptyState } from "../../components/admin/AdminEmptyState";
+import { AdminFilterField, AdminFiltersBar } from "../../components/admin/AdminFiltersBar";
+import { AdminLoadingState } from "../../components/admin/AdminLoadingState";
+import { AdminMessage } from "../../components/admin/AdminMessage";
+import { AdminPageHeader } from "../../components/admin/AdminPageHeader";
+import { AdminStatCard, AdminStatGrid } from "../../components/admin/AdminStatCard";
+import { AdminStatusBadge } from "../../components/admin/AdminStatusBadge";
 import {
   ORGANIZER_VERIFICATION_STATUSES,
   getOrganizerBillingStatusLabel,
@@ -132,86 +139,139 @@ export default function OrganizersQueuePage() {
     };
   }, [loading, organizers]);
 
-  if (loading) return <p>Загрузка…</p>;
-  if (error) return <p style={{ color: "red" }}>{error}</p>;
+  const stats = useMemo(() => {
+    const withScore = organizers.filter((o) => scoreByOrganizerId[o.id]).length;
+    const trustedVerified = organizers.filter(
+      (o) => o.verificationStatus === "verified" || o.verificationStatus === "trusted",
+    ).length;
+    return { total: organizers.length, withScore, trustedVerified };
+  }, [organizers, scoreByOrganizerId]);
+
+  function verificationBadgeTone(status: string): "ok" | "warn" | "danger" | "muted" {
+    if (status === "trusted" || status === "verified") return "ok";
+    if (status === "rejected" || status === "blocked") return "danger";
+    if (status === "listed" || status === "checked" || status === "evidence") return "warn";
+    return "muted";
+  }
 
   return (
-    <main style={{ padding: 24 }}>
-      <p><strong>Организаторы</strong> | <a href="/programs">Программы</a> | <a href="/bookings">Заявки</a> | <a href="/incidents">Инциденты</a> | <a href="/reviews">Отзывы</a> | <a href="/commissions">Комиссии</a></p>
-      <h1>Очередь организаторов</h1>
-      <p style={{ fontSize: 14, color: "#555" }}>Верификация ведётся по внутренним runbook команды. Базовый порядок статусов: evidence → listed → checked → verified → trusted.</p>
-      <p>
-        Фильтр по верификации:{" "}
-        <select
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-          style={{ padding: 6 }}
-        >
-          <option value="">Все</option>
-          {ORGANIZER_VERIFICATION_STATUSES.map((s) => (
-            <option key={s} value={s}>
-              {getOrganizerVerificationStatusLabel(s)}
-            </option>
-          ))}
-        </select>
-      </p>
-      <table style={{ borderCollapse: "collapse", width: "100%" }}>
-        <thead>
-          <tr style={{ borderBottom: "2px solid #333" }}>
-            <th style={{ textAlign: "left", padding: 8 }}>Название</th>
-            <th style={{ textAlign: "left", padding: 8 }}>Email</th>
-            <th style={{ textAlign: "left", padding: 8 }}>Верификация</th>
-            <th style={{ textAlign: "left", padding: 8 }}>Onboarding</th>
-            <th style={{ textAlign: "left", padding: 8 }}>Billing</th>
-            <th style={{ textAlign: "left", padding: 8 }}>Privilege</th>
-            <th style={{ textAlign: "left", padding: 8 }}>Score (internal)</th>
-            <th style={{ textAlign: "left", padding: 8 }}>Moderation priority</th>
-            <th style={{ textAlign: "left", padding: 8 }}>Создан</th>
-          </tr>
-        </thead>
-        <tbody>
-          {organizers.map((o) => {
-            const score = scoreByOrganizerId[o.id];
-            const scoreMeta = scoreBandMeta(score?.scoreBand ?? "unknown");
-            const priority = moderationPriority(o, score);
-            const hints = organizerHints(o, score);
-            return (
-            <tr key={o.id} style={{ borderBottom: "1px solid #ccc" }}>
-              <td style={{ padding: 8 }}>{o.displayName}</td>
-              <td style={{ padding: 8 }}>{o.contactEmail}</td>
-              <td style={{ padding: 8 }}>{getOrganizerVerificationStatusLabel(o.verificationStatus)}</td>
-              <td style={{ padding: 8 }}>{getOrganizerOnboardingStatusLabel(o.onboardingStatus)}</td>
-              <td style={{ padding: 8 }}>{getOrganizerBillingStatusLabel(o.billingStatus)}</td>
-              <td style={{ padding: 8 }}>{getOrganizerPrivilegeStatusLabel(o.privilegeStatus)}</td>
-              <td style={{ padding: 8, fontSize: 13, color: "#444", maxWidth: 420 }}>
-                {score
-                  ? `${score.organizerScore.toFixed(1)} (${score.scoreBand})`
-                  : "—"}
-                <div style={{ marginTop: 4 }}>
-                  <span style={{ background: scoreMeta.bg, color: scoreMeta.color, borderRadius: 999, padding: "2px 8px", fontSize: 12 }}>
-                    {scoreMeta.label}
-                  </span>
-                </div>
-                <div style={{ marginTop: 6, color: "#666", fontSize: 12 }}>
-                  {organizerBreakdown(score)}
-                </div>
-                {hints.length > 0 && (
-                  <ul style={{ margin: "6px 0 0", paddingLeft: 18, color: "#555", fontSize: 12 }}>
-                    {hints.map((h) => (
-                      <li key={h}>{h}</li>
-                    ))}
-                  </ul>
-                )}
-              </td>
-              <td style={{ padding: 8 }}>
-                <span style={{ color: priority.color, fontWeight: 600 }}>{priority.label}</span>
-              </td>
-              <td style={{ padding: 8 }}>{new Date(o.createdAt).toLocaleDateString()}</td>
-            </tr>
-          )})}
-        </tbody>
-      </table>
-      {organizers.length === 0 && <p>Нет организаторов.</p>}
+    <main className="mw-admin-page">
+      <AdminPageHeader
+        title="Организаторы"
+        description="Верификация по внутренним runbook. Порядок статусов: evidence → listed → checked → verified → trusted."
+      />
+      {error ? <AdminMessage type="error">{error}</AdminMessage> : null}
+      {loading ? (
+        <AdminLoadingState />
+      ) : (
+        <>
+          <AdminStatGrid>
+            <AdminStatCard label="В списке" value={stats.total} hint="С учётом выбранного фильтра по верификации" />
+            <AdminStatCard label="Verified / trusted" value={stats.trustedVerified} hint="В текущей выборке" />
+            <AdminStatCard label="Со snapshot score" value={stats.withScore} hint="Метрики подтянулись с API" />
+          </AdminStatGrid>
+
+          <AdminFiltersBar title="Фильтры">
+            <AdminFilterField label="Статус верификации">
+              <select
+                className="mw-admin-input"
+                value={filter}
+                onChange={(e) => setFilter(e.target.value)}
+                style={{ minWidth: 220 }}
+              >
+                <option value="">Все</option>
+                {ORGANIZER_VERIFICATION_STATUSES.map((s) => (
+                  <option key={s} value={s}>
+                    {getOrganizerVerificationStatusLabel(s)}
+                  </option>
+                ))}
+              </select>
+            </AdminFilterField>
+          </AdminFiltersBar>
+
+          {organizers.length === 0 ? (
+            <AdminEmptyState
+              title="Нет организаторов"
+              description="По текущему фильтру записей нет. Сбросьте фильтр или проверьте импорт данных."
+            />
+          ) : (
+            <div style={{ overflowX: "auto" }}>
+              <table className="mw-admin-table">
+                <thead>
+                  <tr>
+                    <th>Название</th>
+                    <th>Email</th>
+                    <th>Верификация</th>
+                    <th>Onboarding</th>
+                    <th>Billing</th>
+                    <th>Privilege</th>
+                    <th>Score (internal)</th>
+                    <th>Moderation</th>
+                    <th>Создан</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {organizers.map((o) => {
+                    const score = scoreByOrganizerId[o.id];
+                    const scoreMeta = scoreBandMeta(score?.scoreBand ?? "unknown");
+                    const priority = moderationPriority(o, score);
+                    const hints = organizerHints(o, score);
+                    return (
+                      <tr key={o.id}>
+                        <td>{o.displayName}</td>
+                        <td>{o.contactEmail}</td>
+                        <td>
+                          <AdminStatusBadge tone={verificationBadgeTone(o.verificationStatus)}>
+                            {getOrganizerVerificationStatusLabel(o.verificationStatus)}
+                          </AdminStatusBadge>
+                        </td>
+                        <td className="mw-admin-muted">{getOrganizerOnboardingStatusLabel(o.onboardingStatus)}</td>
+                        <td className="mw-admin-muted">{getOrganizerBillingStatusLabel(o.billingStatus)}</td>
+                        <td className="mw-admin-muted">{getOrganizerPrivilegeStatusLabel(o.privilegeStatus)}</td>
+                        <td style={{ maxWidth: 420, fontSize: "0.9rem" }}>
+                          {score ? `${score.organizerScore.toFixed(1)} (${score.scoreBand})` : "—"}
+                          <div style={{ marginTop: 6 }}>
+                            <AdminStatusBadge
+                              tone="muted"
+                              style={{ background: scoreMeta.bg, color: scoreMeta.color, borderColor: "rgba(20,20,20,0.08)" }}
+                            >
+                              {scoreMeta.label}
+                            </AdminStatusBadge>
+                          </div>
+                          <div className="mw-admin-muted" style={{ marginTop: 6, fontSize: "0.82rem", whiteSpace: "normal" }}>
+                            {organizerBreakdown(score)}
+                          </div>
+                          {hints.length > 0 && (
+                            <ul className="mw-admin-muted" style={{ margin: "6px 0 0", paddingLeft: 18, fontSize: "0.82rem" }}>
+                              {hints.map((h) => (
+                                <li key={h}>{h}</li>
+                              ))}
+                            </ul>
+                          )}
+                        </td>
+                        <td>
+                          <AdminStatusBadge
+                            tone={
+                              priority.label.startsWith("P1")
+                                ? "danger"
+                                : priority.label.startsWith("P2")
+                                  ? "warn"
+                                  : "muted"
+                            }
+                          >
+                            {priority.label}
+                          </AdminStatusBadge>
+                        </td>
+                        <td className="mw-admin-muted">{new Date(o.createdAt).toLocaleDateString("ru-RU")}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
+      )}
     </main>
   );
 }

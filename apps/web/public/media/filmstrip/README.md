@@ -1,9 +1,11 @@
-# Filmstrip — web-ready (текущие и будущие ассеты)
+# Filmstrip — web-ready
 
-Здесь лежат **файлы, с которыми работает лендинг** (`HeroFilmstrip`): сейчас это JPEG из ручной загрузки. Позже сюда же можно положить **оптимизированные** `.webp` с теми же именами или обновить пути в `src/content/filmstripHero.ts`.
+Файлы JPEG для hero-киноленты (см. `src/content/filmstripHero.ts`).
 
-Подпапки: `wakesurf/`, `ski/`, `kite/`, `mtb/`.
+- **Сборка (единый 16:10, progressive JPEG, ~80 quality):** из корня монорепо  
+  `pnpm run filmstrip:build-assets`  
+  или: `pnpm --filter web run filmstrip:build-assets`
+- **Скрипт:** `apps/web/scripts/build_filmstrip_web_images.mjs` — качает **воспроизводимые** кадры (Picsum по `seed` и приводит к 1920×1200), при отсутствии сети — локальный градиент. Замените сгенерированные файлы на свои **под теми же путями** или обновите пути в `filmstripHero.ts`.
+- **Подпапки:** `wakesurf/`, `mtb/`, `ski/`, `kite/`.
 
-Исходники (дубликат/архив): `public/media/source/filmstrip/`.
-
-**Windows:** при переименовании только регистра (`Kite_1.jpg` → `kite_1.jpg`) файл может «пропасть» — лучше копировать из `source/` или переименовывать через промежуточное имя.
+**Windows:** при смене только регистра в имени файла путь в Git может вести себя неожиданно — копируйте через новое имя.

@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AdminNav } from "../../../components/AdminNav";
 import { adminJson } from "../../../lib/admin";
+import { AdminPageHeader } from "../../../components/admin/AdminPageHeader";
+import { AdminSectionCard } from "../../../components/admin/AdminSectionCard";
+import { AdminLoadingState } from "../../../components/admin/AdminLoadingState";
 
 type ScoreActionPayload = {
   generatedAt: string;
@@ -36,67 +38,78 @@ export default function ScoreActionsPage() {
   }, []);
 
   return (
-    <main style={{ padding: 24 }}>
-      <AdminNav current="/analytics/score-actions" />
-      <h1>Analytics — Score-driven Ops Actions</h1>
-      <p style={{ color: "#666", maxWidth: 900 }}>
-        Приоритизация follow-up по weak/watchlist сущностям: кого и что разбирать в moderation/ops в первую очередь.
-      </p>
-      {loading && <p>Загрузка...</p>}
-      {error && <p style={{ color: "red" }}>{error}</p>}
+    <main className="mw-admin-page">
+      <AdminPageHeader
+        title="Score-driven ops"
+        description="Приоритизация follow-up по слабым сущностям: moderation/ops. Данные из снимков score."
+      />
+      {loading && <AdminLoadingState />}
+      {error && <div className="mw-admin-alert mw-admin-alert--error">{error}</div>}
       {!loading && !error && data && (
         <>
-          <p style={{ fontSize: 13, color: "#555" }}>Сформировано: {new Date(data.generatedAt).toLocaleString("ru-RU")}</p>
-          <section style={{ marginTop: 20 }}>
-            <h2 style={{ marginBottom: 10 }}>Weak organizers</h2>
+          <p className="mw-admin-prose" style={{ marginBottom: 20 }}>
+            Сформировано: {new Date(data.generatedAt).toLocaleString("ru-RU")}
+          </p>
+          <AdminSectionCard title="Weak organizers">
             {data.weakOrganizers.length === 0 ? (
-              <p>Нет слабых организаторов в текущих snapshot.</p>
+              <p className="mw-admin-prose">Нет слабых организаторов в текущих снимках.</p>
             ) : (
-              <table style={{ borderCollapse: "collapse", width: "100%" }}>
-                <thead>
-                  <tr style={{ borderBottom: "2px solid #333" }}>
-                    <th style={{ textAlign: "left", padding: 8 }}>Organizer</th>
-                    <th style={{ textAlign: "left", padding: 8 }}>Score</th>
-                    <th style={{ textAlign: "left", padding: 8 }}>Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.weakOrganizers.map((row) => (
-                    <tr key={row.organizerId} style={{ borderBottom: "1px solid #ddd" }}>
-                      <td style={{ padding: 8 }}>{row.displayName} <code>{row.organizerId}</code></td>
-                      <td style={{ padding: 8 }}>{row.score.toFixed(1)} ({row.scoreBand})</td>
-                      <td style={{ padding: 8 }}>{row.recommendedAction}</td>
+              <div style={{ overflowX: "auto" }}>
+                <table className="mw-admin-table" style={{ margin: 0, minWidth: 720 }}>
+                  <thead>
+                    <tr>
+                      <th>Организатор</th>
+                      <th>Score</th>
+                      <th>Рекомендация</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {data.weakOrganizers.map((row) => (
+                      <tr key={row.organizerId}>
+                        <td>
+                          {row.displayName} <code className="mw-admin-code">{row.organizerId}</code>
+                        </td>
+                        <td>
+                          {row.score.toFixed(1)} ({row.scoreBand})
+                        </td>
+                        <td>{row.recommendedAction}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
-          </section>
-          <section style={{ marginTop: 24 }}>
-            <h2 style={{ marginBottom: 10 }}>Weak programs</h2>
+          </AdminSectionCard>
+          <AdminSectionCard title="Weak programs" style={{ marginTop: 8 }}>
             {data.weakPrograms.length === 0 ? (
-              <p>Нет слабых программ в текущих snapshot.</p>
+              <p className="mw-admin-prose">Нет слабых программ в текущих снимках.</p>
             ) : (
-              <table style={{ borderCollapse: "collapse", width: "100%" }}>
-                <thead>
-                  <tr style={{ borderBottom: "2px solid #333" }}>
-                    <th style={{ textAlign: "left", padding: 8 }}>Program</th>
-                    <th style={{ textAlign: "left", padding: 8 }}>Score</th>
-                    <th style={{ textAlign: "left", padding: 8 }}>Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.weakPrograms.map((row) => (
-                    <tr key={row.programId} style={{ borderBottom: "1px solid #ddd" }}>
-                      <td style={{ padding: 8 }}>{row.title} <code>{row.programId}</code></td>
-                      <td style={{ padding: 8 }}>{row.score.toFixed(1)} ({row.scoreBand})</td>
-                      <td style={{ padding: 8 }}>{row.recommendedAction}</td>
+              <div style={{ overflowX: "auto" }}>
+                <table className="mw-admin-table" style={{ margin: 0, minWidth: 720 }}>
+                  <thead>
+                    <tr>
+                      <th>Программа</th>
+                      <th>Score</th>
+                      <th>Рекомендация</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {data.weakPrograms.map((row) => (
+                      <tr key={row.programId}>
+                        <td>
+                          {row.title} <code className="mw-admin-code">{row.programId}</code>
+                        </td>
+                        <td>
+                          {row.score.toFixed(1)} ({row.scoreBand})
+                        </td>
+                        <td>{row.recommendedAction}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
-          </section>
+          </AdminSectionCard>
         </>
       )}
     </main>

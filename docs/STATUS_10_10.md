@@ -2,6 +2,8 @@
 
 Документ фиксирует, **что реализовано в репозитории** и **что остаётся на стороне окружения/владельца**. Стратегия треков: [`MYWAVE_STRATEGY_TWOTRACKS.md`](MYWAVE_STRATEGY_TWOTRACKS.md).
 
+**Три gate (закрытие пилота / Timeweb):** см. [`gates/README.md`](gates/README.md) — [Gate 1](gates/GATE1_LOCAL_GREEN_SMOKE.md) (локальный smoke), [Gate 2](gates/GATE2_AI_PILOT.md) (AI + owner), [Gate 3](gates/GATE3_TIMEWEB_EVIDENCE.md) (деплой- evidence).
+
 ## Выполнено в коде и документах
 
 | Область | Статус | Где смотреть |
@@ -11,7 +13,7 @@
 | Shadow GMV / комиссия (KPI) | `GET /metrics/pilot-kpi` | Админ: **Пилот KPI (shadow)** `/pilot-kpi` |
 | Атрибуция брони, сделки, revenue в метриках | Ранее в API | `bookings`, `deals`, `content_metrics.revenueRub` |
 | Таксономия событий | Канон + док | `validators.ts` `ALLOWED_EVENT_NAMES`, [`ANALYTICS_EVENT_TAXONOMY.md`](ANALYTICS_EVENT_TAXONOMY.md) |
-| Legal / согласия | Форма заявки + текст на `/privacy-and-consent` | `program-pdp.client.tsx`, `privacy-and-consent/page.tsx` |
+| Legal / согласия | Форма заявки + фиксация в БД (`legalConsentAt`, `legalConsentPolicyVersion`) + `/privacy-and-consent` | `bookings` POST + админ **Заявка**; `LEGAL_CONSENT_POLICY_VERSION` в `services/api/.env` (опц.) |
 | Демо-данные 5 org × 3 prog | Опциональный seed | `SEED_DEMO_CATALOG=1` + `pnpm --filter api db:seed` |
 | E2E smoke (API) | Скрипт при запущенном API | `pnpm --filter api smoke:pilot-e2e` |
 | Docker health API | `docker-compose.production.yml` | `healthcheck` на `/health` |

@@ -10,6 +10,7 @@ import { AdminSectionCard } from "../../components/admin/AdminSectionCard";
 type PilotKpi = {
   pilotMode: boolean;
   note: string;
+  privacy?: { publicEndpoint: boolean; containsBookingContactData: boolean };
   shadow: {
     bookingsTotal: number;
     dealsTotal: number;
@@ -55,6 +56,12 @@ export default function PilotKpiPage() {
           Сервер: <code>PILOT_MODE_ENABLED</code> в <code>services/api/.env</code> ={" "}
           <strong>{data.pilotMode ? "true" : "false"}</strong>. Web/Admin баннер: <code>NEXT_PUBLIC_PILOT_MODE=1</code>.
         </p>
+        {data.privacy ? (
+          <p style={{ margin: "10px 0 0", fontSize: 13, color: "var(--mw-text-muted, #666)" }}>
+            Эндпоинт только с admin JWT. Персональные контакты заявок сюда не попадают:{" "}
+            <code>containsBookingContactData={String(data.privacy.containsBookingContactData)}</code>
+          </p>
+        ) : null}
       </AdminSectionCard>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px,1fr))", gap: 12, marginTop: 16 }}>
         {(

@@ -347,6 +347,8 @@ export function metricsRoutes(env: Env): Router {
         note: pilotMode
           ? "PILOT_MODE: платежи/инвойсы выключены; суммы — shadow-учёт для аналитики."
           : "PILOT_MODE off",
+        /** Только агрегаты; персональные данные и тексты заявок не отдаются. Доступ: admin JWT. */
+        privacy: { publicEndpoint: false, containsBookingContactData: false },
         shadow: {
           bookingsTotal: bookings,
           dealsTotal: deals,

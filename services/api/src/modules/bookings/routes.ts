@@ -33,11 +33,18 @@ export function bookingsRoutes(env: Env): Router {
       utmMedium?: string;
       exploreType?: string;
       exploreSlug?: string;
+      /** Обязательно true: согласие с политикой и передачей контакта (сохраняется в legalConsentAt) */
+      legalConsent?: boolean;
     };
     if (!body.programId || !body.guestContact) {
       res.status(400).json({ error: "programId and guestContact required" });
       return;
     }
+    if (body.legalConsent !== true) {
+      res.status(400).json({ error: "legal_consent_required" });
+      return;
+    }
+    const legalVersion = (process.env.LEGAL_CONSENT_POLICY_VERSION || "").trim() || "pilot-v1";
     const program = await prisma.program.findUnique({
       where: { id: body.programId },
       select: { id: true, organizerId: true, publishStatus: true, endDate: true, spotsAvailable: true },
@@ -89,6 +96,7 @@ export function bookingsRoutes(env: Env): Router {
       if (!ex) contentItemId = null;
     }
 
+    const consentAt = new Date();
     const b = await prisma.booking.create({
       data: {
         programId: program.id,
@@ -106,6 +114,8 @@ export function bookingsRoutes(env: Env): Router {
         exploreSlug: body.exploreSlug?.trim() || null,
         utmSource: body.utmSource?.trim() || null,
         utmMedium: body.utmMedium?.trim() || null,
+        legalConsentAt: consentAt,
+        legalConsentPolicyVersion: legalVersion,
       },
       include: { program: { select: { title: true } }, organizer: { select: { displayName: true } } },
     });
@@ -135,6 +145,8 @@ export function bookingsRoutes(env: Env): Router {
         utm_medium: body.utmMedium?.trim() ?? null,
         explore_type: body.exploreType?.trim() ?? null,
         explore_slug: body.exploreSlug?.trim() ?? null,
+        legal_consent_policy: legalVersion,
+        legal_consent_at: consentAt.toISOString(),
       },
     });
     res.status(201).json(b);

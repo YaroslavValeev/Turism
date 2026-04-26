@@ -29,6 +29,7 @@ async function main() {
     programId: program.id,
     guestContact: "smoke-e2e+local@mywave.test",
     sourceChannel: "e2e_smoke",
+    legalConsent: true,
   };
   const b1 = await fetch(`${base}/bookings`, {
     method: "POST",

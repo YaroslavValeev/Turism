@@ -287,6 +287,7 @@ export function ProgramPdpClient({ id, validHubKeys }: PdpProps) {
           programId: program.id,
           guestContact: guestContact.trim(),
           notes: notes.trim() || undefined,
+          legalConsent: true,
           sourceChannel: "program_page",
           sourceCampaign: "g4_entry_tracking",
           entryType: entryTracking.entryType,

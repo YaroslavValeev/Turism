@@ -16,6 +16,8 @@ type BookingDetail = {
   nextStatuses: string[];
   sourceChannel?: string | null;
   notes?: string | null;
+  legalConsentAt?: string | null;
+  legalConsentPolicyVersion?: string | null;
   createdAt: string;
   program?: { id: string; title: string };
   organizer?: { id: string; displayName: string; contactEmail: string };
@@ -144,6 +146,21 @@ export default function BookingDetailPage() {
               <tr>
                 <td style={{ fontWeight: 700, color: "var(--mw-muted2)", fontSize: "0.82rem" }}>Источник</td>
                 <td>{getSourceChannelLabel(booking.sourceChannel)}</td>
+              </tr>
+              <tr>
+                <td style={{ fontWeight: 700, color: "var(--mw-muted2)", fontSize: "0.82rem" }}>Согласие (legal)</td>
+                <td>
+                  {booking.legalConsentAt ? (
+                    <>
+                      {new Date(booking.legalConsentAt).toLocaleString("ru-RU")}
+                      {booking.legalConsentPolicyVersion ? (
+                        <span className="mw-admin-prose"> — версия: {booking.legalConsentPolicyVersion}</span>
+                      ) : null}
+                    </>
+                  ) : (
+                    "—"
+                  )}
+                </td>
               </tr>
               <tr>
                 <td style={{ fontWeight: 700, color: "var(--mw-muted2)", fontSize: "0.82rem", verticalAlign: "top" }}>

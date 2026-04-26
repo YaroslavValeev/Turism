@@ -450,6 +450,9 @@ model Booking {
   collectedCommissionRub Int?
   proofOfCompletion   String?   @db.Text
   notes               String?   @db.Text
+  /// Согласие с политикой и передачей контакта (PDP)
+  legalConsentAt              DateTime?
+  legalConsentPolicyVersion   String?
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
   lead                Lead?     @relation(fields: [leadId], references: [id], onDelete: SetNull)

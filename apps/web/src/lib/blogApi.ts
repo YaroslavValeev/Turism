@@ -1,4 +1,4 @@
-import { getServerApiBaseUrl } from "./serverApiBase";
+import { getServerApiBaseUrl, safeServerFetch } from "./serverApiBase";
 
 export type ResolvedBlogSeo = {
   seoTitle: string;
@@ -108,23 +108,24 @@ export async function fetchPublicBlogList(params?: { limit?: number; offset?: nu
   if (params?.limit != null) sp.set("limit", String(params.limit));
   if (params?.offset != null) sp.set("offset", String(params.offset));
   const q = sp.toString();
-  const res = await fetch(`${base}/public/blog${q ? `?${q}` : ""}`, {
+  const res = await safeServerFetch(`${base}/public/blog${q ? `?${q}` : ""}`, {
     next: { revalidate: REVALIDATE_LIST },
   });
-  if (!res.ok) {
-    throw new Error(`blog list ${res.status}`);
+  if (!res || !res.ok) {
+    return { ok: true, total: 0, items: [] };
   }
   return (await res.json()) as ListResponse;
 }
 
 export async function fetchPublicBlogPost(slug: string): Promise<PublicBlogPost | null> {
   const base = getServerApiBaseUrl();
-  const res = await fetch(`${base}/public/blog/${encodeURIComponent(slug)}`, {
+  const res = await safeServerFetch(`${base}/public/blog/${encodeURIComponent(slug)}`, {
     next: { revalidate: REVALIDATE_POST },
   });
+  if (!res) return null;
   if (res.status === 404) return null;
   if (!res.ok) {
-    throw new Error(`blog post ${res.status}`);
+    return null;
   }
   const data = (await res.json()) as PostResponse;
   return data.post;
@@ -132,12 +133,13 @@ export async function fetchPublicBlogPost(slug: string): Promise<PublicBlogPost 
 
 export async function fetchPublicBlogRelated(slug: string): Promise<PublicBlogRelated | null> {
   const base = getServerApiBaseUrl();
-  const res = await fetch(`${base}/public/blog/${encodeURIComponent(slug)}/related`, {
+  const res = await safeServerFetch(`${base}/public/blog/${encodeURIComponent(slug)}/related`, {
     next: { revalidate: REVALIDATE_RELATED },
   });
+  if (!res) return null;
   if (res.status === 404) return null;
   if (!res.ok) {
-    throw new Error(`blog related ${res.status}`);
+    return null;
   }
   return (await res.json()) as PublicBlogRelated;
 }

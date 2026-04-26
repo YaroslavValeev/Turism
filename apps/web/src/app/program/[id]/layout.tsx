@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { getServerApiBaseUrl, safeServerFetch } from "../../../lib/serverApiBase";
 
 type ProgramData = {
   title?: string;
@@ -7,16 +8,11 @@ type ProgramData = {
   audienceFit?: string | null;
 };
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
-
 async function getProgram(id: string): Promise<ProgramData | null> {
-  try {
-    const res = await fetch(`${API_URL}/programs/${id}`, { next: { revalidate: 300 } });
-    if (!res.ok) return null;
-    return (await res.json()) as ProgramData;
-  } catch {
-    return null;
-  }
+  const base = getServerApiBaseUrl();
+  const res = await safeServerFetch(`${base}/programs/${id}`, { next: { revalidate: 300 } });
+  if (!res || !res.ok) return null;
+  return (await res.json()) as ProgramData;
 }
 
 export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {

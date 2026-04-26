@@ -9,3 +9,18 @@ export function getServerApiBaseUrl(): string {
     "http://localhost:3001"
   );
 }
+
+/**
+ * `fetch` для RSC при `next build` / SSG: при ECONNRESET и офлайн API не падает, а возвращает `null`
+ * (страницы деградируют в пустые списки / 404, см. public explore/blog/collections).
+ */
+export async function safeServerFetch(
+  input: string | URL,
+  init?: RequestInit,
+): Promise<Response | null> {
+  try {
+    return await fetch(input, init);
+  } catch {
+    return null;
+  }
+}

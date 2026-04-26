@@ -1,4 +1,4 @@
-import { getServerApiBaseUrl } from "./serverApiBase";
+import { getServerApiBaseUrl, safeServerFetch } from "./serverApiBase";
 import type { PublicProgramRelated } from "./blogApi";
 
 export type ExploreHubType = "discipline" | "region" | "season";
@@ -48,8 +48,8 @@ export type ExploreHubPayload = {
 
 export async function fetchPublicExploreList(): Promise<ExploreListItem[]> {
   const base = getServerApiBaseUrl();
-  const res = await fetch(`${base}/public/explore`, { next: { revalidate: 300 } });
-  if (!res.ok) return [];
+  const res = await safeServerFetch(`${base}/public/explore`, { next: { revalidate: 300 } });
+  if (!res || !res.ok) return [];
   const data = (await res.json()) as { items?: ExploreListItem[] };
   return data.items ?? [];
 }
@@ -59,9 +59,11 @@ export async function fetchPublicExploreHub(type: string, slug: string): Promise
   const s = decodeURIComponent(slug).trim();
   if (!s) return null;
   const base = getServerApiBaseUrl();
-  const res = await fetch(`${base}/public/explore/${encodeURIComponent(t)}/${encodeURIComponent(s)}`, {
-    next: { revalidate: 300 },
-  });
+  const res = await safeServerFetch(
+    `${base}/public/explore/${encodeURIComponent(t)}/${encodeURIComponent(s)}`,
+    { next: { revalidate: 300 } },
+  );
+  if (!res) return null;
   if (res.status === 404) return null;
   if (!res.ok) return null;
   const data = (await res.json()) as { ok?: boolean; hub?: ExploreHubPayload };

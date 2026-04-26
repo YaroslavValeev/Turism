@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { getServerApiBaseUrl } from "../lib/serverApiBase";
+import { getServerApiBaseUrl, safeServerFetch } from "../lib/serverApiBase";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://mywavetour.ru").replace(/\/+$/, "");
@@ -50,9 +50,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ];
 
   const base = getServerApiBaseUrl();
-  try {
-    const res = await fetch(`${base}/public/blog?limit=500`, { next: { revalidate: 300 } });
-    if (res.ok) {
+  {
+    const res = await safeServerFetch(`${base}/public/blog?limit=500`, { next: { revalidate: 300 } });
+    if (res?.ok) {
       const data = (await res.json()) as { items?: { slug: string; updatedAt: string }[] };
       const items = data.items ?? [];
       for (const it of items) {
@@ -64,13 +64,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         });
       }
     }
-  } catch {
-    // sitemap остаётся со статическими URL, если API недоступен на билде
   }
 
-  try {
-    const resCol = await fetch(`${base}/public/collections?limit=500`, { next: { revalidate: 300 } });
-    if (resCol.ok) {
+  {
+    const resCol = await safeServerFetch(`${base}/public/collections?limit=500`, { next: { revalidate: 300 } });
+    if (resCol?.ok) {
       const data = (await resCol.json()) as { items?: { slug: string; updatedAt: string }[] };
       for (const it of data.items ?? []) {
         staticEntries.push({
@@ -81,13 +79,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         });
       }
     }
-  } catch {
-    // ignore
   }
 
-  try {
-    const resEx = await fetch(`${base}/public/explore`, { next: { revalidate: 300 } });
-    if (resEx.ok) {
+  {
+    const resEx = await safeServerFetch(`${base}/public/explore`, { next: { revalidate: 300 } });
+    if (resEx?.ok) {
       const data = (await resEx.json()) as {
         items?: { type: string; slug: string; updatedAt: string }[];
       };
@@ -100,8 +96,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         });
       }
     }
-  } catch {
-    // ignore
   }
 
   return staticEntries;

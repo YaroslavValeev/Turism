@@ -1,5 +1,5 @@
 import type { PublicOrganizerRelated, PublicProgramRelated } from "./blogApi";
-import { getServerApiBaseUrl } from "./serverApiBase";
+import { getServerApiBaseUrl, safeServerFetch } from "./serverApiBase";
 
 export type ResolvedCollectionSeo = {
   seoTitle: string;
@@ -67,24 +67,32 @@ type OneRes = { ok: true; collection: PublicCollectionDetail };
 
 export async function fetchPublicCollectionList(): Promise<ListRes> {
   const base = getServerApiBaseUrl();
-  const res = await fetch(`${base}/public/collections?limit=80`, { next: { revalidate: REV } });
-  if (!res.ok) throw new Error(`collections list ${res.status}`);
+  const res = await safeServerFetch(`${base}/public/collections?limit=80`, { next: { revalidate: REV } });
+  if (!res || !res.ok) {
+    return { ok: true, total: 0, items: [] };
+  }
   return (await res.json()) as ListRes;
 }
 
 export async function fetchPublicCollection(slug: string): Promise<PublicCollectionDetail | null> {
   const base = getServerApiBaseUrl();
-  const res = await fetch(`${base}/public/collections/${encodeURIComponent(slug)}`, { next: { revalidate: REV } });
+  const res = await safeServerFetch(`${base}/public/collections/${encodeURIComponent(slug)}`, {
+    next: { revalidate: REV },
+  });
+  if (!res) return null;
   if (res.status === 404) return null;
-  if (!res.ok) throw new Error(`collection ${res.status}`);
+  if (!res.ok) return null;
   const data = (await res.json()) as OneRes;
   return data.collection;
 }
 
 export async function fetchPublicCollectionRelated(slug: string): Promise<PublicCollectionRelated | null> {
   const base = getServerApiBaseUrl();
-  const res = await fetch(`${base}/public/collections/${encodeURIComponent(slug)}/related`, { next: { revalidate: REV } });
+  const res = await safeServerFetch(`${base}/public/collections/${encodeURIComponent(slug)}/related`, {
+    next: { revalidate: REV },
+  });
+  if (!res) return null;
   if (res.status === 404) return null;
-  if (!res.ok) throw new Error(`collection related ${res.status}`);
+  if (!res.ok) return null;
   return (await res.json()) as PublicCollectionRelated;
 }

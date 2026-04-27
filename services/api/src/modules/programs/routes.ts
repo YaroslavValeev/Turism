@@ -36,6 +36,30 @@ function toPublicProgram<P extends { intakeSource?: string | null }>(p: P): Omit
   return rest;
 }
 
+function containsSyntheticMarker(value: string | null | undefined): boolean {
+  const v = String(value ?? "").trim().toLowerCase();
+  if (!v) return false;
+  return /\b(e2e|test|demo|seed|synthetic)\b|тест|синтет|cmof/.test(v);
+}
+
+function isSyntheticPublicProgram(
+  p: {
+    title?: string | null;
+    organizerName?: string | null;
+    sourceUrl?: string | null;
+    intakeSource?: string | null;
+    organizer?: { displayName?: string | null } | null;
+  },
+): boolean {
+  if (containsSyntheticMarker(p.title)) return true;
+  if (containsSyntheticMarker(p.organizerName)) return true;
+  if (containsSyntheticMarker(p.organizer?.displayName)) return true;
+  if (containsSyntheticMarker(p.intakeSource)) return true;
+  const sourceUrl = String(p.sourceUrl ?? "").trim().toLowerCase();
+  if (sourceUrl.includes("example.com") || sourceUrl.includes("localhost")) return true;
+  return false;
+}
+
 export function programsRoutes(env: Env): Router {
   const router = Router();
   const admin = requireAdmin(env);
@@ -87,7 +111,8 @@ export function programsRoutes(env: Env): Router {
       res.json(list);
       return;
     }
-    res.json(dedupeProgramsByEventKey(list).map((p) => toPublicProgram(p)));
+    const publicList = dedupeProgramsByEventKey(list).filter((p) => !isSyntheticPublicProgram(p));
+    res.json(publicList.map((p) => toPublicProgram(p)));
   });
 
   router.get("/:id", async (req: Request, res: Response) => {
@@ -100,6 +125,10 @@ export function programsRoutes(env: Env): Router {
       return;
     }
     if (!isProgramPubliclyVisible(p)) {
+      res.status(404).json({ error: "Not found" });
+      return;
+    }
+    if (isSyntheticPublicProgram(p)) {
       res.status(404).json({ error: "Not found" });
       return;
     }

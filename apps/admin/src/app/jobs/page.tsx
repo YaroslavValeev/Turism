@@ -89,7 +89,7 @@ export default function JobsPage() {
     return (
       <main className="mw-admin-page">
         <AdminPageHeader
-          title="Jobs и ingestion"
+          title="Задачи и загрузка данных"
           description="Счётчики витрины и последние source runs. Триггеры — вручную, для срезов v1 / контент-черновиков."
         />
         <AdminLoadingState label="Загружаем дашборд…" />
@@ -108,8 +108,8 @@ export default function JobsPage() {
   return (
     <main className="mw-admin-page">
       <AdminPageHeader
-        title="Jobs и ingestion"
-        description="Ручные триггеры вертикального среза ingestion: collect, normalize, dedup, content_drafts. Не полный дашборд source→publish — см. `docs/OPEN_STATUS_CHECKPOINT.md`."
+        title="Задачи и загрузка данных"
+        description="Ручные запуски этапов: сбор, нормализация, дедупликация и черновики контента."
         actions={
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
             <button
@@ -118,7 +118,7 @@ export default function JobsPage() {
               onClick={() => void runJob("/jobs/run-daily-sync", "run-daily-sync")}
               disabled={busy !== ""}
             >
-              {busy === "run-daily-sync" ? "…" : "Daily sync"}
+              {busy === "run-daily-sync" ? "…" : "Дневная синхронизация"}
             </button>
             <button
               type="button"
@@ -126,7 +126,7 @@ export default function JobsPage() {
               onClick={() => void runJob("/jobs/run-ingestion", "run-ingestion")}
               disabled={busy !== ""}
             >
-              {busy === "run-ingestion" ? "…" : "Ingestion"}
+              {busy === "run-ingestion" ? "…" : "Загрузка данных"}
             </button>
             <button
               type="button"
@@ -134,7 +134,7 @@ export default function JobsPage() {
               onClick={() => void runJob("/jobs/run-normalization", "run-normalization")}
               disabled={busy !== ""}
             >
-              {busy === "run-normalization" ? "…" : "Normalization"}
+              {busy === "run-normalization" ? "…" : "Нормализация"}
             </button>
             <button
               type="button"
@@ -142,7 +142,7 @@ export default function JobsPage() {
               onClick={() => void runJob("/jobs/run-dedup", "run-dedup")}
               disabled={busy !== ""}
             >
-              {busy === "run-dedup" ? "…" : "Dedup"}
+              {busy === "run-dedup" ? "…" : "Дедупликация"}
             </button>
             <button
               type="button"
@@ -150,7 +150,7 @@ export default function JobsPage() {
               onClick={() => void runJob("/jobs/run-content-drafts", "run-content-drafts")}
               disabled={busy !== ""}
             >
-              {busy === "run-content-drafts" ? "…" : "Content drafts (D)"}
+              {busy === "run-content-drafts" ? "…" : "Черновики контента"}
             </button>
             <button type="button" className="mw-admin-btn mw-admin-btn--ghost" onClick={() => void loadData()}>
               Обновить
@@ -164,32 +164,32 @@ export default function JobsPage() {
       <AdminSectionCard title="Счётчики" style={{ marginBottom: 0 }}>
         <AdminStatGrid>
           <AdminStatCard label="Источники" value={dashboard.counters.sources} />
-          <AdminStatCard label="Raw" value={dashboard.counters.rawItems} />
-          <AdminStatCard label="Normalized" value={dashboard.counters.normalizedItems} />
+          <AdminStatCard label="Сырые записи" value={dashboard.counters.rawItems} />
+          <AdminStatCard label="Нормализованные" value={dashboard.counters.normalizedItems} />
           <AdminStatCard label="Кандидаты" value={dashboard.counters.candidates} />
-          <AdminStatCard label="Needs review" value={dashboard.counters.needsReview} />
-          <AdminStatCard label="Approved" value={dashboard.counters.approved} />
-          <AdminStatCard label="Published" value={dashboard.counters.published} />
+          <AdminStatCard label="Требуют проверки" value={dashboard.counters.needsReview} />
+          <AdminStatCard label="Одобрены" value={dashboard.counters.approved} />
+          <AdminStatCard label="Опубликованы" value={dashboard.counters.published} />
           <AdminStatCard
-            label="Content drafts"
+            label="Черновики контента"
             value={dashboard.counters.contentDrafts ?? "—"}
           />
         </AdminStatGrid>
       </AdminSectionCard>
 
-      <AdminSectionCard title="Последние source runs">
+      <AdminSectionCard title="Последние запуски по источникам">
         {dashboard.recentRuns.length === 0 ? (
           <AdminEmptyState
-            title="Пока нет source runs"
-            description="После запуска ingestion / daily sync здесь появятся последние прогоны по источникам."
+            title="Пока нет запусков"
+            description="После запуска этапов здесь появятся последние прогоны по источникам."
           />
         ) : (
-          <div style={{ overflowX: "auto" }}>
+          <div className="mw-admin-table-outer mw-admin-table-outer--always-scroll">
             <table className="mw-admin-table" style={{ margin: 0 }}>
               <thead>
                 <tr>
                   <th>Источник</th>
-                  <th>Run</th>
+                  <th>Запуск</th>
                   <th>Результат</th>
                   <th>Ошибка</th>
                 </tr>
@@ -210,7 +210,7 @@ export default function JobsPage() {
                       </div>
                     </td>
                     <td>
-                      found {run.itemsFound} · created {run.itemsCreated}
+                      найдено {run.itemsFound} · создано {run.itemsCreated}
                     </td>
                     <td style={{ color: run.errorMessage ? "#991b1b" : "var(--mw-muted2)" }}>
                       {run.errorMessage || "—"}

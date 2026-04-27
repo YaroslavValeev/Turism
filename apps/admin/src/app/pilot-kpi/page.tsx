@@ -48,31 +48,33 @@ export default function PilotKpiPage() {
   return (
     <main className="mw-admin-page">
       <AdminPageHeader
-        title="Пилот: shadow GMV / комиссия"
-        description={data.note}
+        title="Пилот KPI: деньги и заявки"
+        description="Простая сводка по заявкам, обороту и комиссии за текущий период."
       />
-      <AdminSectionCard title="API: PILOT_MODE_ENABLED">
+      <AdminSectionCard title="Статус режима пилота">
         <p style={{ margin: 0, fontSize: 14 }}>
-          Сервер: <code>PILOT_MODE_ENABLED</code> в <code>services/api/.env</code> ={" "}
-          <strong>{data.pilotMode ? "true" : "false"}</strong>. Web/Admin баннер: <code>NEXT_PUBLIC_PILOT_MODE=1</code>.
+          Режим пилота на сервере: <strong>{data.pilotMode ? "включён" : "выключен"}</strong>.
         </p>
         {data.privacy ? (
           <p style={{ margin: "10px 0 0", fontSize: 13, color: "var(--mw-text-muted, #666)" }}>
-            Эндпоинт только с admin JWT. Персональные контакты заявок сюда не попадают:{" "}
-            <code>containsBookingContactData={String(data.privacy.containsBookingContactData)}</code>
+            Контакты клиентов не показываются в этой аналитике:{" "}
+            <code>{String(data.privacy.containsBookingContactData)}</code>
           </p>
+        ) : null}
+        {data.note ? (
+          <p style={{ margin: "10px 0 0", fontSize: 13, color: "var(--mw-text-muted, #666)" }}>{data.note}</p>
         ) : null}
       </AdminSectionCard>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px,1fr))", gap: 12, marginTop: 16 }}>
         {(
           [
-            ["Брони (всего)", data.shadow.bookingsTotal],
-            ["Deals (строки)", data.shadow.dealsTotal],
-            ["Σ GMV ₽", data.shadow.sumGmvRub],
-            ["Σ net ₽", data.shadow.sumNetRub],
-            ["Σ paid ₽", data.shadow.sumPaidRub],
-            ["Σ deal amount ₽", data.shadow.dealAmountRub],
-            ["Shadow commission ₽", data.shadow.shadowCommissionRub],
+            ["Заявок всего", formatInt(data.shadow.bookingsTotal)],
+            ["Оплачено заявок", formatInt(data.shadow.dealsTotal)],
+            ["Оборот (GMV)", formatRub(data.shadow.sumGmvRub)],
+            ["Чистая сумма (net)", formatRub(data.shadow.sumNetRub)],
+            ["Фактически оплачено", formatRub(data.shadow.sumPaidRub)],
+            ["Сумма сделок", formatRub(data.shadow.dealAmountRub)],
+            ["Комиссия", formatRub(data.shadow.shadowCommissionRub)],
           ] as const
         ).map(([label, v]) => (
           <div key={label} className="mw-admin-card" style={{ padding: 16 }}>
@@ -83,4 +85,12 @@ export default function PilotKpiPage() {
       </div>
     </main>
   );
+}
+
+function formatInt(value: number): string {
+  return Number(value || 0).toLocaleString("ru-RU");
+}
+
+function formatRub(value: number): string {
+  return `${Number(value || 0).toLocaleString("ru-RU")} ₽`;
 }

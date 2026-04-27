@@ -1938,6 +1938,14 @@ a:hover {
   animation: tours-pulse 1.4s ease-in-out infinite;
 }
 
+.tour-card--archived .tour-card-image__img {
+  filter: grayscale(100%);
+}
+
+.tour-card--archived {
+  border-color: rgba(148, 163, 184, 0.5);
+}
+
 .tour-card--skeleton .tour-card-body {
   padding: 10px 12px 12px;
 }

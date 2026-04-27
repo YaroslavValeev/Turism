@@ -19,6 +19,51 @@ type PublishedProgramPayload = {
   startDate: Date;
 };
 
+function readIntEnv(name: string, fallback: number): number {
+  const raw = process.env[name];
+  if (!raw) return fallback;
+  const n = Number(raw);
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : fallback;
+}
+
+function readBoolEnv(name: string, fallback: boolean): boolean {
+  const raw = process.env[name];
+  if (!raw) return fallback;
+  return raw === "1" || raw.toLowerCase() === "true";
+}
+
+function evaluateTelegramTitleQuality(title: string): { ok: boolean; reasons: string[] } {
+  const t = title.trim();
+  const reasons: string[] = [];
+  const maxLen = readIntEnv("TG_TITLE_MAX_LEN", 120);
+  const maxUpperRatioPct = readIntEnv("TG_TITLE_MAX_UPPER_RATIO_PCT", 42);
+  const allowPromoEmoji = readBoolEnv("TG_TITLE_ALLOW_PROMO_EMOJI", false);
+  const allowClickbaitPhrases = readBoolEnv("TG_TITLE_ALLOW_CLICKBAIT", false);
+  const enableFilter = readBoolEnv("TG_TITLE_QUALITY_FILTER_ENABLED", true);
+  if (!enableFilter) return { ok: true, reasons };
+
+  if (!t) reasons.push("empty");
+  if (t.length > maxLen) reasons.push("too_long");
+  if (!allowPromoEmoji && /⚡|🔥|💪|🎉|🚀/.test(t)) reasons.push("promo_emoji");
+  if (!allowClickbaitPhrases && /привези|ставь на паузу|удиви всех|лучший|супер/i.test(t)) reasons.push("clickbait_phrase");
+  if (/[!?.]{3,}/.test(t)) reasons.push("excessive_punctuation");
+  const letters = Array.from(t).filter((ch) => /[A-Za-zА-Яа-яЁё]/.test(ch));
+  const upper = letters.filter((ch) => /[A-ZА-ЯЁ]/.test(ch));
+  if (letters.length >= 18 && upper.length / letters.length > maxUpperRatioPct / 100) reasons.push("too_much_uppercase");
+  return { ok: reasons.length === 0, reasons };
+}
+
+function normalizeTelegramMediaUrl(rawUrl: string | null | undefined, apiBase: string): string | null {
+  const v = String(rawUrl ?? "").trim();
+  if (!v) return null;
+  if (/^https?:\/\//i.test(v)) return isPublicHttpUrl(v) ? v : null;
+  if (v.startsWith("/")) {
+    const full = `${apiBase}${v}`;
+    return isPublicHttpUrl(full) ? full : null;
+  }
+  return null;
+}
+
 function addUtm(url: string, source: "email" | "telegram_channel" | "telegram_dm"): string {
   try {
     const parsed = new URL(url);
@@ -56,15 +101,36 @@ async function loadProgramNotifySource(program: PublishedProgramPayload): Promis
   };
 }
 
+async function loadProgramPrimaryMediaUrl(programId: string, apiBase: string): Promise<string | null> {
+  const media = await prisma.programMedia.findFirst({
+    where: { programId, mediaType: "image" },
+    orderBy: { id: "asc" },
+    select: { url: true },
+  });
+  return normalizeTelegramMediaUrl(media?.url, apiBase);
+}
+
 async function sendTelegramDirectIfPossible(
   env: Env,
   username: string,
   text: string,
-  options?: { parseMode?: "HTML" },
+  options?: { parseMode?: "HTML"; mediaUrl?: string },
 ): Promise<boolean> {
   const base = env.TELEGRAM_BOT_API_BASE_URL?.trim();
   if (!base) return false;
   try {
+    const baseUrl = base.replace(/\/+$/, "");
+    if (options?.mediaUrl && isPublicHttpUrl(options.mediaUrl)) {
+      await fetch(`${baseUrl}/sendPhoto`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          chat_id: `@${username.replace(/^@/, "")}`,
+          photo: options.mediaUrl,
+          disable_notification: true,
+        }),
+      }).catch(() => undefined);
+    }
     const resp = await fetch(`${base.replace(/\/+$/, "")}/sendMessage`, {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -117,7 +183,7 @@ function buildTelegramInlineKeyboard(
     inline_keyboard.push([{ text: "Перейти на сайт", url: webBase }]);
   }
   if (inviteLink && isPublicHttpUrl(inviteLink)) {
-    inline_keyboard.push([{ text: "К организатору / в чат", url: inviteLink }]);
+    inline_keyboard.push([{ text: "Связаться с организатором", url: inviteLink }]);
   }
   if (!inline_keyboard.length) return undefined;
   return { inline_keyboard };
@@ -127,12 +193,24 @@ async function sendTelegramChannelUpdate(
   env: Env,
   text: string,
   replyMarkup?: Record<string, unknown>,
-  options?: { parseMode?: "HTML" },
+  options?: { parseMode?: "HTML"; mediaUrl?: string },
 ): Promise<boolean> {
   const base = env.TELEGRAM_BOT_API_BASE_URL?.trim();
   const chatId = env.TELEGRAM_UPDATES_CHANNEL_CHAT_ID?.trim();
   if (!base || !chatId) return false;
   try {
+    const baseUrl = base.replace(/\/+$/, "");
+    if (options?.mediaUrl && isPublicHttpUrl(options.mediaUrl)) {
+      await fetch(`${baseUrl}/sendPhoto`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          chat_id: chatId,
+          photo: options.mediaUrl,
+          disable_notification: true,
+        }),
+      }).catch(() => undefined);
+    }
     const resp = await fetch(`${base.replace(/\/+$/, "")}/sendMessage`, {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -155,6 +233,14 @@ async function sendTelegramChannelUpdate(
 }
 
 export async function notifySubscribersOnProgramPublished(env: Env, program: PublishedProgramPayload): Promise<void> {
+  const tgQuality = evaluateTelegramTitleQuality(program.title);
+  if (!tgQuality.ok) {
+    console.log("[subscriptions] telegram publish skipped by quality filter", {
+      programId: program.id,
+      reasons: tgQuality.reasons,
+    });
+  }
+
   const notifySrc = await loadProgramNotifySource(program);
 
   const subs = await prisma.updateSubscription.findMany({
@@ -176,6 +262,7 @@ export async function notifySubscribersOnProgramPublished(env: Env, program: Pub
 
   const webBase = env.PUBLIC_WEB_BASE_URL.replace(/\/+$/, "");
   const apiBase = env.PUBLIC_API_BASE_URL.replace(/\/+$/, "");
+  const mediaUrl = await loadProgramPrimaryMediaUrl(program.id, apiBase);
   const baseProgramUrl = `${webBase}/program/${program.id}`;
   const programUrlEmail = addUtm(baseProgramUrl, "email");
   const programUrlTelegramChannel = addUtm(baseProgramUrl, "telegram_channel");
@@ -186,6 +273,7 @@ export async function notifySubscribersOnProgramPublished(env: Env, program: Pub
   const tgChannelHtml = buildTelegramProgramNotifyHtml(
     notifySrc,
     isPublicHttpUrl(programUrlTelegramChannel) ? programUrlTelegramChannel : null,
+    { hideLinkFallbackHint: true, includeCtaLinkInBody: false },
   );
 
   for (const sub of subs) {
@@ -213,7 +301,7 @@ export async function notifySubscribersOnProgramPublished(env: Env, program: Pub
       sent = sent || ok;
     }
 
-    if (sub.channelTelegram && sub.telegramUsername) {
+    if (tgQuality.ok && sub.channelTelegram && sub.telegramUsername) {
       const tgBody = [
         buildTelegramProgramNotifyHtml(
           notifySrc,
@@ -223,7 +311,10 @@ export async function notifySubscribersOnProgramPublished(env: Env, program: Pub
         sub.tgOptInUrl ? `\nПодключить бота: ${escapeTelegramHtml(sub.tgOptInUrl)}` : "",
       ].join("");
       // eslint-disable-next-line no-await-in-loop
-      const ok = await sendTelegramDirectIfPossible(env, sub.telegramUsername, tgBody, { parseMode: "HTML" });
+      const ok = await sendTelegramDirectIfPossible(env, sub.telegramUsername, tgBody, {
+        parseMode: "HTML",
+        mediaUrl: mediaUrl ?? undefined,
+      });
       safeLog("[subscriptions] telegram DM", { status: ok ? "success" : "failed", subscriptionId: sub.id });
       sent = sent || ok;
     }
@@ -240,14 +331,19 @@ export async function notifySubscribersOnProgramPublished(env: Env, program: Pub
 
   if (emailAllow) {
     console.log("[subscriptions] telegram channel publish skipped (EMAIL_STAGING_ALLOWLIST is set)");
-  } else {
-    const channelBody = `${tgChannelHtml}\n\nЕсли нужен подбор под ваш уровень и даты — напишите в чат.`;
+  } else if (tgQuality.ok) {
+    const channelBody = `${tgChannelHtml}\n\nНужен подбор под ваш уровень и даты? Напишите в чат — поможем выбрать.`;
     const channelOk = await sendTelegramChannelUpdate(
       env,
       channelBody,
       buildTelegramInlineKeyboard(programUrlTelegramChannel, webBase, env.TELEGRAM_UPDATES_INVITE_LINK),
-      { parseMode: "HTML" },
+      {
+        parseMode: "HTML",
+        mediaUrl: mediaUrl ?? undefined,
+      },
     );
     console.log("[subscriptions] telegram channel publish", channelOk ? "success" : "failed");
+  } else {
+    console.log("[subscriptions] telegram channel publish skipped by quality filter");
   }
 }

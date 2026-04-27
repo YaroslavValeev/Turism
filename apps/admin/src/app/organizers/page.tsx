@@ -77,7 +77,9 @@ function organizerHints(o: Organizer, score: OrganizerScoreRow | undefined): str
   if (Number(c.paid_to_completed_score ?? 100) < 60) hints.push("Провал paid→completed: проверить post-booking коммуникацию и completion ops.");
   if (Number(c.refund_penalty ?? 0) > 12) hints.push("Высокий refund penalty: сверить причины отмен и billing policy.");
   if (Number(c.complaint_penalty ?? 0) > 10) hints.push("Высокий complaint penalty: вынести в trust/moderation разбор.");
-  if (o.verificationStatus !== "verified" && o.verificationStatus !== "trusted") hints.push("Довести verification до verified/trusted для снижения операционных рисков.");
+  if (o.verificationStatus !== "verified" && o.verificationStatus !== "trusted_by_platform") {
+    hints.push("Довести верификацию до «Проверен»/«Доверенный» для снижения операционных рисков.");
+  }
   return hints.slice(0, 3);
 }
 
@@ -94,6 +96,8 @@ export default function OrganizersQueuePage() {
   const [scoreByOrganizerId, setScoreByOrganizerId] = useState<Record<string, OrganizerScoreRow>>({});
   const [filter, setFilter] = useState<string>("");
   const [loading, setLoading] = useState(true);
+  const [savingOrganizerId, setSavingOrganizerId] = useState<string>("");
+  const [draftStatusByOrganizerId, setDraftStatusByOrganizerId] = useState<Record<string, string>>({});
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -115,7 +119,15 @@ export default function OrganizersQueuePage() {
         return res.json();
       })
       .then((data) => {
-        setOrganizers(Array.isArray(data) ? data : []);
+        const list = Array.isArray(data) ? data : [];
+        setOrganizers(list);
+        setDraftStatusByOrganizerId((prev) => {
+          const next = { ...prev };
+          for (const o of list) {
+            if (!next[o.id]) next[o.id] = o.verificationStatus;
+          }
+          return next;
+        });
       })
       .catch((e) => setError(String(e)))
       .finally(() => setLoading(false));
@@ -142,23 +154,42 @@ export default function OrganizersQueuePage() {
   const stats = useMemo(() => {
     const withScore = organizers.filter((o) => scoreByOrganizerId[o.id]).length;
     const trustedVerified = organizers.filter(
-      (o) => o.verificationStatus === "verified" || o.verificationStatus === "trusted",
+      (o) => o.verificationStatus === "verified" || o.verificationStatus === "trusted_by_platform",
     ).length;
     return { total: organizers.length, withScore, trustedVerified };
   }, [organizers, scoreByOrganizerId]);
 
   function verificationBadgeTone(status: string): "ok" | "warn" | "danger" | "muted" {
-    if (status === "trusted" || status === "verified") return "ok";
+    if (status === "trusted_by_platform" || status === "verified") return "ok";
     if (status === "rejected" || status === "blocked") return "danger";
     if (status === "listed" || status === "checked" || status === "evidence") return "warn";
     return "muted";
+  }
+
+  async function saveVerificationStatus(organizerId: string) {
+    const status = draftStatusByOrganizerId[organizerId];
+    if (!status) return;
+    setSavingOrganizerId(organizerId);
+    setError("");
+    try {
+      const updated = await adminJson<Organizer>(`/organizers/${organizerId}/verification-status`, {
+        method: "PATCH",
+        body: JSON.stringify({ verificationStatus: status }),
+      });
+      setOrganizers((prev) => prev.map((o) => (o.id === organizerId ? { ...o, verificationStatus: updated.verificationStatus } : o)));
+      setDraftStatusByOrganizerId((prev) => ({ ...prev, [organizerId]: updated.verificationStatus }));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setSavingOrganizerId("");
+    }
   }
 
   return (
     <main className="mw-admin-page">
       <AdminPageHeader
         title="Организаторы"
-        description="Верификация по внутренним runbook. Порядок статусов: evidence → listed → checked → verified → trusted."
+        description="Верификация по внутренним runbook. Порядок статусов: listed → checked → verified → trusted_by_platform."
       />
       {error ? <AdminMessage type="error">{error}</AdminMessage> : null}
       {loading ? (
@@ -195,8 +226,8 @@ export default function OrganizersQueuePage() {
               description="По текущему фильтру записей нет. Сбросьте фильтр или проверьте импорт данных."
             />
           ) : (
-            <div style={{ overflowX: "auto" }}>
-              <table className="mw-admin-table">
+            <div className="mw-admin-table-outer mw-admin-table-outer--always-scroll">
+              <table className="mw-admin-table" style={{ minWidth: 1580 }}>
                 <thead>
                   <tr>
                     <th>Название</th>
@@ -207,6 +238,7 @@ export default function OrganizersQueuePage() {
                     <th>Privilege</th>
                     <th>Score (internal)</th>
                     <th>Moderation</th>
+                    <th>Изменить статус</th>
                     <th>Создан</th>
                   </tr>
                 </thead>
@@ -261,6 +293,36 @@ export default function OrganizersQueuePage() {
                           >
                             {priority.label}
                           </AdminStatusBadge>
+                        </td>
+                        <td style={{ minWidth: 220 }}>
+                          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                            <select
+                              className="mw-admin-input"
+                              value={draftStatusByOrganizerId[o.id] ?? o.verificationStatus}
+                              onChange={(e) =>
+                                setDraftStatusByOrganizerId((prev) => ({
+                                  ...prev,
+                                  [o.id]: e.target.value,
+                                }))
+                              }
+                              style={{ minWidth: 140 }}
+                            >
+                              {ORGANIZER_VERIFICATION_STATUSES.map((s) => (
+                                <option key={s} value={s}>
+                                  {getOrganizerVerificationStatusLabel(s)}
+                                </option>
+                              ))}
+                            </select>
+                            <button
+                              type="button"
+                              className="mw-admin-btn mw-admin-btn--ghost"
+                              onClick={() => void saveVerificationStatus(o.id)}
+                              disabled={savingOrganizerId === o.id || (draftStatusByOrganizerId[o.id] ?? o.verificationStatus) === o.verificationStatus}
+                              style={{ whiteSpace: "nowrap" }}
+                            >
+                              {savingOrganizerId === o.id ? "Сохраняем…" : "Сохранить"}
+                            </button>
+                          </div>
                         </td>
                         <td className="mw-admin-muted">{new Date(o.createdAt).toLocaleDateString("ru-RU")}</td>
                       </tr>

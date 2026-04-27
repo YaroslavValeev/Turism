@@ -97,6 +97,10 @@ h2 {
   max-width: 560px;
 }
 
+.mw-admin-page--wide {
+  max-width: none;
+}
+
 .mw-admin-card {
   background: var(--mw-surface);
   border: 1px solid rgba(20, 20, 20, 0.07);
@@ -810,6 +814,23 @@ h2 {
 
 .mw-admin-table-outer {
   overflow-x: auto;
+  overflow-y: visible;
+  padding-bottom: 4px;
+}
+
+.mw-admin-table-outer--always-scroll {
+  overflow-x: scroll;
+  scrollbar-gutter: stable both-edges;
+}
+
+.mw-admin-table--programs {
+  min-width: 1940px;
+  table-layout: fixed;
+}
+
+.mw-admin-table--programs th,
+.mw-admin-table--programs td {
+  vertical-align: top;
 }
 
 .mw-admin-td-nowrap {

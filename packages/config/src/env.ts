@@ -105,6 +105,15 @@ export interface Env {
   PUBLIC_RATE_LIMIT_MAX: number;
   /** Пилот: бесплатный период для орг., без выставления счетов; UI/API показывают shadow-метрики. */
   PILOT_MODE_ENABLED: boolean;
+  /** Пилот: admin-only AI-эндпоинты (нормализатор, аудит, safety, founder summary). */
+  AI_ENABLED: boolean;
+  /**
+   * Канон: публикация/рассылка/смена статуса только после подтверждения владельца.
+   * Используется политикой и UI; по умолчанию true.
+   */
+  AI_OWNER_APPROVAL_REQUIRED: boolean;
+  /** Запрещён автопаблиш AI; по умолчанию false. */
+  AI_AUTOPUBLISH_ENABLED: boolean;
 }
 
 export function loadEnv(): Env {
@@ -155,5 +164,8 @@ export function loadEnv(): Env {
     PUBLIC_RATE_LIMIT_WINDOW_MS: optionalNumber("PUBLIC_RATE_LIMIT_WINDOW_MS", 60_000),
     PUBLIC_RATE_LIMIT_MAX: optionalNumber("PUBLIC_RATE_LIMIT_MAX", 80),
     PILOT_MODE_ENABLED: optionalBoolean("PILOT_MODE_ENABLED", false),
+    AI_ENABLED: optionalBoolean("AI_ENABLED", false),
+    AI_OWNER_APPROVAL_REQUIRED: optionalBoolean("AI_OWNER_APPROVAL_REQUIRED", true),
+    AI_AUTOPUBLISH_ENABLED: optionalBoolean("AI_AUTOPUBLISH_ENABLED", false),
   };
 }

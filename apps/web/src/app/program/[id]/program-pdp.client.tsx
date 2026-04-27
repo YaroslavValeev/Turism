@@ -81,10 +81,42 @@ function SectionBlock({ title, children }: { title: string; children: ReactNode 
   );
 }
 
+const URL_PATTERN = /(https?:\/\/[^\s]+)/gi;
+
+function renderTextWithLinks(text: string): ReactNode[] {
+  const lines = text.split(/\r?\n/);
+  const nodes: ReactNode[] = [];
+
+  lines.forEach((line, lineIndex) => {
+    const parts = line.split(URL_PATTERN);
+    parts.forEach((part, partIndex) => {
+      if (!part) return;
+      if (/^https?:\/\/[^\s]+$/i.test(part)) {
+        nodes.push(
+          <a
+            key={`lnk-${lineIndex}-${partIndex}`}
+            href={part}
+            target="_blank"
+            rel="nofollow noopener noreferrer"
+            style={{ color: "var(--mw-accent)", textDecoration: "underline" }}
+          >
+            {part}
+          </a>,
+        );
+      } else {
+        nodes.push(<span key={`txt-${lineIndex}-${partIndex}`}>{part}</span>);
+      }
+    });
+    if (lineIndex < lines.length - 1) nodes.push(<br key={`br-${lineIndex}`} />);
+  });
+
+  return nodes;
+}
+
 function Prose({ text }: { text: string }) {
   return (
     <p style={{ whiteSpace: "pre-wrap", margin: 0, color: "var(--mw-muted)", lineHeight: 1.65 }}>
-      {text}
+      {renderTextWithLinks(text)}
     </p>
   );
 }

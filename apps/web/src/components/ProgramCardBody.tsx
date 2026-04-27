@@ -65,7 +65,7 @@ export function ProgramCardBody({ program, levelLabel, catalogHrefBuilder, progr
           )}
           {discipline.translation && (
             <HoverHint hint={discipline.translation} className="mw-program-card__fact-hint">
-              <span className="mw-program-card__fact-note">Разобрать программу</span>
+              <span className="mw-program-card__fact-note">Подробнее</span>
             </HoverHint>
           )}
         </div>
@@ -121,7 +121,7 @@ export function ProgramCardBody({ program, levelLabel, catalogHrefBuilder, progr
       </div>
 
       <Link href={pdp} className="mw-btn mw-btn--primary" style={{ alignSelf: "flex-start", marginTop: "auto" }}>
-        Разобрать программу
+        Подробнее
       </Link>
     </>
   );

@@ -84,11 +84,24 @@ export function ProgramCatalogTable({
   onSaveSpotlight,
 }: Props) {
   return (
-    <table className="mw-admin-table">
+    <table className="mw-admin-table mw-admin-table--programs">
+      <colgroup>
+        <col style={{ width: "280px" }} />
+        <col style={{ width: "260px" }} />
+        <col style={{ width: "180px" }} />
+        <col style={{ width: "260px" }} />
+        <col style={{ width: "240px" }} />
+        <col style={{ width: "220px" }} />
+        <col style={{ width: "180px" }} />
+        <col style={{ width: "170px" }} />
+        <col style={{ width: "90px" }} />
+        <col style={{ width: "170px" }} />
+        <col style={{ width: "320px" }} />
+      </colgroup>
       <thead>
         <tr>
           <th>Название</th>
-          <th>Score (internal)</th>
+          <th>Оценка (внутр.)</th>
           <th>Фокус</th>
           <th>Горячее предложение</th>
           <th>Наличие</th>
@@ -96,7 +109,7 @@ export function ProgramCatalogTable({
           <th>Статус публикации</th>
           <th>Даты</th>
           <th>Медиа</th>
-          <th>Moderation priority</th>
+          <th>Приоритет модерации</th>
           <th>Действия</th>
         </tr>
       </thead>

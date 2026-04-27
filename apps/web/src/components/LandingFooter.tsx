@@ -1,5 +1,13 @@
 type LinkItem = { label: string; href: string };
 
+function resolveFooterHref(href: string): string {
+  const raw = href.trim();
+  if (!raw) return "/";
+  // Якоря футера должны работать с любой страницы, поэтому ведём на главную.
+  if (raw.startsWith("#")) return `/${raw}`;
+  return raw;
+}
+
 export function LandingFooter({
   brand,
   tagline,
@@ -16,7 +24,7 @@ export function LandingFooter({
         <p style={{ margin: "0 0 20px", maxWidth: "62ch" }}>{tagline}</p>
         <nav style={{ display: "flex", flexWrap: "wrap", gap: "12px 20px" }}>
           {links.map((l) => (
-            <a key={l.label} href={l.href}>
+            <a key={l.label} href={resolveFooterHref(l.href)}>
               {l.label}
             </a>
           ))}

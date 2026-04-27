@@ -124,6 +124,7 @@ export type TourCardModel = {
   href: string;
   imageSrc: string;
   isRemote: boolean;
+  isArchived?: boolean;
   title: string;
   location: string;
   dateLine: string;
@@ -199,7 +200,11 @@ export const DEMO_TOUR_CARDS: TourCardModel[] = [
   },
 ];
 
-export function programToTourCard(p: ProgramLike, index: number): TourCardModel {
+export function programToTourCard(
+  p: ProgramLike,
+  index: number,
+  options?: { isArchived?: boolean },
+): TourCardModel {
   const badgeKey = programPrimaryBadge(p);
   const badge = BADGE_META[badgeKey];
   const { url, isRemote } = coverUrl(p, index);
@@ -215,6 +220,7 @@ export function programToTourCard(p: ProgramLike, index: number): TourCardModel 
     href: `/program/${p.id}`,
     imageSrc: url,
     isRemote,
+    isArchived: options?.isArchived === true,
     title: p.title,
     location: loc,
     dateLine: formatDateRangeRu(p.startDate, p.endDate),

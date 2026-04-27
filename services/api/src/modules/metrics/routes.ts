@@ -11,6 +11,7 @@ import type { Env } from "@mywave/config";
 import { computeDqMetrics } from "../analytics/dqMetrics";
 import { buildFounderSummary } from "./founderSummary";
 import { aggregateContentEntryBookings } from "../../lib/bookingEntryTracking";
+import { getPilotKpiSnapshot } from "../../lib/pilotKpiSnapshot";
 
 function parseDay(value: string | undefined): Date | null {
   if (!value) return null;
@@ -334,31 +335,8 @@ export function metricsRoutes(env: Env): Router {
   router.get("/pilot-kpi", admin, async (_req: Request, res: Response) => {
     try {
       const pilotMode = env.PILOT_MODE_ENABLED === true;
-      const [bookings, deals, agg] = await Promise.all([
-        prisma.booking.count(),
-        prisma.deal.count(),
-        prisma.booking.aggregate({ _sum: { gmvRub: true, netAmountRub: true, paidAmountRub: true } }),
-      ]);
-      const dealAgg = await prisma.deal.aggregate({
-        _sum: { dealAmountRub: true, commissionAmountRub: true },
-      });
-      res.json({
-        pilotMode,
-        note: pilotMode
-          ? "PILOT_MODE: платежи/инвойсы выключены; суммы — shadow-учёт для аналитики."
-          : "PILOT_MODE off",
-        /** Только агрегаты; персональные данные и тексты заявок не отдаются. Доступ: admin JWT. */
-        privacy: { publicEndpoint: false, containsBookingContactData: false },
-        shadow: {
-          bookingsTotal: bookings,
-          dealsTotal: deals,
-          sumGmvRub: agg._sum.gmvRub ?? 0,
-          sumNetRub: agg._sum.netAmountRub ?? 0,
-          sumPaidRub: agg._sum.paidAmountRub ?? 0,
-          dealAmountRub: dealAgg._sum.dealAmountRub ?? 0,
-          shadowCommissionRub: dealAgg._sum.commissionAmountRub ?? 0,
-        },
-      });
+      const body = await getPilotKpiSnapshot(pilotMode);
+      res.json(body);
     } catch (e) {
       console.error("metrics pilot-kpi error", e);
       res.status(500).json({ error: "Failed to load pilot KPI" });

@@ -114,6 +114,17 @@ function formatDate(value: string | null) {
   return new Date(value).toLocaleString("ru-RU");
 }
 
+function statusLabelRu(status: string): string {
+  if (status === "new") return "новый";
+  if (status === "needs_review") return "требует проверки";
+  if (status === "approved") return "одобрен";
+  if (status === "rejected") return "отклонён";
+  if (status === "merged") return "объединён";
+  if (status === "published") return "опубликован";
+  if (status === "archived") return "в архиве";
+  return status;
+}
+
 export default function EventCandidatesPage() {
   const [sources, setSources] = useState<SourceOption[]>([]);
   const [items, setItems] = useState<EventCandidateListItem[]>([]);
@@ -211,13 +222,13 @@ export default function EventCandidatesPage() {
 
   async function handleApprove() {
     if (!selected) return;
-    const notes = window.prompt("Комментарий к approve", "");
+    const notes = window.prompt("Комментарий к одобрению", "");
     await runAction("approve", `/event-candidates/${selected.id}/approve`, { notes });
   }
 
   async function handleReject() {
     if (!selected) return;
-    const notes = window.prompt("Причина reject", "");
+    const notes = window.prompt("Причина отклонения", "");
     await runAction("reject", `/event-candidates/${selected.id}/reject`, { notes });
   }
 
@@ -227,13 +238,13 @@ export default function EventCandidatesPage() {
     const suggested = options[0]?.id ?? "";
     const canonicalCandidateId = window.prompt("ID канонического кандидата", suggested);
     if (!canonicalCandidateId) return;
-    const notes = window.prompt("Комментарий к merge", "") ?? null;
+    const notes = window.prompt("Комментарий к объединению", "") ?? null;
     await runAction("merge", `/event-candidates/${selected.id}/merge`, { canonicalCandidateId, notes });
   }
 
   async function handlePublish() {
     if (!selected) return;
-    const editorNotes = window.prompt("Editor notes для draft card", "");
+    const editorNotes = window.prompt("Комментарий редактора для черновика", "");
     await runAction("publish", `/event-candidates/${selected.id}/publish`, { editorNotes });
   }
 
@@ -241,7 +252,7 @@ export default function EventCandidatesPage() {
     <main className="mw-admin-page">
       <AdminPageHeader
         title="Кандидаты на публикацию"
-        description="Нормализованные анонсы после scoring и dedup. Auto-publish выключен: approve / reject / merge и при необходимости draft-карточка программы."
+        description="Нормализованные анонсы после оценки и дедупликации. Автопубликация отключена: решение принимается вручную."
       />
       {error ? <AdminMessage type="error">{error}</AdminMessage> : null}
       {message ? <AdminMessage type="success">{message}</AdminMessage> : null}
@@ -252,22 +263,22 @@ export default function EventCandidatesPage() {
         <>
           <AdminStatGrid>
             <AdminStatCard label="В выборке" value={stats.total} hint="С учётом фильтров ниже" />
-            <AdminStatCard label="needs_review" value={stats.needsReview} />
-            <AdminStatCard label="approved" value={stats.approved} />
-            <AdminStatCard label="published" value={stats.published} />
+            <AdminStatCard label="Требуют проверки" value={stats.needsReview} />
+            <AdminStatCard label="Одобрены" value={stats.approved} />
+            <AdminStatCard label="Опубликованы" value={stats.published} />
           </AdminStatGrid>
 
           <AdminFiltersBar title="Фильтры">
             <AdminFilterField label="Статус кандидата">
               <select className="mw-admin-input" value={status} onChange={(e) => setStatus(e.target.value)} style={{ minWidth: 200 }}>
                 <option value="">Все статусы</option>
-                <option value="new">new</option>
-                <option value="needs_review">needs_review</option>
-                <option value="approved">approved</option>
-                <option value="rejected">rejected</option>
-                <option value="merged">merged</option>
-                <option value="published">published</option>
-                <option value="archived">archived</option>
+                <option value="new">новый</option>
+                <option value="needs_review">требует проверки</option>
+                <option value="approved">одобрен</option>
+                <option value="rejected">отклонён</option>
+                <option value="merged">объединён</option>
+                <option value="published">опубликован</option>
+                <option value="archived">в архиве</option>
               </select>
             </AdminFilterField>
             <AdminFilterField label="Источник">
@@ -293,13 +304,13 @@ export default function EventCandidatesPage() {
                   description="По текущим фильтрам список пуст. Измените статус или источник либо дождитесь нового ingestion-run."
                 />
               ) : (
-                <div style={{ overflowX: "auto" }}>
+                <div className="mw-admin-table-outer mw-admin-table-outer--always-scroll">
                   <table className="mw-admin-table">
                     <thead>
                       <tr>
                         <th>Кандидат</th>
                         <th>Источник</th>
-                        <th>Scores</th>
+                        <th>Оценки</th>
                         <th>Действия</th>
                       </tr>
                     </thead>
@@ -307,7 +318,7 @@ export default function EventCandidatesPage() {
                       {items.map((item) => (
                         <tr key={item.id}>
                           <td style={{ minWidth: 260 }}>
-                            <strong>{item.normalizedItem.title || "Без title"}</strong>
+                            <strong>{item.normalizedItem.title || "Без названия"}</strong>
                             <div className="mw-admin-muted" style={{ fontSize: "0.82rem", marginTop: 4 }}>
                               {item.normalizedItem.discipline || "—"} · {item.normalizedItem.region || item.normalizedItem.country || "—"} · {formatDate(item.normalizedItem.startDate)}
                             </div>
@@ -315,10 +326,10 @@ export default function EventCandidatesPage() {
                               {item.normalizedItem.organizerName || "—"}
                             </div>
                             <div style={{ marginTop: 8 }}>
-                              <AdminStatusBadge tone={candidateStatusTone(item.status)}>{item.status}</AdminStatusBadge>
+                              <AdminStatusBadge tone={candidateStatusTone(item.status)}>{statusLabelRu(item.status)}</AdminStatusBadge>
                               {item.publishedProgram ? (
                                 <span className="mw-admin-muted" style={{ marginLeft: 8, fontSize: "0.82rem" }}>
-                                  · draft: <a href="/programs">{item.publishedProgram.program.title}</a>
+                                  · черновик: <a href="/programs">{item.publishedProgram.program.title}</a>
                                 </span>
                               ) : null}
                             </div>
@@ -326,22 +337,22 @@ export default function EventCandidatesPage() {
                           <td style={{ minWidth: 160 }}>
                             <strong>{item.normalizedItem.rawItem.source.name}</strong>
                             <div className="mw-admin-muted" style={{ fontSize: "0.82rem", marginTop: 4 }}>
-                              {item.normalizedItem.rawItem.source.type} · trust {item.normalizedItem.rawItem.source.trustScore.toFixed(2)}
+                              {item.normalizedItem.rawItem.source.type} · доверие {item.normalizedItem.rawItem.source.trustScore.toFixed(2)}
                             </div>
                             {item.dedupGroup ? (
                               <div className="mw-admin-muted" style={{ fontSize: "0.78rem", marginTop: 4 }}>
-                                group: {item.dedupGroup.mergeStatus}
+                                группа: {item.dedupGroup.mergeStatus}
                               </div>
                             ) : null}
                           </td>
                           <td className="mw-admin-muted" style={{ minWidth: 120, fontSize: "0.86rem", whiteSpace: "nowrap" }}>
-                            final {item.finalScore.toFixed(2)}
+                            итог {item.finalScore.toFixed(2)}
                             <br />
-                            future {item.futureEventScore.toFixed(2)}
+                            будущее {item.futureEventScore.toFixed(2)}
                             <br />
-                            fit {item.fitScore.toFixed(2)}
+                            релевантность {item.fitScore.toFixed(2)}
                             <br />
-                            trust {item.trustScore.toFixed(2)}
+                            доверие {item.trustScore.toFixed(2)}
                           </td>
                           <td>
                             <button type="button" className="mw-admin-btn mw-admin-btn--ghost" onClick={() => void openDetail(item.id)} style={{ fontSize: "0.82rem", padding: "6px 12px" }}>
@@ -362,9 +373,9 @@ export default function EventCandidatesPage() {
             <AdminEmptyState title="Ничего не выбрано" description="Выберите строку слева и нажмите «Открыть», чтобы увидеть полный контекст и действия." />
           ) : (
             <>
-              <p><strong>{selected.normalizedItem.title || "Без title"}</strong></p>
+              <p><strong>{selected.normalizedItem.title || "Без названия"}</strong></p>
               <p style={{ fontSize: 13, color: "#666" }}>
-                {selected.normalizedItem.eventType || "—"} · {selected.normalizedItem.discipline || "—"} · confidence {selected.normalizedItem.confidenceScore.toFixed(2)}
+                {selected.normalizedItem.eventType || "—"} · {selected.normalizedItem.discipline || "—"} · уверенность {selected.normalizedItem.confidenceScore.toFixed(2)}
               </p>
               <p>
                 <strong>Локация:</strong> {selected.normalizedItem.country || "—"} / {selected.normalizedItem.region || "—"} / {selected.normalizedItem.city || "—"} / {selected.normalizedItem.venue || "—"}
@@ -380,7 +391,7 @@ export default function EventCandidatesPage() {
               </p>
               <p style={{ whiteSpace: "pre-wrap" }}>{selected.normalizedItem.descriptionShort || selected.normalizedItem.descriptionFull || "—"}</p>
               <p>
-                <strong>Booking URL:</strong><br />
+                <strong>Ссылка бронирования:</strong><br />
                 {selected.normalizedItem.bookingUrl || "—"}
               </p>
               <p>
@@ -388,18 +399,18 @@ export default function EventCandidatesPage() {
                 {selected.normalizedItem.imageUrl || "—"}
               </p>
               <p>
-                <strong>Decision notes:</strong> {selected.decisionNotes || "—"}
+                <strong>Комментарий решения:</strong> {selected.decisionNotes || "—"}
                 <br />
-                <strong>Reviewed at:</strong> {formatDate(selected.reviewedAt)}
+                <strong>Проверено:</strong> {formatDate(selected.reviewedAt)}
               </p>
 
               {selected.dedupGroup && (
                 <>
-                  <p><strong>Dedup group</strong>: {selected.dedupGroup.groupKey}</p>
+                  <p><strong>Группа дедупликации</strong>: {selected.dedupGroup.groupKey}</p>
                   <ul>
                     {selected.dedupGroup.candidates.map((candidate) => (
                       <li key={candidate.id}>
-                        {candidate.id} · {candidate.status} · {candidate.finalScore.toFixed(2)} · {candidate.normalizedItem.title || "Без title"} · {candidate.normalizedItem.rawItem.source.name}
+                        {candidate.id} · {statusLabelRu(candidate.status)} · {candidate.finalScore.toFixed(2)} · {candidate.normalizedItem.title || "Без названия"} · {candidate.normalizedItem.rawItem.source.name}
                       </li>
                     ))}
                   </ul>
@@ -408,16 +419,16 @@ export default function EventCandidatesPage() {
 
               {selected.publishedProgram && (
                 <p>
-                  <strong>Связанная draft card:</strong> {selected.publishedProgram.program.title} · {selected.publishedProgram.publishStatus}
+                  <strong>Связанный черновик:</strong> {selected.publishedProgram.program.title} · {selected.publishedProgram.publishStatus}
                 </p>
               )}
 
               <div style={{ display: "grid", gap: 10, marginTop: 16 }}>
                 <button type="button" className="mw-admin-btn" onClick={() => void handleApprove()} disabled={busyAction !== ""}>
-                  {busyAction === "approve" ? "Approve…" : "Approve"}
+                  {busyAction === "approve" ? "Одобряем…" : "Одобрить"}
                 </button>
                 <button type="button" className="mw-admin-btn mw-admin-btn--ghost" onClick={() => void handleReject()} disabled={busyAction !== ""}>
-                  {busyAction === "reject" ? "Reject…" : "Reject"}
+                  {busyAction === "reject" ? "Отклоняем…" : "Отклонить"}
                 </button>
                 <button
                   type="button"
@@ -425,10 +436,10 @@ export default function EventCandidatesPage() {
                   onClick={() => void handleMerge()}
                   disabled={busyAction !== "" || !selected.dedupGroup}
                 >
-                  {busyAction === "merge" ? "Merge…" : "Merge в canonical"}
+                  {busyAction === "merge" ? "Объединяем…" : "Объединить в канон"}
                 </button>
                 <button type="button" className="mw-admin-btn" onClick={() => void handlePublish()} disabled={busyAction !== ""}>
-                  {busyAction === "publish" ? "Publish…" : "Создать draft card"}
+                  {busyAction === "publish" ? "Создаём…" : "Создать черновик"}
                 </button>
               </div>
             </>

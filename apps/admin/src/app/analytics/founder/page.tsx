@@ -60,61 +60,61 @@ export default function FounderAnalyticsPage() {
   return (
     <main className="mw-admin-page">
       <AdminPageHeader
-        title="Analytics — Founder (daily)"
+        title="Founder: сводка здоровья проекта"
         description={
           <>
-            Источник: <code className="mw-admin-code">mv_founder_daily</code>. Период: <strong>{from}</strong>…<strong>{to}</strong>{" "}
-            (UTC даты).
+            Период: <strong>{from}</strong>…<strong>{to}</strong> (UTC). Ниже — ключевые показатели, которые помогают быстро понять
+            состояние контента и продаж.
           </>
         }
       />
 
       {summary && (
-        <AdminSectionCard title="Качество данных и supply (internal)">
+        <AdminSectionCard title="Качество данных и контента">
           <p className="mw-admin-prose" style={{ margin: "0 0 12px" }}>
-            <strong>Рекомендуемые действия по умолчанию:</strong> при DQ critical — разбор ingestion и mart; при слабом организаторе —
-            контакт и план supply; при слабой программе — чеклист карточки; при росте refund — billing. Runbook:{" "}
-            <code className="mw-admin-code">docs/analytics/runtime/ACTIONS_BY_ROLE.md</code>.
+            Это верхнеуровневая страница для управленческого контроля: есть ли проблемы в данных, падает ли качество программ и где
+            нужна ручная проверка.
           </p>
 
           <AdminStatGrid>
             <AdminStatCard
-              label="DQ health"
-              value={String(summary.dq_health_status ?? "—")}
-              hint="статус пайплайна"
+              label="Состояние данных"
+              value={humanDqStatus(summary.dq_health_status)}
+              hint="общий статус"
             />
             <AdminStatCard
-              label="Freshness lag (s)"
-              value={summary.data_freshness_lag_seconds != null ? summary.data_freshness_lag_seconds : "—"}
+              label="Задержка обновления"
+              value={formatSeconds(summary.data_freshness_lag_seconds)}
+              hint="чем меньше, тем лучше"
             />
             <AdminStatCard
-              label="Critical warnings"
+              label="Критические предупреждения"
               value={summary.critical_analytics_warnings_count ?? 0}
             />
             <AdminStatCard
-              label="Organizer score avg (n)"
+              label="Средняя оценка организаторов"
               value={
                 summary.organizer_score_summary?.average != null
-                  ? `${summary.organizer_score_summary.average.toFixed(2)} (${summary.organizer_score_summary.sample_organizers ?? 0})`
+                  ? `${summary.organizer_score_summary.average.toFixed(2)} (${summary.organizer_score_summary.sample_organizers ?? 0} шт.)`
                   : "—"
               }
             />
             <AdminStatCard
-              label="Program score avg (n)"
+              label="Средняя оценка программ"
               value={
                 summary.program_score_summary?.average != null
-                  ? `${summary.program_score_summary.average.toFixed(2)} (${summary.program_score_summary.sample_programs ?? 0})`
+                  ? `${summary.program_score_summary.average.toFixed(2)} (${summary.program_score_summary.sample_programs ?? 0} шт.)`
                   : "—"
               }
             />
             <AdminStatCard
-              label="WoW Δ org / program"
+              label="Динамика за неделю"
               value={
-                `org: ${
+                `орг.: ${
                   summary.score_movement_week_over_week?.organizer_score_delta != null
                     ? summary.score_movement_week_over_week.organizer_score_delta.toFixed(3)
                     : "—"
-                } · prg: ${
+                } · прогр.: ${
                   summary.score_movement_week_over_week?.program_score_delta != null
                     ? summary.score_movement_week_over_week.program_score_delta.toFixed(3)
                     : "—"
@@ -125,21 +125,21 @@ export default function FounderAnalyticsPage() {
 
           <div style={{ display: "flex", gap: 24, flexWrap: "wrap", marginTop: 16 }}>
             <div style={{ minWidth: 0, flex: "1 1 220px" }}>
-              <strong>Top weak organizers</strong>
+              <strong>Организаторы с низкой оценкой</strong>
               <ol className="mw-admin-prose" style={{ margin: "8px 0 0", paddingLeft: 20, fontSize: 14 }}>
                 {(summary.top_weak_organizers ?? []).map((o) => (
                   <li key={o.organizerId}>
-                    <code className="mw-admin-code">{o.organizerId}</code> — {o.organizerScore.toFixed(1)} ({o.scoreBand})
+                    <code className="mw-admin-code">{o.organizerId}</code> — {o.organizerScore.toFixed(1)} ({scoreBandRu(o.scoreBand)})
                   </li>
                 ))}
               </ol>
             </div>
             <div style={{ minWidth: 0, flex: "1 1 220px" }}>
-              <strong>Top weak programs</strong>
+              <strong>Программы с низкой оценкой</strong>
               <ol className="mw-admin-prose" style={{ margin: "8px 0 0", paddingLeft: 20, fontSize: 14 }}>
                 {(summary.top_weak_programs ?? []).map((p) => (
                   <li key={p.programId}>
-                    <code className="mw-admin-code">{p.programId}</code> — {p.totalProgramScore.toFixed(1)} ({p.scoreBand})
+                    <code className="mw-admin-code">{p.programId}</code> — {p.totalProgramScore.toFixed(1)} ({scoreBandRu(p.scoreBand)})
                   </li>
                 ))}
               </ol>
@@ -155,24 +155,24 @@ export default function FounderAnalyticsPage() {
       {loading && <AdminLoadingState />}
 
       {!loading && !error && (
-        <AdminSectionCard title="Ежедневные метрики" style={summary ? { marginTop: 0 } : undefined}>
-          <div style={{ overflowX: "auto" }}>
+        <AdminSectionCard title="Ежедневные метрики (последние 30 дней)" style={summary ? { marginTop: 0 } : undefined}>
+          <div className="mw-admin-table-outer mw-admin-table-outer--always-scroll">
             <table className="mw-admin-table" style={{ margin: 0, minWidth: 1100 }}>
               <thead>
                 <tr>
                   {[
-                    "day",
-                    "nsm_core",
-                    "nsm_extended",
-                    "leads_created",
-                    "new_organizers_created",
-                    "verified_organizers_updated_day",
-                    "trusted_organizers_updated_day",
-                    "bookings_booked",
-                    "bookings_paid_any",
-                    "bookings_completed",
-                    "net_gmv_rub",
-                    "commission_paid_rub",
+                    "Дата",
+                    "Ключевой NSM",
+                    "Расширенный NSM",
+                    "Новые лиды",
+                    "Новые организаторы",
+                    "Проверено организаторов",
+                    "Доверенных организаторов",
+                    "Забронировано",
+                    "Оплачено",
+                    "Завершено",
+                    "Чистый GMV, ₽",
+                    "Комиссия, ₽",
                   ].map((c) => (
                     <th key={c} style={{ whiteSpace: "nowrap" }}>
                       {c}
@@ -212,4 +212,29 @@ export default function FounderAnalyticsPage() {
       )}
     </main>
   );
+}
+
+function humanDqStatus(status?: string): string {
+  const v = String(status ?? "").toLowerCase();
+  if (v === "green") return "Норма";
+  if (v === "warning") return "Есть предупреждения";
+  if (v === "critical") return "Критично";
+  return "—";
+}
+
+function formatSeconds(seconds?: number): string {
+  if (seconds == null || Number.isNaN(seconds)) return "—";
+  if (seconds < 60) return `${seconds} с`;
+  const mins = Math.round(seconds / 60);
+  if (mins < 60) return `${mins} мин`;
+  const hours = Math.round(mins / 60);
+  return `${hours} ч`;
+}
+
+function scoreBandRu(scoreBand?: string): string {
+  const v = String(scoreBand ?? "").toLowerCase();
+  if (v === "low") return "низкий";
+  if (v === "medium") return "средний";
+  if (v === "high") return "высокий";
+  return scoreBand ?? "—";
 }

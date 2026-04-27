@@ -55,7 +55,7 @@ export default function ContentEntriesAnalyticsPage() {
   if (loading) {
     return (
       <main className="mw-admin-page">
-        <AdminPageHeader title="Входы по контенту (G4.1)" description="Связь заявок с entry_type / entry_id в URL." />
+        <AdminPageHeader title="Входы по контенту" description="Показывает, откуда пришли заявки: статья, подборка или карточка." />
         <AdminLoadingState />
       </main>
     );
@@ -64,13 +64,10 @@ export default function ContentEntriesAnalyticsPage() {
   return (
     <main className="mw-admin-page">
       <AdminPageHeader
-        title="Входы по контенту (G4.1)"
+        title="Входы по контенту"
         description={
           <>
-            Пара <code className="mw-admin-code">entry_type</code> +{" "}
-            <code className="mw-admin-code">entry_id</code> (blog / collection / explore / program). Период:{" "}
-            <strong>{from}</strong>—<strong>{to}</strong> (UTC). Источник: <code className="mw-admin-code">bookings.sourceCampaign</code> +{" "}
-            <code className="mw-admin-code">[tracking]</code> в <code className="mw-admin-code">notes</code>.
+            Период: <strong>{from}</strong>—<strong>{to}</strong> (UTC). Здесь видно, какие материалы реально приводят заявки.
           </>
         }
       />
@@ -82,23 +79,23 @@ export default function ContentEntriesAnalyticsPage() {
               Показаны первые 20 000 заявок — уточните период при необходимости.
             </div>
           )}
-          {data.note && <p className="mw-admin-prose">{data.note}</p>}
+          {data.note ? <p className="mw-admin-prose">{data.note}</p> : null}
 
           <AdminSectionCard title="Сводка" style={{ marginTop: 12 }}>
             <AdminStatGrid>
               <AdminStatCard label="Все заявки" value={data.totals.bookingsInRange} />
-              <AdminStatCard label="С полным entry" value={data.totals.withEntryPair} />
-              <AdminStatCard label="Неполный entry" value={data.totals.entryIncomplete} />
+              <AdminStatCard label="С понятным источником" value={data.totals.withEntryPair} />
+              <AdminStatCard label="Источник указан частично" value={data.totals.entryIncomplete} />
               <AdminStatCard label="Без трекинга" value={data.totals.noEntryTracking} />
             </AdminStatGrid>
           </AdminSectionCard>
 
-          <AdminSectionCard title="Детализация" style={{ marginTop: 8 }}>
-            <div style={{ overflowX: "auto" }}>
-              <table className="mw-admin-table" style={{ margin: 0, minWidth: 900 }}>
+          <AdminSectionCard title="Топ источников по заявкам" style={{ marginTop: 8 }}>
+            <div className="mw-admin-table-outer mw-admin-table-outer--always-scroll">
+              <table className="mw-admin-table" style={{ margin: 0, minWidth: 760 }}>
                 <thead>
                   <tr>
-                    {["entry_type", "entry_id", "заявок", "первый", "последний", "explore", "explore slug"].map((c) => (
+                    {["Тип источника", "ID источника", "Заявок", "Первый лид", "Последний лид"].map((c) => (
                       <th key={c} style={{ whiteSpace: "nowrap" }}>
                         {c}
                       </th>
@@ -108,22 +105,20 @@ export default function ContentEntriesAnalyticsPage() {
                 <tbody>
                   {data.rows.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="mw-admin-prose">
-                        Пока нет заявок с полным <code className="mw-admin-code">entry</code> за период.
+                      <td colSpan={5} className="mw-admin-prose">
+                        За выбранный период пока нет заявок с распознанным источником.
                       </td>
                     </tr>
                   ) : (
-                    data.rows.map((r) => (
+                    data.rows.slice(0, 200).map((r) => (
                       <tr key={`${r.entryType}:${r.entryId}`}>
-                        <td>{r.entryType}</td>
+                        <td>{humanEntryType(r.entryType)}</td>
                         <td className="mw-admin-code" style={{ wordBreak: "break-all", maxWidth: 360 }}>
                           {r.entryId}
                         </td>
                         <td>{r.bookingCount}</td>
                         <td style={{ whiteSpace: "nowrap" }}>{fmtIso(r.firstCreatedAt)}</td>
                         <td style={{ whiteSpace: "nowrap" }}>{fmtIso(r.lastCreatedAt)}</td>
-                        <td>{r.exploreType ?? "—"}</td>
-                        <td>{r.exploreSlug ?? "—"}</td>
                       </tr>
                     ))
                   )}
@@ -141,4 +136,13 @@ function fmtIso(s: string): string {
   const d = new Date(s);
   if (Number.isNaN(d.valueOf())) return s;
   return d.toLocaleString("ru-RU", { dateStyle: "short", timeStyle: "short" });
+}
+
+function humanEntryType(entryType: string): string {
+  const v = entryType.toLowerCase();
+  if (v === "blog") return "Блог";
+  if (v === "collection") return "Подборка";
+  if (v === "explore") return "Раздел Explore";
+  if (v === "program") return "Карточка программы";
+  return entryType;
 }

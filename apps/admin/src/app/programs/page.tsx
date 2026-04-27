@@ -305,7 +305,7 @@ export default function AdminProgramsPage() {
   }, [programs]);
 
   return (
-    <main className="mw-admin-page">
+    <main className="mw-admin-page mw-admin-page--wide">
       <AdminPageHeader
         title="Программы"
         description={

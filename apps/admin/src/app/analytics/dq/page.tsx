@@ -29,23 +29,6 @@ type DqPayload = {
   issues: string[];
 };
 
-const METRIC_ROWS: Array<{ key: keyof DqPayload; label: string; hint?: string }> = [
-  { key: "ingestionSuccessCount", label: "Ingestion OK (события)" },
-  { key: "ingestionErrorCount", label: "Ошибки ingestion" },
-  { key: "invalidPayloadCount", label: "Invalid payload" },
-  { key: "missingRequiredParamsCount", label: "Missing required params" },
-  { key: "duplicateEventCount", label: "Дубликаты (idempotency)" },
-  { key: "lateEventCount", label: "События с опозданием" },
-  { key: "orphanBookingEventCount", label: "Orphan: booking" },
-  { key: "orphanPaymentEventCount", label: "Orphan: payment" },
-  { key: "orphanRefundEventCount", label: "Orphan: refund" },
-  { key: "martRefreshSuccessCount", label: "Mart refresh OK" },
-  { key: "martRefreshFailureCount", label: "Mart refresh fail" },
-  { key: "dataFreshnessLagSeconds", label: "Лаг pipeline (с)" },
-  { key: "martFreshnessLagSeconds", label: "Лаг mart (с)" },
-  { key: "criticalBackendEventCount", label: "Критичные backend-события" },
-];
-
 function gradeTone(grade: DqPayload["overallGrade"]): AdminStatusBadgeTone {
   if (grade === "green") return "ok";
   if (grade === "warning") return "warn";
@@ -67,10 +50,10 @@ export default function AnalyticsDqPage() {
   return (
     <main className="mw-admin-page">
       <AdminPageHeader
-        title="Data Quality (24h)"
+        title="Качество данных (24 часа)"
         description={
           <>
-            Окно: последние 24 часа. Playbook: <code className="mw-admin-code">docs/analytics/runtime/DQ_PLAYBOOK.md</code>
+            Короткая проверка стабильности данных за последние 24 часа.
           </>
         }
       />
@@ -82,17 +65,17 @@ export default function AnalyticsDqPage() {
           <AdminSectionCard title="Статус" style={{ marginBottom: 0 }}>
             <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 12, marginBottom: 12 }}>
               <span className="mw-admin-prose">Оценка:</span>
-              <AdminStatusBadge tone={gradeTone(data.overallGrade)}>{data.overallGrade}</AdminStatusBadge>
+              <AdminStatusBadge tone={gradeTone(data.overallGrade)}>{gradeRu(data.overallGrade)}</AdminStatusBadge>
               <span className="mw-admin-prose" style={{ fontSize: "0.9rem" }}>
-                windowHours = {data.windowHours}
+                окно: {data.windowHours} ч
               </span>
             </div>
             {data.issues.length > 0 ? (
               <div className="mw-admin-alert" style={{ background: "#fffbeb", borderColor: "#fde68a" }}>
-                <strong style={{ display: "block", marginBottom: 8 }}>Issues</strong>
+                <strong style={{ display: "block", marginBottom: 8 }}>Что требует внимания</strong>
                 <ul className="mw-admin-prose" style={{ margin: 0, paddingLeft: 20, color: "#7f1d1d" }}>
                   {data.issues.map((i) => (
-                    <li key={i}>{i}</li>
+                    <li key={i}>{humanizeIssue(i)}</li>
                   ))}
                 </ul>
               </div>
@@ -106,34 +89,18 @@ export default function AnalyticsDqPage() {
           <AdminSectionCard title="Краткая сводка" style={{ marginTop: 8 }}>
             <AdminStatGrid>
               <AdminStatCard
-                label="Ingestion OK / ошибки"
+                label="Успешные события / ошибки"
                 value={`${data.ingestionSuccessCount} / ${data.ingestionErrorCount}`}
               />
-              <AdminStatCard label="Лаг pipeline (с)" value={data.dataFreshnessLagSeconds} />
-              <AdminStatCard label="Лаг mart (с)" value={data.martFreshnessLagSeconds} />
-              <AdminStatCard label="Mart fail" value={data.martRefreshFailureCount} hint="за окно" />
+              <AdminStatCard label="Задержка пайплайна" value={formatSeconds(data.dataFreshnessLagSeconds)} />
+              <AdminStatCard label="Задержка витрины" value={formatSeconds(data.martFreshnessLagSeconds)} />
+              <AdminStatCard label="Сбоев обновления витрины" value={data.martRefreshFailureCount} hint="за 24 часа" />
+              <AdminStatCard
+                label="Критичных backend-событий"
+                value={data.criticalBackendEventCount}
+                hint="должно быть 0"
+              />
             </AdminStatGrid>
-          </AdminSectionCard>
-
-          <AdminSectionCard title="Детализация" style={{ marginTop: 8 }}>
-            <div style={{ overflowX: "auto" }}>
-              <table className="mw-admin-table" style={{ margin: 0, minWidth: 480 }}>
-                <thead>
-                  <tr>
-                    <th>Метрика</th>
-                    <th>Значение</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {METRIC_ROWS.map(({ key, label }) => (
-                    <tr key={key}>
-                      <td className="mw-admin-prose">{label}</td>
-                      <td style={{ fontVariantNumeric: "tabular-nums" }}>{String(data[key] as number)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
           </AdminSectionCard>
         </>
       )}
@@ -143,4 +110,27 @@ export default function AnalyticsDqPage() {
       )}
     </main>
   );
+}
+
+function gradeRu(grade: DqPayload["overallGrade"]): string {
+  if (grade === "green") return "Норма";
+  if (grade === "warning") return "Предупреждение";
+  return "Критично";
+}
+
+function formatSeconds(seconds: number): string {
+  if (seconds < 60) return `${seconds} с`;
+  const mins = Math.round(seconds / 60);
+  if (mins < 60) return `${mins} мин`;
+  const hours = Math.round(mins / 60);
+  return `${hours} ч`;
+}
+
+function humanizeIssue(issue: string): string {
+  const compact = issue.replace(/^warning:/i, "").trim();
+  return compact
+    .replace(/orphan_events/gi, "потерянные события")
+    .replace(/booking/gi, "бронирование")
+    .replace(/payment/gi, "оплата")
+    .replace(/refund/gi, "возврат");
 }

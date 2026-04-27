@@ -94,7 +94,7 @@ export function HeroHotOfferSpotlight({ slides }: Props) {
 
       <div className="mw-hot-offer__footer">
         <Link href={active.href} className="mw-btn mw-btn--primary">
-          Разобрать программу
+          Подробнее
         </Link>
         {canRotate && (
           <div className="mw-hot-offer__controls">

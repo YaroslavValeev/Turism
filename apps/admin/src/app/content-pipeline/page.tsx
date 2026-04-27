@@ -37,7 +37,7 @@ function wfTone(s: string): "ok" | "warn" | "danger" | "muted" {
 }
 
 function pubStateLabel(state: string): string {
-  if (state === "publishing") return "publishing (in flight)";
+  if (state === "publishing") return "публикуется (в процессе)";
   return state;
 }
 
@@ -194,8 +194,8 @@ export default function ContentPipelineAdminPage() {
   return (
     <main className="mw-admin-page">
       <AdminPageHeader
-        title="Content pipeline"
-        description="Сбор → нормализация → черновики → согласование owner → публикация (вручную). Runner: POST /api/jobs/run-content-pipeline. См. docs/CONTENT_PIPELINE_PRODUCTION.md"
+        title="Контент-конвейер"
+        description="Сбор → нормализация → черновики → согласование → публикация."
       />
       {error ? <AdminMessage type="error">{error}</AdminMessage> : null}
       {message ? <AdminMessage type="success">{message}</AdminMessage> : null}
@@ -208,7 +208,7 @@ export default function ContentPipelineAdminPage() {
             className={t === tab ? "mw-btn mw-btn--primary" : "mw-btn"}
             onClick={() => setTab(t)}
           >
-            {t === "items" ? "Content items" : t === "publications" ? "Публикации" : "Метрики + ₽"}
+            {t === "items" ? "Материалы" : t === "publications" ? "Публикации" : "Метрики + ₽"}
           </button>
         ))}
       </div>
@@ -220,7 +220,7 @@ export default function ContentPipelineAdminPage() {
           disabled={busy !== ""}
           onClick={() => void runJob("/api/jobs/run-content-pipeline", "run-content-pipeline")}
         >
-          {busy === "run-content-pipeline" ? "…" : "Run content pipeline"}
+          {busy === "run-content-pipeline" ? "…" : "Запустить конвейер"}
         </button>
         <button
           type="button"
@@ -228,7 +228,7 @@ export default function ContentPipelineAdminPage() {
           disabled={busy !== ""}
           onClick={() => void runJob("/api/jobs/run-content-drafts", "run-content-drafts")}
         >
-          {busy === "run-content-drafts" ? "…" : "Только draft job"}
+          {busy === "run-content-drafts" ? "…" : "Только черновики"}
         </button>
         {tab === "publications" ? (
           <button
@@ -237,7 +237,7 @@ export default function ContentPipelineAdminPage() {
             disabled={busy !== ""}
             onClick={() => void runJob("/api/content-pipeline/publications/retry-failed", "retry-failed", { limit: 20 })}
           >
-            {busy === "retry-failed" ? "…" : "Повторить все failed (до 20)"}
+            {busy === "retry-failed" ? "…" : "Повторить все ошибки (до 20)"}
           </button>
         ) : null}
         {tab === "items" && selectedDrafts.size > 0 ? (
@@ -253,7 +253,7 @@ export default function ContentPipelineAdminPage() {
       {tab === "items" && (
         <>
           <AdminFiltersBar>
-            <AdminFilterField label="Workflow">
+            <AdminFilterField label="Статус конвейера">
               <select
                 className="mw-admin-input"
                 value={statusFilter}
@@ -279,7 +279,7 @@ export default function ContentPipelineAdminPage() {
                 placeholder="0"
               />
             </AdminFilterField>
-            <AdminFilterField label="min leads">
+            <AdminFilterField label="мин. лидов">
               <input
                 className="mw-admin-input"
                 style={{ width: 100 }}
@@ -291,9 +291,9 @@ export default function ContentPipelineAdminPage() {
             </AdminFilterField>
           </AdminFiltersBar>
           {items.length === 0 ? (
-            <AdminEmptyState title="Нет content items" description="Запустите runner или смените фильтр." />
+            <AdminEmptyState title="Нет материалов" description="Запустите конвейер или измените фильтр." />
           ) : (
-            <div style={{ overflowX: "auto" }}>
+            <div className="mw-admin-table-outer mw-admin-table-outer--always-scroll">
               <table className="mw-admin-table">
                 <thead>
                   <tr>
@@ -349,7 +349,7 @@ export default function ContentPipelineAdminPage() {
       {tab === "publications" && (
         <>
           <AdminFiltersBar>
-            <AdminFilterField label="State">
+            <AdminFilterField label="Состояние">
               <select
                 className="mw-admin-input"
                 value={pubStateFilter}
@@ -367,13 +367,13 @@ export default function ContentPipelineAdminPage() {
           {pubs.length === 0 ? (
             <AdminEmptyState title="Нет публикаций" />
           ) : (
-            <div style={{ overflowX: "auto" }}>
+            <div className="mw-admin-table-outer mw-admin-table-outer--always-scroll">
               <table className="mw-admin-table">
                 <thead>
                   <tr>
                     <th>Канал</th>
                     <th>Состояние</th>
-                    <th>Retry</th>
+                    <th>Повторы</th>
                     <th>Ошибка</th>
                     <th>Действия</th>
                   </tr>
@@ -394,7 +394,7 @@ export default function ContentPipelineAdminPage() {
                             disabled={busy !== ""}
                             onClick={() => void retryPublication(p.id)}
                           >
-                            Retry
+                            Повторить
                           </button>
                         ) : (
                           "—"
@@ -414,17 +414,17 @@ export default function ContentPipelineAdminPage() {
           {perf.length === 0 ? (
             <AdminEmptyState title="Нет агрегатов" description="После броней с contentItemId появятся цифры." />
           ) : (
-            <div style={{ overflowX: "auto" }}>
+            <div className="mw-admin-table-outer mw-admin-table-outer--always-scroll">
               <table className="mw-admin-table">
                 <thead>
                   <tr>
-                    <th>Item</th>
+                    <th>Материал</th>
                     <th>Статус</th>
                     <th>Просмотры</th>
                     <th>Клики</th>
                     <th>Лиды</th>
                     <th>Брони (агр.)</th>
-                    <th>Revenue ₽</th>
+                    <th>Выручка ₽</th>
                   </tr>
                 </thead>
                 <tbody>

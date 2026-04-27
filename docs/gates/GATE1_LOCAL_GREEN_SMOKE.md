@@ -13,7 +13,7 @@
 4. **Терминал A:** из корня репозитория: `pnpm --filter api dev` (порт 3001).
 
 5. **Терминал B:** `pnpm --filter api smoke:pilot-e2e`  
-   Ожидание: `OK /health`, `OK POST /bookings 201`, `OK POST /bookings duplicate 409`, `pilot-e2e-smoke: all checks passed`.  
+   Ожидание: `OK /health`; `OK POST /bookings 400 (omit legalConsent)`; `OK POST /bookings 400 (legalConsent false)`; `OK POST /bookings 201 (legalConsent true, legalConsentAt set)`; `OK POST /bookings duplicate 409`; `pilot-e2e-smoke: all checks passed`.  
    (Требуется: миграции применены, `SEED_DEMO_CATALOG=1` и `pnpm --filter api db:seed` — иначе «No published program».)
 
 6. **Web + Admin:** `pnpm --filter web dev` (3000), `pnpm --filter admin dev` (3002) — **или** `pnpm run dev` по монорепе.
@@ -33,3 +33,39 @@
 - `docs/ANALYTICS_EVENT_TAXONOMY.md`  
 
 **Готово, если** все 10 пунктов зелёные; зафиксируйте в `DEPLOY_EVIDENCE_*` (Gate 3) факт «Gate 1 passed locally».
+
+---
+
+## Gate 1 Full Local UI Pass — evidence (заполняется вручную)
+
+После ручного прохода Web PDP + Admin вставьте сюда блок (или в отдельный `DEPLOY_EVIDENCE_*.md` день пилота):
+
+```text
+Gate 1 Full Local UI Pass — PASSED|FAILED
+Date: YYYY-MM-DD
+Commit: <git sha>
+API smoke: OK (exit 0) / smoke:pilot-e2e
+Web PDP legal flow: PASSED|FAILED / notes:
+Admin legal consent block: PASSED|FAILED / notes:
+Pilot KPI privacy (no PII): PASSED|FAILED / notes:
+Known issues:
+```
+
+**Web PDP (краткий чеклист):** `NEXT_PUBLIC_PILOT_MODE=1` → баннер; PDP; чекбоксы legal; без согласия не отправляется; с согласием — успех; Network: `legalConsent: true` в `POST /bookings`; нет критических ошибок в консоли.
+
+**Admin (краткий чеклист):** `NEXT_PUBLIC_PILOT_MODE=1` → баннер; меню **«Пилот KPI (shadow)»**; страница открывается; в блоке privacy — endpoint не публичный, нет контактов заявок; новая заявка в списке; в карточке — **«Согласие (legal)»** с датой и версией политики; в KPI/аналитике нет PII.
+
+### Последний статус evidence
+
+```text
+Gate 1 Full Local UI Pass — PENDING MANUAL CHECK
+Date: 2026-04-26
+Commit: 6efe69b
+API smoke: PASSED (smoke:pilot-e2e, exit 0)
+Web PDP legal flow: PENDING
+Admin legal consent block: PENDING
+Pilot KPI privacy (no PII): PENDING
+Known issues: —
+```
+
+**Связь с P1:** Gate 2 AI P1 принят командой как закрытый (см. `docs/gates/P1_CHECKPOINT.md`); **полный** Local Pilot Evidence Pack всё ещё блокируется этим UI-pass.

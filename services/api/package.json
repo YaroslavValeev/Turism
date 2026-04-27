@@ -18,6 +18,8 @@
     "backfill:traveler-key": "tsx scripts/backfill-traveler-key.ts",
     "smoke:content-pipeline": "tsx scripts/smoke-content-pipeline.ts",
     "smoke:pilot-e2e": "tsx scripts/pilot-e2e-smoke.ts",
+    "smoke:ai-pilot": "tsx scripts/smoke-ai-pilot.ts",
+    "smoke:ai-pilot-p1": "tsx scripts/smoke-ai-pilot-p1.ts",
     "sprint3:email-e2e": "tsx scripts/sprint3_subscribe_notify_unsubscribe_e2e.ts"
   },
   "dependencies": {

@@ -116,7 +116,11 @@ async function main() {
   const bookRes = await fetch(`${BASE_URL}/bookings`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ programId: prog.id, guestContact: "E2E Guest +79991234567" }),
+    body: JSON.stringify({
+      programId: prog.id,
+      guestContact: "E2E Guest +79991234567",
+      legalConsent: true,
+    }),
   });
   if (!bookRes.ok) throw new Error(`Create booking failed: ${bookRes.status} ${await bookRes.text()}`);
   const book = await bookRes.json();

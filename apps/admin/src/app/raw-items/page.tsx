@@ -32,7 +32,7 @@ type RawItemListItem = {
     title: string | null;
     discipline: string | null;
     startDate: string | null;
-    confidenceScore: number;
+    confidenceScore: number | null;
   } | null;
 };
 
@@ -130,8 +130,8 @@ export default function RawItemsPage() {
             <AdminFilterField label="Нормализация">
               <select value={hasNormalized} onChange={(e) => setHasNormalized(e.target.value)}>
                 <option value="">Любой статус</option>
-                <option value="1">Только с normalized_item</option>
-                <option value="0">Только без normalized_item</option>
+                <option value="1">Только с нормализацией</option>
+                <option value="0">Только без нормализации</option>
               </select>
             </AdminFilterField>
             <div className="mw-admin-toolbar__actions" style={{ alignSelf: "flex-end", paddingTop: 0 }}>
@@ -156,7 +156,7 @@ export default function RawItemsPage() {
                   description="По выбранным фильтрам raw items не найдены. Смените источник или статус нормализации."
                 />
               ) : (
-                <div style={{ overflowX: "auto" }}>
+                <div className="mw-admin-table-outer mw-admin-table-outer--always-scroll">
                   <table className="mw-admin-table" style={{ margin: 0, minWidth: 640 }}>
                     <thead>
                       <tr>
@@ -186,18 +186,18 @@ export default function RawItemsPage() {
                               {shortText(item.rawText)}
                             </div>
                             <div className="mw-admin-prose" style={{ fontSize: "0.8rem", marginTop: 6 }}>
-                              автор: {item.authorName || "—"} · fetched: {formatDate(item.fetchedAt)}
+                              автор: {item.authorName || "—"} · загружено: {formatDate(item.fetchedAt)}
                             </div>
                           </td>
                           <td style={{ verticalAlign: "top", minWidth: 200 }}>
                             {item.normalizedItem ? (
                               <>
-                                <strong>{item.normalizedItem.title || "Без title"}</strong>
+                                <strong>{item.normalizedItem.title || "Без названия"}</strong>
                                 <div className="mw-admin-prose" style={{ fontSize: "0.85rem", marginTop: 4 }}>
-                                  {item.normalizedItem.discipline || "—"} · start {formatDate(item.normalizedItem.startDate)}
+                                  {item.normalizedItem.discipline || "—"} · старт: {formatDate(item.normalizedItem.startDate)}
                                 </div>
                                 <div className="mw-admin-prose" style={{ fontSize: "0.85rem", marginTop: 2 }}>
-                                  confidence {item.normalizedItem.confidenceScore.toFixed(2)}
+                                  уверенность: {item.normalizedItem.confidenceScore != null ? item.normalizedItem.confidenceScore.toFixed(2) : "—"}
                                 </div>
                               </>
                             ) : (
@@ -217,7 +217,7 @@ export default function RawItemsPage() {
               )}
             </AdminSectionCard>
 
-            <AdminSectionCard title="Детали raw item" style={{ marginBottom: 0 }}>
+            <AdminSectionCard title="Детали сырого материала" style={{ marginBottom: 0 }}>
               {!selected ? (
                 <p className="mw-admin-prose" style={{ margin: 0 }}>
                   Выберите строку слева и нажмите «Открыть».
@@ -234,19 +234,19 @@ export default function RawItemsPage() {
                     {selected.rawText || "—"}
                   </p>
                   <p className="mw-admin-prose" style={{ margin: "0 0 6px", fontSize: "0.88rem" }}>
-                    <strong>Source URL</strong>
+                    <strong>Ссылка на источник</strong>
                   </p>
                   <p className="mw-admin-prose" style={{ margin: "0 0 12px", wordBreak: "break-all" }}>
                     {selected.sourceUrl || "—"}
                   </p>
                   <p className="mw-admin-prose" style={{ margin: "0 0 6px", fontSize: "0.88rem" }}>
-                    <strong>Content hash</strong>
+                    <strong>Хеш контента</strong>
                   </p>
                   <p className="mw-admin-code" style={{ margin: "0 0 16px", fontSize: "0.8rem", wordBreak: "break-all" }}>
                     {selected.contentHash}
                   </p>
                   <p className="mw-admin-prose" style={{ margin: "0 0 6px", fontWeight: 650 }}>
-                    Raw media JSON
+                    Медиа (JSON)
                   </p>
                   <pre
                     className="mw-admin-code"
@@ -255,7 +255,7 @@ export default function RawItemsPage() {
                     {JSON.stringify(selected.rawMediaJson, null, 2)}
                   </pre>
                   <p className="mw-admin-prose" style={{ margin: "0 0 6px", fontWeight: 650 }}>
-                    Raw payload JSON
+                    Исходный payload (JSON)
                   </p>
                   <pre
                     className="mw-admin-code"

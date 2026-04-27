@@ -117,32 +117,39 @@ function organizerLine(src: ProgramNotifySource): string | null {
 }
 
 /** Telegram: HTML + короткая продуктовая структура. */
-export function buildTelegramProgramNotifyHtml(src: ProgramNotifySource, programUrl: string | null): string {
+export function buildTelegramProgramNotifyHtml(
+  src: ProgramNotifySource,
+  programUrl: string | null,
+  options?: { hideLinkFallbackHint?: boolean; includeCtaLinkInBody?: boolean },
+): string {
   const title = escapeTelegramHtml(truncateOneLine(src.title, 180));
   const ctx = formatProgramContextLine(src);
   const forWho = buildForWhoBullets(src).map((b) => `• ${escapeTelegramHtml(b)}`).join("\n");
   const benefits = buildBenefitBullets(src).map((b) => `• ${escapeTelegramHtml(b)}`).join("\n");
   const org = organizerLine(src);
   const orgBlock = org
-    ? `<b>Кто проводит</b>\n${escapeTelegramHtml(truncateOneLine(org, 120))}`
-    : `<b>Кто проводит</b>\n${escapeTelegramHtml(FB.organizer)}`;
+    ? `<b>Организатор</b>\n${escapeTelegramHtml(truncateOneLine(org, 120))}`
+    : `<b>Организатор</b>\n${escapeTelegramHtml(FB.organizer)}`;
   const impRaw = buildImportantBlock(src);
   const impBlock = impRaw
-    ? `<b>Что важно знать</b>\n${escapeTelegramHtml(impRaw)}`
-    : `<b>Что важно знать</b>\n${escapeTelegramHtml(FB.important)}`;
+    ? `<b>Перед бронированием</b>\n${escapeTelegramHtml(impRaw)}`
+    : `<b>Перед бронированием</b>\n${escapeTelegramHtml(FB.important)}`;
 
+  const includeCtaLinkInBody = options?.includeCtaLinkInBody ?? true;
   const urlLine =
-    programUrl && /^https?:\/\//i.test(programUrl)
-      ? `\n<a href="${escapeTelegramHtml(programUrl)}">Открыть программу и оставить заявку</a>`
-      : `\n<i>Откройте программу в приложении MyWaveTour по ссылке из письма или сайта.</i>`;
+    includeCtaLinkInBody && programUrl && /^https?:\/\//i.test(programUrl)
+      ? `\n<a href="${escapeTelegramHtml(programUrl)}">Открыть карточку и оставить заявку</a>`
+      : options?.hideLinkFallbackHint
+        ? ""
+        : `\n<i>Откройте программу в приложении MyWaveTour по ссылке из письма или сайта.</i>`;
 
   return (
-    `<b>Рекомендуем выезд</b> — MyWaveTour\n` +
+    `<b>Новый выезд в MyWaveTour</b>\n` +
     `${title}\n` +
     `${ctx}\n\n` +
-    `<b>Кому подойдёт</b>\n` +
+    `<b>Для кого</b>\n` +
     `${forWho}\n\n` +
-    `<b>Что ты получишь</b>\n` +
+    `<b>Что входит</b>\n` +
     `${benefits}\n\n` +
     `${orgBlock}\n\n` +
     `${impBlock}` +

@@ -34,7 +34,7 @@ export function ProgramCard({ program, levelLabel, catalogHrefBuilder, programHr
       <Link
         href={pdp}
         className="mw-program-card__cover-link"
-        aria-label={`Разобрать программу: ${program.title}`}
+        aria-label={`Подробнее: ${program.title}`}
       >
         <div className="mw-program-card__cover">
           {coverUrl ? (

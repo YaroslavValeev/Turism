@@ -33,11 +33,24 @@ describe("programNotifyTemplates", () => {
 
   it("telegram HTML contains structure and escaped title", () => {
     const html = buildTelegramProgramNotifyHtml(baseSrc(), "https://mywavetour.ru/program/p1");
-    expect(html).toContain("<b>Рекомендуем выезд</b>");
+    expect(html).toContain("<b>Новый выезд в MyWaveTour</b>");
     expect(html).toContain("Лагерь на Волге");
-    expect(html).toContain("Кому подойдёт");
-    expect(html).toContain("Открыть программу");
+    expect(html).toContain("Для кого");
+    expect(html).toContain("Открыть карточку");
     expect(html).not.toContain("<script");
+  });
+
+  it("telegram HTML can hide fallback hint when link is missing", () => {
+    const html = buildTelegramProgramNotifyHtml(baseSrc(), null, { hideLinkFallbackHint: true });
+    expect(html).not.toContain("Откройте программу в приложении MyWaveTour");
+  });
+
+  it("telegram HTML can keep CTA only in keyboard (without body link)", () => {
+    const html = buildTelegramProgramNotifyHtml(baseSrc(), "https://mywavetour.ru/program/p1", {
+      includeCtaLinkInBody: false,
+      hideLinkFallbackHint: true,
+    });
+    expect(html).not.toContain("Открыть карточку и оставить заявку");
   });
 
   it("email HTML hides empty organizer only when both missing — uses fallback", () => {

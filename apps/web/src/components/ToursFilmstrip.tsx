@@ -149,7 +149,10 @@ function TourCard({
   }
 
   return (
-    <article className="tour-card" style={{ ["--i" as string]: String(idx) }}>
+    <article
+      className={`tour-card ${item.isArchived ? "tour-card--archived" : ""}`}
+      style={{ ["--i" as string]: String(idx) }}
+    >
       <div className="tour-card-image">
         {item.isRemote ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -238,12 +241,8 @@ export function ToursFilmstrip({ programs, regionOptions, loading, allToursHref 
   const [region, setRegion] = useState<string>("");
   const [page, setPage] = useState(0);
 
-  const filtered = useMemo(() => {
+  const filteredBase = useMemo(() => {
     let list = programs.filter((p) => programMatchesChip(p, chip));
-    if (dateWin) {
-      const d = dateWin === "30" ? 30 : dateWin === "60" ? 60 : 90;
-      list = list.filter((p) => programStartsWithinDays(p, d));
-    }
     if (region.trim()) {
       const r = region.trim().toLowerCase();
       list = list.filter(
@@ -252,19 +251,40 @@ export function ToursFilmstrip({ programs, regionOptions, loading, allToursHref 
           (p.exactLocation && p.exactLocation.toLowerCase().includes(r)),
       );
     }
+    return [...list];
+  }, [programs, chip, region]);
+
+  const filteredCurrent = useMemo(() => {
+    let list = filteredBase.filter((p) => startOfDay(new Date(p.startDate)) >= startOfDay(new Date()));
+    if (dateWin) {
+      const d = dateWin === "30" ? 30 : dateWin === "60" ? 60 : 90;
+      list = list.filter((p) => programStartsWithinDays(p, d));
+    }
     return [...list].sort((a, b) => +new Date(a.startDate) - +new Date(b.startDate));
-  }, [programs, chip, dateWin, region]);
+  }, [filteredBase, dateWin]);
+
+  const filteredPastLast5 = useMemo(() => {
+    const past = filteredBase
+      .filter((p) => startOfDay(new Date(p.startDate)) < startOfDay(new Date()))
+      .sort((a, b) => +new Date(b.startDate) - +new Date(a.startDate))
+      .slice(0, 5);
+    return past;
+  }, [filteredBase]);
 
   const cards: TourCardModel[] = useMemo(() => {
     if (loading) return [];
-    if (filtered.length > 0) {
-      return filtered.map((p, i) => programToTourCard(p, i));
+    if (filteredCurrent.length > 0 || filteredPastLast5.length > 0) {
+      const currentCards = filteredCurrent.map((p, i) => programToTourCard(p, i));
+      const pastCards = filteredPastLast5.map((p, i) =>
+        programToTourCard(p, filteredCurrent.length + i, { isArchived: true }),
+      );
+      return [...currentCards, ...pastCards];
     }
     return DEMO_TOUR_CARDS;
-  }, [loading, filtered]);
+  }, [loading, filteredCurrent, filteredPastLast5]);
 
   /** Каталог есть, но текущий фильтр никого не прошёл — показываем демо-кадры и пояснение. */
-  const isFilterEmpty = !loading && programs.length > 0 && filtered.length === 0;
+  const isFilterEmpty = !loading && programs.length > 0 && filteredCurrent.length === 0 && filteredPastLast5.length === 0;
 
   const pageCount = loading || cards.length === 0 ? 1 : Math.max(1, Math.ceil(cards.length / PAGE));
 

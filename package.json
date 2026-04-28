@@ -48,5 +48,12 @@
   "packageManager": "pnpm@9.0.0",
   "engines": {
     "node": ">=18"
+  },
+  "pnpm": {
+    "overrides": {
+      "path-to-regexp": "0.1.13",
+      "postcss": "8.5.12",
+      "uuid": "14.0.0"
+    }
   }
 }

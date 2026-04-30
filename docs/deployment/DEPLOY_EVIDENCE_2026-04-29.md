@@ -58,7 +58,7 @@ curl -k https://api.mywavetour.ru/health
 - Контейнер `reverse-proxy` запущен, HTTP/HTTPS порты опубликованы (`80/443`).
 - Синтаксис HTTP/2 nginx 1.27: **`listen 443 ssl;`** + **`http2 on;`** (не устаревший `listen … http2` на одной строке).
 - **Рассинхрон host ↔ container:** если `sed`/редактор на VPS показывает новый файл, а `docker compose exec reverse-proxy grep` — старый, при этом **Mounts** верный → пересоздать контейнер: `compose stop reverse-proxy`, `compose rm -f reverse-proxy`, `compose up -d reverse-proxy`.
-- Для ACME HTTP-01: **`location /.well-known/acme-challenge/`** + том **`./infra/certbot-webroot`**, см. `docs/deployment/SSL_LE_AUTORENEW.md`.
+- Для ACME HTTP-01: **`location /.well-known/acme-challenge/`** + том **`./infra/certbot-webroot`**. Команды по одной строке: **`docs/deployment/TIMEWEB_SERVER_COMMANDS_SSL.md`**; теория: **`docs/deployment/SSL_LE_AUTORENEW.md`**.
 
 ---
 

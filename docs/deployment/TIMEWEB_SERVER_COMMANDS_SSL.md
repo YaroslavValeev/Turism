@@ -18,7 +18,12 @@ cd /opt/mywave/toutism
 git pull origin main
 ```
 
-*(Если здесь ошибка авторизации GitHub на сервере — залейте архив/`scp` теми же версиями `infra/nginx/mywave.conf`, `docker-compose.production.yml`, `scripts/le-deploy-sync.sh` с ПК.)*
+**Если видите `fatal: not a git repository`** — каталог на VPS собран не через `git clone`: команду `git pull` **пропустите**. Обновляйте файлы так:
+
+- с ПК: **SFTP/WinSCP** или **`scp`** для `infra/nginx/mywave.conf`, `docker-compose.production.yml`, `scripts/le-deploy-sync.sh`; или
+- на сервере один раз: **`git clone`** в другой каталог и скопируйте нужные пути в `/opt/mywave/toutism/` (`cp`/`rsync`).
+
+Если ошибка авторизации GitHub при `pull` — тот же обход: архив, `scp` или RAW/API с токеном при приватном репо.
 
 ```bash
 mkdir -p infra/certbot-webroot

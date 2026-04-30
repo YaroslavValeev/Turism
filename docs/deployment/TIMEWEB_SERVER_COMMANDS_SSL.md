@@ -59,11 +59,13 @@ mkdir -p infra/certbot-webroot/.well-known/acme-challenge
 printf test > infra/certbot-webroot/.well-known/acme-challenge/probe-test
 ```
 
-Проверьте с сервера (должен вернуть `test`):
+Проверьте с сервера (должен вернуть строку `test` **без** `301` на весь путь):
 
 ```bash
 curl -sS http://mywavetour.ru/.well-known/acme-challenge/probe-test
 ```
+
+**Если видите `301 Moved Permanently`:** в монтированном `default.conf` нет блока **`location ^~ /.well-known/acme-challenge/`** (или образцовый `docker-compose` без тома **`infra/certbot-webroot`**) — обновите **`infra/nginx/mywave.conf`** и **`docker-compose.production.yml`** с ПК (или heredoc ниже в чате поддержки), затем **`up -d reverse-proxy`** и **`nginx -s reload`**. Пока HTTP везде уходит в `return 301`, **certbot webroot не заработает**.
 
 ```bash
 rm -f infra/certbot-webroot/.well-known/acme-challenge/probe-test

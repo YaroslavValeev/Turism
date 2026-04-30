@@ -4,10 +4,28 @@
  */
 import { Program, ProgramMedia } from "@prisma/client";
 
-export type ProgramWithMedia = Program & { media: ProgramMedia[] };
+export type ProgramWithMedia = Program & {
+  media: ProgramMedia[];
+  organizer?: { displayName: string | null } | null;
+};
 
 function filled(s: string | null | undefined): boolean {
   return s != null && String(s).trim() !== "";
+}
+
+function containsSyntheticMarker(value: string | null | undefined): boolean {
+  const v = String(value ?? "").trim().toLowerCase();
+  if (!v) return false;
+  return /\b(e2e|test|demo|seed|synthetic)\b|тест|синтет|cmof/.test(v);
+}
+
+function hasSyntheticSignals(program: ProgramWithMedia): boolean {
+  if (containsSyntheticMarker(program.title)) return true;
+  if (containsSyntheticMarker(program.organizerName)) return true;
+  if (containsSyntheticMarker(program.intakeSource)) return true;
+  if (containsSyntheticMarker(program.organizer?.displayName)) return true;
+  const sourceUrl = String(program.sourceUrl ?? "").trim().toLowerCase();
+  return sourceUrl.includes("example.com") || sourceUrl.includes("localhost");
 }
 
 export function canPublish(program: ProgramWithMedia): { ok: boolean; missing: string[] } {
@@ -26,6 +44,7 @@ export function canPublish(program: ProgramWithMedia): { ok: boolean; missing: s
   const hasSummary = filled(program.itineraryDayByDay) || filled(program.audienceFit) || filled(program.inclusions);
   if (!hasSummary) missing.push("program summary/structure (itinerary_day_by_day, audience_fit or inclusions)");
   if (!program.media?.length) missing.push("at least 1 media");
+  if (hasSyntheticSignals(program)) missing.push("synthetic_markers_detected");
   return {
     ok: missing.length === 0,
     missing,
@@ -53,5 +72,6 @@ export function canPublishAutopilot(program: ProgramWithMedia): { ok: boolean; m
   if (!hasLink && !hasDetailBlock && !(program.media?.length)) {
     missing.push("source_url_or_content_or_media");
   }
+  if (hasSyntheticSignals(program)) missing.push("synthetic_markers_detected");
   return { ok: missing.length === 0, missing };
 }

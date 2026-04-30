@@ -15,7 +15,7 @@ import { requireAdmin } from "../../middleware/auth";
 import { canPublish } from "./publishGate";
 import type { Env } from "@mywave/config";
 import type { AdminPayload } from "../../middleware/auth";
-import { getProgramVisibilityThresholdDate, isProgramPubliclyVisible } from "./publicVisibility";
+import { isProgramPubliclyVisible } from "./publicVisibility";
 import { dedupeProgramsByEventKey } from "./dedup";
 import { notifySubscribersOnProgramPublished } from "../subscriptions/notifier";
 
@@ -94,8 +94,6 @@ export function programsRoutes(env: Env): Router {
     const where: Record<string, unknown> = {};
     if (!allowAll) {
       where.publishStatus = "published";
-      where.endDate = { gte: getProgramVisibilityThresholdDate() };
-      where.OR = [{ spotsAvailable: null }, { spotsAvailable: { gt: 0 } }];
     }
     else if (publish_status && isProgramPublishStatus(publish_status)) where.publishStatus = publish_status;
     if (discipline) where.discipline = discipline;
@@ -303,7 +301,7 @@ export function programsRoutes(env: Env): Router {
   router.patch("/:id/publish-status", admin, async (req: Request, res: Response) => {
     const existing = await prisma.program.findUnique({
       where: { id: req.params.id },
-      include: { media: true },
+      include: { media: true, organizer: { select: { displayName: true } } },
     });
     if (!existing) {
       res.status(404).json({ error: "Not found" });

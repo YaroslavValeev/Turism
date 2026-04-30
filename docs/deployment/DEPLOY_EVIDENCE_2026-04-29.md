@@ -1,7 +1,7 @@
 # DEPLOY EVIDENCE — 2026-04-29
 
 **Окружение:** production (Timeweb VPS `5.129.249.113`)  
-**Версия / git SHA:** `258e2ba`  
+**Версия / git SHA:** `8ebcc6c`  
 **Ответственный:** owner
 
 ---
@@ -119,6 +119,19 @@ curl -k https://api.mywavetour.ru/health
 ## 12. Итоговое решение
 
 - [x] Инфраструктурный запуск production-контура на новом VPS завершен.
-- [ ] Закрыть post-deploy: functional smoke admin root route, backup/restore rehearsal, LE renew (SAN/webroot + hook или календарь для wildcard).
+- [x] Runtime/HTTPS smoke green: `mywavetour.ru`, `api.mywavetour.ru/health`, `admin.mywavetour.ru/login` -> `HTTP/2 200`.
+- [ ] Закрыть post-deploy: functional smoke admin root route, backup/restore rehearsal.
+- [ ] LE autrenew: отложено. `certbot` (`webroot` и `standalone`) даёт `connection: Error getting validation data` со стороны ACME для токенов HTTP-01.
+
+### LE Autrenew Defer (2026-04-30)
+
+- Текущее состояние production: рабочее (действующий сертификат и HTTPS на основных маршрутах).
+- Что проверено:
+  - DNS `A` для `mywavetour.ru`, `www`, `api`, `admin` -> `5.129.249.113`.
+  - `ufw` открыт на `80/443`.
+  - nginx отдаёт `/.well-known/acme-challenge/*` и локальные `curl` дают `200`.
+  - Но ACME validation из Let's Encrypt периодически получает `Error getting validation data`.
+- Решение на сейчас: оставить текущий действующий сертификат, issue по автопродлению перенести в отдельный трек.
+- Следующий шаг владельца: открыть тикет в Timeweb с логом `certbot` и просьбой проверить внешнюю доступность `HTTP-01` к `5.129.249.113:80` для ACME validators.
 
 **Подпись / дата:** owner / `2026-04-29`

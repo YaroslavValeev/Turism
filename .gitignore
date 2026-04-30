@@ -19,3 +19,6 @@ __pycache__/
 *.tsbuildinfo
 apps/admin/test-results/
 tmp/subscriptions_export.csv
+
+# Let's Encrypt tokens (писать на VPS, не в git)
+infra/certbot-webroot/.well-known/

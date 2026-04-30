@@ -56,7 +56,9 @@ curl -k https://api.mywavetour.ru/health
 
 - Конфиг: `infra/nginx/mywave.conf`
 - Контейнер `reverse-proxy` запущен, HTTP/HTTPS порты опубликованы (`80/443`).
-- В репозитории устранено предупреждение nginx 1.27: вместо `listen 443 ssl http2` используется `listen 443 ssl;` + `http2 on;` (три HTTPS-блока). После выката на VPS — перезапуск `reverse-proxy`, предупреждения в логах должны исчезнуть.
+- Синтаксис HTTP/2 nginx 1.27: **`listen 443 ssl;`** + **`http2 on;`** (не устаревший `listen … http2` на одной строке).
+- **Рассинхрон host ↔ container:** если `sed`/редактор на VPS показывает новый файл, а `docker compose exec reverse-proxy grep` — старый, при этом **Mounts** верный → пересоздать контейнер: `compose stop reverse-proxy`, `compose rm -f reverse-proxy`, `compose up -d reverse-proxy`.
+- Для ACME HTTP-01: **`location /.well-known/acme-challenge/`** + том **`./infra/certbot-webroot`**, см. `docs/deployment/SSL_LE_AUTORENEW.md`.
 
 ---
 
@@ -117,6 +119,6 @@ curl -k https://api.mywavetour.ru/health
 ## 12. Итоговое решение
 
 - [x] Инфраструктурный запуск production-контура на новом VPS завершен.
-- [ ] Закрыть post-deploy: functional smoke admin root route, backup/restore rehearsal.
+- [ ] Закрыть post-deploy: functional smoke admin root route, backup/restore rehearsal, LE renew (SAN/webroot + hook или календарь для wildcard).
 
 **Подпись / дата:** owner / `2026-04-29`

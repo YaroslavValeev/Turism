@@ -91,6 +91,27 @@ docker compose -f docker-compose.production.yml --env-file .env.production up -d
 
 ---
 
+## Certbot: часть имён падает (`timeout` / `error getting validation data`)
+
+Let's Encrypt ходит на **каждый** `-d` как на **`http://имя/.well-known/acme-challenge/...`** с разных точек сети («multi-perspective»). Ошибки **не всегда** из-за nginx на одном хосте — часто **файрвол, флап сети VPS, rate limit** после неудачных попыток.
+
+**Проверки на сервере (должно везде быть `200` и тело файла):**
+
+```bash
+TOKEN=probe-le; mkdir -p infra/certbot-webroot/.well-known/acme-challenge; echo ok > infra/certbot-webroot/.well-known/acme-challenge/$TOKEN
+for h in mywavetour.ru www.mywavetour.ru api.mywavetour.ru admin.mywavetour.ru; do echo "== $h =="; curl -sS -m 15 -D- -o /tmp/body "http://$h/.well-known/acme-challenge/$TOKEN" | head -n 5; cat /tmp/body; echo; done
+```
+
+```bash
+for h in mywavetour.ru www.mywavetour.ru api.mywavetour.ru admin.mywavetour.ru; do echo "$h -> $(dig +short A $h | tr '\n' ' ')"; done
+```
+
+- Если **с сервера** по всем четырём хостам **ok** — конфиг в порядке: повторите **`certbot certonly ...`** через **15–60 минут** (или на следующий день), смотрите лимиты LE.
+- Убедитесь, что **`ufw`/фаервол** пропускает **tcp/80** и **443** снаружи: `ufw status verbose`.
+- **Резервный путь без HTTP-01 для всех имён:** DNS-01 (wildcard/SAN) через API DNS Timeweb или снова выпуск в поддержке Timeweb + **`le-deploy-sync.sh`**.
+
+---
+
 ## Остался wildcard-only на год
 
 Оставляйте календарное напоминание за месяц до **NotAfter**, снова **Timeweb / DNS-01** или миграция на SAN/webroot как выше.

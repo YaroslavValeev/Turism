@@ -5,7 +5,7 @@ import { spawnSync } from "child_process";
 import { Prisma, Source, EventCandidate, NormalizedItem, RawItem } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
 import { writeAuditLog } from "../../lib/audit";
-import { canPublishAutopilot } from "../programs/publishGate";
+import { canPublishAutopilot, programIncludeForPublishGate } from "../programs/publishGate";
 import { buildProgramDedupKey, pickPreferredProgram, type ProgramDedupShape } from "../programs/dedup";
 import { cacheExternalProgramMediaForWeb } from "./mediaCache";
 import {
@@ -3937,10 +3937,11 @@ export async function publishCandidateToDraft(
       }
       let outLink = duplicateLink;
       let gateResult: { ok: boolean; missing: string[] } | null = null;
+      /** Автовитрина: только при успешном {@link canPublishAutopilot} (никаких обходов). */
       if (autoPublishRequested) {
         const publishCheck = await tx.program.findUnique({
           where: { id: duplicateProgram.id },
-          include: { media: true },
+          include: programIncludeForPublishGate,
         });
         if (publishCheck) {
           gateResult = canPublishAutopilot(publishCheck);
@@ -4045,10 +4046,11 @@ export async function publishCandidateToDraft(
     }
     let linkStatus = "draft_created";
     let createGate: { ok: boolean; missing: string[] } | null = null;
+    /** Автовитрина: только при успешном {@link canPublishAutopilot} (никаких обходов). */
     if (autoPublishRequested) {
       const publishCheck = await tx.program.findUnique({
         where: { id: program.id },
-        include: { media: true },
+        include: programIncludeForPublishGate,
       });
       if (publishCheck) {
         createGate = canPublishAutopilot(publishCheck);
@@ -4436,11 +4438,12 @@ export async function autoPublishReadyCandidates(
       if (ap?.programPublishStatus === "published") {
         stats.duplicatePublishedOrRetained += 1;
         if (ap.gate === "failed") stats.duplicateRetainedOnly += 1;
-        stats.published += 1;
+        /** Считаем «опубликовано автопайплайном» только если мягкий гейт реально прошёл в этом прогоне. */
+        if (ap.gate === "passed") stats.published += 1;
       }
     } else {
       stats.autoCreated += 1;
-      if (ap?.programPublishStatus === "published" && ap.path === "create") {
+      if (ap?.programPublishStatus === "published" && ap.path === "create" && ap.gate === "passed") {
         stats.autoCreatedPublished += 1;
         stats.published += 1;
       }

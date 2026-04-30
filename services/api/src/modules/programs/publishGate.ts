@@ -9,6 +9,15 @@ export type ProgramWithMedia = Program & {
   organizer?: { displayName: string | null } | null;
 };
 
+/**
+ * Обязательный include для Prisma перед вызовом {@link canPublishAutopilot} / {@link canPublish}
+ * (synthetic-проверка смотрит organizer.displayName).
+ */
+export const programIncludeForPublishGate = {
+  media: true,
+  organizer: { select: { displayName: true } },
+} as const;
+
 function filled(s: string | null | undefined): boolean {
   return s != null && String(s).trim() !== "";
 }

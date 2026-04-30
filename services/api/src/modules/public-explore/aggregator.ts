@@ -8,7 +8,6 @@ import {
   rawStringToHubSlug,
 } from "@mywave/explore-links";
 import { isProgramPubliclyVisible } from "../programs/publicVisibility";
-import { getProgramVisibilityThresholdDate } from "../programs/publicVisibility";
 import { publicCollectionVisibilityWhere } from "../public-collections/resolve";
 import type { PublicProgramCard } from "../public-blog/related";
 import { resolveExploreHubSeo, type ResolvedExploreSeo } from "./resolveSeo";

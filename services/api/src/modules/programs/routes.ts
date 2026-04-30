@@ -12,7 +12,7 @@ import {
 import { prisma } from "../../lib/prisma";
 import { writeAuditLog } from "../../lib/audit";
 import { requireAdmin } from "../../middleware/auth";
-import { canPublish } from "./publishGate";
+import { canPublish, programIncludeForPublishGate } from "./publishGate";
 import type { Env } from "@mywave/config";
 import type { AdminPayload } from "../../middleware/auth";
 import { isProgramPubliclyVisible } from "./publicVisibility";
@@ -301,7 +301,7 @@ export function programsRoutes(env: Env): Router {
   router.patch("/:id/publish-status", admin, async (req: Request, res: Response) => {
     const existing = await prisma.program.findUnique({
       where: { id: req.params.id },
-      include: { media: true, organizer: { select: { displayName: true } } },
+      include: programIncludeForPublishGate,
     });
     if (!existing) {
       res.status(404).json({ error: "Not found" });

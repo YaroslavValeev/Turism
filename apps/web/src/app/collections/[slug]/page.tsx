@@ -10,7 +10,7 @@ import { CollectionPageCta } from "../collection-page-cta";
 import { CollectionPageJsonLd } from "../CollectionJsonLd";
 import { CollectionRelatedBlocks } from "../collection-related-blocks";
 
-type Props = { params: { slug: string } };
+type Props = { params: Promise<{ slug: string }> };
 
 function formatBody(text: string | null) {
   if (!text?.trim()) return null;
@@ -27,7 +27,8 @@ function formatBody(text: string | null) {
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const slug = decodeURIComponent(params.slug);
+  const { slug: rawSlug } = await params;
+  const slug = decodeURIComponent(rawSlug);
   let c: Awaited<ReturnType<typeof fetchPublicCollection>>;
   try {
     c = await fetchPublicCollection(slug);
@@ -53,7 +54,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function CollectionPage({ params }: Props) {
-  const slug = decodeURIComponent(params.slug);
+  const { slug: rawSlug } = await params;
+  const slug = decodeURIComponent(rawSlug);
   const [c, exploreIndex] = await Promise.all([fetchPublicCollection(slug), fetchPublicExploreList()]);
   if (!c) notFound();
   const siteUrl = getPublicSiteUrl();

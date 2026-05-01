@@ -9,7 +9,7 @@ import { BlogArticleCta } from "../blog-article-cta";
 import { BlogRelatedSections } from "../blog-related-sections";
 import { BlogArticleJsonLd, BlogBreadcrumbJsonLd } from "../BlogJsonLd";
 
-type Props = { params: { slug: string } };
+type Props = { params: Promise<{ slug: string }> };
 
 function formatRuDate(iso: string) {
   try {
@@ -38,7 +38,8 @@ function formatBody(text: string | null) {
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const slug = decodeURIComponent(params.slug);
+  const { slug: rawSlug } = await params;
+  const slug = decodeURIComponent(rawSlug);
   let post: Awaited<ReturnType<typeof fetchPublicBlogPost>> | null;
   try {
     post = await fetchPublicBlogPost(slug);
@@ -75,7 +76,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function BlogArticlePage({ params }: Props) {
-  const slug = decodeURIComponent(params.slug);
+  const { slug: rawSlug } = await params;
+  const slug = decodeURIComponent(rawSlug);
   const [post, exploreIndex] = await Promise.all([fetchPublicBlogPost(slug), fetchPublicExploreList()]);
   if (!post) notFound();
 

@@ -16,7 +16,7 @@ import type { ExploreHubType } from "../../../../lib/exploreApi";
 
 const VALID_TYPES = new Set<string>(["discipline", "region", "season"]);
 
-type Props = { params: { type: string; slug: string } };
+type Props = { params: Promise<{ type: string; slug: string }> };
 
 function mapProgram(p: PublicProgramRelated): ProgramCardProgram {
   return {
@@ -54,8 +54,9 @@ function typeLineRu(t: ExploreHubType): string {
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const type = String(params.type || "").trim();
-  const slug = decodeURIComponent(String(params.slug || "")).trim();
+  const p = await params;
+  const type = String(p.type || "").trim();
+  const slug = decodeURIComponent(String(p.slug || "")).trim();
   if (!VALID_TYPES.has(type) || !slug) return { title: "Тема" };
   const hub = await fetchPublicExploreHub(type, slug);
   if (!hub) return { title: "Не найдено" };
@@ -77,8 +78,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function ExploreHubPage({ params }: Props) {
-  const type = String(params.type || "").trim() as ExploreHubType;
-  const slug = decodeURIComponent(String(params.slug || "")).trim();
+  const p = await params;
+  const type = String(p.type || "").trim() as ExploreHubType;
+  const slug = decodeURIComponent(String(p.slug || "")).trim();
   if (!VALID_TYPES.has(type) || !slug) notFound();
 
   const [hub, exploreIndex] = await Promise.all([fetchPublicExploreHub(type, slug), fetchPublicExploreList()]);

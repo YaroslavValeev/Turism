@@ -15,8 +15,9 @@ async function getProgram(id: string): Promise<ProgramData | null> {
   return (await res.json()) as ProgramData;
 }
 
-export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
-  const program = await getProgram(params.id);
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const { id } = await params;
+  const program = await getProgram(id);
   const title = program?.title ? `${program.title} | MyWaveTour` : "Программа | MyWaveTour";
   const description =
     program?.audienceFit?.slice(0, 150) ||
@@ -27,7 +28,7 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
     title,
     description,
     alternates: {
-      canonical: `/program/${params.id}`,
+      canonical: `/program/${id}`,
     },
   };
 }

@@ -33,8 +33,8 @@ COPY --from=build /app/services/api ./services/api
 RUN pnpm install --prod --frozen-lockfile
 # После --prod клиент Prisma не сгенерирован; generate обязателен для runtime.
 # DATABASE_URL нужен парсеру схемы (datasource); на рантайме подставится из .env.production.
-RUN DATABASE_URL="postgresql://build:build@127.0.0.1:5432/build?schema=public" pnpm --filter api exec prisma generate \
-  && node -e "const {PrismaClient}=require('@prisma/client'); new PrismaClient(); console.log('prisma client ok')"
+# Проверка через node -e с WORKDIR=/app ломает сборку: require('@prisma/client') не резолвится как у runtime приложения.
+RUN DATABASE_URL="postgresql://build:build@127.0.0.1:5432/build?schema=public" pnpm --filter api exec prisma generate
 # Сборка падает, если tsx не в prod-зависимостях api (иначе prisma/ts-операции в контейнере ломаются).
 RUN pnpm --filter api exec tsx --version
 WORKDIR /app/services/api

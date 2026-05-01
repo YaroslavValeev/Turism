@@ -27,10 +27,9 @@ import {
 import { dedupeProgramListingsByEvent } from "../lib/dedupeProgramListingsByEvent";
 import { getDisciplineCompactLabel, getDisciplineDisplay } from "../lib/disciplineLabels";
 import { pickBestProgramCoverImageUrl } from "../lib/programCardCover";
+import { getPublicApiBase } from "../lib/publicApiBase";
 import { ruPluralNoun } from "../lib/ruPlural";
 import { StartAlertsSignup } from "../components/StartAlertsSignup";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 
 type Program = {
   id: string;
@@ -204,7 +203,7 @@ function HomePageInner() {
 
     const loadPrograms = async (attempt = 0) => {
       try {
-        const response = await fetch(`${API_URL}/programs`, { cache: "no-store" });
+        const response = await fetch(`${getPublicApiBase()}/programs`, { cache: "no-store" });
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}`);
         }
@@ -929,7 +928,7 @@ function HomePageInner() {
         />
         {loading && (
           <p style={{ color: "var(--mw-muted)" }}>
-            Загрузка каталога… Убедитесь, что API запущен ({API_URL}).
+            Загрузка каталога… Убедитесь, что API запущен ({getPublicApiBase()}).
           </p>
         )}
         {!loading && catalogLoadError && allPrograms.length === 0 && (

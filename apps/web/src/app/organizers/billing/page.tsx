@@ -8,7 +8,7 @@ import {
   getOrganizerPrivilegeStatusLabel,
 } from "@mywave/shared-types";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+import { getPublicApiBase } from "../../../lib/publicApiBase";
 
 type Privileges = {
   organizerId: string;
@@ -38,8 +38,8 @@ export default function OrganizerBillingPage() {
     setError("");
     try {
       const [privilegesRes, profileRes] = await Promise.all([
-        fetch(`${API_URL}/organizers/${encodeURIComponent(organizerId)}/privileges`),
-        fetch(`${API_URL}/organizers/${encodeURIComponent(organizerId)}/billing-profile`),
+        fetch(`${getPublicApiBase()}/organizers/${encodeURIComponent(organizerId)}/privileges`),
+        fetch(`${getPublicApiBase()}/organizers/${encodeURIComponent(organizerId)}/billing-profile`),
       ]);
       if (!privilegesRes.ok) {
         const data = await privilegesRes.json().catch(() => ({}));

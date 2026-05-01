@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+import { getPublicApiBase } from "../../../lib/publicApiBase";
 
 type AnalyticsOverview = {
   organizer: {
@@ -53,7 +53,7 @@ export default function OrganizerAnalyticsPage() {
     setData(null);
     try {
       const res = await fetch(
-        `${API_URL}/organizers/${encodeURIComponent(organizerId)}/analytics/overview?days=${encodeURIComponent(days)}`
+        `${getPublicApiBase()}/organizers/${encodeURIComponent(organizerId)}/analytics/overview?days=${encodeURIComponent(days)}`
       );
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body?.error ?? "Не удалось загрузить аналитику");

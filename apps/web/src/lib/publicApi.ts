@@ -1,7 +1,7 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+import { getPublicApiBase } from "./publicApiBase";
 
 export function getPublicApiUrl(): string {
-  return API_URL;
+  return getPublicApiBase();
 }
 
 export type OrganizerIntakePayload = {
@@ -19,7 +19,7 @@ export type OrganizerIntakePayload = {
 };
 
 export async function postOrganizerIntake(payload: OrganizerIntakePayload): Promise<{ id: string; ok: boolean }> {
-  const res = await fetch(`${API_URL}/public/organizer-intake`, {
+  const res = await fetch(`${getPublicApiBase()}/public/organizer-intake`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -58,7 +58,7 @@ export type PublicSubscriptionResponse = {
 };
 
 export async function postPublicSubscription(payload: PublicSubscriptionPayload): Promise<PublicSubscriptionResponse> {
-  const res = await fetch(`${API_URL}/public/subscriptions`, {
+  const res = await fetch(`${getPublicApiBase()}/public/subscriptions`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),

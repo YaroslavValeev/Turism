@@ -2,8 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+import { getPublicApiBase } from "../../../lib/publicApiBase";
 
 type RequestInfo = {
   request: {
@@ -27,7 +26,7 @@ export default function ReviewRequestPage() {
   useEffect(() => {
     if (!token) return;
     setLoading(true);
-    fetch(`${API_URL}/reviews/request/${encodeURIComponent(token)}`)
+    fetch(`${getPublicApiBase()}/reviews/request/${encodeURIComponent(token)}`)
       .then(async (res) => {
         const body = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(body?.error ?? "Не удалось загрузить ссылку");
@@ -44,7 +43,7 @@ export default function ReviewRequestPage() {
     setError("");
     setMessage("");
     try {
-      const res = await fetch(`${API_URL}/reviews/request/${encodeURIComponent(token)}/submit`, {
+      const res = await fetch(`${getPublicApiBase()}/reviews/request/${encodeURIComponent(token)}/submit`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ rating: Number(rating), comment }),

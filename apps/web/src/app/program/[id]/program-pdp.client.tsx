@@ -11,7 +11,7 @@ import { validExploreMainLinks } from "../../../lib/exploreNavWeb";
 import { orderProgramMediaForDisplay, presentProgramMediaUrl } from "../../../lib/programCardCover";
 import { trackProductEvent } from "../../../lib/analytics/client";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+import { getPublicApiBase } from "../../../lib/publicApiBase";
 
 type Program = {
   id: string;
@@ -208,8 +208,8 @@ export function ProgramPdpClient({ id, validHubKeys }: PdpProps) {
       try {
         setLoadError("");
         const [progRes, revRes] = await Promise.all([
-          fetch(`${API_URL}/programs/${id}`),
-          fetch(`${API_URL}/reviews/public?programId=${encodeURIComponent(id)}`),
+          fetch(`${getPublicApiBase()}/programs/${id}`),
+          fetch(`${getPublicApiBase()}/reviews/public?programId=${encodeURIComponent(id)}`),
         ]);
         if (cancelled) return;
         if (progRes.ok) {
@@ -312,7 +312,7 @@ export function ProgramPdpClient({ id, validHubKeys }: PdpProps) {
     setSubmitError("");
     setSubmitSuccess("");
     try {
-      const res = await fetch(`${API_URL}/bookings`, {
+      const res = await fetch(`${getPublicApiBase()}/bookings`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

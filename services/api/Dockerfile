@@ -1,4 +1,6 @@
 FROM node:20-alpine AS base
+# Иначе prisma generate/runtime видит «неизвестный» OpenSSL и дефолтит на 1.1.x → libssl.so.1.1 не найден в Alpine 3.17+.
+RUN apk add --no-cache openssl
 WORKDIR /app
 # Не полагаемся на Corepack для pnpm: он качает pnpm с registry с коротким connect-timeout
 # и на части VPS падает (UND_ERR_CONNECT_TIMEOUT → сборка ломается на deps).
@@ -20,6 +22,7 @@ RUN pnpm --filter api db:generate
 RUN pnpm --filter api build
 
 FROM node:20-alpine AS runtime
+RUN apk add --no-cache openssl
 WORKDIR /app
 RUN npm config set fetch-timeout 300000 \
   && npm config set fetch-retry-mintimeout 15000 \

@@ -3,8 +3,8 @@
 
 generator client {
   provider      = "prisma-client-js"
-  // Alpine 3.17+ (node:*-alpine): OpenSSL 3; иначе тянется движок под libssl.so.1.1 → PrismaClientInitializationError в runtime.
-  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+  // API Docker: Debian bookworm (OpenSSL 3). Alpine+musl часто остаётся на движке libssl.so.1.1 без compat-пакета.
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
 }
 
 datasource db {

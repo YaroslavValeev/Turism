@@ -46,6 +46,7 @@ services:
     build:
       context: .
       dockerfile: apps/web/Dockerfile
+      network: host
     restart: unless-stopped
     env_file:
       - .env.production
@@ -59,6 +60,7 @@ services:
     build:
       context: .
       dockerfile: apps/admin/Dockerfile
+      network: host
     restart: unless-stopped
     env_file:
       - .env.production

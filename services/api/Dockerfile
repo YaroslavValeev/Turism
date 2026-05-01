@@ -6,7 +6,7 @@ RUN npm config set fetch-timeout 300000 \
   && npm config set fetch-retry-mintimeout 15000 \
   && npm config set fetch-retry-maxtimeout 300000 \
   && npm config set fetch-retries 10 \
-  && npm install -g pnpm@9
+  && npm install -g pnpm@9.0.0
 
 FROM base AS deps
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
@@ -25,7 +25,7 @@ RUN npm config set fetch-timeout 300000 \
   && npm config set fetch-retry-mintimeout 15000 \
   && npm config set fetch-retry-maxtimeout 300000 \
   && npm config set fetch-retries 10 \
-  && npm install -g pnpm@9
+  && npm install -g pnpm@9.0.0
 ENV NODE_ENV=production
 COPY --from=build /app/package.json /app/pnpm-lock.yaml /app/pnpm-workspace.yaml ./
 COPY --from=build /app/packages ./packages

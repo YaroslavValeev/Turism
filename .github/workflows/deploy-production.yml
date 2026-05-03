@@ -38,11 +38,16 @@ jobs:
         run: |
           set -euo pipefail
           install -m 700 -d ~/.ssh
+          DEPLOY_HOST="$(printf '%s' "$DEPLOY_HOST" | tr -d '[:space:]')"
+          DEPLOY_USER="$(printf '%s' "$DEPLOY_USER" | tr -d '[:space:]')"
           printenv DEPLOY_KEY | tr -d '\r' > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
+          echo ">>> Проверка, что приватный ключ читается OpenSSH"
+          ssh-keygen -lf ~/.ssh/deploy_key
           ssh-keyscan -4 -p 22 -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
           DP="${DEPLOY_PATH:-/opt/mywave/toutism}"
-          SSH_OPTS="-4 -i ${HOME}/.ssh/deploy_key -p 22 -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=90 -o ServerAliveInterval=15 -o ServerAliveCountMax=12"
+          DP="$(echo "$DP" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+          SSH_OPTS="-v -4 -i ${HOME}/.ssh/deploy_key -p 22 -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=60 -o ConnectionAttempts=3 -o ServerAliveInterval=15 -o ServerAliveCountMax=20"
           echo ">>> SSH probe ${DEPLOY_USER}@${DEPLOY_HOST} (mkdir ${DP})"
           ssh $SSH_OPTS "${DEPLOY_USER}@${DEPLOY_HOST}" "mkdir -p '${DP}' && echo ssh-ok"
           echo ">>> rsync -> ${DEPLOY_USER}@${DEPLOY_HOST}:${DP}/"

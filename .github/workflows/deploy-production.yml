@@ -1,0 +1,75 @@
+# Деплой на VPS по SSH после push в main (и вручную из вкладки Actions).
+#
+# Секреты репозитория (Settings → Secrets and variables → Actions):
+#   DEPLOY_HOST          — IPv4 VPS, например 5.129.249.113
+#   DEPLOY_USER          — обычно root
+#   DEPLOY_SSH_KEY       — приватный ключ PEM (полностью, с BEGIN/END)
+#   (порт SSH — 22; другой порт — правьте шаг ниже, в with.port)
+#   DEPLOY_PATH          — опционально; если не задан — /opt/mywave/toutism на сервере
+#
+# На сервере: публичный ключ из пары в ~/.ssh/authorized_keys для DEPLOY_USER.
+# Файлы .env* на сервере не перезаписываются (rsync --exclude).
+#
+# Если SSH с GitHub к VPS всё ещё упирается в MaxStartups — поднимите лимиты / fail2ban
+# или поставьте self-hosted runner на этот же VPS (тогда SSH снаружи не нужен).
+
+name: Deploy production
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          port: 22
+          command_timeout: 45m
+          script_stop: true
+          script: |
+            set -euo pipefail
+            DEPLOY_PATH="${{ secrets.DEPLOY_PATH }}"
+            DEPLOY_PATH="${DEPLOY_PATH:-/opt/mywave/toutism}"
+            REPO="${{ github.repository }}"
+            TMP="$(mktemp -d)"
+            trap 'rm -rf "$TMP"' EXIT
+            cd "$TMP"
+            echo ">>> Download https://github.com/${REPO}/archive/refs/heads/main.tar.gz"
+            curl -fsSL "https://github.com/${REPO}/archive/refs/heads/main.tar.gz" -o src.tgz
+            tar -xzf src.tgz
+            SRC="$TMP/$(basename "$REPO")-main"
+            if [ ! -d "$SRC" ]; then
+              echo "Expected source dir not found: $SRC" >&2
+              ls -la "$TMP" >&2
+              exit 1
+            fi
+            mkdir -p "$DEPLOY_PATH"
+            echo ">>> rsync -> $DEPLOY_PATH"
+            rsync -a --delete \
+              --exclude '.git/' \
+              --exclude 'node_modules/' \
+              --exclude '**/.next/' \
+              --exclude '**/dist/' \
+              --exclude 'backups/' \
+              --exclude 'logs/' \
+              --exclude '.env' \
+              --exclude '.env.*' \
+              --exclude '**/.env' \
+              --exclude '**/.env.*' \
+              "$SRC/" "$DEPLOY_PATH/"
+            cd "$DEPLOY_PATH"
+            echo ">>> docker compose build + up"
+            docker compose -f docker-compose.production.yml build --no-cache web
+            docker compose -f docker-compose.production.yml up -d web
+            docker compose -f docker-compose.production.yml ps

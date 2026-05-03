@@ -91,7 +91,7 @@ jobs:
             exit 255
           fi
 
-      - name: Build and restart web on VPS
+      - name: Build and restart api, web, admin on VPS
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.DEPLOY_HOST }}
@@ -100,14 +100,15 @@ jobs:
           port: 22
           protocol: tcp4
           timeout: 15m
-          command_timeout: 45m
+          command_timeout: 90m
           script_stop: true
           script: |
             set -euo pipefail
             DEPLOY_PATH="${{ secrets.DEPLOY_PATH }}"
             DEPLOY_PATH="${DEPLOY_PATH:-/opt/mywave/toutism}"
             cd "$DEPLOY_PATH"
-            echo ">>> docker compose build + up"
-            docker compose -f docker-compose.production.yml build --no-cache web
-            docker compose -f docker-compose.production.yml up -d web
+            echo ">>> docker compose build --no-cache api web admin"
+            docker compose -f docker-compose.production.yml build --no-cache api web admin
+            echo ">>> docker compose up -d api web admin reverse-proxy"
+            docker compose -f docker-compose.production.yml up -d api web admin reverse-proxy
             docker compose -f docker-compose.production.yml ps

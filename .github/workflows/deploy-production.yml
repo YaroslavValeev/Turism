@@ -8,7 +8,9 @@
 # На VPS не вызывается api.github.com — обход SSL timeout с VPS до GitHub.
 #
 # На сервере: публичный ключ в ~/.ssh/authorized_keys. При перегрузке SSH — MaxStartups / PerSourceMaxStartups.
-# Раннер GitHub иногда ловит «banner exchange» timeout — ниже повторы ssh/rsync с паузой.
+# Раннер GitHub (Azure) → VPS: возможны «banner exchange» или connect timeout на :22.
+# Если часто connect timeout — файрвол/гео в панели Timeweb, либо self-hosted runner на этом VPS.
+# Повторы ниже с коротким ConnectTimeout, чтобы job не висел ~30 минут.
 
 name: Deploy production
 
@@ -48,25 +50,26 @@ jobs:
           ssh-keyscan -4 -p 22 -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
           DP="${DEPLOY_PATH:-/opt/mywave/toutism}"
           DP="$(echo "$DP" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
-          SSH_OPTS="-v -4 -i ${HOME}/.ssh/deploy_key -p 22 -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=120 -o ConnectionAttempts=1 -o ServerAliveInterval=10 -o ServerAliveCountMax=40"
+          SSH_OPTS="-4 -i ${HOME}/.ssh/deploy_key -p 22 -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=22 -o ConnectionAttempts=1 -o ServerAliveInterval=10 -o ServerAliveCountMax=30"
           echo ">>> SSH probe ${DEPLOY_USER}@${DEPLOY_HOST} (mkdir ${DP})"
           PROBE_OK=0
-          for i in $(seq 1 30); do
-            echo ">>> SSH probe attempt $i/30"
+          for i in $(seq 1 12); do
+            echo ">>> SSH probe attempt $i/12"
             if ssh $SSH_OPTS "${DEPLOY_USER}@${DEPLOY_HOST}" "mkdir -p '${DP}' && echo ssh-ok"; then
               PROBE_OK=1
               break
             fi
-            sleep 15
+            sleep 20
           done
           if [ "$PROBE_OK" != 1 ]; then
-            echo ">>> SSH probe: все попытки исчерпаны" >&2
+            echo ">>> SSH probe: все попытки исчерпаны (часто: файрвол Timeweb / блок Azure→VPS на :22)." >&2
+            echo ">>> См. self-hosted runner: https://docs.github.com/en/actions/hosting-your-own-runners" >&2
             exit 255
           fi
           echo ">>> rsync -> ${DEPLOY_USER}@${DEPLOY_HOST}:${DP}/"
           RSYNC_OK=0
-          for i in $(seq 1 25); do
-            echo ">>> rsync attempt $i/25"
+          for i in $(seq 1 10); do
+            echo ">>> rsync attempt $i/10"
             if rsync -avz -e "ssh $SSH_OPTS" \
               --delete \
               --exclude='.git/' \
@@ -81,10 +84,10 @@ jobs:
               RSYNC_OK=1
               break
             fi
-            sleep 15
+            sleep 20
           done
           if [ "$RSYNC_OK" != 1 ]; then
-            echo ">>> rsync: все попытки исчерпаны" >&2
+            echo ">>> rsync: все попытки исчерпаны (сеть до VPS или SSH)." >&2
             exit 255
           fi
 

@@ -3,7 +3,8 @@
 # Секреты репозитория (Settings → Secrets and variables → Actions):
 #   DEPLOY_HOST          — IPv4 VPS, например 5.129.249.113
 #   DEPLOY_USER          — обычно root
-#   DEPLOY_SSH_KEY       — приватный ключ PEM (полностью, с BEGIN/END)
+#   DEPLOY_OPENSSH_PRIVATE_KEY — приватный ключ OpenSSH (полностью, BEGIN…END)
+#   (устаревшее имя DEPLOY_SSH_KEY больше не используется workflow)
 #   (порт SSH — 22; другой порт — правьте шаг ниже, в with.port)
 #   DEPLOY_PATH          — опционально; если не задан — /opt/mywave/toutism на сервере
 #
@@ -39,7 +40,7 @@ jobs:
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          key: ${{ secrets.DEPLOY_OPENSSH_PRIVATE_KEY }}
           port: 22
           command_timeout: 45m
           envs: GH_ARCHIVE_TOKEN

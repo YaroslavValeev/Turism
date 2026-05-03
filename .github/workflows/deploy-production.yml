@@ -10,7 +10,7 @@
 # На сервере: публичный ключ в ~/.ssh/authorized_keys. При перегрузке SSH — MaxStartups / PerSourceMaxStartups.
 # Раннер GitHub (Azure) → VPS: возможны «banner exchange» или connect timeout на :22.
 # Если часто connect timeout — файрвол/гео в панели Timeweb, либо self-hosted runner на этом VPS.
-# Повторы ниже с коротким ConnectTimeout, чтобы job не висел ~30 минут.
+# Повторы ниже с коротким ConnectTimeout. При connect timeout — Re-run jobs (сеть Azure→Timeweb лотерея).
 
 name: Deploy production
 
@@ -26,6 +26,7 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 120
     permissions:
       contents: read
     steps:
@@ -50,16 +51,16 @@ jobs:
           ssh-keyscan -4 -p 22 -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
           DP="${DEPLOY_PATH:-/opt/mywave/toutism}"
           DP="$(echo "$DP" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
-          SSH_OPTS="-4 -i ${HOME}/.ssh/deploy_key -p 22 -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=22 -o ConnectionAttempts=1 -o ServerAliveInterval=10 -o ServerAliveCountMax=30"
+          SSH_OPTS="-4 -i ${HOME}/.ssh/deploy_key -p 22 -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=28 -o ConnectionAttempts=1 -o ServerAliveInterval=10 -o ServerAliveCountMax=30"
           echo ">>> SSH probe ${DEPLOY_USER}@${DEPLOY_HOST} (mkdir ${DP})"
           PROBE_OK=0
-          for i in $(seq 1 12); do
-            echo ">>> SSH probe attempt $i/12"
+          for i in $(seq 1 20); do
+            echo ">>> SSH probe attempt $i/20"
             if ssh $SSH_OPTS "${DEPLOY_USER}@${DEPLOY_HOST}" "mkdir -p '${DP}' && echo ssh-ok"; then
               PROBE_OK=1
               break
             fi
-            sleep 20
+            sleep 15
           done
           if [ "$PROBE_OK" != 1 ]; then
             echo ">>> SSH probe: все попытки исчерпаны (часто: файрвол Timeweb / блок Azure→VPS на :22)." >&2
@@ -84,7 +85,7 @@ jobs:
               RSYNC_OK=1
               break
             fi
-            sleep 20
+            sleep 15
           done
           if [ "$RSYNC_OK" != 1 ]; then
             echo ">>> rsync: все попытки исчерпаны (сеть до VPS или SSH)." >&2

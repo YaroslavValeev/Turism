@@ -8,6 +8,7 @@
 # На VPS не вызывается api.github.com — обход SSL timeout с VPS до GitHub.
 #
 # На сервере: публичный ключ в ~/.ssh/authorized_keys. При перегрузке SSH — MaxStartups / PerSourceMaxStartups.
+# Раннер GitHub иногда ловит «banner exchange» timeout — ниже повторы ssh/rsync с паузой.
 
 name: Deploy production
 
@@ -47,21 +48,45 @@ jobs:
           ssh-keyscan -4 -p 22 -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
           DP="${DEPLOY_PATH:-/opt/mywave/toutism}"
           DP="$(echo "$DP" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
-          SSH_OPTS="-v -4 -i ${HOME}/.ssh/deploy_key -p 22 -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=60 -o ConnectionAttempts=3 -o ServerAliveInterval=15 -o ServerAliveCountMax=20"
+          SSH_OPTS="-v -4 -i ${HOME}/.ssh/deploy_key -p 22 -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=120 -o ConnectionAttempts=1 -o ServerAliveInterval=10 -o ServerAliveCountMax=40"
           echo ">>> SSH probe ${DEPLOY_USER}@${DEPLOY_HOST} (mkdir ${DP})"
-          ssh $SSH_OPTS "${DEPLOY_USER}@${DEPLOY_HOST}" "mkdir -p '${DP}' && echo ssh-ok"
+          PROBE_OK=0
+          for i in $(seq 1 30); do
+            echo ">>> SSH probe attempt $i/30"
+            if ssh $SSH_OPTS "${DEPLOY_USER}@${DEPLOY_HOST}" "mkdir -p '${DP}' && echo ssh-ok"; then
+              PROBE_OK=1
+              break
+            fi
+            sleep 15
+          done
+          if [ "$PROBE_OK" != 1 ]; then
+            echo ">>> SSH probe: все попытки исчерпаны" >&2
+            exit 255
+          fi
           echo ">>> rsync -> ${DEPLOY_USER}@${DEPLOY_HOST}:${DP}/"
-          rsync -avz -e "ssh $SSH_OPTS" \
-            --delete \
-            --exclude='.git/' \
-            --exclude='node_modules/' \
-            --exclude='.next/' \
-            --exclude='dist/' \
-            --exclude='backups/' \
-            --exclude='logs/' \
-            --exclude='.env' \
-            --exclude='.env.*' \
-            "$GITHUB_WORKSPACE/" "${DEPLOY_USER}@${DEPLOY_HOST}:${DP}/"
+          RSYNC_OK=0
+          for i in $(seq 1 25); do
+            echo ">>> rsync attempt $i/25"
+            if rsync -avz -e "ssh $SSH_OPTS" \
+              --delete \
+              --exclude='.git/' \
+              --exclude='node_modules/' \
+              --exclude='.next/' \
+              --exclude='dist/' \
+              --exclude='backups/' \
+              --exclude='logs/' \
+              --exclude='.env' \
+              --exclude='.env.*' \
+              "$GITHUB_WORKSPACE/" "${DEPLOY_USER}@${DEPLOY_HOST}:${DP}/"; then
+              RSYNC_OK=1
+              break
+            fi
+            sleep 15
+          done
+          if [ "$RSYNC_OK" != 1 ]; then
+            echo ">>> rsync: все попытки исчерпаны" >&2
+            exit 255
+          fi
 
       - name: Build and restart web on VPS
         uses: appleboy/ssh-action@v1.2.0
@@ -70,6 +95,8 @@ jobs:
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_OPENSSH_PRIVATE_KEY }}
           port: 22
+          protocol: tcp4
+          timeout: 15m
           command_timeout: 45m
           script_stop: true
           script: |

@@ -10,6 +10,7 @@
 # На сервере: публичный ключ из пары в ~/.ssh/authorized_keys для DEPLOY_USER.
 # Файлы .env* на сервере не перезаписываются (rsync --exclude).
 #
+# Private repo: скачивание на VPS идёт через GitHub API с github.token (env GH_ARCHIVE_TOKEN).
 # Если SSH с GitHub к VPS всё ещё упирается в MaxStartups — поднимите лимиты / fail2ban
 # или поставьте self-hosted runner на этот же VPS (тогда SSH снаружи не нужен).
 
@@ -27,15 +28,21 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Deploy over SSH
         uses: appleboy/ssh-action@v1.2.0
+        env:
+          # Для private-репо архив по публичному URL не качается — нужен API + токен.
+          GH_ARCHIVE_TOKEN: ${{ github.token }}
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           port: 22
           command_timeout: 45m
+          envs: GH_ARCHIVE_TOKEN
           script_stop: true
           script: |
             set -euo pipefail
@@ -45,13 +52,18 @@ jobs:
             TMP="$(mktemp -d)"
             trap 'rm -rf "$TMP"' EXIT
             cd "$TMP"
-            echo ">>> Download https://github.com/${REPO}/archive/refs/heads/main.tar.gz"
-            curl -fsSL "https://github.com/${REPO}/archive/refs/heads/main.tar.gz" -o src.tgz
-            tar -xzf src.tgz
-            SRC="$TMP/$(basename "$REPO")-main"
+            echo ">>> Download tarball via GitHub API (private repo)"
+            curl -fsSL \
+              -H "Authorization: Bearer ${GH_ARCHIVE_TOKEN}" \
+              -H "Accept: application/vnd.github+json" \
+              -L "https://api.github.com/repos/${REPO}/tarball/main" \
+              -o src.tgz
+            mkdir -p unpack
+            tar -xzf src.tgz -C unpack
+            SRC="$(find unpack -mindepth 1 -maxdepth 1 -type d | head -1)"
             if [ ! -d "$SRC" ]; then
-              echo "Expected source dir not found: $SRC" >&2
-              ls -la "$TMP" >&2
+              echo "Expected source dir not found under unpack/" >&2
+              ls -la unpack >&2
               exit 1
             fi
             mkdir -p "$DEPLOY_PATH"

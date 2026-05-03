@@ -73,6 +73,10 @@ services:
   reverse-proxy:
     image: nginx:1.27-alpine
     restart: unless-stopped
+    # web/api/admin на host-сети — nginx в bridge не достучится до имён web:3000.
+    # Через host.docker.internal → порты на хосте (Linux: host-gateway).
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       - web
       - admin

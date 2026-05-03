@@ -2,7 +2,7 @@
 #
 # Секреты (Settings → Secrets and variables → Actions):
 #   DEPLOY_HOST, DEPLOY_USER, DEPLOY_OPENSSH_PRIVATE_KEY
-#   DEPLOY_PATH — опционально (по умолчанию /opt/mywave/toutism на сервере)
+#   DEPLOY_PATH — опционально (по умолчанию /opt/mywave/toutism). Проверьте орфографию: toutism, не tourism.
 #
 # Код копируется rsync с раннера GitHub на VPS (checkout уже с токеном для private repo).
 # На VPS не вызывается api.github.com — обход SSL timeout с VPS до GitHub.
@@ -38,13 +38,15 @@ jobs:
         run: |
           set -euo pipefail
           install -m 700 -d ~/.ssh
-          echo "$DEPLOY_KEY" | tr -d '\r' > ~/.ssh/deploy_key
+          printenv DEPLOY_KEY | tr -d '\r' > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -p 22 -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
+          ssh-keyscan -4 -p 22 -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
           DP="${DEPLOY_PATH:-/opt/mywave/toutism}"
+          SSH_OPTS="-4 -i ${HOME}/.ssh/deploy_key -p 22 -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=90 -o ServerAliveInterval=15 -o ServerAliveCountMax=12"
+          echo ">>> SSH probe ${DEPLOY_USER}@${DEPLOY_HOST} (mkdir ${DP})"
+          ssh $SSH_OPTS "${DEPLOY_USER}@${DEPLOY_HOST}" "mkdir -p '${DP}' && echo ssh-ok"
           echo ">>> rsync -> ${DEPLOY_USER}@${DEPLOY_HOST}:${DP}/"
-          rsync -avz \
-            -e "ssh -i $HOME/.ssh/deploy_key -p 22 -o StrictHostKeyChecking=accept-new -o ConnectTimeout=120" \
+          rsync -avz -e "ssh $SSH_OPTS" \
             --delete \
             --exclude='.git/' \
             --exclude='node_modules/' \

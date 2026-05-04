@@ -11,6 +11,7 @@
 # Раннер GitHub (Azure) → VPS: возможны «banner exchange» или connect timeout на :22.
 # Если часто connect timeout — файрвол/гео в панели Timeweb, либо self-hosted runner на этом VPS.
 # Повторы ниже с коротким ConnectTimeout. При connect timeout — Re-run jobs (сеть Azure→Timeweb лотерея).
+# Сборка docker — тем же OpenSSH, что и rsync (одно долгое соединение), без второго appleboy/drone-ssh.
 
 name: Deploy production
 
@@ -93,23 +94,29 @@ jobs:
           fi
 
       - name: Build and restart api, web, admin on VPS
-        uses: appleboy/ssh-action@v1.2.0
-        with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
-          key: ${{ secrets.DEPLOY_OPENSSH_PRIVATE_KEY }}
-          port: 22
-          protocol: tcp4
-          timeout: 15m
-          command_timeout: 90m
-          script_stop: true
-          script: |
-            set -euo pipefail
-            DEPLOY_PATH="${{ secrets.DEPLOY_PATH }}"
-            DEPLOY_PATH="${DEPLOY_PATH:-/opt/mywave/toutism}"
-            cd "$DEPLOY_PATH"
-            echo ">>> docker compose build --no-cache api web admin"
-            docker compose -f docker-compose.production.yml build --no-cache api web admin
-            echo ">>> docker compose up -d api web admin reverse-proxy"
-            docker compose -f docker-compose.production.yml up -d api web admin reverse-proxy
-            docker compose -f docker-compose.production.yml ps
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+          DEPLOY_KEY: ${{ secrets.DEPLOY_OPENSSH_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          DEPLOY_HOST="$(printf '%s' "$DEPLOY_HOST" | tr -d '[:space:]')"
+          DEPLOY_USER="$(printf '%s' "$DEPLOY_USER" | tr -d '[:space:]')"
+          install -m 700 -d ~/.ssh
+          printenv DEPLOY_KEY | tr -d '\r' > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -4 -p 22 -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
+          DP="${DEPLOY_PATH:-/opt/mywave/toutism}"
+          DP="$(echo "$DP" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+          SSH_LONG="-4 -i ${HOME}/.ssh/deploy_key -p 22 -o BatchMode=yes -o StrictHostKeyChecking=accept-new \
+            -o ConnectTimeout=45 -o ConnectionAttempts=1 \
+            -o ServerAliveInterval=20 -o ServerAliveCountMax=300"
+          echo ">>> Один SSH-сессия: docker compose build + up (вывод идёт сюда)"
+          ssh $SSH_LONG "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            "set -euo pipefail; cd '${DP}'; \
+             echo '>>> docker compose build --no-cache api web admin'; \
+             docker compose -f docker-compose.production.yml build --no-cache api web admin; \
+             echo '>>> docker compose up -d api web admin reverse-proxy'; \
+             docker compose -f docker-compose.production.yml up -d api web admin reverse-proxy; \
+             docker compose -f docker-compose.production.yml ps"

@@ -246,7 +246,8 @@ function HomePageInner() {
       ...new Set(
         programsCatalogUnique.flatMap((program) => {
           const display = getDisciplineDisplay(program.discipline);
-          return [display.original, display.translation].filter((value): value is string => Boolean(value));
+          const singleDisplayLabel = display.translation ?? display.original;
+          return [singleDisplayLabel].filter((value): value is string => Boolean(value));
         }),
       ),
     ].sort((left, right) => left.localeCompare(right, "ru"));
@@ -920,6 +921,24 @@ function HomePageInner() {
               />
               <span>Ближайшие старты (14 дней)</span>
             </label>
+          </div>
+          <div className="mw-field" style={{ alignSelf: "end" }}>
+            <button
+              type="button"
+              className="mw-btn mw-btn--primary"
+              onClick={() => {
+                syncToUrl({
+                  disciplines: selectedDisciplines,
+                  region: appliedRegionQuery,
+                  nearest: nearestStartsOnly,
+                  season: seasonFilter,
+                  levels: levelFilters,
+                });
+                scrollToPrograms();
+              }}
+            >
+              Найти программы
+            </button>
           </div>
         </div>
         <StartAlertsSignup

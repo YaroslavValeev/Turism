@@ -1,6 +1,7 @@
 /**
  * Seed: admin user + optional demo catalog (5 орг. × 3 прог. = 15 опубликованных программ).
- * `SEED_DEMO_CATALOG=1` в .env (non-production) для e2e/витрины.
+ * Локально / staging: полный сид (admin + опционально демо).
+ * Production (`APP_ENV=production`): только демо-каталог, если явно `SEED_DEMO_CATALOG=1` (витрина на пустой БД).
  * Default: admin@mywave.local / admin123
  */
 import { PrismaClient } from "@prisma/client";
@@ -30,12 +31,13 @@ const DEMO_TITLES = [
   "Сап-марафон",
 ] as const;
 
+/** Имена без «demo» / лат. seed — иначе публичный GET /programs отфильтрует карточки (isSyntheticPublicProgram). */
 const DEMO_ORGS: { displayName: string; email: string; discipline: string; region: string }[] = [
-  { displayName: "Kite Pro Demo", email: "seed-org-1@mywave.local", discipline: "kitesurfing", region: "Калининградская" },
-  { displayName: "MTB School Demo", email: "seed-org-2@mywave.local", discipline: "mtb", region: "Кавказ" },
-  { displayName: "Wake Camp Demo", email: "seed-org-3@mywave.local", discipline: "wakesurf", region: "Подмосковье" },
-  { displayName: "Ski Tour Demo", email: "seed-org-4@mywave.local", discipline: "skiing", region: "Карелия" },
-  { displayName: "AllRide Demo", email: "seed-org-5@mywave.local", discipline: "multisport", region: "Алтай" },
+  { displayName: "Kite Pro Калининград", email: "seed-org-1@mywave.local", discipline: "kitesurfing", region: "Калининградская" },
+  { displayName: "MTB School Кавказ", email: "seed-org-2@mywave.local", discipline: "mtb", region: "Кавказ" },
+  { displayName: "Wake Camp Подмосковье", email: "seed-org-3@mywave.local", discipline: "wakesurf", region: "Подмосковье" },
+  { displayName: "Ski Tour Карелия", email: "seed-org-4@mywave.local", discipline: "skiing", region: "Карелия" },
+  { displayName: "AllRide Алтай", email: "seed-org-5@mywave.local", discipline: "multisport", region: "Алтай" },
 ];
 
 async function seedDemoCatalog() {
@@ -71,18 +73,18 @@ async function seedDemoCatalog() {
           title: `${title} ${org.id.slice(0, 4)}`,
           discipline: spec.discipline,
           region: spec.region,
-          exactLocation: "Демо-локация",
+          exactLocation: "Площадка уточняется при бронировании",
           startDate: start,
           endDate: end,
           durationDays: duration,
           publishStatus: "published",
-          intakeSource: "seed",
+          intakeSource: "admin_manual",
           levelRequired: "beginner",
           priceFromRub: 15_000 + t * 500,
           capacityTotal: 20,
           spotsAvailable: 12,
           isStarred: t === 0 && i === 0,
-          cancellationRules: "Демо: условия отмены согласовываются с организатором.",
+          cancellationRules: "Условия отмены согласовываются с организатором.",
         },
       });
     }
@@ -93,7 +95,17 @@ async function seedDemoCatalog() {
 
 async function main() {
   if (process.env.APP_ENV === "production") {
-    console.log("Skip dev seed in production environment");
+    if (process.env.SEED_DEMO_CATALOG === "1") {
+      try {
+        await seedDemoCatalog();
+      } catch (e) {
+        console.error("SEED_DEMO_CATALOG failed", e);
+        throw e;
+      }
+      console.log("Production: seeded demo catalog only (no admin seed).");
+      return;
+    }
+    console.log("Skip dev seed in production environment (set SEED_DEMO_CATALOG=1 for demo catalog only).");
     return;
   }
   const email = "admin@mywave.local";

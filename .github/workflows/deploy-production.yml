@@ -1,4 +1,5 @@
-# Деплой на VPS после push в main (и вручную из Actions).
+# Деплой на VPS только вручную (workflow_dispatch), пока не накопятся успешные прогоны и свежий DEPLOY_EVIDENCE.
+# Ранее: push в main — отключено по управленческому решению (риск auto-deploy).
 #
 # Секреты (Settings → Secrets and variables → Actions):
 #   DEPLOY_HOST, DEPLOY_USER, DEPLOY_OPENSSH_PRIVATE_KEY
@@ -16,8 +17,6 @@
 name: Deploy production
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 concurrency:

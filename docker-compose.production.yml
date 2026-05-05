@@ -17,7 +17,7 @@ services:
     build:
       context: .
       dockerfile: services/api/Dockerfile
-      # Сборка на VPS: host-сеть часто стабильнее для npm registry, чем bridge.
+      # Только на время docker build (npm). Рантайм — сеть compose, см. reverse-proxy → api:3001.
       network: host
     restart: unless-stopped
     env_file:
@@ -73,10 +73,7 @@ services:
   reverse-proxy:
     image: nginx:1.27-alpine
     restart: unless-stopped
-    # web/api/admin на host-сети — nginx в bridge не достучится до имён web:3000.
-    # Через host.docker.internal → порты на хосте (Linux: host-gateway).
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+    # web/api/admin в той же compose-сети — nginx ходит на http://web:3000 и т.д.
     depends_on:
       - web
       - admin

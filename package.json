@@ -22,6 +22,7 @@
     "ingest:import-catalog-2026-04-10": "pnpm --filter api exec tsx prisma/import_sources.ts prisma/source_imports_2026-04-10.json",
     "ingest:import-owner-sources": "pnpm --filter api exec tsx prisma/import_sources.ts prisma/source_imports_owner_2026-04-16.json",
     "ingest:import-bundled-sources": "pnpm run ingest:import-catalog-2026-04-10 && pnpm run ingest:import-owner-sources",
+    "ingest:import-all-sources": "pnpm --filter api exec tsx prisma/import_sources.ts prisma/source_imports_all_2026-05-05.json",
     "ingest:cycle-all": "pnpm --filter api exec tsx prisma/run_ingestion_cycle.ts --auto-publish",
     "ingest:owner-cycle": "pnpm run ingest:cycle-all",
     "ingest:owner-sources-only": "pnpm --filter api exec tsx prisma/run_ingestion_owner_batch.ts",

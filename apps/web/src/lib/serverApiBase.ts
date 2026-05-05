@@ -1,13 +1,21 @@
 /**
  * Base URL API для server-side fetch (RSC) в `apps/web`.
- * В Docker/проде предпочтительно `API_INTERNAL_BASE_URL`, иначе `NEXT_PUBLIC_API_URL`.
+ * В Docker/проде: задайте `API_INTERNAL_BASE_URL=http://api:3001` (имя сервиса compose).
+ * Если `NEXT_PUBLIC_API_URL=/api` (same-origin в браузере), в Node нужен абсолютный URL — см. fallback.
  */
 export function getServerApiBaseUrl(): string {
-  return (
-    (process.env.API_INTERNAL_BASE_URL || "").trim() ||
-    (process.env.NEXT_PUBLIC_API_URL || "").trim() ||
-    "http://localhost:3001"
-  );
+  const internal = (process.env.API_INTERNAL_BASE_URL || "").trim().replace(/\/+$/, "");
+  if (internal) return internal;
+
+  const pub = (process.env.NEXT_PUBLIC_API_URL || "").trim().replace(/\/+$/, "");
+  if (pub.startsWith("http://") || pub.startsWith("https://")) return pub;
+
+  // Относительный путь (/api) — только для браузера; RSC ходит в контейнер API по сети compose.
+  if (pub.startsWith("/")) {
+    return "http://api:3001";
+  }
+
+  return "http://localhost:3001";
 }
 
 /**

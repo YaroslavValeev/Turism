@@ -21,5 +21,8 @@ __pycache__/
 apps/admin/test-results/
 tmp/subscriptions_export.csv
 
+# Локальные таблицы владельца (не версионировать)
+docs/mywave_v5_real_only.xlsx
+
 # Let's Encrypt tokens (писать на VPS, не в git)
 infra/certbot-webroot/.well-known/

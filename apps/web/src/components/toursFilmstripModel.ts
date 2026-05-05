@@ -36,10 +36,10 @@ export const TOUR_FILTER_CHIPS: { id: TourCategoryKey; label: string }[] = [
 type BadgeKey = "wakesurf" | "family" | "kids" | "beginner";
 
 const BADGE_META: Record<BadgeKey, { label: string; bg: string; color: string }> = {
-  wakesurf: { label: "Вейксерф", bg: "rgba(0, 166, 166, 0.12)", color: "#008E8E" },
-  family: { label: "Семейный", bg: "rgba(244, 114, 182, 0.18)", color: "#DB2777" },
-  kids: { label: "Для детей", bg: "rgba(251, 191, 36, 0.2)", color: "#D97706" },
-  beginner: { label: "Новичкам", bg: "rgba(168, 85, 247, 0.16)", color: "#7C3AED" },
+  wakesurf: { label: "Вейксерф", bg: "rgba(64, 69, 76, 0.13)", color: "#2f343a" },
+  family: { label: "Семейный", bg: "rgba(64, 69, 76, 0.13)", color: "#2f343a" },
+  kids: { label: "Для детей", bg: "rgba(64, 69, 76, 0.13)", color: "#2f343a" },
+  beginner: { label: "Новичкам", bg: "rgba(64, 69, 76, 0.13)", color: "#2f343a" },
 };
 
 function norm(s: string | null | undefined): string {

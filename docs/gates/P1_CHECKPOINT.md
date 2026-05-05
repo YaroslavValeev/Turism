@@ -60,19 +60,19 @@
 - **Условия:** пять safety-подтверждений выше + зелёный `pnpm --filter api smoke:ai-pilot-p1` (exit 0).  
 - **Решение:** **Gate 2 AI P1 — закрыт на 10/10** в рамках локального репозитория.
 
-До полного **Local Pilot Evidence Pack** остаётся обязательный шаг: **Gate 1 UI-pass** и обновление `docs/gates/GATE1_LOCAL_GREEN_SMOKE.md` (без этого пакет не считается закрытым).
+Gate 1 UI-pass зафиксирован владельцем и отражён в `docs/gates/GATE1_LOCAL_GREEN_SMOKE.md` (2026-05-06). Финальный production GO дополнительно требует чистого git, одного deploy SHA и SQL inventory — см. управленческое решение.
 
 ## Общий статус (заполняется при закрытии evidence-пакета)
 
 ```text
 Gate 1 API — PASSED
-Gate 1 UI — PENDING (ожидается ручной UI-pass в GATE1_LOCAL_GREEN_SMOKE.md)
+Gate 1 UI — PASSED
 Gate 2 AI P0 — PASSED
 Gate 2 AI P1 — PASSED
-Local Pilot Evidence Pack — PENDING (блокируется Gate 1 UI)
-Date: 2026-04-26
-Commit: 6efe69b
-Notes: новые продуктовые фичи не добавлять до закрытия Gate 1 UI; далее — Gate 3 Timeweb evidence.
+Local Pilot Evidence Pack — PASSED
+Date: 2026-05-06
+Commit: <подставить deploy candidate SHA после чистого git — должен совпадать с GATE1 и DEPLOY_EVIDENCE>
+Notes: до финального Timeweb GO остаются guardrails — PAT rotation evidence, SOURCE_INVENTORY SQL, свежий DEPLOY_EVIDENCE, отключение auto-deploy по push (см. workflow).
 ```
 
-**Следующий правильный порядок (напоминание):** сначала **закрыть Gate 1 UI-pass** в `GATE1_LOCAL_GREEN_SMOKE.md`, если он ещё `PENDING`, затем обновить этот блок и (при необходимости) `GATE2_AI_PILOT.md` / Timeweb evidence.
+**Следующий порядок:** подставить единый релиз-SHA во все evidence-файлы; заполнить SQL-блок в `docs/deployment/SOURCE_INVENTORY_2026-05-06.md`; обновить `docs/deployment/DEPLOY_EVIDENCE_YYYY-MM-DD.md` под этот SHA.

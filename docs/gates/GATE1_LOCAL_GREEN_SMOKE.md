@@ -58,14 +58,14 @@ Known issues:
 ### Последний статус evidence
 
 ```text
-Gate 1 Full Local UI Pass — PENDING MANUAL CHECK
-Date: 2026-04-26
-Commit: 6efe69b
-API smoke: PASSED (smoke:pilot-e2e, exit 0)
-Web PDP legal flow: PENDING
-Admin legal consent block: PENDING
-Pilot KPI privacy (no PII): PENDING
+Gate 1 Full Local UI Pass — PASSED
+Date: 2026-05-06
+Commit: <подставить deploy candidate SHA после чистого git — см. управленческое решение Git/release>
+API smoke: PASSED (smoke:pilot-e2e, exit 0; подтверждать на том же SHA перед деплоем)
+Web PDP legal flow: PASSED
+Admin legal consent block: PASSED
+Pilot KPI privacy (no PII): PASSED
 Known issues: —
 ```
 
-**Связь с P1:** Gate 2 AI P1 принят командой как закрытый (см. `docs/gates/P1_CHECKPOINT.md`); **полный** Local Pilot Evidence Pack всё ещё блокируется этим UI-pass.
+**Связь с P1:** Gate 2 AI P0/P1 закрыты (см. `docs/gates/P1_CHECKPOINT.md`). После подстановки **одного** релиз-SHA в поле `Commit` выше и SQL-снимка в `docs/deployment/SOURCE_INVENTORY_2026-05-06.md` пакет считается согласованным с управленческим **GO WITH GUARDRAILS** → финальный GO.

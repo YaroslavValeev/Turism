@@ -1,7 +1,7 @@
 # Source / organizer inventory — production snapshot
 
 **Дата открытия файла:** 2026-05-06  
-**Deploy candidate SHA:** `95e5ea566f791de2eda67b5e81b8e5e7768b6be2` (обновить в `DEPLOY_EVIDENCE_*` тем же значением).
+**Зафиксированный git SHA (документация + примеры env):** `068038f83d37ecbaee63ff9ceb98d8f4b62b4521` — см. также [`DEPLOY_EVIDENCE_2026-05-06.md`](./DEPLOY_EVIDENCE_2026-05-06.md).
 
 ## Подтверждённый факт импорта (Timeweb / контейнер API)
 
@@ -154,3 +154,5 @@ contact_channels_total:          N/A — см. модель Organizer + Source
 - Новый токен: минимальные права (для чтения приватного файла через API — только **Contents: Read** на репозиторий `Turism`).
 - Не хранить в markdown, не коммитить в `.env` в git, не светить в скринах; на VPS — только в интерактивном вводе или файле с `chmod 600`.
 - Строка для evidence: «Старый PAT отозван _дата_; новый создан _дата_; не закоммичен».
+
+Полный чеклист выката с пустыми полями под заполнение на VPS: [`DEPLOY_EVIDENCE_2026-05-06.md`](./DEPLOY_EVIDENCE_2026-05-06.md).

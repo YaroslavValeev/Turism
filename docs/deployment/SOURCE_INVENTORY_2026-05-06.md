@@ -17,23 +17,26 @@
 
 ## SQL-снимок (выполнить на production Postgres)
 
-Минимальный набор из управленческого решения:
+Имена колонок у Prisma для `sources` — **camelCase** (`isActive`, `urlOrHandle`), в сыром SQL их нужно брать в **двойные кавычки**. Иначе Postgres ищет `is_active` / `url_or_handle` и падает с `does not exist`.
+
+Минимальный набор:
 
 ```sql
 SELECT COUNT(*) AS organizers_total FROM organizers;
 SELECT COUNT(*) AS sources_total FROM sources;
-SELECT type, is_active, COUNT(*) AS cnt
+
+SELECT type, "isActive", COUNT(*) AS cnt
 FROM sources
-GROUP BY type, is_active
-ORDER BY type, is_active;
+GROUP BY type, "isActive"
+ORDER BY type, "isActive";
 ```
 
-Дополнительно (дубликаты источников по ключу ingestion):
+Дубликаты источников по паре type + URL:
 
 ```sql
-SELECT type, url_or_handle, COUNT(*) AS cnt
+SELECT type, "urlOrHandle", COUNT(*) AS cnt
 FROM sources
-GROUP BY type, url_or_handle
+GROUP BY type, "urlOrHandle"
 HAVING COUNT(*) > 1;
 ```
 
@@ -42,9 +45,9 @@ HAVING COUNT(*) > 1;
 ```sql
 SELECT COUNT(*) AS invalid_url_sources
 FROM sources
-WHERE url_or_handle IS NULL
-   OR TRIM(url_or_handle) = ''
-   OR url_or_handle NOT LIKE 'http%';
+WHERE "urlOrHandle" IS NULL
+   OR TRIM("urlOrHandle") = ''
+   OR "urlOrHandle" NOT LIKE 'http%';
 ```
 
 Записи с устаревшим типом:
@@ -58,8 +61,28 @@ SELECT COUNT(*) AS type_website_sources FROM sources WHERE type = 'website';
 ```text
 -- organizers_total:
 -- sources_total:
--- GROUP BY type, is_active: (вставить таблицу)
+-- GROUP BY type, "isActive": (вставить таблицу)
 ```
+
+---
+
+## Снимок evidence с Timeweb (ручной прогон, ~2026-05-06)
+
+Зафиксировано по скринам терминала (уточните дату/время в `DEPLOY_EVIDENCE_*`):
+
+| Проверка | Факт |
+|----------|------|
+| Docker stack | `api`, `web`, `admin`, `postgres`, `reverse-proxy` подняты |
+| `prisma migrate deploy` | 28 миграций, БД `mywave` |
+| `organizers` COUNT | **17** |
+| `sources` COUNT | **86** |
+| `type = 'website'` | **0** |
+| Повторный импорт JSON (68 строк) | `{ "total": 68, "created": 0, "updated": 68 }` — записи уже были |
+| `GET /health` (prod API) | `{"status":"ok"}` |
+| `ingest:cycle-all` | в логе: scope sources:**86**, этапы collect/normalize/dedup отработали; `autoPublish`: часть кандидатов `notEligible` |
+| `env \| grep PILOT…` в контейнере `api` | виден только **`APP_ENV=production`** — флаги `PILOT_MODE_ENABLED`, `LEGAL_CONSENT_*`, `AI_*`, `INGESTION_AUTOPUBLISH_*` **не попали в процесс**, если их нет в реальных `env_file` на сервере (проверьте корневой `.env.production` и `services/api/.env.production`, затем `compose up` заново) |
+
+Дополнительно выполните исправленный `GROUP BY type, "isActive"` и вставьте таблицу в блок выше.
 
 ---
 

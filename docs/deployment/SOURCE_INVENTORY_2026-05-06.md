@@ -56,13 +56,22 @@ WHERE "urlOrHandle" IS NULL
 SELECT COUNT(*) AS type_website_sources FROM sources WHERE type = 'website';
 ```
 
-Вставьте сюда сырые результаты (или приложите как отдельный блок в `DEPLOY_EVIDENCE_*`):
+Сырые результаты production SQL (Timeweb, подтверждено скрином терминала):
 
 ```text
--- organizers_total:
--- sources_total:
--- GROUP BY type, "isActive": (вставить таблицу)
+organizers_total:     17
+sources_total:        86
+
+GROUP BY type, "isActive":
+  instagram | isActive=t | 20
+  site      | isActive=t | 56
+  telegram  | isActive=t | 10
+
+type = 'website':      0
+дубликаты (type + "urlOrHandle"): 0 строк
 ```
+
+Примечание: **86** источников = ранее импортированные **68** из реестра + **18** других записей в таблице (история/другие импорты); все **86** сейчас с **`isActive = true`**.
 
 ---
 
@@ -76,29 +85,33 @@ SELECT COUNT(*) AS type_website_sources FROM sources WHERE type = 'website';
 | `prisma migrate deploy` | 28 миграций, БД `mywave` |
 | `organizers` COUNT | **17** |
 | `sources` COUNT | **86** |
+| Разбивка `sources` по типу (все активны) | **site 56**, **instagram 20**, **telegram 10** |
 | `type = 'website'` | **0** |
+| Дубликаты `(type, urlOrHandle)` | **0** |
 | Повторный импорт JSON (68 строк) | `{ "total": 68, "created": 0, "updated": 68 }` — записи уже были |
 | `GET /health` (prod API) | `{"status":"ok"}` |
 | `ingest:cycle-all` | в логе: scope sources:**86**, этапы collect/normalize/dedup отработали; `autoPublish`: часть кандидатов `notEligible` |
 | `env \| grep PILOT…` в контейнере `api` | виден только **`APP_ENV=production`** — флаги `PILOT_MODE_ENABLED`, `LEGAL_CONSENT_*`, `AI_*`, `INGESTION_AUTOPUBLISH_*` **не попали в процесс**, если их нет в реальных `env_file` на сервере (проверьте корневой `.env.production` и `services/api/.env.production`, затем `compose up` заново) |
 
-Дополнительно выполните исправленный `GROUP BY type, "isActive"` и вставьте таблицу в блок выше.
-
 ---
 
-## Итоговая таблица (заполнить после SQL)
+## Итоговая таблица (production snapshot)
 
 ```text
-real_organizers_total:          (правило отделения real/demo — зафиксировать: имена, verificationStatus, seed-маркеры)
-demo_organizers_total:          (если есть только через SEED_DEMO_CATALOG — обычно 0 при SEED_DEMO_CATALOG=0)
-real_sources_total:
-demo_sources_total:
-active_sources:
-paused_sources:
-invalid_sources:
-duplicate_sources:
-canonical_organizers:           (есть ли явный mapping в коде: нет отдельной таблицы; «канон» = строки в organizers)
-contact_channels_total:         N/A — в Prisma нет сущности OrganizerContactChannel; контакты на модели Organizer (email/phone) и привязанные Source
+organizers_total (БД):           17
+sources_total (БД):              86
+active_sources:                  86   (все isActive=true)
+paused_sources:                  0
+duplicate_sources:               0    (по паре type + urlOrHandle)
+type_website_rows:               0
+invalid_sources (URL без http):  (не прогоняли в этом evidence — см. SQL выше)
+
+real_organizers_total:           17   (развод real/demo по орг. — при необходимости отдельным SQL по verificationStatus / имени)
+demo_organizers_total:           (не классифицировано без правила владельца)
+real_sources_total:              86   (или меньше, если часть помечена как demo в meta — уточнить фильтром)
+demo_sources_total:              (не классифицировано без фильтра по metaJson / имени)
+canonical_organizers:            17   (= строк в organizers)
+contact_channels_total:          N/A — см. модель Organizer + Source
 ```
 
 ---

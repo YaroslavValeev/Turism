@@ -71,7 +71,7 @@ Gate 2 AI P0 — PASSED
 Gate 2 AI P1 — PASSED
 Local Pilot Evidence Pack — PASSED
 Date: 2026-05-06
-Commit: <подставить deploy candidate SHA после чистого git — должен совпадать с GATE1 и DEPLOY_EVIDENCE>
+Commit: 95e5ea566f791de2eda67b5e81b8e5e7768b6be2
 Notes: до финального Timeweb GO остаются guardrails — PAT rotation evidence, SOURCE_INVENTORY SQL, свежий DEPLOY_EVIDENCE, отключение auto-deploy по push (см. workflow).
 ```
 

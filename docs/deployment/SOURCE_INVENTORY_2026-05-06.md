@@ -1,7 +1,7 @@
 # Source / organizer inventory — production snapshot
 
 **Дата открытия файла:** 2026-05-06  
-**Deploy candidate SHA:** заполнить после чистого релиз-коммита (должен совпадать с `DEPLOY_EVIDENCE_*`).
+**Deploy candidate SHA:** `95e5ea566f791de2eda67b5e81b8e5e7768b6be2` (обновить в `DEPLOY_EVIDENCE_*` тем же значением).
 
 ## Подтверждённый факт импорта (Timeweb / контейнер API)
 

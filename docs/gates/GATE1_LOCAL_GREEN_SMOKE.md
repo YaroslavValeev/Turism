@@ -60,7 +60,7 @@ Known issues:
 ```text
 Gate 1 Full Local UI Pass — PASSED
 Date: 2026-05-06
-Commit: <подставить deploy candidate SHA после чистого git — см. управленческое решение Git/release>
+Commit: 95e5ea566f791de2eda67b5e81b8e5e7768b6be2
 API smoke: PASSED (smoke:pilot-e2e, exit 0; подтверждать на том же SHA перед деплоем)
 Web PDP legal flow: PASSED
 Admin legal consent block: PASSED

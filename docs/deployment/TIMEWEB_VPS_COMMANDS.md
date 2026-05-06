@@ -63,10 +63,27 @@ docker compose -f docker-compose.production.yml logs --tail=80 reverse-proxy
 Восстановление (если на хосте есть цепочка Let's Encrypt в `/etc/letsencrypt/live/…`):
 
 ```bash
+ls -la /etc/letsencrypt/live/
 cd /opt/mywave/toutism
+# если сертификат в другом lineage (подставьте каталог из live/):
+# export RENEWED_LINEAGE=/etc/letsencrypt/live/ИМЯ_КАТАЛОГА
 bash scripts/le-deploy-sync.sh
-docker compose -f docker-compose.production.yml up -d reverse-proxy
 curl -sS -I https://mywavetour.ru/ | head -n 5
+```
+
+Если **`/etc/letsencrypt/live/` пустой или нет вашего домена** — `le-deploy-sync` не сможет ничего скопировать. Временно поднять HTTPS **самоподписанным** сертификатом (браузер будет ругаться, зато nginx и сайт оживут; потом замените на нормальный LE):
+
+```bash
+cd /opt/mywave/toutism
+mkdir -p infra/nginx/certs
+openssl req -x509 -nodes -newkey rsa:2048 \
+  -keyout infra/nginx/certs/privkey.pem \
+  -out infra/nginx/certs/fullchain.pem \
+  -days 30 -subj "/CN=mywavetour.ru"
+chmod 644 infra/nginx/certs/fullchain.pem
+chmod 600 infra/nginx/certs/privkey.pem
+docker compose -f docker-compose.production.yml up -d reverse-proxy
+curl -sS -k -I https://127.0.0.1/ -H "Host: mywavetour.ru" 2>/dev/null | head -n 3 || curl -sS -I https://mywavetour.ru/ | head -n 5
 ```
 
 В репозитории деплой уже исправлен: каталог **`infra/nginx/certs/`** исключён из rsync — после следующего **Deploy production** сертификаты с VPS снова **не будут стираться**.

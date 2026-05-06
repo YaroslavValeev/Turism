@@ -2,6 +2,17 @@
 
 export type ProgramMediaItem = { url: string; mediaType: string };
 export type ProgramCardCoverFit = "cover" | "contain";
+export const PROGRAM_CARD_PLACEHOLDER_URL = "/images/placeholders/program-card.svg";
+
+function isBrokenLiteralUrl(url: string): boolean {
+  const lowered = url.trim().toLowerCase();
+  return (
+    lowered === "null" ||
+    lowered === "undefined" ||
+    lowered.endsWith("/null") ||
+    lowered.endsWith("/undefined")
+  );
+}
 
 function isLocalMediaUrl(url: string): boolean {
   return url.startsWith("/");
@@ -20,6 +31,7 @@ function shouldProxyMediaUrl(url: string): boolean {
 export function presentProgramMediaUrl(url: string | null | undefined): string | null {
   const normalized = String(url ?? "").trim();
   if (!normalized) return null;
+  if (isBrokenLiteralUrl(normalized)) return null;
   if (isLocalMediaUrl(normalized)) return normalized;
   if (!shouldProxyMediaUrl(normalized)) return normalized;
   return `/api/media?url=${encodeURIComponent(normalized)}`;

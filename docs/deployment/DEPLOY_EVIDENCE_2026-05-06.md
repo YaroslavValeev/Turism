@@ -1,7 +1,7 @@
 # DEPLOY EVIDENCE — 2026-05-06
 
 **Окружение:** production (Timeweb VPS, проект MyWaveTour)  
-**Версия / git SHA:** `068038f83d37ecbaee63ff9ceb98d8f4b62b4521`  
+**Версия / git SHA:** `заполнить после git pull на Timeweb: git rev-parse HEAD`  
 **Ответственный:** owner  
 
 ## Связанные артефакты
@@ -109,3 +109,41 @@ docker compose -f docker-compose.production.yml exec api sh -lc \
 - [ ] Web / Admin открываются по HTTPS
 
 Команды: см. [`../gates/GATE3_TIMEWEB_EVIDENCE.md`](../gates/GATE3_TIMEWEB_EVIDENCE.md).
+
+---
+
+## 9. Images / media (P1 UX blocker)
+
+Симптом до фикса: карточки загружались, но часть изображений в каталоге была broken (массовые ошибки во вкладке Network → Img).
+
+### Кодовый фикс в релиз-кандидате
+
+- `apps/web/src/components/ProgramCard.tsx` — `onError` fallback на placeholder.
+- `apps/web/src/components/ProgramRailCard.tsx` — `onError` fallback на placeholder.
+- `apps/web/src/lib/programCardCover.ts` — фильтр битых literal URL (`null` / `undefined` / `/null` / `/undefined`).
+- `apps/web/public/images/placeholders/program-card.svg` — production-safe placeholder.
+
+### Проверка на сервере
+
+```bash
+# 1) Вытащить URL программ и убедиться, что нет явных /undefined /null
+curl -fsS https://mywavetour.ru/api/programs | head -c 3000
+
+# 2) Если есть jq:
+curl -fsS https://mywavetour.ru/api/programs | jq '.. | objects | select(.title? or .name?) | {title: (.title // .name), imageUrl: (.imageUrl // .coverImageUrl // .coverUrl // .image // null), media: (.media // null)}' | head -80
+
+# 3) Проверить headers по 1-2 проблемным URL
+curl -I "https://mywavetour.ru/<broken-image-path>"
+
+# 4) Проверить nginx/static handling
+cd /opt/mywave/toutism
+docker compose -f docker-compose.production.yml exec reverse-proxy nginx -T | grep -Ei "uploads|media|images|static|_next" -n || true
+```
+
+### Acceptance criteria
+
+- [ ] На главной/каталоге нет broken image icon.
+- [ ] Карточка показывает либо реальную картинку, либо `/images/placeholders/program-card.svg`.
+- [ ] В DevTools Network → Img нет массовых 404/400.
+- [ ] API не отдаёт image URL вида `/undefined`, `/null`, `null`, `undefined`.
+- [ ] После `docker compose up -d --build web reverse-proxy` поведение подтверждено.

@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675" role="img" aria-label="Program placeholder">
+  <defs>
+    <linearGradient id="g" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#e8f7f4" />
+      <stop offset="100%" stop-color="#c7ebe4" />
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="675" fill="url(#g)" />
+  <g fill="none" stroke="#6aaea0" stroke-width="24" stroke-linecap="round" stroke-linejoin="round" opacity="0.95">
+    <path d="M220 440l160-190 170 150 120-120 170 160" />
+    <circle cx="380" cy="220" r="46" />
+  </g>
+  <text x="72" y="610" fill="#2f7f72" font-family="Arial, sans-serif" font-size="44" font-weight="700">
+    MyWaveTour Program
+  </text>
+</svg>

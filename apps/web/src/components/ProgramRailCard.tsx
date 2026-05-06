@@ -1,5 +1,6 @@
 import Link from "next/link";
 import {
+  PROGRAM_CARD_PLACEHOLDER_URL,
   pickBestProgramCoverImageUrl,
   programCardCoverFit,
   programCardCoverPlaceholderClass,
@@ -37,7 +38,18 @@ export function ProgramRailCard({ program, levelLabel, catalogHrefBuilder, progr
           {coverUrl ? (
             <div className={`mw-rail-card__cover-frame mw-rail-card__cover-frame--${coverFit}`}>
               {/* eslint-disable-next-line @next/next/no-img-element -- внешние URL из API */}
-              <img src={coverUrl} alt="" className={`mw-rail-card__cover-img mw-rail-card__cover-img--${coverFit}`} />
+              <img
+                src={coverUrl}
+                alt={program.title}
+                className={`mw-rail-card__cover-img mw-rail-card__cover-img--${coverFit}`}
+                loading="lazy"
+                onError={(event) => {
+                  const img = event.currentTarget;
+                  if (img.dataset.fallbackApplied === "1") return;
+                  img.dataset.fallbackApplied = "1";
+                  img.src = PROGRAM_CARD_PLACEHOLDER_URL;
+                }}
+              />
             </div>
           ) : (
             <div

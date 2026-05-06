@@ -1,5 +1,6 @@
 import Link from "next/link";
 import {
+  PROGRAM_CARD_PLACEHOLDER_URL,
   pickBestProgramCoverImageUrl,
   programCardCoverFit,
   programCardCoverPlaceholderClass,
@@ -40,7 +41,18 @@ export function ProgramCard({ program, levelLabel, catalogHrefBuilder, programHr
           {coverUrl ? (
             <div className={`mw-program-card__cover-frame mw-program-card__cover-frame--${coverFit}`}>
               {/* eslint-disable-next-line @next/next/no-img-element -- внешние URL из API, домены не фиксированы */}
-              <img src={coverUrl} alt="" className={`mw-program-card__cover-img mw-program-card__cover-img--${coverFit}`} />
+              <img
+                src={coverUrl}
+                alt={program.title}
+                className={`mw-program-card__cover-img mw-program-card__cover-img--${coverFit}`}
+                loading="lazy"
+                onError={(event) => {
+                  const img = event.currentTarget;
+                  if (img.dataset.fallbackApplied === "1") return;
+                  img.dataset.fallbackApplied = "1";
+                  img.src = PROGRAM_CARD_PLACEHOLDER_URL;
+                }}
+              />
             </div>
           ) : (
             <div className={`mw-program-card__cover-placeholder ${placeholderMod}`} aria-hidden>

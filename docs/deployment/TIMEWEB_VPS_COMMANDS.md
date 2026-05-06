@@ -46,7 +46,32 @@ command -v ufw >/dev/null 2>&1 && ufw status verbose || echo "ufw нет"
 
 Должен быть разрешён **22/tcp** (и **80**, **443** для сайта). Правила меняйте только осознанно.
 
-## 5. Docker и прод-стек
+## 5. Nginx падает / `curl: … 443 … Connection refused` после деплоя
+
+Частая причина: **`rsync --delete` без исключения `infra/nginx/certs/` удалил PEM** на сервере → nginx не поднимает SSL.
+
+Проверка:
+
+```bash
+cd /opt/mywave/toutism
+ls -la infra/nginx/certs/
+docker compose -f docker-compose.production.yml logs --tail=80 reverse-proxy
+```
+
+В логах nginx часто: **`cannot load certificate`** / **`BIO_new_file() failed`**.
+
+Восстановление (если на хосте есть цепочка Let's Encrypt в `/etc/letsencrypt/live/…`):
+
+```bash
+cd /opt/mywave/toutism
+bash scripts/le-deploy-sync.sh
+docker compose -f docker-compose.production.yml up -d reverse-proxy
+curl -sS -I https://mywavetour.ru/ | head -n 5
+```
+
+В репозитории деплой уже исправлен: каталог **`infra/nginx/certs/`** исключён из rsync — после следующего **Deploy production** сертификаты с VPS снова **не будут стираться**.
+
+## 6. Docker и прод-стек
 
 ```bash
 cd /opt/mywave/toutism
@@ -73,6 +98,6 @@ curl -sS -o /dev/null -w '%{http_code}\n' https://mywavetour.ru/health 2>/dev/nu
 curl -sS -I 'https://mywavetour.ru/api/media?url=https%3A%2F%2Fimages.unsplash.com%2Fphoto-1506905925346-21bda4d32df4%3Fw%3D200' | head -n 8
 ```
 
-## 7. Панель Timeweb (в браузере)
+## 8. Панель Timeweb (в браузере)
 
 Сеть и файрвол — см. [TIMEWEB_AND_ACTIONS_LINKS.md](./TIMEWEB_AND_ACTIONS_LINKS.md).

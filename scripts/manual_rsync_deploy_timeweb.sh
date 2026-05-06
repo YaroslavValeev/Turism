@@ -2,6 +2,7 @@
 # Ручной выкат на Timeweb, когда GitHub Actions не достучался до VPS по SSH.
 # Запускать с машины, где `ssh DEPLOY_USER@DEPLOY_HOST` уже работает (WSL, Git Bash, macOS, Linux).
 # Из корня репозитория: bash scripts/manual_rsync_deploy_timeweb.sh
+# infra/nginx/certs/ не копируем и не трогаем на сервере (PEM только на VPS).
 #
 # Переменные окружения:
 #   DEPLOY_HOST       — IP или хост VPS
@@ -58,6 +59,7 @@ rsync -avz -e "ssh -4 -i ${KEY_FILE} -p ${DEPLOY_PORT} -o BatchMode=yes -o Stric
   --exclude='**/.turbo/' \
   --exclude='**/test-results/' \
   --exclude='**/*.tsbuildinfo' \
+  --exclude='infra/nginx/certs/' \
   "$REPO_ROOT/" "${DEPLOY_USER}@${DEPLOY_HOST}:${DEPLOY_PATH}/"
 
 REMOTE_CMD="set -euo pipefail; cd '${DEPLOY_PATH}';"

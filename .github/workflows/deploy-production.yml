@@ -6,6 +6,7 @@
 #   DEPLOY_PATH — опционально (по умолчанию /opt/mywave/toutism). Проверьте орфографию: toutism, не tourism.
 #
 # Код копируется rsync с раннера GitHub на VPS (checkout уже с токеном для private repo).
+# ВАЖНО: исключить infra/nginx/certs/ — PEM не в git; при --delete без exclude rsync УДАЛЯЕТ их на VPS → nginx не стартует → 443 connection refused.
 # На VPS не вызывается api.github.com — обход SSL timeout с VPS до GitHub.
 #
 # На сервере: публичный ключ в ~/.ssh/authorized_keys. При перегрузке SSH — MaxStartups / PerSourceMaxStartups.
@@ -100,6 +101,7 @@ jobs:
               --exclude='**/.turbo/' \
               --exclude='**/test-results/' \
               --exclude='**/*.tsbuildinfo' \
+              --exclude='infra/nginx/certs/' \
               "$GITHUB_WORKSPACE/" "${DEPLOY_USER}@${DEPLOY_HOST}:${DP}/"; then
               RSYNC_OK=1
               break

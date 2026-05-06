@@ -17,6 +17,8 @@
 
 Проверьте, что для сервера **разрешён входящий TCP 22** (и при whitelist-группе — не забыты адреса, с которых реально ходит GitHub Actions; при проблемах временно ослабьте правила для проверки).
 
+Если в логе был **ssh-ok** на probe, а упал уже шаг **rsync** через долгое время — чаще **обрыв длинной SSH-сессии** (NAT, промежуточный файрвол), **fail2ban** по числу соединений или **место на диске** на VPS. В workflow для rsync включены SSH keepalive и `--timeout` (см. `deploy-production.yml`).
+
 ## После зелёного деплоя на VPS
 
 См. проверки в [`DEPLOY_EVIDENCE_2026-05-06.md`](./DEPLOY_EVIDENCE_2026-05-06.md) (`grep api/media`, `curl` на `/api/media`, ingestion-media).

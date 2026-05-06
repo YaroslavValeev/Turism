@@ -59,12 +59,15 @@ jobs:
           ssh-keyscan -4 -p 22 -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
           DP="${DEPLOY_PATH:-/opt/mywave/toutism}"
           DP="$(echo "$DP" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
-          SSH_OPTS="-4 -i ${HOME}/.ssh/deploy_key -p 22 -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=28 -o ConnectionAttempts=1 -o ServerAliveInterval=10 -o ServerAliveCountMax=30"
+          # Короткий connect для быстрых probe-попыток
+          SSH_PROBE="-4 -i ${HOME}/.ssh/deploy_key -p 22 -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=28 -o ConnectionAttempts=1 -o ServerAliveInterval=10 -o ServerAliveCountMax=30"
+          # Долгая передача rsync: keepalive иначе NAT/файрвол может рвать сессию через 10–20 мин → «висим» и exit 255
+          SSH_RSYNC="-4 -i ${HOME}/.ssh/deploy_key -p 22 -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=60 -o ConnectionAttempts=1 -o ServerAliveInterval=20 -o ServerAliveCountMax=240 -o TCPKeepAlive=yes"
           echo ">>> SSH probe ${DEPLOY_USER}@${DEPLOY_HOST} (mkdir ${DP})"
           PROBE_OK=0
           for i in $(seq 1 28); do
             echo ">>> SSH probe attempt $i/28"
-            if ssh $SSH_OPTS "${DEPLOY_USER}@${DEPLOY_HOST}" "mkdir -p '${DP}' && echo ssh-ok"; then
+            if ssh $SSH_PROBE "${DEPLOY_USER}@${DEPLOY_HOST}" "mkdir -p '${DP}' && echo ssh-ok"; then
               PROBE_OK=1
               break
             fi
@@ -78,8 +81,10 @@ jobs:
           echo ">>> rsync -> ${DEPLOY_USER}@${DEPLOY_HOST}:${DP}/"
           RSYNC_OK=0
           for i in $(seq 1 10); do
-            echo ">>> rsync attempt $i/10"
-            if rsync -avz -e "ssh $SSH_OPTS" \
+            echo ">>> rsync attempt $i/10 ($(date -u +%Y-%m-%dT%H:%M:%SZ))"
+            if rsync -avz \
+              --timeout=900 \
+              -e "ssh $SSH_RSYNC" \
               --delete \
               --exclude='.git/' \
               --exclude='node_modules/' \
@@ -93,10 +98,12 @@ jobs:
               RSYNC_OK=1
               break
             fi
+            echo ">>> rsync attempt $i failed (см. вывод выше); пауза перед повтором" >&2
             sleep 15
           done
           if [ "$RSYNC_OK" != 1 ]; then
-            echo ">>> rsync: все попытки исчерпаны (сеть до VPS или SSH)." >&2
+            echo ">>> rsync: все попытки исчерпаны. Если probe был ssh-ok — часто обрыв канала/NAT, fail2ban на VPS, диск или файрвол Timeweb." >&2
+            echo ">>> Док: docs/deployment/TIMEWEB_AND_ACTIONS_LINKS.md" >&2
             exit 255
           fi
 

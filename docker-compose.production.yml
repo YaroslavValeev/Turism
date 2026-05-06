@@ -17,8 +17,6 @@ services:
     build:
       context: .
       dockerfile: services/api/Dockerfile
-      # Только на время docker build (npm). Рантайм — сеть compose, см. reverse-proxy → api:3001.
-      network: host
     restart: unless-stopped
     env_file:
       - .env.production
@@ -46,7 +44,6 @@ services:
     build:
       context: .
       dockerfile: apps/web/Dockerfile
-      network: host
     restart: unless-stopped
     env_file:
       - .env.production
@@ -63,7 +60,6 @@ services:
     build:
       context: .
       dockerfile: apps/admin/Dockerfile
-      network: host
     restart: unless-stopped
     env_file:
       - .env.production
@@ -76,7 +72,7 @@ services:
   reverse-proxy:
     image: nginx:1.27-alpine
     restart: unless-stopped
-    # web/api/admin в той же compose-сети — nginx ходит на http://web:3000 и т.д.
+    # web/api/admin в default compose-сети (без network:host), иначе nginx не достучится до web:3000 → 502.
     depends_on:
       - web
       - admin

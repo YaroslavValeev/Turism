@@ -22,3 +22,7 @@
 ## После зелёного деплоя на VPS
 
 См. проверки в [`DEPLOY_EVIDENCE_2026-05-06.md`](./DEPLOY_EVIDENCE_2026-05-06.md) (`grep api/media`, `curl` на `/api/media`, ingestion-media).
+
+## Команды в консоли VPS (копипаст)
+
+Готовый чеклист: **[`TIMEWEB_VPS_COMMANDS.md`](./TIMEWEB_VPS_COMMANDS.md)**.

@@ -52,6 +52,12 @@ rsync -avz -e "ssh -4 -i ${KEY_FILE} -p ${DEPLOY_PORT} -o BatchMode=yes -o Stric
   --exclude='logs/' \
   --exclude='.env' \
   --exclude='.env.*' \
+  --exclude='.cursor/' \
+  --exclude='.turbo/' \
+  --exclude='coverage/' \
+  --exclude='**/.turbo/' \
+  --exclude='**/test-results/' \
+  --exclude='**/*.tsbuildinfo' \
   "$REPO_ROOT/" "${DEPLOY_USER}@${DEPLOY_HOST}:${DEPLOY_PATH}/"
 
 REMOTE_CMD="set -euo pipefail; cd '${DEPLOY_PATH}';"

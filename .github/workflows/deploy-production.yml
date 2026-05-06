@@ -34,7 +34,7 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 180
     permissions:
       contents: read
     steps:
@@ -94,6 +94,12 @@ jobs:
               --exclude='logs/' \
               --exclude='.env' \
               --exclude='.env.*' \
+              --exclude='.cursor/' \
+              --exclude='.turbo/' \
+              --exclude='coverage/' \
+              --exclude='**/.turbo/' \
+              --exclude='**/test-results/' \
+              --exclude='**/*.tsbuildinfo' \
               "$GITHUB_WORKSPACE/" "${DEPLOY_USER}@${DEPLOY_HOST}:${DP}/"; then
               RSYNC_OK=1
               break

@@ -12,6 +12,34 @@
 2. GitHub → **Actions** → **Deploy production** → **Run workflow** (вручную).
 3. На VPS выполнять только проверки (`docker compose`, `curl`, `grep` по уже скопированным файлам) — **не** `git fetch` / `git reset`.
 
+### Если в контейнере `reverse-proxy`: `grep api/media … MISSING`, а `curl` к сайту — `Connection refused`
+
+Контейнер читает **`./infra/nginx/mywave.conf` с диска VPS** (см. `docker-compose.production.yml`). **`MISSING`** значит: в **этом** файле на сервере **нет** строки про `/api/media` — чаще всего **ещё не был успешный Deploy production** с актуальным `main` (rsync не обновил дерево).
+
+**`curl: … port 443 … Connection refused`** — на хосте **ничего не слушает 443** (nginx в Docker не поднялся, упал после старта, или контейнер в рестарте). Смотрите логи и `nginx -t`, не перезагружайте всю VM, пока не проверите контейнер.
+
+Диагностика по порядку на VPS:
+
+```bash
+cd /opt/mywave/toutism
+COMPOSE="docker compose -f docker-compose.production.yml"
+
+# 1) Файл на ХОСТЕ (источник монтирования) — должен содержать api/media:
+grep -n 'api/media' infra/nginx/mywave.conf || echo 'НА ДИСКЕ СТАРЫЙ КОНФИГ — запустите Deploy production из GitHub'
+
+# 2) Реальное состояние reverse-proxy (не только "Started"):
+$COMPOSE ps -a reverse-proxy
+$COMPOSE logs --tail=100 reverse-proxy
+
+# 3) Синтаксис nginx внутри контейнера (если контейнер не в CrashLoop — выполнится):
+$COMPOSE exec -T reverse-proxy nginx -t 2>&1
+
+# 4) Кто слушает 443 на хосте:
+ss -tlnp | grep -E ':443|:80' || true
+```
+
+Если п.1 пустой — **только** выкат через Actions обновит `infra/nginx/mywave.conf`. После зелёного job снова: `$COMPOSE up -d --force-recreate reverse-proxy` и проверка `curl -I https://mywavetour.ru/`.
+
 ## Связанные артефакты
 
 - Источники и SQL: [`SOURCE_INVENTORY_2026-05-06.md`](./SOURCE_INVENTORY_2026-05-06.md)

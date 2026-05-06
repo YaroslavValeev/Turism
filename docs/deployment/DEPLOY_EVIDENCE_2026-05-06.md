@@ -40,6 +40,22 @@ ss -tlnp | grep -E ':443|:80' || true
 
 Если п.1 пустой — **только** выкат через Actions обновит `infra/nginx/mywave.conf`. После зелёного job снова: `$COMPOSE up -d --force-recreate reverse-proxy` и проверка `curl -I https://mywavetour.ru/`.
 
+### Если в GitHub Actions падает шаг **«Rsync codebase to VPS»** (SSH probe 20/20, `Timeout, server … not responding`, exit **255**)
+
+Это **не** ошибка Prisma/Docker на сервере: раннер **не смог открыть SSH :22** до VPS за отведённое число попыток. Шаг **«Build and restart …»** даже **не запускается** — на диск **ничего не копируется**, прод остаётся на последнем **успешном** деплое.
+
+**Что проверить на стороне Timeweb / сети**
+
+- Файрвол / «защита от DDoS» / списки доступа: **разрешён входящий TCP 22** с интернета (или с подсетей, с которых реально ходит `ubuntu-latest`; проще временно **22 для всех** на время деплоя, потом ужесточить).
+- Не сменился ли **IP VPS** или **порт SSH** — секреты `DEPLOY_HOST` / ключ в GitHub должны совпадать с реальностью.
+- **Fail2ban** / rate-limit по SSH: после серии неудачных попыток IP раннера мог быть временно забанен — разбан или пауза, затем **Re-run** workflow.
+- Повторить деплой **в другое время** (иногда блокируется транзит Azure → ваш регион).
+
+**Обходы, если GitHub → VPS стабильно не коннектится**
+
+- [Self-hosted runner](https://docs.github.com/en/actions/hosting-your-own-runners) **на этом же VPS** (или в той же сети) — тогда rsync/ssh идут локально, без «лотереи» Azure→Timeweb (это уже заложено в комментарии [`deploy-production.yml`](../../.github/workflows/deploy-production.yml)).
+- Разовый **ручной выкат**: с машины, где `ssh deploy@…` **работает**, скопировать дерево (`rsync`/`scp`) в `DEPLOY_PATH` и выполнить на сервере те же `docker compose build` / `up`, что в workflow (см. второй шаг job).
+
 ## Связанные артефакты
 
 - Источники и SQL: [`SOURCE_INVENTORY_2026-05-06.md`](./SOURCE_INVENTORY_2026-05-06.md)

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import {
   PROGRAM_CARD_PLACEHOLDER_URL,
+  normalizeProgramCardCoverSrc,
   pickBestProgramCoverImageUrl,
   programCardCoverFit,
   programCardCoverPlaceholderClass,
@@ -42,7 +43,7 @@ export function ProgramCard({ program, levelLabel, catalogHrefBuilder, programHr
             <div className={`mw-program-card__cover-frame mw-program-card__cover-frame--${coverFit}`}>
               {/* eslint-disable-next-line @next/next/no-img-element -- внешние URL из API, домены не фиксированы */}
               <img
-                src={coverUrl}
+                src={normalizeProgramCardCoverSrc(coverUrl)}
                 alt={program.title}
                 className={`mw-program-card__cover-img mw-program-card__cover-img--${coverFit}`}
                 loading="lazy"

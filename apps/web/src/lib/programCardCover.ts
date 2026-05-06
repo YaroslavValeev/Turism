@@ -37,6 +37,19 @@ export function presentProgramMediaUrl(url: string | null | undefined): string |
   return `/api/media?url=${encodeURIComponent(normalized)}`;
 }
 
+/**
+ * Финальный src для <img> на карточке: nginx отдаёт REST на `/api/*`, а Next — только `/api/media`;
+ * битые `/api/programs/...` и т.п. превращаем в плейсхолдер, чтобы не было массовых 404.
+ */
+export function normalizeProgramCardCoverSrc(url: string): string {
+  const s = String(url).trim();
+  if (!s) return PROGRAM_CARD_PLACEHOLDER_URL;
+  if (isBrokenLiteralUrl(s)) return PROGRAM_CARD_PLACEHOLDER_URL;
+  if (s.includes("<") || s.includes(">")) return PROGRAM_CARD_PLACEHOLDER_URL;
+  if (s.startsWith("/api/") && !s.startsWith("/api/media")) return PROGRAM_CARD_PLACEHOLDER_URL;
+  return s;
+}
+
 function isLikelyStatsOrClimateInfographicContext(text: string): boolean {
   const t = String(text ?? "")
     .trim()

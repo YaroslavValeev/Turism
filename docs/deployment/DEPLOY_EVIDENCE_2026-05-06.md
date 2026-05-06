@@ -116,15 +116,16 @@ docker compose -f docker-compose.production.yml exec api sh -lc \
 
 Симптом до фикса: карточки загружались, но часть изображений в каталоге была broken (массовые ошибки во вкладке Network → Img).
 
-### Инфраструктурный фикс (Docker)
+### Инфраструктурный фикс (Docker + Nginx)
 
 - `docker-compose.production.yml` — сервис **`web`** должен монтировать named volume `ingestion_media` на **`/app/apps/web/public/ingestion-media`** (как **api**). Иначе файлы лежат только в контейнере API, а запросы к `https://mywavetour.ru/ingestion-media/...` идут в **Next** → **404**.
+- `infra/nginx/mywave.conf` — префикс **`/api/media`** должен проксироваться на **`web:3000`** (Next), а не на **`api:3001`**. Иначе прокси внешних картинок (`/api/media?url=...`) даёт **404** на REST-бэкенде.
 
 ### Кодовый фикс в релиз-кандидате
 
 - `apps/web/src/components/ProgramCard.tsx` — `onError` fallback на placeholder.
 - `apps/web/src/components/ProgramRailCard.tsx` — `onError` fallback на placeholder.
-- `apps/web/src/lib/programCardCover.ts` — фильтр битых literal URL (`null` / `undefined` / `/null` / `/undefined`).
+- `apps/web/src/lib/programCardCover.ts` — фильтр битых literal URL; `normalizeProgramCardCoverSrc` — плейсхолдер для ложных путей вида `/api/...` (кроме **`/api/media`**).
 - `apps/web/public/images/placeholders/program-card.svg` — production-safe placeholder.
 
 ### Проверка на сервере
@@ -137,6 +138,9 @@ COMPOSE="docker compose -f docker-compose.production.yml"
 # берём первый файл из каталога в контейнере web и делаем curl -I по публичному URL.
 F=$($COMPOSE exec -T web sh -lc 'ls -1 /app/apps/web/public/ingestion-media 2>/dev/null | head -n1')
 if [ -z "$F" ]; then echo "Нет файлов в ingestion-media (volume пуст или путь другой)"; else echo "Проверяем: $F"; curl -sS -I "https://mywavetour.ru/ingestion-media/${F}"; fi
+
+# 0b) Next image proxy — должен идти на web (nginx), ответ 200:
+curl -sS -I 'https://mywavetour.ru/api/media?url=https%3A%2F%2Fimages.unsplash.com%2Fphoto-1506905925346-21bda4d32df4%3Fw%3D200'
 
 # Альтернатива: явное имя (подставьте своё из ls на сервере):
 # curl -sS -I "https://mywavetour.ru/ingestion-media/bonus-summer-camp-2024-example-hash.jpg"

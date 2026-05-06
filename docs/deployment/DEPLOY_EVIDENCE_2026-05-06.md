@@ -1,8 +1,16 @@
 # DEPLOY EVIDENCE — 2026-05-06
 
 **Окружение:** production (Timeweb VPS, проект MyWaveTour)  
-**Версия / git SHA:** `заполнить после git pull на Timeweb: git rev-parse HEAD`  
+**Версия / git SHA:** указать коммит из GitHub (`main`) **после** успешного «Deploy production» — на самом VPS **нет** каталога `.git`, `git pull` там не работает.  
 **Ответственный:** owner  
+
+### Важно: на Timeweb в `/opt/mywave/toutism` нет репозитория Git
+
+Деплой идёт **rsync** из Actions ([`deploy-production.yml`](../../.github/workflows/deploy-production.yml), список исключений включает **`.git/`**). Обновить код на сервере можно так:
+
+1. Запушить нужный коммит в `main`.
+2. GitHub → **Actions** → **Deploy production** → **Run workflow** (вручную).
+3. На VPS выполнять только проверки (`docker compose`, `curl`, `grep` по уже скопированным файлам) — **не** `git fetch` / `git reset`.
 
 ## Связанные артефакты
 
@@ -129,6 +137,8 @@ docker compose -f docker-compose.production.yml exec api sh -lc \
 - `apps/web/public/images/placeholders/program-card.svg` — production-safe placeholder.
 
 ### Проверка на сервере
+
+**Не использовать `git`** в `/opt/mywave/toutism`. Сначала дождаться выката через **Deploy production**, затем:
 
 ```bash
 cd /opt/mywave/toutism

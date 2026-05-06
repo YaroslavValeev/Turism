@@ -54,7 +54,8 @@ ss -tlnp | grep -E ':443|:80' || true
 **Обходы, если GitHub → VPS стабильно не коннектится**
 
 - [Self-hosted runner](https://docs.github.com/en/actions/hosting-your-own-runners) **на этом же VPS** (или в той же сети) — тогда rsync/ssh идут локально, без «лотереи» Azure→Timeweb (это уже заложено в комментарии [`deploy-production.yml`](../../.github/workflows/deploy-production.yml)).
-- Разовый **ручной выкат**: с машины, где `ssh deploy@…` **работает**, скопировать дерево (`rsync`/`scp`) в `DEPLOY_PATH` и выполнить на сервере те же `docker compose build` / `up`, что в workflow (см. второй шаг job).
+- Разовый **ручной выкат** с ПК, где SSH до VPS уже открыт: скрипт **[`scripts/manual_rsync_deploy_timeweb.sh`](../../scripts/manual_rsync_deploy_timeweb.sh)** (`DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_KEY_FILE`, опционально `BUILD_MODE=full|incremental`).
+- В **Deploy production** при запуске workflow можно выбрать **`build_mode`**: по умолчанию **`incremental`** (`docker compose up -d --build` — быстрее); **`full`** — прежний холодный `build --no-cache` + `up`.
 
 ## Связанные артефакты
 

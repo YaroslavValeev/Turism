@@ -130,18 +130,25 @@ docker compose -f docker-compose.production.yml exec api sh -lc \
 ### Проверка на сервере
 
 ```bash
+cd /opt/mywave/toutism
+COMPOSE="docker compose -f docker-compose.production.yml"
+
+# 0) /ingestion-media — готовая проверка без ручной подстановки имени файла:
+# берём первый файл из каталога в контейнере web и делаем curl -I по публичному URL.
+F=$($COMPOSE exec -T web sh -lc 'ls -1 /app/apps/web/public/ingestion-media 2>/dev/null | head -n1')
+if [ -z "$F" ]; then echo "Нет файлов в ingestion-media (volume пуст или путь другой)"; else echo "Проверяем: $F"; curl -sS -I "https://mywavetour.ru/ingestion-media/${F}"; fi
+
+# Альтернатива: явное имя (подставьте своё из ls на сервере):
+# curl -sS -I "https://mywavetour.ru/ingestion-media/bonus-summer-camp-2024-example-hash.jpg"
+
 # 1) Вытащить URL программ и убедиться, что нет явных /undefined /null
 curl -fsS https://mywavetour.ru/api/programs | head -c 3000
 
 # 2) Если есть jq:
 curl -fsS https://mywavetour.ru/api/programs | jq '.. | objects | select(.title? or .name?) | {title: (.title // .name), imageUrl: (.imageUrl // .coverImageUrl // .coverUrl // .image // null), media: (.media // null)}' | head -80
 
-# 3) Проверить headers по 1-2 проблемным URL
-curl -I "https://mywavetour.ru/<broken-image-path>"
-
-# 4) Проверить nginx/static handling
-cd /opt/mywave/toutism
-docker compose -f docker-compose.production.yml exec reverse-proxy nginx -T | grep -Ei "uploads|media|images|static|_next" -n || true
+# 3) Проверить nginx/static handling
+$COMPOSE exec -T reverse-proxy nginx -T | grep -Ei "uploads|media|images|static|_next" -n || true
 ```
 
 ### Acceptance criteria

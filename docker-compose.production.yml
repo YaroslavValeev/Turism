@@ -53,6 +53,9 @@ services:
       - apps/web/.env.production
     depends_on:
       - api
+    # Тот же named volume, что у api — иначе URL /ingestion-media/* отдаёт web без файлов → 404 в витрине.
+    volumes:
+      - ingestion_media:/app/apps/web/public/ingestion-media
     expose:
       - "3000"
 

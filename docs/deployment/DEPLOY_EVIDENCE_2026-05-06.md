@@ -116,6 +116,10 @@ docker compose -f docker-compose.production.yml exec api sh -lc \
 
 Симптом до фикса: карточки загружались, но часть изображений в каталоге была broken (массовые ошибки во вкладке Network → Img).
 
+### Инфраструктурный фикс (Docker)
+
+- `docker-compose.production.yml` — сервис **`web`** должен монтировать named volume `ingestion_media` на **`/app/apps/web/public/ingestion-media`** (как **api**). Иначе файлы лежат только в контейнере API, а запросы к `https://mywavetour.ru/ingestion-media/...` идут в **Next** → **404**.
+
 ### Кодовый фикс в релиз-кандидате
 
 - `apps/web/src/components/ProgramCard.tsx` — `onError` fallback на placeholder.
@@ -146,4 +150,4 @@ docker compose -f docker-compose.production.yml exec reverse-proxy nginx -T | gr
 - [ ] Карточка показывает либо реальную картинку, либо `/images/placeholders/program-card.svg`.
 - [ ] В DevTools Network → Img нет массовых 404/400.
 - [ ] API не отдаёт image URL вида `/undefined`, `/null`, `null`, `undefined`.
-- [ ] После `docker compose up -d --build web reverse-proxy` поведение подтверждено.
+- [ ] После `docker compose up -d --build web api reverse-proxy` поведение подтверждено (включая **один** `ingestion_media` у **web** и **api**).

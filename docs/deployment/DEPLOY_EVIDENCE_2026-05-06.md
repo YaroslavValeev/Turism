@@ -73,8 +73,11 @@ ss -tlnp | grep -E ':443|:80' || true
 
 ```text
 Production runtime: GREEN
-Deploy transport: DEGRADED (риск SSH/rsync GitHub Actions → VPS сохраняется)
+Deploy transport: improved, still monitored (SSH/rsync остаётся зоной внимания)
 Launch mode: GO WITH GUARDRAILS / controlled pilot
+GET /api/health (live): PASSED
+GET /health (live): PENDING — на edge до выката nginx из коммита ≥ 813fac3
+nginx location = /health on VPS: pending (подтвердить grep на сервере после выката)
 ```
 
 | Проверка | Результат |
@@ -116,7 +119,46 @@ docker compose -f docker-compose.production.yml exec -T reverse-proxy sh -lc 'wg
 # {"status":"ok"}
 ```
 
-**Health endpoint:** публичный JSON с API на основном домене канонически доступен как **`GET https://mywavetour.ru/api/health`**. Короткий путь **`GET https://mywavetour.ru/health`**: ранее без отдельного `location` попадал в Next.js (**404**); в репозитории добавлен nginx **`location = /health` → `api:3001/health`** ([`infra/nginx/mywave.conf`](../../infra/nginx/mywave.conf)). После выката обновлённого конфига на VPS оба URL должны возвращать то же тело. Подробности: [`ADR_PUBLIC_HEALTH_ENDPOINT.md`](./ADR_PUBLIC_HEALTH_ENDPOINT.md).
+### Сверка Deploy #20, SHA и alias `/health` (2026-05-08)
+
+| Факт | Значение |
+|------|----------|
+| Успешный **Deploy production #20** | В логах Actions указан SHA **`88eb91b`** |
+| Коммит с nginx **`location = /health`** | **`813fac3`** (документация — **`bb813e4`** и далее по `main`) — **позже**, чем `88eb91b` |
+| Вывод | #20 **не доставлял** на VPS файл с alias; для появления **`grep -n 'location = /health'`** на диске нужен выкат с **`main`**, содержащим минимум **`813fac3`** |
+
+**Проверка с интернета (внешний curl, без SSH на VPS):**
+
+| URL | Результат |
+|-----|-----------|
+| `GET https://mywavetour.ru/api/health` | **200** `{"status":"ok"}` — **PASSED** |
+| `GET https://mywavetour.ru/health` | **404** (HTML Next.js) — на живом edge alias **ещё не применён** |
+
+Итоговая строка для owner до следующего зелёного выката **`main` ≥ 813fac3**:
+
+```text
+/api/health: PASSED
+/health: NOT YET on live edge (404 Next until nginx from ≥813fac3 is rsynced + reverse-proxy recreated)
+nginx alias location = /health on VPS: pending (confirm: grep infra/nginx/mywave.conf on server)
+Production runtime: GREEN
+Deploy transport: improved, still monitored
+Health alias from 813fac3: pending rollout
+```
+
+**На VPS после выката актуального `main`:**
+
+```bash
+cd /opt/mywave/toutism
+git rev-parse --short HEAD 2>/dev/null || echo "No .git in deploy path"
+grep -n "location = /health" infra/nginx/mywave.conf || echo "NO /health alias in current VPS file"
+docker compose -f docker-compose.production.yml up -d --force-recreate reverse-proxy
+curl -sS https://mywavetour.ru/api/health && echo
+curl -sS https://mywavetour.ru/health && echo
+```
+
+Рекомендация: **Deploy production** с **текущего `main`**, при необходимости **`deploy_mode: web_only`**, затем **force-recreate** `reverse-proxy`, чтобы подтянулся смонтированный с хоста [`infra/nginx/mywave.conf`](../../infra/nginx/mywave.conf).
+
+**Health endpoint:** публичный JSON с API на основном домене канонически доступен как **`GET https://mywavetour.ru/api/health`**. Короткий путь **`GET https://mywavetour.ru/health`**: без nginx alias попадает в Next.js (**404**); в репозитории добавлен **`location = /health` → `api:3001/health`** ([`infra/nginx/mywave.conf`](../../infra/nginx/mywave.conf), коммит **`813fac3`**). После выката этого конфига на VPS и пересоздания `reverse-proxy` оба URL должны совпадать по телу. Подробности: [`ADR_PUBLIC_HEALTH_ENDPOINT.md`](./ADR_PUBLIC_HEALTH_ENDPOINT.md).
 
 **Следующий фокус команды:** triage `source_runs failed` (in progress); safe Docker cleanup по политике; мониторинг — [`scripts/prod_healthcheck.sh`](../../scripts/prod_healthcheck.sh) (обновлён под `/api/health` + опционально `/health`).
 
@@ -125,7 +167,7 @@ docker compose -f docker-compose.production.yml exec -T reverse-proxy sh -lc 'wg
 | Область | Репозиторий / статус |
 |---------|----------------------|
 | Runtime | §0, таблица PASSED |
-| Деплой | [`deploy-production.yml`](../../.github/workflows/deploy-production.yml): `workflow_dispatch`, `deploy_mode`, rsync exclude `infra/nginx/certs/`; транспорт **DEGRADED** при блокировке SSH — см. [`ADR_TIMEWEB_DEPLOY_RUNNER.md`](./ADR_TIMEWEB_DEPLOY_RUNNER.md), обход [`manual_rsync_deploy_timeweb.sh`](../../scripts/manual_rsync_deploy_timeweb.sh) |
+| Деплой | [`deploy-production.yml`](../../.github/workflows/deploy-production.yml): `workflow_dispatch`, `deploy_mode`; транспорт **улучшен (#20 зелёный)**, риск SSH **под мониторингом** — [`ADR_TIMEWEB_DEPLOY_RUNNER.md`](./ADR_TIMEWEB_DEPLOY_RUNNER.md), обход [`manual_rsync_deploy_timeweb.sh`](../../scripts/manual_rsync_deploy_timeweb.sh) |
 | Nginx | [`infra/nginx/mywave.conf`](../../infra/nginx/mywave.conf): `/api/media` → web, `/api/` → api, `location = /health` → api |
 | Health | [`ADR_PUBLIC_HEALTH_ENDPOINT.md`](./ADR_PUBLIC_HEALTH_ENDPOINT.md) |
 | Мониторинг / smoke | [`prod_healthcheck.sh`](../../scripts/prod_healthcheck.sh), [`smoke_media.sh`](../../scripts/smoke_media.sh) |
@@ -166,7 +208,7 @@ docker compose -f docker-compose.production.yml ps
 | Метод | URL | Примечание |
 |-------|-----|------------|
 | GET | `https://mywavetour.ru/api/health` | Канон для smoke/monitoring; **PASSED** на runtime-проверке 2026-05-08 |
-| GET | `https://mywavetour.ru/health` | После выката nginx с `location = /health` — alias на API; до выката возможен **404** от Next |
+| GET | `https://mywavetour.ru/health` | На live edge **404** Next до выката **`813fac3`** на VPS и recreate `reverse-proxy` (см. §0 «Сверка Deploy #20») |
 
 **Хост API:**
 

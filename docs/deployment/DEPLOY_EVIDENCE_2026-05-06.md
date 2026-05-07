@@ -225,3 +225,46 @@ $COMPOSE exec -T reverse-proxy nginx -T | grep -Ei "uploads|media|images|static|
 - [ ] В DevTools Network → Img нет массовых 404/400.
 - [ ] API не отдаёт image URL вида `/undefined`, `/null`, `null`, `undefined`.
 - [ ] После `docker compose up -d --build web api reverse-proxy` поведение подтверждено (включая **один** `ingestion_media` у **web** и **api**).
+
+---
+
+## 10. Final incident close (2026-05-07)
+
+### Что было
+
+- После деплоя периодически получали `502 Bad Gateway` на `https://mywavetour.ru/`.
+- В логах `reverse-proxy`: недоступен upstream `web:3000` и/или отсутствовали TLS-файлы в `infra/nginx/certs/`.
+- Отдельно зафиксирован нестабильный SSH из GitHub Actions к VPS (`Rsync codebase to VPS`, exit 255).
+
+### Что сделали
+
+- Восстановили сертификаты в `infra/nginx/certs/` на VPS (валидные `fullchain.pem` и `privkey.pem`).
+- Применили runtime-правки и пересоздали `web` + `reverse-proxy`.
+- В репозитории внесли защитные изменения:
+  - `deploy-production.yml`: `rsync` исключает `infra/nginx/certs/` (чтобы не стирать PEM на VPS).
+  - Добавлены диагностические команды и инструкции в deployment docs.
+  - Уточнён порядок деплоя: на VPS без `.git`, выкаты через `workflow_dispatch`.
+
+### Подтверждение
+
+- `GET /` → `HTTP/2 200`
+- `GET /api/media?url=...` → `HTTP/2 200`
+- `docker compose -f docker-compose.production.yml ps`:
+  - `reverse-proxy` — Up
+  - `web` — Up
+  - `api` — Up
+  - `admin` — Up
+  - `postgres` — healthy
+
+### CI / Deploy
+
+- `Deploy production #14` — Success (базовая стабилизация).
+- `Deploy production #15` — Success (SHA `8d2f560`), быстрый rsync+restart.
+- Актуальный фикс сети upstream в compose: SHA `1ecd736`.
+- Актуальный фикс `le-deploy-sync`: SHA `8d2f560`.
+- Актуальный фикс `rsync exclude infra/nginx/certs/`: SHA `8e6dd0d`.
+
+### Статус
+
+- Инцидент 502 закрыт.
+- P1 по доступности web/media закрыт.

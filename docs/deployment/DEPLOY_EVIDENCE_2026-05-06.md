@@ -63,6 +63,7 @@ ss -tlnp | grep -E ':443|:80' || true
 - Gates: [`../gates/GATE1_LOCAL_GREEN_SMOKE.md`](../gates/GATE1_LOCAL_GREEN_SMOKE.md), [`../gates/P1_CHECKPOINT.md`](../gates/P1_CHECKPOINT.md)
 - CI: деплой только **`workflow_dispatch`** — [`.github/workflows/deploy-production.yml`](../../.github/workflows/deploy-production.yml)
 - Health URL на основном домене: [`ADR_PUBLIC_HEALTH_ENDPOINT.md`](./ADR_PUBLIC_HEALTH_ENDPOINT.md)
+- Раннер / SSH-риск: [`ADR_TIMEWEB_DEPLOY_RUNNER.md`](./ADR_TIMEWEB_DEPLOY_RUNNER.md)
 
 ---
 
@@ -118,6 +119,22 @@ docker compose -f docker-compose.production.yml exec -T reverse-proxy sh -lc 'wg
 **Health endpoint:** публичный JSON с API на основном домене канонически доступен как **`GET https://mywavetour.ru/api/health`**. Короткий путь **`GET https://mywavetour.ru/health`**: ранее без отдельного `location` попадал в Next.js (**404**); в репозитории добавлен nginx **`location = /health` → `api:3001/health`** ([`infra/nginx/mywave.conf`](../../infra/nginx/mywave.conf)). После выката обновлённого конфига на VPS оба URL должны возвращать то же тело. Подробности: [`ADR_PUBLIC_HEALTH_ENDPOINT.md`](./ADR_PUBLIC_HEALTH_ENDPOINT.md).
 
 **Следующий фокус команды:** triage `source_runs failed` (in progress); safe Docker cleanup по политике; мониторинг — [`scripts/prod_healthcheck.sh`](../../scripts/prod_healthcheck.sh) (обновлён под `/api/health` + опционально `/health`).
+
+**Единый пакет артефактов и регламентов (controlled pilot — всё входит в один контур evidence):**
+
+| Область | Репозиторий / статус |
+|---------|----------------------|
+| Runtime | §0, таблица PASSED |
+| Деплой | [`deploy-production.yml`](../../.github/workflows/deploy-production.yml): `workflow_dispatch`, `deploy_mode`, rsync exclude `infra/nginx/certs/`; транспорт **DEGRADED** при блокировке SSH — см. [`ADR_TIMEWEB_DEPLOY_RUNNER.md`](./ADR_TIMEWEB_DEPLOY_RUNNER.md), обход [`manual_rsync_deploy_timeweb.sh`](../../scripts/manual_rsync_deploy_timeweb.sh) |
+| Nginx | [`infra/nginx/mywave.conf`](../../infra/nginx/mywave.conf): `/api/media` → web, `/api/` → api, `location = /health` → api |
+| Health | [`ADR_PUBLIC_HEALTH_ENDPOINT.md`](./ADR_PUBLIC_HEALTH_ENDPOINT.md) |
+| Мониторинг / smoke | [`prod_healthcheck.sh`](../../scripts/prod_healthcheck.sh), [`smoke_media.sh`](../../scripts/smoke_media.sh) |
+| Источники | [`triage_source_runs.sh`](../../scripts/triage_source_runs.sh), [`SOURCE_INVENTORY_2026-05-06.md`](./SOURCE_INVENTORY_2026-05-06.md) — triage **in progress** |
+| TLS sync | [`le-deploy-sync.sh`](../../scripts/le-deploy-sync.sh) |
+| Runbook | [`TIMEWEB_VPS_COMMANDS.md`](./TIMEWEB_VPS_COMMANDS.md) |
+| Витрина | Плейсхолдер [`apps/web/public/images/placeholders/program-card.svg`](../../apps/web/public/images/placeholders/program-card.svg); кинолента [`toursFilmstripModel.ts`](../../apps/web/src/components/toursFilmstripModel.ts) |
+| Данные | Снимок импортов [`services/api/prisma/source_imports_all_2026-05-05.json`](../../services/api/prisma/source_imports_all_2026-05-05.json) |
+| Docker cleanup | Политика — §13 в [`TIMEWEB_VPS_COMMANDS.md`](./TIMEWEB_VPS_COMMANDS.md); выполнение по окну владельца |
 
 ---
 

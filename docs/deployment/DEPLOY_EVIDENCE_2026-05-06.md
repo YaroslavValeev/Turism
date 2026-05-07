@@ -268,3 +268,86 @@ $COMPOSE exec -T reverse-proxy nginx -T | grep -Ei "uploads|media|images|static|
 
 - Инцидент 502 закрыт.
 - P1 по доступности web/media закрыт.
+
+---
+
+## 11. GM checkpoint update (2026-05-07)
+
+### Runtime
+
+- `GET /` → `HTTP/2 200`
+- `GET /api/media?url=...` → `HTTP/2 200`
+- `GET /images/placeholders/program-card.svg` → `HTTP/2 200`
+- `docker compose -f docker-compose.production.yml ps`: `reverse-proxy`, `web`, `api`, `admin`, `postgres` в состоянии Up (postgres healthy)
+
+### Env (api container)
+
+Факт: env-выгрузка внутри `api` получена; guardrails проверяются через:
+
+```bash
+docker compose -f docker-compose.production.yml exec -T api sh -lc \
+'env | grep -E "APP_ENV|PILOT_MODE_ENABLED|LEGAL_CONSENT_POLICY_VERSION|AI_ENABLED|AI_OWNER_APPROVAL_REQUIRED|AI_AUTOPUBLISH_ENABLED|INGESTION_AUTOPUBLISH_ENABLED|SEED_DEMO_CATALOG"'
+```
+
+Критично для controlled pilot:
+
+- `AI_AUTOPUBLISH_ENABLED=false`
+- `INGESTION_AUTOPUBLISH_ENABLED=false`
+- `SEED_DEMO_CATALOG=0`
+
+### Backup
+
+- Файл создан: `backups/mywavetour_20260507_085749.sql`
+- Размер: ~`3.4M`
+- Команда: `pg_dump` из контейнера `postgres` в каталог `backups/`
+
+### Scheduler / deploy policy (owner accepted)
+
+```text
+Ingestion scheduler mode: external cron only
+Internal scheduler: disabled / not used
+Systemd timers/services: not detected
+Owner decision: accepted
+```
+
+```text
+Deploy policy: manual workflow_dispatch only
+Autodeploy on push: disabled
+Self-hosted runner: ADR required before implementation
+```
+
+### Source runs
+
+Snapshot:
+
+```text
+success: 239
+failed: 231
+running: 2
+```
+
+Первичная декомпозиция failed:
+
+```text
+other: 204
+invalid_url: 27
+```
+
+Triage status: **in progress** (нужно доразбить `other` на `http_429/fetch_failed/timeout/http_404/http_403/parser_error/media_fetch_failed/unsupported_source/empty_response/network_error/unknown`).
+
+### Docker resources
+
+Before cleanup snapshot:
+
+```text
+disk usage: ~77%
+docker build cache: ~21.1GB
+```
+
+Safe cleanup policy согласована: `docker image prune -f` + `docker builder prune -f --filter "until=168h"` без удаления volumes.
+
+### Known issues
+
+- Риск SSH/rsync timeout (GitHub Actions → VPS).
+- Периодический `Prisma binary fetch ETIMEDOUT` при сборке `api` в deploy workflow.
+- Высокий объём `source_runs failed`, большая категория `other`.

@@ -118,3 +118,98 @@ curl -sS -I 'https://mywavetour.ru/api/media?url=https%3A%2F%2Fimages.unsplash.c
 ## 8. Панель Timeweb (в браузере)
 
 Сеть и файрвол — см. [TIMEWEB_AND_ACTIONS_LINKS.md](./TIMEWEB_AND_ACTIONS_LINKS.md).
+
+---
+
+## 9. Scheduler policy (owner accepted)
+
+```text
+Ingestion scheduler mode: external cron only
+Internal scheduler: disabled / not used
+Systemd timers/services: not detected
+Owner decision: accepted
+```
+
+Проверка на VPS:
+
+```bash
+cd /opt/mywave/toutism
+crontab -l || true
+systemctl list-timers --all | grep -Ei "mywave|ingestion|toutism" || true
+systemctl list-units --type=service | grep -Ei "mywave|ingestion|toutism" || true
+```
+
+---
+
+## 10. Deploy policy (owner accepted)
+
+```text
+Deploy policy: manual workflow_dispatch only
+Autodeploy on push: disabled
+Self-hosted runner: ADR required before implementation
+```
+
+---
+
+## 11. Production monitoring baseline
+
+Скрипт: `scripts/prod_healthcheck.sh`
+
+```bash
+cd /opt/mywave/toutism
+bash scripts/prod_healthcheck.sh
+```
+
+Если скрипт завершился с ненулевым кодом — считать состояние RED и разбирать блоки `HTTP health`, `Docker status`, `Recent logs`.
+
+---
+
+## 12. Media regression smoke
+
+Скрипт: `scripts/smoke_media.sh`
+
+```bash
+cd /opt/mywave/toutism
+bash scripts/smoke_media.sh
+```
+
+Ожидаемо:
+
+- placeholder → 200
+- `/api/media` → 200
+- home page response без ошибок
+
+---
+
+## 13. Safe Docker cleanup policy
+
+Перед очисткой:
+
+```bash
+cd /opt/mywave/toutism
+docker system df
+df -h
+```
+
+Безопасные команды:
+
+```bash
+docker image prune -f
+docker builder prune -f --filter "until=168h"
+```
+
+После очистки:
+
+```bash
+docker system df
+df -h
+docker compose -f docker-compose.production.yml ps
+curl -fsS https://mywavetour.ru/health
+```
+
+Опасные команды (не запускать без отдельного backup-подтверждения):
+
+```bash
+docker volume prune
+docker system prune --volumes
+```

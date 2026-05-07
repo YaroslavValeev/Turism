@@ -148,6 +148,58 @@ contact_channels_total:          N/A — см. модель Organizer + Source
 
 ---
 
+## Source runs triage (checkpoint 2026-05-07)
+
+Фактический snapshot с VPS (psql в контейнере `postgres`):
+
+```text
+status summary:
+  success = 239
+  failed  = 231
+  running = 2
+
+failed categories (первичная декомпозиция):
+  other       = 204
+  invalid_url = 27
+```
+
+### Важно по схеме `source_runs`
+
+В этой БД таблица `source_runs` использует поля:
+
+- `startedAt`, `finishedAt`
+- `errorMessage`
+- `sourceId`, `runType`, `status`
+
+Колонок `createdAt` / `updatedAt` в `source_runs` нет. Для сортировки последних запусков использовать `startedAt`.
+
+Пример корректного SQL для последних failed:
+
+```sql
+SELECT id, "sourceId", "runType", status, "errorMessage", "startedAt", "finishedAt"
+FROM source_runs
+WHERE status = 'failed'
+ORDER BY "startedAt" DESC
+LIMIT 100;
+```
+
+Первичные наблюдения по `failed`:
+
+- частые паттерны в последних строках: `invalid URL`, `HTTP 429`, `fetch failed`;
+- категория `other` всё ещё слишком большая (204) — требует отдельной декомпозиции до `http_429/fetch_failed/timeout/http_404/http_403/parser_error/media_fetch_failed/unsupported_source/empty_response/network_error/unknown`;
+- `running = 2` требует дополнительной классификации как `active` или `stale` по `startedAt` + runtime-логам ingestion.
+
+Рекомендуемые действия по источникам (рабочая таксономия):
+
+- `keep`: источник работает/ошибки эпизодические;
+- `retry`: сетевые/временные фейлы;
+- `fix_parser`: устойчивые parser ошибки;
+- `pause`: источник шумный/нестабильный;
+- `disable`: источник невалиден/неподдерживаем;
+- `manual_review`: пограничные кейсы и бизнес-решение владельца.
+
+---
+
 ## Security: ротация PAT (evidence)
 
 - Утечённый классический/Fine-grained PAT: **Revoke** в GitHub → Developer settings → Personal access tokens.

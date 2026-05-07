@@ -354,3 +354,22 @@ Safe cleanup policy согласована: `docker image prune -f` + `docker bu
 - Риск SSH/rsync timeout (GitHub Actions → VPS).
 - Периодический `Prisma binary fetch ETIMEDOUT` при сборке `api` в deploy workflow.
 - Высокий объём `source_runs failed`, большая категория `other`.
+
+---
+
+## 12. Follow-up: доступ без VPN, медиа, failed deploy (2026-05-08)
+
+### Что произошло
+
+- Скриншот Actions: шаг **«Rsync codebase to VPS»** завершился **SSH timeout :22** — выкат **не выполнен**, production остаётся на **последнем успешном** деплое, а не на «ожидаемом» коммите.
+- В консоли браузера: **`GET /_next/image?url=%2Fapi%2Fmedia%3F... 400`** — блок «Туры и кемпы» (`ToursFilmstrip`) прокидывал URL вида `/api/media?url=...` в **`next/image`**; оптимизатор часто отвечает **400** на длинных query. **Исправление в коде:** для `/api/media` использовать обычный `<img>` (флаг `isRemote` в [`toursFilmstripModel.ts`](../../apps/web/src/components/toursFilmstripModel.ts), см. `coverUrl`).
+- Карточки с подписью «Источник: scontent-…cdninstagram.com» — это **SVG-плейсхолдер** из [`app/api/media/route.ts`](../../apps/web/src/app/api/media/route.ts), когда **upstream (Instagram CDN) не отдал картинку** с сервера (429/403/срок ссылки). Это не баг разметки карточки «Ближайшие старты», а ограничение источника; обложки из других источников могут отображаться нормально.
+
+### Доступ «без VPN не открывается, с VPN открывается»
+
+Отдельная тема от Docker/Next: проверить **одинаковый ли IP** у `mywavetour.ru` и `www.mywavetour.ru`, нет ли **блокировки провайдера/региона**, в панели Timeweb — **файрвол: 80/443** для нужных сетей (не путать с **SSH :22**, который нужен только для деплоя).
+
+### Что сделать операционно
+
+1. Починить/обойти **SSH до VPS** (firewall, fail2ban, временно открыть 22) и повторить **Deploy production**, либо выкат вручную: [`scripts/manual_rsync_deploy_timeweb.sh`](../../scripts/manual_rsync_deploy_timeweb.sh).
+2. После появления коммита с фиксом киноленты — **rebuild `web`** на сервере и проверка: в DevTools нет массовых **`/_next/image` 400** для `/api/media`.

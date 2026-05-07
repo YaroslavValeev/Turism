@@ -140,7 +140,10 @@ function coverUrl(p: ProgramLike, index: number): { url: string; isRemote: boole
   const raw =
     pickBestProgramCoverImageUrl(p.media, `${p.title} ${p.audienceFit ?? ""} ${p.itineraryDayByDay ?? ""}`) ??
     FALLBACK_IMAGES[index % FALLBACK_IMAGES.length]!;
-  const isRemote = /^https?:\/\//i.test(raw);
+  /** Абсолютные URL и прокси `/api/media?...` не гоняем через `next/image`: оптимизатор даёт 400 на длинных query. */
+  const isAbsoluteRemote = /^https?:\/\//i.test(raw);
+  const isMediaProxy = raw.startsWith("/api/media");
+  const isRemote = isAbsoluteRemote || isMediaProxy;
   return { url: raw, isRemote };
 }
 

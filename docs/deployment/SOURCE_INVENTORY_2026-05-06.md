@@ -158,9 +158,10 @@ status summary:
   failed  = 231
   running = 2
 
-failed categories (первичная декомпозиция):
-  other       = 204
-  invalid_url = 27
+failed categories (уточнённая декомпозиция):
+  fetch_failed = 162
+  http_429     = 42
+  invalid_url  = 27
 ```
 
 ### Важно по схеме `source_runs`
@@ -185,9 +186,9 @@ LIMIT 100;
 
 Первичные наблюдения по `failed`:
 
-- частые паттерны в последних строках: `invalid URL`, `HTTP 429`, `fetch failed`;
-- категория `other` всё ещё слишком большая (204) — требует отдельной декомпозиции до `http_429/fetch_failed/timeout/http_404/http_403/parser_error/media_fetch_failed/unsupported_source/empty_response/network_error/unknown`;
-- `running = 2` требует дополнительной классификации как `active` или `stale` по `startedAt` + runtime-логам ingestion.
+- доминируют `fetch_failed` (162) и `http_429` (42), плюс `invalid_url` (27);
+- `running = 2` выглядят stale: старые `startedAt` (2026-05-05), `finishedAt` не заполнен;
+- для controlled pilot нужен отдельный action-list по top источникам (`keep/retry/fix_parser/pause/disable/manual_review`).
 
 Рекомендуемые действия по источникам (рабочая таксономия):
 

@@ -329,11 +329,14 @@ running: 2
 Первичная декомпозиция failed:
 
 ```text
-other: 204
+fetch_failed: 162
+http_429: 42
 invalid_url: 27
 ```
 
-Triage status: **in progress** (нужно доразбить `other` на `http_429/fetch_failed/timeout/http_404/http_403/parser_error/media_fetch_failed/unsupported_source/empty_response/network_error/unknown`).
+Triage status: **in progress** (первичная декомпозиция сделана; нужен action-list по источникам и закрытие stale running).
+
+`running: 2` — классифицированы как вероятные stale (старые `startedAt`, без `finishedAt`), требуется controlled close по runbook.
 
 ### Docker resources
 

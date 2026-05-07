@@ -181,6 +181,24 @@ bash scripts/smoke_media.sh
 
 ---
 
+## 12b. Source runs triage + stale running
+
+Скрипт: `scripts/triage_source_runs.sh`
+
+```bash
+cd /opt/mywave/toutism
+bash scripts/triage_source_runs.sh
+```
+
+Ожидаемо на текущем checkpoint:
+
+- `success: 239`, `failed: 231`, `running: 2`
+- categories: `fetch_failed`, `http_429`, `invalid_url`
+
+Если `running` старые (дни) и без `finishedAt`, считать их stale-кандидатами для controlled manual close (через отдельную SQL-процедуру владельца).
+
+---
+
 ## 13. Safe Docker cleanup policy
 
 Перед очисткой:

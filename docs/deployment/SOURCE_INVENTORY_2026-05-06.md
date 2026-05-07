@@ -89,7 +89,7 @@ type = 'website':      0
 | `type = 'website'` | **0** |
 | Дубликаты `(type, urlOrHandle)` | **0** |
 | Повторный импорт JSON (68 строк) | `{ "total": 68, "created": 0, "updated": 68 }` — записи уже были |
-| `GET /health` (prod API) | `{"status":"ok"}` |
+| `GET https://api.mywavetour.ru/health` или `GET https://mywavetour.ru/api/health` | `{"status":"ok"}` |
 | `ingest:cycle-all` | в логе: scope sources:**86**, этапы collect/normalize/dedup отработали; `autoPublish`: часть кандидатов `notEligible` |
 | `env \| grep PILOT…` в контейнере `api` | виден только **`APP_ENV=production`** — флаги `PILOT_MODE_ENABLED`, `LEGAL_CONSENT_*`, `AI_*`, `INGESTION_AUTOPUBLISH_*` **не попали в процесс**, если их нет в реальных `env_file` на сервере (проверьте корневой `.env.production` и `services/api/.env.production`, затем `compose up` заново) |
 

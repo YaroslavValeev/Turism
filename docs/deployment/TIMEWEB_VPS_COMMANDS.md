@@ -110,9 +110,18 @@ grep -n 'api/media' infra/nginx/mywave.conf || echo "СТАРЫЙ КОНФИГ �
 
 ## 6. Быстрые HTTP-проверки с VPS
 
+Канон health на витрине: **`/api/health`**. Короткий путь **`/health`** — после выката nginx с `location = /health` (см. [`ADR_PUBLIC_HEALTH_ENDPOINT.md`](./ADR_PUBLIC_HEALTH_ENDPOINT.md)); до выката может быть **404** от Next.
+
 ```bash
-curl -sS -o /dev/null -w '%{http_code}\n' https://mywavetour.ru/health 2>/dev/null || curl -sS -I https://mywavetour.ru/ | head -n 3
+curl -sS https://mywavetour.ru/api/health
+curl -sS -o /dev/null -w '/health HTTP %{http_code}\n' https://mywavetour.ru/health
 curl -sS -I 'https://mywavetour.ru/api/media?url=https%3A%2F%2Fimages.unsplash.com%2Fphoto-1506905925346-21bda4d32df4%3Fw%3D200' | head -n 8
+```
+
+Проверка, что alias попал в конфиг на диске:
+
+```bash
+grep -n "location = /health" infra/nginx/mywave.conf || echo "НА ДИСКЕ НЕТ alias /health — нужен успешный Deploy с актуальным main"
 ```
 
 ## 8. Панель Timeweb (в браузере)
@@ -153,7 +162,7 @@ Self-hosted runner: ADR required before implementation
 
 ## 11. Production monitoring baseline
 
-Скрипт: `scripts/prod_healthcheck.sh`
+Скрипт: `scripts/prod_healthcheck.sh` — обязательная проверка **`GET https://mywavetour.ru/api/health`**; затем **`GET /health`** (если не 200 — предупреждение до выката `infra/nginx/mywave.conf` с `location = /health`).
 
 ```bash
 cd /opt/mywave/toutism
@@ -222,7 +231,8 @@ docker builder prune -f --filter "until=168h"
 docker system df
 df -h
 docker compose -f docker-compose.production.yml ps
-curl -fsS https://mywavetour.ru/health
+curl -fsS https://mywavetour.ru/api/health
+curl -sS -o /dev/null -w '/health HTTP %{http_code}\n' https://mywavetour.ru/health || true
 ```
 
 Опасные команды (не запускать без отдельного backup-подтверждения):

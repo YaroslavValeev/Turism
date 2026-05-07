@@ -62,19 +62,72 @@ ss -tlnp | grep -E ':443|:80' || true
 - Источники и SQL: [`SOURCE_INVENTORY_2026-05-06.md`](./SOURCE_INVENTORY_2026-05-06.md)
 - Gates: [`../gates/GATE1_LOCAL_GREEN_SMOKE.md`](../gates/GATE1_LOCAL_GREEN_SMOKE.md), [`../gates/P1_CHECKPOINT.md`](../gates/P1_CHECKPOINT.md)
 - CI: деплой только **`workflow_dispatch`** — [`.github/workflows/deploy-production.yml`](../../.github/workflows/deploy-production.yml)
+- Health URL на основном домене: [`ADR_PUBLIC_HEALTH_ENDPOINT.md`](./ADR_PUBLIC_HEALTH_ENDPOINT.md)
+
+---
+
+## 0. Production runtime — ручная проверка VPS (2026-05-08)
+
+**Статус:**
+
+```text
+Production runtime: GREEN
+Deploy transport: DEGRADED (риск SSH/rsync GitHub Actions → VPS сохраняется)
+Launch mode: GO WITH GUARDRAILS / controlled pilot
+```
+
+| Проверка | Результат |
+|----------|-----------|
+| Runtime | **PASSED** |
+| Home page | **PASSED** |
+| API health | **PASSED** (`GET https://mywavetour.ru/api/health` → `{"status":"ok"}`) |
+| Media | **PASSED** |
+| Placeholder | **PASSED** |
+| Containers | **PASSED** |
+
+Контейнеры на сервере `/opt/mywave/toutism` (фактические имена):
+
+| Контейнер | Состояние |
+|-----------|-----------|
+| `toutism-admin-1` | Up |
+| `toutism-api-1` | Up / healthy |
+| `toutism-postgres-1` | Up / healthy |
+| `toutism-reverse-proxy-1` | Up |
+| `toutism-web-1` | Up |
+
+**Зафиксированные команды и ответы:**
+
+```bash
+curl -sS -I https://mywavetour.ru/ | head -n 8
+# HTTP/2 200
+
+curl -sS https://mywavetour.ru/api/health
+# {"status":"ok"}
+
+curl -sS -I 'https://mywavetour.ru/api/media?url=https%3A%2F%2Fimages.unsplash.com%2Fphoto-1506905925346-21bda4d32df4%3Fw%3D200' | head -n 12
+# HTTP/2 200
+
+curl -sS -I https://mywavetour.ru/images/placeholders/program-card.svg | head -n 12
+# HTTP/2 200
+# content-type: image/svg+xml
+
+docker compose -f docker-compose.production.yml exec -T reverse-proxy sh -lc 'wget -qO- http://api:3001/health'
+# {"status":"ok"}
+```
+
+**Health endpoint:** публичный JSON с API на основном домене канонически доступен как **`GET https://mywavetour.ru/api/health`**. Короткий путь **`GET https://mywavetour.ru/health`**: ранее без отдельного `location` попадал в Next.js (**404**); в репозитории добавлен nginx **`location = /health` → `api:3001/health`** ([`infra/nginx/mywave.conf`](../../infra/nginx/mywave.conf)). После выката обновлённого конфига на VPS оба URL должны возвращать то же тело. Подробности: [`ADR_PUBLIC_HEALTH_ENDPOINT.md`](./ADR_PUBLIC_HEALTH_ENDPOINT.md).
+
+**Следующий фокус команды:** triage `source_runs failed` (in progress); safe Docker cleanup по политике; мониторинг — [`scripts/prod_healthcheck.sh`](../../scripts/prod_healthcheck.sh) (обновлён под `/api/health` + опционально `/health`).
 
 ---
 
 ## 1. Docker
 
-Вставьте актуальный вывод после выката этого SHA:
+Актуальный снимок контейнеров: **§0** (2026-05-08). Повторная проверка:
 
 ```bash
+cd /opt/mywave/toutism
 docker compose -f docker-compose.production.yml ps
-```
-
-```text
-(заполнить)
 ```
 
 ---
@@ -91,13 +144,24 @@ docker compose -f docker-compose.production.yml ps
 
 ## 3. Health
 
+**Основной домен (витрина):**
+
+| Метод | URL | Примечание |
+|-------|-----|------------|
+| GET | `https://mywavetour.ru/api/health` | Канон для smoke/monitoring; **PASSED** на runtime-проверке 2026-05-08 |
+| GET | `https://mywavetour.ru/health` | После выката nginx с `location = /health` — alias на API; до выката возможен **404** от Next |
+
+**Хост API:**
+
 ```bash
 curl -sS "https://api.mywavetour.ru/health"
 ```
 
 ```text
-(ожидаемо: {"status":"ok"})
+{"status":"ok"}
 ```
+
+ADR: [`ADR_PUBLIC_HEALTH_ENDPOINT.md`](./ADR_PUBLIC_HEALTH_ENDPOINT.md).
 
 ---
 
@@ -274,6 +338,10 @@ $COMPOSE exec -T reverse-proxy nginx -T | grep -Ei "uploads|media|images|static|
 ## 11. GM checkpoint update (2026-05-07)
 
 ### Runtime
+
+**2026-05-08:** ручная проверка на VPS — **GREEN**, таблица PASSED и команды — в **§0**. Канон health на витрине: **`GET https://mywavetour.ru/api/health`**. Короткий **`GET /health`** на том же домене — после выката nginx alias ([`ADR_PUBLIC_HEALTH_ENDPOINT.md`](./ADR_PUBLIC_HEALTH_ENDPOINT.md)).
+
+Снимок **2026-05-07**:
 
 - `GET /` → `HTTP/2 200`
 - `GET /api/media?url=...` → `HTTP/2 200`

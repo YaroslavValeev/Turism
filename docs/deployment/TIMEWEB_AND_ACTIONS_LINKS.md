@@ -6,7 +6,13 @@
 
 - [Все Actions репозитория](https://github.com/YaroslavValeev/Turism/actions)
 - [Workflow **Deploy production** (ручной запуск)](https://github.com/YaroslavValeev/Turism/actions/workflows/deploy-production.yml)
-- При запуске выберите **`build_mode`**: по умолчанию **`incremental`** (быстрее); **`full`** — холодная пересборка образов.
+- При запуске выберите:
+  - **`deploy_mode=full`** — полный деплой (по умолчанию);
+  - **`deploy_mode=web_only`** — быстрый runtime-restart только `web + reverse-proxy` (если нужен hotfix витрины);
+  - **`deploy_mode=sync_only`** — только rsync без restart/build (для безопасной доставки файлов).
+- Параметр **`build_mode`** применяется только для `deploy_mode=full`:
+  - `incremental` — `up -d --build` (быстрее),
+  - `full` — `build --no-cache` + `up`.
 
 ## Timeweb Cloud — сеть и доступ по SSH
 

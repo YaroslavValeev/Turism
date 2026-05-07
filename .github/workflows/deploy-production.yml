@@ -20,6 +20,14 @@ name: Deploy production
 on:
   workflow_dispatch:
     inputs:
+      deploy_mode:
+        description: "sync_only — только rsync; web_only — перезапуск web+reverse-proxy; full — полный стек"
+        type: choice
+        default: full
+        options:
+          - sync_only
+          - web_only
+          - full
       build_mode:
         description: "incremental — быстрый up --build (кэш слоёв); full — build --no-cache api/web/admin"
         type: choice
@@ -116,14 +124,17 @@ jobs:
           fi
 
       - name: Build and restart api, web, admin on VPS
+        if: ${{ inputs.deploy_mode != 'sync_only' }}
         env:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
           DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
           DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
           DEPLOY_KEY: ${{ secrets.DEPLOY_OPENSSH_PRIVATE_KEY }}
+          DEPLOY_MODE: ${{ inputs.deploy_mode }}
           BUILD_MODE: ${{ inputs.build_mode }}
         run: |
           set -euo pipefail
+          DEPLOY_MODE="${DEPLOY_MODE:-full}"
           BUILD_MODE="${BUILD_MODE:-incremental}"
           DEPLOY_HOST="$(printf '%s' "$DEPLOY_HOST" | tr -d '[:space:]')"
           DEPLOY_USER="$(printf '%s' "$DEPLOY_USER" | tr -d '[:space:]')"
@@ -136,8 +147,14 @@ jobs:
           SSH_LONG="-4 -i ${HOME}/.ssh/deploy_key -p 22 -o BatchMode=yes -o StrictHostKeyChecking=accept-new \
             -o ConnectTimeout=45 -o ConnectionAttempts=1 \
             -o ServerAliveInterval=20 -o ServerAliveCountMax=300"
-          echo ">>> Один SSH-сессия: BUILD_MODE=${BUILD_MODE} (вывод идёт сюда)"
-          if [ "$BUILD_MODE" = "full" ]; then
+          echo ">>> Один SSH-сессия: DEPLOY_MODE=${DEPLOY_MODE}, BUILD_MODE=${BUILD_MODE} (вывод идёт сюда)"
+          if [ "$DEPLOY_MODE" = "web_only" ]; then
+            ssh $SSH_LONG "${DEPLOY_USER}@${DEPLOY_HOST}" \
+              "set -euo pipefail; cd '${DP}'; \
+               echo '>>> docker compose up -d --no-deps web reverse-proxy'; \
+               docker compose -f docker-compose.production.yml up -d --no-deps web reverse-proxy; \
+               docker compose -f docker-compose.production.yml ps"
+          elif [ "$BUILD_MODE" = "full" ]; then
             ssh $SSH_LONG "${DEPLOY_USER}@${DEPLOY_HOST}" \
               "set -euo pipefail; cd '${DP}'; \
                echo '>>> docker compose build --no-cache api web admin'; \

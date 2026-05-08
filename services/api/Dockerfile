@@ -15,6 +15,7 @@ FROM base AS deps
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY packages ./packages
 COPY services/api ./services/api
+RUN printf '\n# gentler installs on flaky VPS/registry paths\nfetch-timeout=600000\nnetwork-concurrency=2\n' >> .npmrc
 RUN pnpm install --frozen-lockfile
 
 FROM deps AS build
@@ -36,6 +37,7 @@ ENV NODE_ENV=production
 COPY --from=build /app/package.json /app/pnpm-lock.yaml /app/pnpm-workspace.yaml ./
 COPY --from=build /app/packages ./packages
 COPY --from=build /app/services/api ./services/api
+RUN printf '\n# gentler installs on flaky VPS/registry paths\nfetch-timeout=600000\nnetwork-concurrency=2\n' >> .npmrc
 RUN pnpm install --prod --frozen-lockfile
 # После --prod клиент Prisma не сгенерирован; generate обязателен для runtime.
 # DATABASE_URL нужен парсеру схемы (datasource); на рантайме подставится из .env.production.

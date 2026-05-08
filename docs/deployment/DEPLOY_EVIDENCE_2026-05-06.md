@@ -311,6 +311,40 @@ docker compose down -v
 
 After cleanup: runtime remains GREEN, disk usage ~71%.
 
+## 0d. Deploy attempt for cards fallback v1 (2026-05-08)
+
+Target change:
+
+```text
+Cards fallback logic v1
+Commit: 5dfb6c9
+```
+
+Факт по GitHub Actions:
+
+```text
+Deploy production (for 5dfb6c9): FAILED
+Step: Rsync codebase to VPS
+Error: ssh connect timeout to port 22
+Exit: 255
+```
+
+Факт по VPS после ручного восстановления runtime (owner-run):
+
+```text
+docker compose up -d --force-recreate web reverse-proxy: done
+containers: Up
+GET /health: {"status":"ok"}
+```
+
+Итог на текущий момент:
+
+```text
+Production runtime: GREEN
+Deploy transport: monitored risk persists (GitHub Actions SSH/rsync)
+Cards fallback v1 rollout via Actions: pending next successful transport
+```
+
 **Следующий фокус команды:** triage `source_runs failed` (in progress); safe Docker cleanup по политике; мониторинг — [`scripts/prod_healthcheck.sh`](../../scripts/prod_healthcheck.sh) (обновлён под `/api/health` + опционально `/health`).
 
 **Единый пакет артефактов и регламентов (controlled pilot — всё входит в один контур evidence):**

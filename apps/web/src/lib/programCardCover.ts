@@ -46,8 +46,28 @@ export function normalizeProgramCardCoverSrc(url: string): string {
   if (!s) return PROGRAM_CARD_PLACEHOLDER_URL;
   if (isBrokenLiteralUrl(s)) return PROGRAM_CARD_PLACEHOLDER_URL;
   if (s.includes("<") || s.includes(">")) return PROGRAM_CARD_PLACEHOLDER_URL;
+  if (/\s/.test(s) && !s.startsWith("/")) return PROGRAM_CARD_PLACEHOLDER_URL;
+  if (s.startsWith("data:")) return PROGRAM_CARD_PLACEHOLDER_URL;
   if (s.startsWith("/api/") && !s.startsWith("/api/media")) return PROGRAM_CARD_PLACEHOLDER_URL;
+  if (/^(https?:)?\/\//i.test(s)) {
+    try {
+      const parsed = new URL(s.startsWith("//") ? `https:${s}` : s);
+      if (!["http:", "https:"].includes(parsed.protocol)) return PROGRAM_CARD_PLACEHOLDER_URL;
+    } catch {
+      return PROGRAM_CARD_PLACEHOLDER_URL;
+    }
+  }
   return s;
+}
+
+export function hasRenderableProgramCardCoverSrc(url: string | null | undefined): boolean {
+  return normalizeProgramCardCoverSrc(String(url ?? "")) !== PROGRAM_CARD_PLACEHOLDER_URL;
+}
+
+export function applyProgramCardImageFallback(img: HTMLImageElement): void {
+  if (img.dataset.fallbackApplied === "1") return;
+  img.dataset.fallbackApplied = "1";
+  img.src = PROGRAM_CARD_PLACEHOLDER_URL;
 }
 
 function isLikelyStatsOrClimateInfographicContext(text: string): boolean {

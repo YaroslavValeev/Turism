@@ -1,6 +1,6 @@
 import Link from "next/link";
 import {
-  PROGRAM_CARD_PLACEHOLDER_URL,
+  applyProgramCardImageFallback,
   normalizeProgramCardCoverSrc,
   pickBestProgramCoverImageUrl,
   programCardCoverFit,
@@ -45,10 +45,7 @@ export function ProgramRailCard({ program, levelLabel, catalogHrefBuilder, progr
                 className={`mw-rail-card__cover-img mw-rail-card__cover-img--${coverFit}`}
                 loading="lazy"
                 onError={(event) => {
-                  const img = event.currentTarget;
-                  if (img.dataset.fallbackApplied === "1") return;
-                  img.dataset.fallbackApplied = "1";
-                  img.src = PROGRAM_CARD_PLACEHOLDER_URL;
+                  applyProgramCardImageFallback(event.currentTarget);
                 }}
               />
             </div>

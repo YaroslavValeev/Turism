@@ -1,8 +1,8 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { applyProgramCardImageFallback, normalizeProgramCardCoverSrc } from "../lib/programCardCover";
 import {
   DEMO_TOUR_CARDS,
   type ProgramLike,
@@ -154,20 +154,14 @@ function TourCard({
       style={{ ["--i" as string]: String(idx) }}
     >
       <div className="tour-card-image">
-        {item.isRemote ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={item.imageSrc} alt="" className="tour-card-image__img" loading={priority ? "eager" : "lazy"} />
-        ) : (
-          <Image
-            src={item.imageSrc}
-            alt=""
-            fill
-            className="tour-card-image__img"
-            sizes="(max-width: 640px) 92vw, (max-width: 1100px) 45vw, 25vw"
-            quality={80}
-            priority={priority}
-          />
-        )}
+        {/* eslint-disable-next-line @next/next/no-img-element -- источники динамические, нужен единый onError fallback */}
+        <img
+          src={normalizeProgramCardCoverSrc(item.imageSrc)}
+          alt=""
+          className="tour-card-image__img"
+          loading={priority ? "eager" : "lazy"}
+          onError={(event) => applyProgramCardImageFallback(event.currentTarget)}
+        />
         <span
           className="tour-card-badge"
           style={{ background: item.badge.bg, color: item.badge.color }}

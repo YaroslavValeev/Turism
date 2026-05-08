@@ -720,3 +720,53 @@ Safe cleanup policy согласована: `docker image prune -f` + `docker bu
 
 1. Починить/обойти **SSH до VPS** (firewall, fail2ban, временно открыть 22) и повторить **Deploy production**, либо выкат вручную: [`scripts/manual_rsync_deploy_timeweb.sh`](../../scripts/manual_rsync_deploy_timeweb.sh).
 2. После появления коммита с фиксом киноленты — **rebuild `web`** на сервере и проверка: в DevTools нет массовых **`/_next/image` 400** для `/api/media`.
+
+---
+
+## 13. Frontend polishing production verification (2026-05-08)
+
+Текущий управленческий статус:
+
+```text
+Frontend polishing implementation: READY
+Production acceptance: PENDING
+Ready for production verification
+```
+
+Deploy attempt:
+
+```text
+Workflow: Deploy production
+Run: https://github.com/YaroslavValeev/Turism/actions/runs/25560834559
+Branch: main
+SHA: c04ae26
+Mode: web_only
+Build mode: incremental
+Result: FAILED
+```
+
+Причина падения (классификация):
+
+```text
+Step: Build and restart api, web, admin on VPS
+Error: Connection closed by <host> port 22
+Exit: 255
+Type: deploy transport issue (SSH channel drop), not frontend regression
+```
+
+Важно:
+
+```text
+Локальные frontend polishing изменения в рабочем дереве еще не закоммичены/не запушены в origin/main.
+Данный deploy-run не мог включать эти изменения.
+```
+
+Remote smoke из текущей среды выполнения:
+
+```text
+curl https://mywavetour.ru/: failed (Recv failure: Connection was reset)
+curl https://mywavetour.ru/health: failed (Recv failure: Connection was reset)
+curl https://mywavetour.ru/api/health: failed (Recv failure: Connection was reset)
+```
+
+Примечание: это результат сетевой доступности из текущего раннера/среды, не автоматическое подтверждение runtime-регрессии на VPS.

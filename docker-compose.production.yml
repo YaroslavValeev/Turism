@@ -17,6 +17,8 @@ services:
     build:
       context: .
       dockerfile: services/api/Dockerfile
+      # Сборке нужен доступ к registry; на части VPS маршрут из bridge-хоста до npm хуже, чем с host-сети → таймауты на RUN npm install -g pnpm / pnpm install.
+      network: host
     restart: unless-stopped
     env_file:
       - .env.production
@@ -44,6 +46,7 @@ services:
     build:
       context: .
       dockerfile: apps/web/Dockerfile
+      network: host
     restart: unless-stopped
     env_file:
       - .env.production
@@ -60,6 +63,7 @@ services:
     build:
       context: .
       dockerfile: apps/admin/Dockerfile
+      network: host
     restart: unless-stopped
     env_file:
       - .env.production

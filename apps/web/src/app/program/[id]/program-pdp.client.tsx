@@ -9,6 +9,7 @@ import { getDisciplineDisplay } from "../../../lib/disciplineLabels";
 import { buildInternalContentQuery } from "../../../lib/internalContentUtm";
 import { validExploreMainLinks } from "../../../lib/exploreNavWeb";
 import { orderProgramMediaForDisplay, presentProgramMediaUrl } from "../../../lib/programCardCover";
+import { extractLabeledFieldValue, resolveProgramField } from "../../../lib/recommendedProgramFields";
 import { trackProductEvent } from "../../../lib/analytics/client";
 
 import { getPublicApiBase } from "../../../lib/publicApiBase";
@@ -37,6 +38,8 @@ type Program = {
   organizerName: string | null;
   trustReason: string | null;
   whatHappensAfterBooking: string | null;
+  accommodationDetails?: string | null;
+  transferDetails?: string | null;
   cta: string | null;
   autoPublished?: boolean;
   sourceType?: string | null;
@@ -118,6 +121,23 @@ function Prose({ text }: { text: string }) {
     <p style={{ whiteSpace: "pre-wrap", margin: 0, color: "var(--mw-muted)", lineHeight: 1.65 }}>
       {renderTextWithLinks(text)}
     </p>
+  );
+}
+
+function ProgramInfoField({
+  label,
+  value,
+}: {
+  label: string;
+  value: { mode: "confirmed" | "recommended"; text: string };
+}) {
+  return (
+    <div>
+      <h3 className="mw-h3">{label}</h3>
+      <p className={value.mode === "recommended" ? "recommended-field" : ""} style={{ whiteSpace: "pre-wrap", margin: 0, color: "var(--mw-muted)", lineHeight: 1.65 }}>
+        {renderTextWithLinks(value.text)}
+      </p>
+    </div>
   );
 }
 
@@ -295,6 +315,49 @@ export function ProgramPdpClient({ id, validHubKeys }: PdpProps) {
   const afterBooking = mergeProgramField(program.whatHappensAfterBooking, overrides.whatHappensAfterBooking);
   const gear = mergeProgramField(program.gearRequirements, overrides.gearRequirements);
   const medical = mergeProgramField(program.medicalLimitations, overrides.medicalLimitations);
+  const sourceTextScope = [
+    program.inclusions,
+    program.exclusions,
+    itinerary,
+    audienceFit,
+    trustReason,
+  ];
+  const isKidsProgram = /дет|kids|подрост/i.test(
+    `${program.title} ${program.formatType ?? ""} ${program.audienceFit ?? ""}`
+  );
+  const isHighRiskProgram =
+    /high|critical|extreme|высок/i.test(String(program.riskLevel ?? "")) ||
+    /freeride|mountain|альп|фрирайд|горы/i.test(
+      `${program.discipline ?? ""} ${program.formatType ?? ""}`
+    );
+  const equipmentField = resolveProgramField({
+    field: "equipment",
+    organizerValue: gear,
+    discipline: program.discipline,
+    programFormat: program.formatType,
+    isKids: isKidsProgram,
+    isHighRisk: isHighRiskProgram,
+  });
+  const accommodationField = resolveProgramField({
+    field: "accommodation",
+    organizerValue:
+      extractLabeledFieldValue("accommodation", sourceTextScope) ??
+      (program.accommodationDetails ?? null),
+    discipline: program.discipline,
+    programFormat: program.formatType,
+    isKids: isKidsProgram,
+    isHighRisk: isHighRiskProgram,
+  });
+  const transferField = resolveProgramField({
+    field: "transfer",
+    organizerValue:
+      extractLabeledFieldValue("transfer", sourceTextScope) ??
+      (program.transferDetails ?? null),
+    discipline: program.discipline,
+    programFormat: program.formatType,
+    isKids: isKidsProgram,
+    isHighRisk: isHighRiskProgram,
+  });
   const discipline = getDisciplineDisplay(program.discipline);
   const disciplineCatalogHref = buildCatalogHref({ discipline: discipline.original });
   const regionCatalogHref = buildCatalogHref({
@@ -615,22 +678,16 @@ export function ProgramPdpClient({ id, validHubKeys }: PdpProps) {
             </SectionBlock>
           )}
 
-          {(program.riskLevel || gear || medical) && (
+          {(program.riskLevel || medical) && (
             <SectionBlock title="Риск, требования и ограничения">
               {program.riskLevel && (
                 <p style={{ margin: "0 0 10px", color: "var(--mw-muted)" }}>
                   <strong style={{ color: "var(--mw-text)" }}>Оценка риска / интенсивности:</strong> {getSeverityLabel(program.riskLevel)}
                 </p>
               )}
-              {gear && (
-                <>
-                  <h3 className="mw-h3">Экипировка и требования</h3>
-                  <Prose text={gear} />
-                </>
-              )}
               {medical && (
                 <>
-                  <h3 className="mw-h3" style={{ marginTop: gear ? 16 : 0 }}>
+                  <h3 className="mw-h3" style={{ marginTop: 0 }}>
                     Медицинские и прочие ограничения
                   </h3>
                   <Prose text={medical} />
@@ -638,6 +695,16 @@ export function ProgramPdpClient({ id, validHubKeys }: PdpProps) {
               )}
             </SectionBlock>
           )}
+
+          <SectionBlock title="Организационные условия">
+            <div className="mw-pdp-two-col">
+              <ProgramInfoField label="Экипировка" value={equipmentField} />
+              <ProgramInfoField label="Тип размещения" value={accommodationField} />
+            </div>
+            <div style={{ marginTop: 16 }}>
+              <ProgramInfoField label="Трансфер" value={transferField} />
+            </div>
+          </SectionBlock>
 
           {(program.organizerName || program.organizer) && (
             <SectionBlock title="Об организаторе">
@@ -775,6 +842,9 @@ export function ProgramPdpClient({ id, validHubKeys }: PdpProps) {
               </button>
               <p className="mw-form-note" style={{ marginTop: 12 }}>
                 Ответим в течение дня • без обязательств
+              </p>
+              <p className="mw-form-note" style={{ marginTop: 8 }}>
+                Финальные условия подтвердит организатор.
               </p>
             </form>
           </section>

@@ -3207,6 +3207,15 @@ a:hover {
   line-height: 1.5;
 }
 
+.recommended-field {
+  color: rgba(55, 65, 81, 0.62);
+  font-style: italic;
+}
+
+.recommended-field::before {
+  content: "ⓘ ";
+}
+
 @media (max-width: 640px) {
   .mw-section {
     padding: 2.5rem 0;

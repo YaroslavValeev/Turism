@@ -761,6 +761,28 @@ Type: deploy transport issue (SSH channel drop), not frontend regression
 Данный deploy-run не мог включать эти изменения.
 ```
 
+Повторный deploy после commit/push frontend polishing:
+
+```text
+Workflow: Deploy production
+Run: https://github.com/YaroslavValeev/Turism/actions/runs/25561460938
+Branch: main
+SHA: e035b81
+Mode: web_only
+Build mode: incremental
+Result: FAILED
+```
+
+Причина падения (повтор):
+
+```text
+Step: Build and restart api, web, admin on VPS
+Error: Connection timed out during banner exchange
+Error: Connection to <host> port 22 timed out
+Exit: 255
+Type: deploy transport issue (SSH), not frontend regression
+```
+
 Remote smoke из текущей среды выполнения:
 
 ```text

@@ -345,6 +345,38 @@ Deploy transport: monitored risk persists (GitHub Actions SSH/rsync)
 Cards fallback v1 rollout via Actions: pending next successful transport
 ```
 
+## 0e. Manual zip fallback attempt (2026-05-08, transport issue)
+
+Контекст: была попытка ручной доставки frontend hotfix `5dfb6c9` через `main.zip` с GitHub.
+
+Фактический результат:
+
+```text
+curl: (28) SSL connection timeout
+/tmp/turism-main.zip: no such file
+/tmp/Turism-main: no such file
+```
+
+Дополнительная операторская ошибка:
+
+```text
+open /tmp/docker-compose.production.yml: no such file or directory
+```
+
+Причина: `docker compose` был запущен из `/tmp`, а не из рабочего каталога `/opt/mywave/toutism`.
+
+Классификация:
+
+```text
+Production runtime: GREEN
+Cards fallback logic v1: ready in repo
+Production delivery: PENDING
+Reason: GitHub/Timeweb transport timeout
+Runtime impact: none
+```
+
+Важно: это **deploy transport issue**, не runtime-инцидент.
+
 **Следующий фокус команды:** triage `source_runs failed` (in progress); safe Docker cleanup по политике; мониторинг — [`scripts/prod_healthcheck.sh`](../../scripts/prod_healthcheck.sh) (обновлён под `/api/health` + опционально `/health`).
 
 **Единый пакет артефактов и регламентов (controlled pilot — всё входит в один контур evidence):**

@@ -12,6 +12,8 @@ df -h /
 df -h /opt/mywave 2>/dev/null || true
 ```
 
+Анти-footgun: `docker compose -f docker-compose.production.yml ...` запускать **только** из `/opt/mywave/toutism`. Если выполнить в `/tmp`, получите `open /tmp/docker-compose.production.yml: no such file or directory`.
+
 ## 2. SSH снаружи (порт 22 слушается, не забанен ли раннер)
 
 ```bash

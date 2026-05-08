@@ -257,6 +257,60 @@ Auto-publish ingestion: disabled
 Payments/invoices: disabled for pilot
 ```
 
+## 0c. Final P0 VPS evidence (2026-05-08, /opt/mywave/toutism)
+
+```text
+P0 VPS evidence: PASSED
+
+Health: PASSED
+Media: PASSED
+source_runs triage: PASSED
+prod_healthcheck: PASSED
+Docker cleanup: PASSED
+Production runtime after cleanup: GREEN
+```
+
+Фактический runtime после cleanup:
+
+- Containers: Up (`web`, `api`, `admin`, `reverse-proxy`, `postgres`)
+- `api`: healthy
+- `postgres`: healthy
+- `GET /health` → `{"status":"ok"}`
+- `GET /api/health` → `{"status":"ok"}`
+- `GET /` → `HTTP/2 200`
+- `GET /api/media?...` → `HTTP/2 200`
+
+`prod_healthcheck.sh`: PASSED (health/home/media/placeholder/docker/disk/memory/logs).
+
+`triage_source_runs.sh` snapshot:
+
+```text
+success: 239
+failed: 231
+running: 2
+
+fetch_failed: 162
+http_429: 42
+invalid_url: 27
+```
+
+Safe cleanup выполнен только разрешёнными командами:
+
+```bash
+docker image prune -f
+docker builder prune -f --filter "until=168h"
+```
+
+Не выполнялись (policy):
+
+```bash
+docker volume prune
+docker system prune --volumes
+docker compose down -v
+```
+
+After cleanup: runtime remains GREEN, disk usage ~71%.
+
 **Следующий фокус команды:** triage `source_runs failed` (in progress); safe Docker cleanup по политике; мониторинг — [`scripts/prod_healthcheck.sh`](../../scripts/prod_healthcheck.sh) (обновлён под `/api/health` + опционально `/health`).
 
 **Единый пакет артефактов и регламентов (controlled pilot — всё входит в один контур evidence):**
@@ -578,6 +632,9 @@ Safe cleanup policy согласована: `docker image prune -f` + `docker bu
 - Риск SSH/rsync timeout (GitHub Actions → VPS).
 - Периодический `Prisma binary fetch ETIMEDOUT` при сборке `api` в deploy workflow.
 - Высокий объём `source_runs failed`, большая категория `other`.
+- `source_runs failed` остаётся высоким: `231` total.
+- Основные категории: `fetch_failed 162`, `http_429 42`, `invalid_url 27`.
+- Deploy transport GitHub Actions SSH/rsync: improved, remains monitored risk.
 
 ---
 

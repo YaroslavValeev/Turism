@@ -171,6 +171,8 @@ bash scripts/prod_healthcheck.sh
 
 Если скрипт завершился с ненулевым кодом — считать состояние RED и разбирать блоки `HTTP health`, `Docker status`, `Recent logs`.
 
+Факт checkpoint (2026-05-08): `prod_healthcheck.sh` выполнен на VPS, статус **PASSED**.
+
 ---
 
 ## 11b. P0 source_runs triage output format
@@ -275,3 +277,9 @@ curl -sS -o /dev/null -w '/health HTTP %{http_code}\n' https://mywavetour.ru/hea
 docker volume prune
 docker system prune --volumes
 ```
+
+Факт checkpoint (2026-05-08):
+
+- Выполнено безопасно: `docker image prune -f`, `docker builder prune -f --filter "until=168h"`.
+- Не выполнялись: `docker volume prune`, `docker system prune --volumes`, `docker compose down -v`.
+- После cleanup: контейнеры `Up`, health/home/media `PASSED`, disk usage около `71%`.

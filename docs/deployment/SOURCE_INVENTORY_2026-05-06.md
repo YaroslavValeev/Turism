@@ -236,6 +236,22 @@ source_id | type | url_or_handle | is_active | failed_count | last_error | categ
 
 Где `recommended_action` ∈ `keep | retry | fix_parser | pause | disable | manual_review`.
 
+### Final P0 VPS checkpoint status (2026-05-08)
+
+```text
+source_runs triage: PASSED
+success: 239
+failed: 231
+running: 2
+
+categories:
+fetch_failed: 162
+http_429: 42
+invalid_url: 27
+```
+
+Следующий ingestion-шаг для controlled pilot: заполнить action-table по top проблемным источникам с назначением `keep | retry | fix_parser | pause | disable | manual_review`.
+
 ---
 
 ## Security: ротация PAT (evidence)

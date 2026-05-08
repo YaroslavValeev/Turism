@@ -199,6 +199,43 @@ LIMIT 100;
 - `disable`: источник невалиден/неподдерживаем;
 - `manual_review`: пограничные кейсы и бизнес-решение владельца.
 
+### Controlled pilot P0 (checkpoint 2026-05-08)
+
+Owner snapshot:
+
+```text
+success: 239
+failed: 231
+running: 2
+failed categories:
+- other: 204
+- invalid_url: 27
+```
+
+Для закрытия P0 `other` декомпозируется на:
+
+```text
+http_429
+fetch_failed
+timeout
+http_404
+http_403
+parser_error
+media_fetch_failed
+unsupported_source
+empty_response
+network_error
+unknown
+```
+
+Целевой формат таблицы triage (для обновления этого файла после прогона):
+
+```text
+source_id | type | url_or_handle | is_active | failed_count | last_error | category | recommended_action | reason
+```
+
+Где `recommended_action` ∈ `keep | retry | fix_parser | pause | disable | manual_review`.
+
 ---
 
 ## Security: ротация PAT (evidence)

@@ -8,12 +8,9 @@ cd "$ROOT_DIR"
 echo "== HTTP health (канон на основном домене: /api/health) =="
 curl -fsS https://mywavetour.ru/api/health
 echo
-echo "== HTTP health (короткий /health после выката nginx alias) =="
-if curl -fsS --max-time 20 https://mywavetour.ru/health 2>/dev/null; then
-  echo
-else
-  echo "WARN: GET /health не 200 — пока полагаться на /api/health; выкатите infra/nginx/mywave.conf с location = /health (см. docs/deployment/ADR_PUBLIC_HEALTH_ENDPOINT.md)"
-fi
+echo "== HTTP health short alias (/health) =="
+curl -fsS https://mywavetour.ru/health
+echo
 
 echo "== Home page =="
 curl -fsS https://mywavetour.ru/ >/dev/null

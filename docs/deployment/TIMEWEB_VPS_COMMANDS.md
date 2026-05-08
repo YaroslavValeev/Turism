@@ -110,7 +110,7 @@ grep -n 'api/media' infra/nginx/mywave.conf || echo "СТАРЫЙ КОНФИГ �
 
 ## 6. Быстрые HTTP-проверки с VPS
 
-Канон health на витрине: **`/api/health`**. Короткий путь **`/health`** — после выката nginx с `location = /health` (см. [`ADR_PUBLIC_HEALTH_ENDPOINT.md`](./ADR_PUBLIC_HEALTH_ENDPOINT.md)); до выката может быть **404** от Next.
+Канон health на витрине: **`/api/health`**. Короткий путь **`/health`** подтверждён после Deploy #22 (SHA `d3d503e`) — alias `location = /health` присутствует в nginx (см. [`ADR_PUBLIC_HEALTH_ENDPOINT.md`](./ADR_PUBLIC_HEALTH_ENDPOINT.md)).
 
 ```bash
 curl -sS https://mywavetour.ru/api/health
@@ -162,7 +162,7 @@ Self-hosted runner: ADR required before implementation
 
 ## 11. Production monitoring baseline
 
-Скрипт: `scripts/prod_healthcheck.sh` — обязательная проверка **`GET https://mywavetour.ru/api/health`**; затем **`GET /health`** (если не 200 — предупреждение до выката `infra/nginx/mywave.conf` с `location = /health`).
+Скрипт: `scripts/prod_healthcheck.sh` — обязательные проверки **`GET /`**, **`GET /api/health`**, **`GET /health`**, **`GET /api/media`**, **placeholder**, плюс Docker/ресурсы/логи.
 
 ```bash
 cd /opt/mywave/toutism
@@ -170,6 +170,40 @@ bash scripts/prod_healthcheck.sh
 ```
 
 Если скрипт завершился с ненулевым кодом — считать состояние RED и разбирать блоки `HTTP health`, `Docker status`, `Recent logs`.
+
+---
+
+## 11b. P0 source_runs triage output format
+
+Для owner checkpoint сохранять результат в формате:
+
+```text
+source_id
+type
+url_or_handle
+is_active
+failed_count
+last_error
+category
+recommended_action: keep / retry / fix_parser / pause / disable / manual_review
+reason
+```
+
+Категории для разбиения `other`:
+
+```text
+http_429
+fetch_failed
+timeout
+http_404
+http_403
+parser_error
+media_fetch_failed
+unsupported_source
+empty_response
+network_error
+unknown
+```
 
 ---
 

@@ -75,9 +75,13 @@ ss -tlnp | grep -E ':443|:80' || true
 Production runtime: GREEN
 Deploy transport: improved, still monitored (SSH/rsync остаётся зоной внимания)
 Launch mode: GO WITH GUARDRAILS / controlled pilot
-GET /api/health (live): PASSED
-GET /health (live): PENDING — на edge до выката nginx из коммита ≥ 813fac3
-nginx location = /health on VPS: pending (подтвердить grep на сервере после выката)
+Health endpoint: PASSED
+/api/health: PASSED
+/health: PASSED
+nginx alias location = /health: present
+Deploy run: #22
+SHA: d3d503e
+Runtime status: GREEN
 ```
 
 | Проверка | Результат |
@@ -119,30 +123,30 @@ docker compose -f docker-compose.production.yml exec -T reverse-proxy sh -lc 'wg
 # {"status":"ok"}
 ```
 
-### Сверка Deploy #20, SHA и alias `/health` (2026-05-08)
+### Сверка Deploy #20, SHA и alias `/health` (история, закрыто Deploy #22)
 
 | Факт | Значение |
 |------|----------|
 | Успешный **Deploy production #20** | В логах Actions указан SHA **`88eb91b`** |
 | Коммит с nginx **`location = /health`** | **`813fac3`** (документация — **`bb813e4`** и далее по `main`) — **позже**, чем `88eb91b` |
-| Вывод | #20 **не доставлял** на VPS файл с alias; для появления **`grep -n 'location = /health'`** на диске нужен выкат с **`main`**, содержащим минимум **`813fac3`** |
+| Вывод | #20 **не доставлял** alias; хвост закрыт в **Deploy #22** (SHA `d3d503e`) |
 
 **Проверка с интернета (внешний curl, без SSH на VPS):**
 
 | URL | Результат |
 |-----|-----------|
 | `GET https://mywavetour.ru/api/health` | **200** `{"status":"ok"}` — **PASSED** |
-| `GET https://mywavetour.ru/health` | **404** (HTML Next.js) — на живом edge alias **ещё не применён** |
+| `GET https://mywavetour.ru/health` | **200** `{"status":"ok"}` — alias применён |
 
-Итоговая строка для owner до следующего зелёного выката **`main` ≥ 813fac3**:
+Итоговая строка после подтверждённого выката **Deploy #22 / SHA d3d503e**:
 
 ```text
 /api/health: PASSED
-/health: NOT YET on live edge (404 Next until nginx from ≥813fac3 is rsynced + reverse-proxy recreated)
-nginx alias location = /health on VPS: pending (confirm: grep infra/nginx/mywave.conf on server)
+/health: PASSED
+nginx alias location = /health: present
 Production runtime: GREEN
 Deploy transport: improved, still monitored
-Health alias from 813fac3: pending rollout
+Health alias from 813fac3: applied
 ```
 
 **На VPS после выката актуального `main`:**
@@ -156,9 +160,102 @@ curl -sS https://mywavetour.ru/api/health && echo
 curl -sS https://mywavetour.ru/health && echo
 ```
 
-Рекомендация: **Deploy production** с **текущего `main`**, при необходимости **`deploy_mode: web_only`**, затем **force-recreate** `reverse-proxy`, чтобы подтянулся смонтированный с хоста [`infra/nginx/mywave.conf`](../../infra/nginx/mywave.conf).
+Результат Deploy #22: `reverse-proxy` пересоздан, алиас применён, оба endpoint (`/api/health` и `/health`) возвращают `{"status":"ok"}`.
 
-**Health endpoint:** публичный JSON с API на основном домене канонически доступен как **`GET https://mywavetour.ru/api/health`**. Короткий путь **`GET https://mywavetour.ru/health`**: без nginx alias попадает в Next.js (**404**); в репозитории добавлен **`location = /health` → `api:3001/health`** ([`infra/nginx/mywave.conf`](../../infra/nginx/mywave.conf), коммит **`813fac3`**). После выката этого конфига на VPS и пересоздания `reverse-proxy` оба URL должны совпадать по телу. Подробности: [`ADR_PUBLIC_HEALTH_ENDPOINT.md`](./ADR_PUBLIC_HEALTH_ENDPOINT.md).
+**Health endpoint:** публичный JSON с API на основном домене канонически доступен как **`GET https://mywavetour.ru/api/health`**. Короткий путь **`GET https://mywavetour.ru/health`** теперь тоже PASSED благодаря alias в nginx (**`location = /health` → `api:3001/health`**, коммит **`813fac3`**, выкат подтверждён в Deploy #22 SHA `d3d503e`). Подробности: [`ADR_PUBLIC_HEALTH_ENDPOINT.md`](./ADR_PUBLIC_HEALTH_ENDPOINT.md).
+
+## 0b. P0 checkpoint hardening (2026-05-08)
+
+### Source runs triage
+
+Snapshot (owner-provided):
+
+```text
+success: 239
+failed: 231
+running: 2
+failed categories:
+- other: 204
+- invalid_url: 27
+```
+
+Требуемая декомпозиция `other`:
+
+```text
+http_429
+fetch_failed
+timeout
+http_404
+http_403
+parser_error
+media_fetch_failed
+unsupported_source
+empty_response
+network_error
+unknown
+```
+
+Таблица результата (для owner checkpoint):
+
+```text
+source_id
+type
+url_or_handle
+is_active
+failed_count
+last_error
+category
+recommended_action: keep / retry / fix_parser / pause / disable / manual_review
+reason
+```
+
+### Prod healthcheck
+
+`scripts/prod_healthcheck.sh` обновлён под обязательные проверки:
+
+- `GET /`
+- `GET /api/health`
+- `GET /health`
+- `GET /api/media`
+- `GET placeholder`
+- `docker compose ps`
+- `df -h`
+- `free -m`
+- recent `5xx` logs
+
+### Safe Docker cleanup (policy)
+
+Before/after фиксируются командами:
+
+```bash
+docker system df
+df -h
+```
+
+Разрешено:
+
+```bash
+docker image prune -f
+docker builder prune -f --filter "until=168h"
+```
+
+Запрещено без отдельного owner confirmation:
+
+```bash
+docker volume prune
+docker system prune --volumes
+```
+
+### Owner decisions (unchanged)
+
+```text
+Scheduler policy: external cron only
+Deploy policy: manual workflow_dispatch only
+Autodeploy on push: disabled
+Self-hosted runner: deferred, requires ADR
+Auto-publish ingestion: disabled
+Payments/invoices: disabled for pilot
+```
 
 **Следующий фокус команды:** triage `source_runs failed` (in progress); safe Docker cleanup по политике; мониторинг — [`scripts/prod_healthcheck.sh`](../../scripts/prod_healthcheck.sh) (обновлён под `/api/health` + опционально `/health`).
 
@@ -208,7 +305,7 @@ docker compose -f docker-compose.production.yml ps
 | Метод | URL | Примечание |
 |-------|-----|------------|
 | GET | `https://mywavetour.ru/api/health` | Канон для smoke/monitoring; **PASSED** на runtime-проверке 2026-05-08 |
-| GET | `https://mywavetour.ru/health` | На live edge **404** Next до выката **`813fac3`** на VPS и recreate `reverse-proxy` (см. §0 «Сверка Deploy #20») |
+| GET | `https://mywavetour.ru/health` | **PASSED** после Deploy #22 (SHA `d3d503e`), alias `location = /health` применён |
 
 **Хост API:**
 

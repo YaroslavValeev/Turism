@@ -792,3 +792,27 @@ curl https://mywavetour.ru/api/health: failed (Recv failure: Connection was rese
 ```
 
 Примечание: это результат сетевой доступности из текущего раннера/среды, не автоматическое подтверждение runtime-регрессии на VPS.
+
+---
+
+## Попытка ручного деплоя из среды Cursor (2026-05-08)
+
+**Контекст:** запуск `scripts/manual_rsync_deploy_timeweb.sh` от имени ассистента (терминал на машине владельца).
+
+**Наблюдения:**
+
+1. **`bash` по умолчанию — WSL2**, не Git Bash: пути `DEPLOY_KEY_FILE` должны быть внутри WSL, например `/mnt/c/Users/X230/.ssh/id_ed25519`, а репозиторий — `/mnt/f/Проекты MyWave/NEW2026/Toutism`. Переменные, заданные в PowerShell как `$env:DEPLOY_*`, в вызов `bash -c` **не попадают** — нужно `export` внутри одной сессии bash или одной строки `bash -c 'export ...; bash scripts/...'`.
+2. **SSH к VPS** (`DEPLOY_HOST=5.129.249.113`, порт 22): **`Connection timed out during banner exchange`** — классификация: **deploy transport** (как при сбоях GitHub Actions), не регрессия приложения. Полный цикл rsync + `docker compose` с этой сессии **не выполнен**.
+3. **Удалённый smoke (`curl.exe`) из той же среды:** `GET https://mywavetour.ru/` → **200**; `GET https://mywavetour.ru/api/health` → **таймаут** (15 с). Нестабильная доступность маршрута/API из egress среды агента; приёмку прод лучше фиксировать с **VPS** или **локального браузера** владельца.
+
+**Критерий для владельца:** при успешном SSH выполнить в WSL из каталога репозитория:
+
+```bash
+export DEPLOY_HOST=5.129.249.113 DEPLOY_USER=root
+export DEPLOY_KEY_FILE=/mnt/c/Users/X230/.ssh/id_ed25519
+export DEPLOY_PATH=/opt/mywave/tourism
+export BUILD_MODE=incremental
+bash scripts/manual_rsync_deploy_timeweb.sh
+```
+
+Подсказка по путям добавлена в заголовок [`scripts/manual_rsync_deploy_timeweb.sh`](../../scripts/manual_rsync_deploy_timeweb.sh).

@@ -15,6 +15,10 @@
 # Пример:
 #   export DEPLOY_HOST=1.2.3.4 DEPLOY_USER=root DEPLOY_KEY_FILE=~/.ssh/id_ed25519_timeweb
 #   bash scripts/manual_rsync_deploy_timeweb.sh
+#
+# WSL2 (Windows): ключ и репозиторий на дисках Windows — пути вида:
+#   cd /mnt/f/Проекты\ MyWave/NEW2026/Toutism   # или ваш путь к клону
+#   export DEPLOY_KEY_FILE=/mnt/c/Users/<WindowsUser>/.ssh/id_ed25519
 
 set -euo pipefail
 

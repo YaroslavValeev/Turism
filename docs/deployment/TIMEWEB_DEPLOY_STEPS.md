@@ -1,8 +1,26 @@
 # Timeweb: выкат в логичной последовательности
 
-Каталог на VPS по умолчанию: **`/opt/mywave/toutism`** (проверьте `DEPLOY_PATH` / орфографию **toutism**).
+Каталог на VPS по умолчанию: **`/opt/mywave/toutism`** (проверьте `DEPLOY_PATH` / орфографию **toutism**, не **`tourism`**).
 
 Файлы **`.env` / `.env.production`** на сервер **rsync не затирает** — секреты задаются один раз на VPS вручную.
+
+---
+
+## Где что запускать (частая путаница)
+
+| Где | Что делать |
+|-----|------------|
+| **Ваш ПК** (или WSL на ПК) | `git push`, запуск `manual_rsync_deploy_timeweb.sh`, кнопка **Deploy** в GitHub Actions |
+| **VPS (SSH root@…)** | Только `cd /opt/mywave/toutism` (или ваш реальный путь), `docker compose …`, `curl`, **без** `git push` |
+
+- В **§1** и **§2b** вместо абстрактного пути укажите **реальный** каталог клона на ПК (например WSL: `cd "/mnt/f/Проекты MyWave/NEW2026/Toutism"`). На сервере такого пути **не будет** — это нормально.
+- После rsync/Actions на VPS **нет каталога `.git`**, поэтому `git push` там выдаёт `fatal: not a git repository` — так и должно быть.
+- Если вы в **`/opt/mywave/tourism`** (с «ur»), а в инструкциях **`toutism`**: проверьте, где лежит `docker-compose.production.yml`:
+  ```bash
+  ls -la /opt/mywave/
+  find /opt/mywave -maxdepth 3 -name 'docker-compose.production.yml' 2>/dev/null
+  ```
+  Работайте из того каталога, где найден файл.
 
 ---
 
@@ -27,10 +45,14 @@ SSL: каталог **`infra/nginx/certs/`** на сервере не копир
 
 ---
 
-## 1. Локально (ваш ПК): зафиксировать код
+## 1. Локально (ваш ПК или WSL — **не на VPS**): зафиксировать код
 
 ```bash
-cd /path/to/Toutism
+# Подставьте свой путь к клону репозитория (примеры):
+#   WSL:    cd "/mnt/f/Проекты MyWave/NEW2026/Toutism"
+#   macOS:  cd ~/Projects/Toutism
+cd "ВАШ/РЕАЛЬНЫЙ/ПУТЬ/К/РЕПОЗИТОРИЮ"
+
 git status
 git add -A && git commit -m "…"   # если есть изменения
 git push origin main
@@ -57,7 +79,7 @@ git push origin main
 Нужны **WSL**, **Git Bash** или Linux/macOS (на чистом PowerShell без `rsync` скрипт не заработает).
 
 ```bash
-cd /path/to/Toutism
+cd "ВАШ/РЕАЛЬНЫЙ/ПУТЬ/К/РЕПОЗИТОРИЮ"   # тот же каталог, что в §1 (WSL/Git Bash)
 
 export DEPLOY_HOST="ВАШ_IP_ИЛИ_HOST"
 export DEPLOY_USER="root"   # или deploy

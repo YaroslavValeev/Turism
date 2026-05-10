@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Ручной выкат на Timeweb, когда GitHub Actions не достучался до VPS по SSH.
 # Запускать с машины, где `ssh DEPLOY_USER@DEPLOY_HOST` уже работает (WSL, Git Bash, macOS, Linux).
-# Из корня репозитория: bash scripts/manual_rsync_deploy_timeweb.sh
+# Из корня репозитория на ПК (реальный путь к клону, не «/path/to» и не каталог на VPS).
 # infra/nginx/certs/ не копируем и не трогаем на сервере (PEM только на VPS).
 #
 # Переменные окружения:

@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT_DIR="${MYWAVE_ROOT:-/opt/mywave/toutism}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Корень репозитория = родитель каталога scripts/ (работает и для /opt/mywave/tourism, и для toutism)
+ROOT_DIR="${MYWAVE_ROOT:-$(cd "$SCRIPT_DIR/.." && pwd)}"
 COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.production.yml}"
 cd "$ROOT_DIR"
 

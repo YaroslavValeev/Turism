@@ -161,6 +161,42 @@ bash scripts/prod_healthcheck.sh
 
 ---
 
+## 7. Сборка падает: `TLS handshake timeout` / не тянется `node:20-alpine` с Docker Hub
+
+Так бывает на части VPS: сеть до **registry-1.docker.io** нестабильна. Это **не ошибка вашего Dockerfile**; миграции и уже запущенные контейнеры при этом могут быть в порядке.
+
+**Проверка с VPS:**
+
+```bash
+curl -sS -o /dev/null -w "Docker Hub HEAD %{http_code}\n" --max-time 25 \
+  -I https://registry-1.docker.io/v2/
+```
+
+**Попробуйте заранее стянуть базовые образы (несколько раз с паузой):**
+
+```bash
+docker pull node:20-alpine
+docker pull node:20-bookworm-slim
+docker pull postgres:16-alpine
+docker pull nginx:1.27-alpine
+```
+
+Затем снова из каталога проекта:
+
+```bash
+cd /opt/mywave/toutism
+# или /opt/mywave/tourism — где лежит docker-compose.production.yml
+
+docker compose -f docker-compose.production.yml build api web admin
+docker compose -f docker-compose.production.yml up -d api web admin reverse-proxy
+```
+
+**GitHub Actions «Deploy production»** на шаге сборки выполняет **ту же** `docker compose build` **на вашем VPS** по SSH — если Hub «тупит», workflow упадёт с тем же текстом. Имеет смысл **Re-run job** позже или после успешного ручного `docker pull`.
+
+Если таймауты повторяются постоянно — уточните у поддержки Timeweb рекомендуемый **registry mirror** или DNS для Docker и пропишите в `/etc/docker/daemon.json` (осторожно: бэкап файла перед правкой, затем `systemctl restart docker`).
+
+---
+
 ## См. также
 
 - [TIMEWEB_AND_ACTIONS_LINKS.md](./TIMEWEB_AND_ACTIONS_LINKS.md) — ссылки на панель Timeweb и workflow.

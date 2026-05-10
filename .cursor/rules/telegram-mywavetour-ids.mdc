@@ -1,0 +1,11 @@
+---
+description: Канонические Telegram chat_id и бот MyWaveTour для подсказок агенту и env.
+alwaysApply: true
+---
+
+# MyWaveTour — Telegram
+
+- **Канал (агрегатор лагерей / camp / туров РФ):** chat_id **`-1003491522243`**, имя смысла: MyWaveTour.
+- **Бот MyWaveTour:** числовой id **`8345414467`** (токен только в секретах, не в репозитории).
+
+Типичная подстановка в API: `TELEGRAM_UPDATES_CHANNEL_CHAT_ID=-1003491522243`. Детали: `docs/reference/TELEGRAM_MYWAVETOUR.md`.

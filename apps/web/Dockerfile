@@ -16,6 +16,7 @@ RUN pnpm install --frozen-lockfile
 
 FROM deps AS build
 RUN pnpm --filter @mywave/shared-types build
+RUN pnpm --filter @mywave/explore-links build
 RUN pnpm --filter web build
 
 FROM node:20-alpine AS runtime

@@ -130,7 +130,7 @@ export function jobsRoutes(env: Env): Router {
 
   router.post("/run-review-reminders", admin, async (_req: Request, res: Response) => {
     try {
-      const out = await processReviewRequestQueue();
+    const out = await processReviewRequestQueue(env);
       res.json({ ok: true, ...out });
     } catch (error) {
       safeError("jobs.run-review-reminders failed", error);

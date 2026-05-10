@@ -574,7 +574,7 @@ model ReviewRequest {
   organizerId       String
   programId         String
   guestContact      String   @db.Text
-  status            String   @default("queued") // queued | sent | delivery_failed | skipped_no_contact | skipped_review_exists
+  status            String   @default("queued") // queued | sent | delivery_failed | skipped_no_contact | skipped_no_email | skipped_staging_allowlist | skipped_review_exists
   requestToken      String   @unique
   requestedAt       DateTime @default(now())
   firstSentAt       DateTime?

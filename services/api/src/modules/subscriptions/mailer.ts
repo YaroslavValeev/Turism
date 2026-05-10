@@ -26,6 +26,10 @@ function buildTransport(env: Env) {
   });
 }
 
+export function isSmtpConfigured(env: Env): boolean {
+  return !!(env.SMTP_HOST?.trim() && env.SMTP_USER?.trim() && env.SMTP_PASS && env.SMTP_FROM?.trim());
+}
+
 export async function sendEmailIfConfigured(env: Env, payload: MailPayload): Promise<boolean> {
   const transport = buildTransport(env);
   const from = env.SMTP_FROM?.trim();

@@ -258,7 +258,7 @@ export function reviewsRoutes(env: Env): Router {
   });
 
   router.post("/requests/process", admin, async (_req: Request, res: Response) => {
-    const out = await processReviewRequestQueue();
+    const out = await processReviewRequestQueue(env);
     res.json({ ok: true, ...out });
   });
 

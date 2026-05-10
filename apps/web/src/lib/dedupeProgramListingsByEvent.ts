@@ -84,12 +84,64 @@ export function programEventDisplaySignature(p: {
   ].join("\u241F");
 }
 
+/**
+ * Мягкая сигнатура: один организатор + те же даты/длительность/регион.
+ * Нужна, когда из разных постов приходят разные `discipline`/`exactLocation`/title,
+ * но это фактически одно событие (дубли на витрине с одинаковыми датами).
+ */
+function looseIngestionDuplicateKey(p: {
+  startDate: string;
+  endDate: string;
+  durationDays: number;
+  region: string;
+  organizer?: { id?: string; displayName: string } | null;
+}): string | null {
+  const org = organizerKey(p);
+  if (!org) return null;
+  return [
+    org,
+    dayKey(p.startDate),
+    dayKey(p.endDate),
+    String(p.durationDays),
+    norm(p.region),
+  ].join("\u241F");
+}
+
 type SigProgram = { id: string; title: string; priceFromRub: number | null; discipline: string; region: string; startDate: string; endDate: string; durationDays: number; exactLocation?: string | null; isStarred?: boolean; media?: { id?: string; url: string; mediaType: string }[]; autoPublished?: boolean; sourceType?: string | null; organizer?: { id?: string; displayName: string } | null };
+
+function dedupeByLooseOrganizerWindow<T extends SigProgram>(programs: T[]): T[] {
+  const buckets = new Map<string, T[]>();
+  for (const p of programs) {
+    const k = looseIngestionDuplicateKey(p);
+    if (!k) continue;
+    const arr = buckets.get(k) ?? [];
+    arr.push(p);
+    buckets.set(k, arr);
+  }
+  const drop = new Set<string>();
+  for (const group of buckets.values()) {
+    if (group.length < 2) continue;
+    let best = group[0]!;
+    for (const p of group.slice(1)) {
+      const a = listingQualityScore(best);
+      const b = listingQualityScore(p);
+      if (b > a) best = p;
+      else if (b === a && p.id < best.id) best = p;
+    }
+    for (const p of group) {
+      if (p.id !== best.id) drop.add(p.id);
+    }
+  }
+  if (drop.size === 0) return programs;
+  return programs.filter((p) => !drop.has(p.id));
+}
 
 export function dedupeProgramListingsByEvent<T extends SigProgram>(programs: T[]): T[] {
   if (programs.length < 2) return programs;
+  const pre = dedupeByLooseOrganizerWindow(programs);
+  if (pre.length < 2) return pre;
   const best = new Map<string, T>();
-  for (const p of programs) {
+  for (const p of pre) {
     const sig = programEventDisplaySignature(p);
     const prev = best.get(sig);
     if (!prev) {
@@ -105,7 +157,7 @@ export function dedupeProgramListingsByEvent<T extends SigProgram>(programs: T[]
   }
   const seen = new Set<T>();
   const order: T[] = [];
-  for (const p of programs) {
+  for (const p of pre) {
     const chosen = best.get(programEventDisplaySignature(p))!;
     if (!seen.has(chosen)) {
       seen.add(chosen);

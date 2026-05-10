@@ -88,6 +88,17 @@ function isLikelyStatsOrClimateInfographicContext(text: string): boolean {
   return hits >= 2;
 }
 
+/** URL, похожий на логотип/OG-баннер, а не на фото события — пропускаем при выборе обложки, если есть альтернативы. */
+function isPromoGraphicUrl(url: string): boolean {
+  const n = url.trim().toLowerCase();
+  return (
+    n.endsWith(".svg") ||
+    /(?:^|[/._-])(logo|avatar|icon|badge|mark|brand)(?:[._-]|$)/i.test(n) ||
+    n.includes("meta_og") ||
+    n.includes("logoinst")
+  );
+}
+
 /** Первое фото в альбоме TG нередко — инфографика; при «климатическом» тексте берём изображения в обратном порядке. */
 export function pickBestProgramCoverImageUrl(
   media: ProgramMediaItem[] | undefined,
@@ -97,8 +108,19 @@ export function pickBestProgramCoverImageUrl(
   const images = media.filter((m) => m.mediaType === "image" && m.url?.trim());
   if (images.length === 0) return null;
   const climate = isLikelyStatsOrClimateInfographicContext(String(contextHint ?? ""));
-  if (climate && images.length === 1) return null;
+  // Раньше при одном фото и «климатическом» описании возвращали null → пустая карточка; лучше показать кадр, чем ничего.
+  if (climate && images.length === 1) {
+    return presentProgramMediaUrl(images[0]?.url ?? null);
+  }
   const ordered = climate ? [...images].reverse() : images;
+  if (ordered.length > 1) {
+    for (const img of ordered) {
+      const u = img?.url?.trim();
+      if (!u) continue;
+      if (isPromoGraphicUrl(u)) continue;
+      return presentProgramMediaUrl(u);
+    }
+  }
   const u = ordered[0]?.url;
   return presentProgramMediaUrl(u ?? null);
 }

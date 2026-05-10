@@ -195,6 +195,40 @@ docker compose -f docker-compose.production.yml up -d api web admin reverse-prox
 
 Если таймауты повторяются постоянно — уточните у поддержки Timeweb рекомендуемый **registry mirror** или DNS для Docker и пропишите в `/etc/docker/daemon.json` (осторожно: бэкап файла перед правкой, затем `systemctl restart docker`).
 
+### 7a. `curl` к Hub даёт timeout / HTTP `000` — Hub с VPS недоступен
+
+Если даже **`curl --max-time 30`** к `registry-1.docker.io` **не получает байт**, проблема не в Docker как таковом, а в **маршруте/блокировке** до Docker Hub. Тогда повторные `docker pull` с паузой часто **не помогут**.
+
+**Вариант A — зеркало через Docker (часто помогает):** зеркало Google для Hub (перед правкой сохраните копию `daemon.json`, если он уже есть):
+
+```bash
+sudo test -f /etc/docker/daemon.json && sudo cp -a /etc/docker/daemon.json /etc/docker/daemon.json.bak.$(date +%Y%m%d%H%M) || true
+echo '{"registry-mirrors":["https://mirror.gcr.io"]}' | sudo tee /etc/docker/daemon.json
+sudo systemctl restart docker
+docker pull node:20-alpine
+```
+
+Если после рестарта Docker другие настройки в `daemon.json` нужны — **слейте JSON вручную** (один объект с несколькими ключами), не затирайте файл вслепую.
+
+**Вариант B:** тикет в **поддержку Timeweb** — исходящий HTTPS к `registry-1.docker.io` или официальное зеркало/прокси для Docker на их сети.
+
+**Вариант C:** собирать образы **на другой машине**, где Hub доступен, затем `docker save` → перенос на VPS → `docker load` (громоздко, но надёжно при жёсткой блокировке).
+
+---
+
+## 8. `reverse-proxy` не стартует: `Bind for 0.0.0.0:80 failed: port is already allocated`
+
+На хосте **уже занят порт 80** (часто второй контейнер, **nginx на хосте** или панель). Пока конфликт не снят, контейнер **`tourism-reverse-proxy-1`** не поднимется; при этом **healthcheck может быть OK**, если снаружи отвечает **другой** процесс на 80/443.
+
+**Кто слушает 80/443:**
+
+```bash
+ss -tlnp | grep -E ':80 |:443 ' || true
+docker ps -a --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}' | grep -E '80|443|NAME' || docker ps -a
+```
+
+**Дальше — осознанно:** либо остановить лишний сервис/контейнер, который держит **80**, либо не поднимать второй nginx на том же порту. **Не останавливайте** тот nginx, через который реально ходят пользователи, пока не поймёте схему (хостовый nginx → docker backend **без** публикации 80 из compose — отдельная архитектура).
+
 ---
 
 ## См. также

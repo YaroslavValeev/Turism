@@ -1,4 +1,5 @@
 # Local PostgreSQL for development. Run: docker compose up -d
+# Полный шаг (compose + prisma generate + migrate deploy): из корня `pnpm local:bootstrap`
 # Matches .env.example: user/password@localhost:5432/mywave
 #
 # API сейчас запускается на хосте (pnpm dev:api), не в compose. Переменные для API —

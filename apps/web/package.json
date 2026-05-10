@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 3000",
+    "dev": "node ./scripts/run-next-dev.mjs",
     "build": "next build",
     "start": "next start -p 3000 -H 0.0.0.0",
     "filmstrip:build-assets": "node ./scripts/build_filmstrip_web_images.mjs"

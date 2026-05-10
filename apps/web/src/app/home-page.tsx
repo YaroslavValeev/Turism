@@ -550,6 +550,26 @@ function HomePageInner() {
                   </div>
                 ))}
               </div>
+              {!loading && catalogLoadError && allPrograms.length === 0 ? (
+                <p
+                  className="mw-hero-api-hint"
+                  role="alert"
+                  style={{
+                    margin: "12px 0 0",
+                    padding: "10px 12px",
+                    borderRadius: 8,
+                    background: "rgba(220, 53, 69, 0.12)",
+                    border: "1px solid rgba(220, 53, 69, 0.35)",
+                    color: "var(--mw-text, #1a1a1a)",
+                    fontSize: "0.9rem",
+                    lineHeight: 1.45,
+                  }}
+                >
+                  Каталог не загрузился: API недоступен по адресу <strong>{getPublicApiBase()}</strong>. В отдельном терминале
+                  запустите <code style={{ fontSize: "0.88em" }}>pnpm dev:api</code> (порт 3001) и поднимите Postgres, например{" "}
+                  <code style={{ fontSize: "0.88em" }}>pnpm local:bootstrap</code>. Ошибка: {catalogLoadError}
+                </p>
+              ) : null}
               <div className="mw-hero-cta-row mw-hero-cta-row--main">
                 <a href="#programs" className="mw-btn mw-btn--primary">
                   {hero.ctaCatalog}

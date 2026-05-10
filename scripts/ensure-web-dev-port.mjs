@@ -34,8 +34,10 @@ const free = await portFree();
 if (!free) {
   console.error(
     `[ensure-web-dev-port] порт ${port} уже занят (вероятен другой \`next dev\` или Node).\n` +
-      `  Остановите процесс, слушающий ${port}, затем повторите команду.\n` +
-      `  Windows: netstat -ano | findstr :${port}  →  taskkill /F /PID <pid>`,
+      `  Варианты:\n` +
+      `  • Остановите процесс: Windows: netstat -ano | findstr :${port}  →  taskkill /F /PID <pid>\n` +
+      `  • Или другой порт для витрины: PowerShell: $env:WEB_DEV_PORT=3002; pnpm dev:web\n` +
+      `    (откройте http://localhost:3002; API по умолчанию на 3001 — не используйте 3001 для web.)`,
   );
   process.exit(1);
 }

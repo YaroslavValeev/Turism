@@ -53,6 +53,16 @@ app.use(
 app.use(express.json());
 const publicRateLimiter = createPublicRateLimiter(env);
 
+// Корень (в т.ч. после nginx `location /api/ → proxy_pass …/`): не «Cannot GET /»
+app.get("/", (_req, res) => {
+  res.status(200).json({
+    ok: true,
+    service: "mywave-api",
+    healthPath: "/health",
+    hint: "Проверка: GET /health на том же хосте и префиксе, что и этот запрос.",
+  });
+});
+
 app.get("/health", (_req, res) => {
   res.json({ status: "ok" });
 });

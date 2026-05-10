@@ -1,5 +1,9 @@
 # Endpoint Contracts
 
+## 0. Root / health
+- GET / — краткий JSON (сервис жив); для SLA используйте GET /health
+- GET /health
+
 ## 1. Auth
 - POST /auth/register
 - POST /auth/login
@@ -50,7 +54,8 @@
 
 ## 8. Notifications / Jobs
 - POST /internal/notifications/send
-- POST /internal/jobs/run-review-request
+- POST /jobs/run-review-reminders (admin) — очередь напоминаний / отправка review-request по e-mail
+- POST /reviews/requests/process (admin) — обработка очереди `review_requests` (в т.ч. первая отправка)
 - POST /internal/jobs/run-stale-lead-check
 
 ## Contract rules

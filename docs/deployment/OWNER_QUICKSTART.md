@@ -10,7 +10,10 @@
 ## Где смотреть логи
 - API: `./logs/api`
 - Reverse proxy: `./logs/nginx`
-- Telegram bot: отдельный сервис (`journalctl -u mywave-bot` или отдельный docker logs)
+- Telegram bot: отдельный сервис (`journalctl -u mywave-bot` или отдельный docker logs). Справочник chat_id бота для прод-конфига: [../reference/TELEGRAM_MYWAVETOUR.md](../reference/TELEGRAM_MYWAVETOUR.md).
+
+## Локальная разработка (витрина + API)
+- Краткая инструкция: [../development/LOCAL_WEB_API.md](../development/LOCAL_WEB_API.md) (`pnpm local:bootstrap`, порты 3000 / 3001 / 3002, `WEB_DEV_PORT`).
 
 ## Как перезапустить сервисы
 - Полный стек:
@@ -22,5 +25,6 @@
 
 ## Быстрые проверки после рестарта
 - `https://mywavetour.ru` открывается.
-- `https://api.mywavetour.ru/health` возвращает `{"status":"ok"}`.
+- `https://api.mywavetour.ru/health` возвращает `{"status":"ok"}` (или эквивалент с префиксом `/api`, если API за reverse proxy).
+- Открытие корня API в браузере (`/api/` или корень хоста API) после деплоя даёт краткий JSON с подсказкой; для мониторинга используйте **`GET /health`**.
 - Вход в админку работает.

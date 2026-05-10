@@ -24,7 +24,8 @@
 
 ## 3. Обработка отзывов (review) и исключения
 
-- **Очередь:** Admin → Отзывы (GET /reviews). Модерация: PATCH /reviews/:id/moderation, body `{ "moderationStatus": "approved" | "rejected" }`.
+- **После тура:** при переводе заявки в `completed` создаётся запись `review_requests` (очередь просьбы об отзыве). Реальная отправка письма гостю — после вызова **`POST /reviews/requests/process`** или **`POST /jobs/run-review-reminders`** (admin Bearer); нужны SMTP и **`PUBLIC_WEB_BASE_URL`**; e-mail берётся из строки контакта заявки (`guestContact`). Подробности: [REVIEW_FLOW_MANUAL_VALIDATION_STAGE.md](analytics/runtime/REVIEW_FLOW_MANUAL_VALIDATION_STAGE.md), [AUTO_REVIEW_PROD_ROLLOUT_PLAN.md](analytics/runtime/AUTO_REVIEW_PROD_ROLLOUT_PLAN.md).
+- **Очередь модерации:** Admin → Отзывы (GET /reviews). Модерация: PATCH /reviews/:id/moderation, body `{ "moderationStatus": "approved" | "rejected" }`.
 - **Исключения:** Оскорбления, персональные данные третьих лиц, спам → rejected. Сомнения → оставить pending или rejected. Approved не течёт в публичный слой (публичного слоя отзывов пока нет).
 - **Детали:** [REVIEW_PUBLISH_POLICY.md](REVIEW_PUBLISH_POLICY.md).
 
@@ -52,7 +53,8 @@
 |---------|----------|
 | Верификация организатора | [VERIFICATION_RUNBOOK.md](VERIFICATION_RUNBOOK.md), [VERIFICATION_LADDER.md](VERIFICATION_LADDER.md) |
 | Комиссии и сверка | [COMMISSION_RUNBOOK.md](COMMISSION_RUNBOOK.md), [COMMISSION_ACCRUAL_PATH.md](COMMISSION_ACCRUAL_PATH.md) |
-| Отзывы, модерация | [REVIEW_PUBLISH_POLICY.md](REVIEW_PUBLISH_POLICY.md) |
+| Отзывы, модерация | [REVIEW_PUBLISH_POLICY.md](REVIEW_PUBLISH_POLICY.md), [REVIEW_FLOW_MANUAL_VALIDATION_STAGE.md](analytics/runtime/REVIEW_FLOW_MANUAL_VALIDATION_STAGE.md) |
+| Локальная разработка (web + API + Postgres) | [development/LOCAL_WEB_API.md](development/LOCAL_WEB_API.md) |
 | Статусы (booking, organizer, program, incident, commission) | [canonical_status_models.md](../canonical_status_models.md) |
 | Pre-launch проверки и go/no-go | [PILOT_PRELAUNCH_CHECKLIST.md](PILOT_PRELAUNCH_CHECKLIST.md), [PILOT_GO_NOGO.md](PILOT_GO_NOGO.md) |
 | Конфиг пилота | [startup_config.md](../startup_config.md) |

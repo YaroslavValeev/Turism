@@ -3,6 +3,7 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
+    "clean": "node -e \"require('node:fs').rmSync('.next',{recursive:true,force:true}); console.log('removed apps/web/.next');\"",
     "dev": "node ./scripts/run-next-dev.mjs",
     "build": "next build",
     "start": "next start -p 3000 -H 0.0.0.0",

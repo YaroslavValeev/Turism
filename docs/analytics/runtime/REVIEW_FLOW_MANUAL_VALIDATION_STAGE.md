@@ -48,8 +48,17 @@
 - Reminder policy sends bounded reminders and stops.
 - Delivery status is observable via `review_requests` (`queued/sent/skipped_*` + counters/error fields).
 
+## Update (2026-05): доставка по e-mail
+
+- После обработки очереди письмо уходит на **первый e-mail**, извлечённый из `booking.guestContact` (строка заявки).
+- Нужны **`SMTP_*`**, **`SMTP_FROM`**, **`PUBLIC_WEB_BASE_URL`** (ссылка вида `{PUBLIC_WEB_BASE_URL}/review/{token}`).
+- Очередь: **`POST /reviews/requests/process`** или **`POST /jobs/run-review-reminders`** (admin Bearer) — см. `services/api/src/modules/reviews/reviewRequests.ts`, `reviewRequestMailer.ts`.
+- Если задан **`EMAIL_STAGING_ALLOWLIST`**, письмо уйдёт только на адреса из списка; иначе запись получит статус `skipped_staging_allowlist`.
+- Нет e-mail в контакте → при создании запроса **`skipped_no_email`**; отладка без SMTP: **`REVIEW_REQUEST_EMAIL_DISABLED=1`** (статусы обновляются, письма не шлются).
+- Политика напоминаний прежняя: до **`maxReminders`** (по умолчанию 2 «отправки» с интервалом **~2 суток** после первой).
+
 ## Remaining pre-prod checks
 
 - Verify same scenarios on dedicated staging host.
-- Validate real delivery provider integration (Telegram/email/SMS) for non-mock sending.
-- Confirm operational monitoring/alerts for `delivery_failed` paths.
+- Подтвердить доставку на реальном SMTP и корректность **`PUBLIC_WEB_BASE_URL`** в письмах.
+- Confirm operational monitoring/alerts for `delivery_failed` и `smtp_not_configured` (очередь остаётся `queued` при отсутствии SMTP).

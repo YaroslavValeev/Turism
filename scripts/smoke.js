@@ -10,6 +10,16 @@ async function run() {
   const checks = [
     { name: "GET /health", run: async () => fetch(`${BASE_URL}/health`) },
     {
+      name: "GET /",
+      run: async () => {
+        const r = await fetch(`${BASE_URL}/`);
+        if (!r.ok) return r;
+        const j = await r.json();
+        if (j.ok === true && j.service === "mywave-api") return r;
+        return new Response("unexpected root JSON", { status: 502 });
+      },
+    },
+    {
       name: "POST /auth/login",
       run: async () => {
         const r = await fetch(`${BASE_URL}/auth/login`, {

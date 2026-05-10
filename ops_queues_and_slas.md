@@ -28,9 +28,9 @@ Action:
 
 ## Queue 5 — Reviews
 Condition:
-- completed booking, no review sent
+- completed booking; запись `review_requests` создана; письмо не ушло или гость не оставил отзыв
 Action:
-- trigger review request within 24–48h
+- в течение **24–48h** после `completed` обеспечить проход очереди: **`POST /jobs/run-review-reminders`** или **`POST /reviews/requests/process`** (admin), при настроенном SMTP и **`PUBLIC_WEB_BASE_URL`**; в заявке должен быть e-mail в `guestContact` (иначе статус `skipped_no_email`). См. [docs/analytics/runtime/AUTO_REVIEW_PROD_ROLLOUT_PLAN.md](docs/analytics/runtime/AUTO_REVIEW_PROD_ROLLOUT_PLAN.md).
 
 ## Queue 6 — Refunds / Complaints
 Condition:

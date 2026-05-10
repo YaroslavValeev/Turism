@@ -1,6 +1,8 @@
 # Ссылки: Timeweb + GitHub Deploy
 
-Используйте, когда **Deploy production** падает на SSH/rsync (таймаут до VPS:22).
+**Пошаговый выкат (команды по порядку):** [TIMEWEB_DEPLOY_STEPS.md](./TIMEWEB_DEPLOY_STEPS.md).
+
+Используйте этот файл, когда **Deploy production** падает на SSH/rsync (таймаут до VPS:22).
 
 ## GitHub — запуск и статус деплоя
 
@@ -8,7 +10,7 @@
 - [Workflow **Deploy production** (ручной запуск)](https://github.com/YaroslavValeev/Turism/actions/workflows/deploy-production.yml)
 - При запуске выберите:
   - **`deploy_mode=full`** — полный деплой (по умолчанию);
-  - **`deploy_mode=web_only`** — быстрый runtime-restart только `web + reverse-proxy` (если нужен hotfix витрины);
+  - **`deploy_mode=web_only`** — быстрый выкат витрины: `up -d --no-deps --build web reverse-proxy` (после rsync; код Next внутри образа);
   - **`deploy_mode=sync_only`** — только rsync без restart/build (для безопасной доставки файлов).
 - Параметр **`build_mode`** применяется только для `deploy_mode=full`:
   - `incremental` — `up -d --build` (быстрее),

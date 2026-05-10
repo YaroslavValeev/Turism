@@ -15,6 +15,9 @@
 ## Локальная разработка (витрина + API)
 - Краткая инструкция: [../development/LOCAL_WEB_API.md](../development/LOCAL_WEB_API.md) (`pnpm local:bootstrap`, порты 3000 / 3001 / 3002, `WEB_DEV_PORT`).
 
+## Деплой на Timeweb (последовательность команд)
+- [TIMEWEB_DEPLOY_STEPS.md](./TIMEWEB_DEPLOY_STEPS.md) — Actions, rsync, Postgres, миграции, проверки.
+
 ## Как перезапустить сервисы
 - Полный стек:
   - `docker compose -f docker-compose.production.yml up -d --build`

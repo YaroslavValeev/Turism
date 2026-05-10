@@ -21,7 +21,7 @@ on:
   workflow_dispatch:
     inputs:
       deploy_mode:
-        description: "sync_only — только rsync; web_only — перезапуск web+reverse-proxy; full — полный стек"
+        description: "sync_only — только rsync; web_only — пересборка web + reverse-proxy (без api/admin); full — полный стек"
         type: choice
         default: full
         options:
@@ -151,8 +151,8 @@ jobs:
           if [ "$DEPLOY_MODE" = "web_only" ]; then
             ssh $SSH_LONG "${DEPLOY_USER}@${DEPLOY_HOST}" \
               "set -euo pipefail; cd '${DP}'; \
-               echo '>>> docker compose up -d --no-deps web reverse-proxy'; \
-               docker compose -f docker-compose.production.yml up -d --no-deps web reverse-proxy; \
+               echo '>>> docker compose up -d --no-deps --build web reverse-proxy (код витрины в образе — нужен --build после rsync)'; \
+               docker compose -f docker-compose.production.yml up -d --no-deps --build web reverse-proxy; \
                docker compose -f docker-compose.production.yml ps"
           elif [ "$BUILD_MODE" = "full" ]; then
             ssh $SSH_LONG "${DEPLOY_USER}@${DEPLOY_HOST}" \

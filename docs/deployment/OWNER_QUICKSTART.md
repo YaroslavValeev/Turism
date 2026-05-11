@@ -17,6 +17,7 @@
 
 ## Деплой на Timeweb (последовательность команд)
 - [TIMEWEB_DEPLOY_STEPS.md](./TIMEWEB_DEPLOY_STEPS.md) — Actions, rsync, Postgres, миграции, проверки.
+- [TIMEWEB_VPS_TERMINAL_COMMANDS.md](./TIMEWEB_VPS_TERMINAL_COMMANDS.md) — копипаст-блоки для SSH-консоли VPS.
 
 ## Как перезапустить сервисы
 - Полный стек:

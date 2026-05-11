@@ -2,6 +2,8 @@
 
 **Пошаговый выкат (команды по порядку):** [TIMEWEB_DEPLOY_STEPS.md](./TIMEWEB_DEPLOY_STEPS.md).
 
+**Копипаст в консоль VPS (Timeweb):** [TIMEWEB_VPS_TERMINAL_COMMANDS.md](./TIMEWEB_VPS_TERMINAL_COMMANDS.md).
+
 Используйте этот файл, когда **Deploy production** падает на SSH/rsync (таймаут до VPS:22).
 
 ## GitHub — запуск и статус деплоя

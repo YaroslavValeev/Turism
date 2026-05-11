@@ -132,6 +132,8 @@ docker compose -f docker-compose.production.yml ps
 bash scripts/prod_healthcheck.sh
 ```
 
+Скрипт сам переходит в **корень репозитория** (родитель каталога `scripts/`): работает и для **`/opt/mywave/tourism`**, и для **`toutism`**. При необходимости вручную: `MYWAVE_ROOT=/opt/mywave/tourism bash scripts/prod_healthcheck.sh`.
+
 Вручную:
 
 ```bash
@@ -233,6 +235,7 @@ docker ps -a --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}' | grep -E '80|
 
 ## См. также
 
+- [TIMEWEB_VPS_TERMINAL_COMMANDS.md](./TIMEWEB_VPS_TERMINAL_COMMANDS.md) — готовые блоки команд для вставки в SSH-консоль VPS.
 - [TIMEWEB_AND_ACTIONS_LINKS.md](./TIMEWEB_AND_ACTIONS_LINKS.md) — ссылки на панель Timeweb и workflow.
 - [TIMEWEB_VPS_COMMANDS.md](./TIMEWEB_VPS_COMMANDS.md) — диагностика SSH, fail2ban, nginx, SSL, media.
 - [OWNER_QUICKSTART.md](./OWNER_QUICKSTART.md) — рестарт сервисов и логи.

@@ -54,11 +54,31 @@ docker compose -f docker-compose.production.yml up -d --build api web admin reve
 docker compose -f docker-compose.production.yml ps
 ```
 
-Только nginx (если остальное уже Up):
+### 4a. «Зависание» на этом шаге — часто нормально
+
+Команда **`up -d --build`** долго крутится на этапах **`RUN pnpm install`** / **`npm config`** в Dockerfile. Если в логе сборки видно **`ERR_SOCKET_TIMEOUT`** и **`registry.npmjs.org`**, а ниже — **«Will retry in 2 minutes… N retries left»**, процесс **живой**: pnpm ждёт таймаут и **повторяет** скачивание. На плохом канале это легко **15–45+ минут** на один сервис, суммарно дольше по **api + web + admin**.
+
+Проверка доступа к npm с VPS:
+
+```bash
+curl -sS -o /dev/null -w "npmjs HTTP %{http_code}\n" --max-time 25 https://registry.npmjs.org/ || echo "npmjs: timeout"
+```
+
+**Можно подождать**, пока не закончатся ретраи или сборка не завершится. Если через **час+** без прогресса — **Ctrl+C**, снова `up -d --build` в другое время или тикет в Timeweb про исходящий HTTPS к **registry.npmjs.org** (это **не** то же самое, что зеркало Docker Hub `mirror.gcr.io`).
+
+Если **`reverse-proxy`** остаётся в статусе **`Created`** после сборки — отдельно:
 
 ```bash
 cd "$MW"
 docker compose -f docker-compose.production.yml up -d reverse-proxy
+docker compose -f docker-compose.production.yml logs --tail=60 reverse-proxy
+```
+
+Если в логах **api** видно **`ELIFECYCLE Command failed`** — полный хвост ошибки:
+
+```bash
+cd "$MW"
+docker compose -f docker-compose.production.yml logs --tail=120 api
 ```
 
 ---

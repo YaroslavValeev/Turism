@@ -173,6 +173,7 @@ docker container prune -f
 
 ## См. также
 
+- [DEPLOYMENT_CANON.md](./DEPLOYMENT_CANON.md) — канон: роли сервисов, конфиги, маршруты HTTP.
 - [TIMEWEB_DEPLOY_STEPS.md](./TIMEWEB_DEPLOY_STEPS.md) — полный сценарий выката.
 - [TIMEWEB_VPS_COMMANDS.md](./TIMEWEB_VPS_COMMANDS.md) — длинный чеклист диагностики.
 - [TIMEWEB_AND_ACTIONS_LINKS.md](./TIMEWEB_AND_ACTIONS_LINKS.md) — GitHub Actions и файрвол.

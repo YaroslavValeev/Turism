@@ -4,6 +4,8 @@
 
 **Копипаст в консоль VPS (Timeweb):** [TIMEWEB_VPS_TERMINAL_COMMANDS.md](./TIMEWEB_VPS_TERMINAL_COMMANDS.md).
 
+**Канон развёртывания (роли, конфиги, маршруты):** [DEPLOYMENT_CANON.md](./DEPLOYMENT_CANON.md).
+
 Используйте этот файл, когда **Deploy production** падает на SSH/rsync (таймаут до VPS:22).
 
 ## GitHub — запуск и статус деплоя

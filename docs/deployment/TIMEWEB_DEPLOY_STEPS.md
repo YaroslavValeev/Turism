@@ -245,6 +245,7 @@ docker ps -a --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}' | grep -E '80|
 
 ## См. также
 
+- [DEPLOYMENT_CANON.md](./DEPLOYMENT_CANON.md) — канон развёртывания: пути, env, nginx, compose.
 - [TIMEWEB_VPS_TERMINAL_COMMANDS.md](./TIMEWEB_VPS_TERMINAL_COMMANDS.md) — готовые блоки команд для вставки в SSH-консоль VPS.
 - [TIMEWEB_AND_ACTIONS_LINKS.md](./TIMEWEB_AND_ACTIONS_LINKS.md) — ссылки на панель Timeweb и workflow.
 - [TIMEWEB_VPS_COMMANDS.md](./TIMEWEB_VPS_COMMANDS.md) — диагностика SSH, fail2ban, nginx, SSL, media.

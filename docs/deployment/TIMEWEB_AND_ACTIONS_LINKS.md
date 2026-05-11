@@ -25,6 +25,18 @@
 
 Проверьте, что для сервера **разрешён входящий TCP 22** (и при whitelist-группе — не забыты адреса, с которых реально ходит GitHub Actions; при проблемах временно ослабьте правила для проверки).
 
+### Все 28 попыток SSH-probe: `Connection timed out` (как на скриншоте)
+
+Раннер **GitHub (часто Azure)** **вообще не достучался** до `ВАШ_VPS:22` — rsync даже не начинался. Это не баг workflow, а **сеть/файрвол между облаком GitHub и Timeweb**.
+
+**Что проверить в панели Timeweb**
+
+1. **Firewall / группы безопасности** у облачного сервера: должен быть разрешён **входящий TCP 22**. Если включён whitelist по IP — раннер GitHub каждый раз с **нового** адреса; whitelist «только мой IP» **ломает** Actions. Варианты: временно разрешить **22 для всех** (для проверки), либо не использовать IP-whitelist на 22, либо перенести деплой на **self-hosted runner** на этой же VPS (см. [ADR_TIMEWEB_DEPLOY_RUNNER.md](./ADR_TIMEWEB_DEPLOY_RUNNER.md)).
+2. Актуальные диапазоны IP для GitHub Hosted: [`api.github.com/meta`](https://api.github.com/meta) (поле `actions`). Их можно добавить в правила, если политика требует whitelist (список большой и меняется — имейте в виду обслуживание).
+3. На самой ВМ: `ss -tlnp | grep ':22'`, `systemctl status ssh` — SSH слушает и не упирается только в localhost.
+
+**Обход без починки 22 с GitHub:** выкат с **вашего ПК**, где SSH до VPS уже работает — `bash scripts/manual_rsync_deploy_timeweb.sh` (см. [TIMEWEB_DEPLOY_STEPS.md](./TIMEWEB_DEPLOY_STEPS.md) §2b).
+
 Если в логе был **ssh-ok** на probe, а упал уже шаг **rsync** через долгое время — чаще **обрыв длинной SSH-сессии** (NAT, промежуточный файрвол), **fail2ban** по числу соединений или **место на диске** на VPS. В workflow для rsync включены SSH keepalive и `--timeout` (см. `deploy-production.yml`).
 
 ## После зелёного деплоя на VPS

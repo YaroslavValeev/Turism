@@ -216,6 +216,16 @@ docker pull node:20-alpine
 
 **Вариант C:** собирать образы **на другой машине**, где Hub доступен, затем `docker save` → перенос на VPS → `docker load` (громоздко, но надёжно при жёсткой блокировке).
 
+### 7b. Недоступен **registry.npmjs.org** (pnpm внутри Docker build)
+
+Если **`curl`** к `https://registry.npmjs.org/` с VPS **таймаутится**, а базовые образы `node` уже тянутся — в репозитории добавлена переменная **`NPM_CONFIG_REGISTRY`** (build-arg в Dockerfile + `docker-compose.production.yml`). На VPS перед сборкой:
+
+```bash
+export NPM_CONFIG_REGISTRY="https://registry.npmmirror.com"
+```
+
+Подробнее: [TIMEWEB_VPS_TERMINAL_COMMANDS.md](./TIMEWEB_VPS_TERMINAL_COMMANDS.md) §7b.
+
 ---
 
 ## 8. `reverse-proxy` не стартует: `Bind for 0.0.0.0:80 failed: port is already allocated`

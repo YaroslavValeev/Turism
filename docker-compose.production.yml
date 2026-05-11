@@ -15,10 +15,12 @@ services:
 
   api:
     build:
+      # host-сеть: на части VPS маршрут до npm/registry лучше, чем из bridge.
       context: .
       dockerfile: services/api/Dockerfile
-      # Сборке нужен доступ к registry; на части VPS маршрут из bridge-хоста до npm хуже, чем с host-сети → таймауты на RUN npm install -g pnpm / pnpm install.
       network: host
+      args:
+        NPM_CONFIG_REGISTRY: ${NPM_CONFIG_REGISTRY:-https://registry.npmjs.org/}
     restart: unless-stopped
     env_file:
       - .env.production
@@ -47,6 +49,8 @@ services:
       context: .
       dockerfile: apps/web/Dockerfile
       network: host
+      args:
+        NPM_CONFIG_REGISTRY: ${NPM_CONFIG_REGISTRY:-https://registry.npmjs.org/}
     restart: unless-stopped
     env_file:
       - .env.production
@@ -64,6 +68,8 @@ services:
       context: .
       dockerfile: apps/admin/Dockerfile
       network: host
+      args:
+        NPM_CONFIG_REGISTRY: ${NPM_CONFIG_REGISTRY:-https://registry.npmjs.org/}
     restart: unless-stopped
     env_file:
       - .env.production

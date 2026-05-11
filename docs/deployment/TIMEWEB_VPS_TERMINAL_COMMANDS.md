@@ -120,6 +120,26 @@ docker pull node:20-alpine
 docker pull node:20-bookworm-slim
 ```
 
+### 7b. Таймаут к **registry.npmjs.org** при `pnpm install` (сборка образов)
+
+Если **`curl https://registry.npmjs.org/`** с VPS даёт **timeout**, а Docker Hub уже тянется через зеркало — задайте **другой npm registry** только на время **сборки** (переменная читается из окружения хоста / файла `.env` рядом с `docker-compose.production.yml`):
+
+```bash
+cd "$MW"
+export NPM_CONFIG_REGISTRY="https://registry.npmmirror.com"
+docker compose -f docker-compose.production.yml build api web admin
+docker compose -f docker-compose.production.yml up -d api web admin reverse-proxy
+```
+
+Либо одной строкой без `export`:
+
+```bash
+NPM_CONFIG_REGISTRY="https://registry.npmmirror.com" \
+  docker compose -f docker-compose.production.yml up -d --build api web admin reverse-proxy
+```
+
+По умолчанию в compose и Dockerfile остаётся **`https://registry.npmjs.org/`**. Зеркало — компромисс при недоступности официального реестра; политику пакетов соблюдайте сами.
+
 ---
 
 ## 8. Локальный файрвол и fail2ban (если SSH «снаружи» нестабилен)

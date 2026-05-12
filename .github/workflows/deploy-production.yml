@@ -50,6 +50,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Verify nginx config (syntax)
+        run: |
+          set -euo pipefail
+          chmod +x scripts/verify_nginx_config.sh
+          bash scripts/verify_nginx_config.sh
+
       - name: Rsync codebase to VPS
         env:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}

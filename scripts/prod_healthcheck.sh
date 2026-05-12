@@ -34,6 +34,11 @@ echo "== HTTP health short alias (/health) =="
 "${CURL_EXT[@]}" https://mywavetour.ru/health
 echo
 
+echo "== Public catalog (nginx /api/ → api /programs) =="
+"${CURL_EXT[@]}" https://mywavetour.ru/api/programs | head -c 400
+echo
+echo "(truncated)"
+
 echo "== Home page =="
 "${CURL_EXT[@]}" https://mywavetour.ru/ >/dev/null
 echo "home: ok"

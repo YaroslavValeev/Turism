@@ -139,6 +139,8 @@ grep -n 'location /' -A5 /opt/mywave/tourism/infra/nginx/mywave.conf | head -n 2
 Внутри блока **`location /`** для **`server_name mywavetour.ru`** должны быть **`set $mw_web web:3000`** и **`proxy_pass http://$mw_web`**.  
 Если вместо этого **`api:3001`** — конфиг **ошибочный** (витрина уйдёт на бэкенд). **Не переходите к части 5:** скачайте канонический **`infra/nginx/mywave.conf`** из репозитория (или `scp` с ПК) и снова откройте **`nano`**, как в §4.2.
 
+**Третья проверка — каталог (`/api/programs`):** в каноническом конфиге для **`location /api/`** должны быть **`rewrite ^/api/(.*)$ /$1 break;`**, затем **`set $mw_api_pass http://api:3001;`** и **`proxy_pass $mw_api_pass;`** (нельзя **`proxy_pass http://$…/;`** для префикса `/api/`: nginx не снимает префикс с URI, Express отвечает **`Cannot GET /`** и витрина пустая).
+
 ---
 
 ## Часть 5. Проверка nginx и перезапуск прокси (команды по одной)
@@ -154,6 +156,8 @@ docker run --rm -v "$PWD/infra/nginx/mywave.conf:/etc/nginx/conf.d/default.conf:
 ```
 
 Ожидается **`syntax is ok`** и **`test is successful`**.
+
+На **ПК** (если нет копии боевых PEM в **`infra/nginx/certs/`**): из корня репозитория **`bash scripts/verify_nginx_config.sh`** — временный self-signed + тот же **`nginx -t`** (удобно перед **`git push`**).
 
 ```bash
 export DC='docker compose --env-file .env.production -f docker-compose.production.yml'
@@ -176,6 +180,13 @@ $DC exec reverse-proxy sh -c 'wget -qO- http://api:3001/health'
 ```
 
 Ожидается ответ с **`ok`** / JSON статуса.
+
+Публичный каталог через nginx (должен вернуть JSON, не HTML **`Cannot GET`**):
+
+```bash
+curl -4 -fsS https://mywavetour.ru/api/programs | head -c 400
+echo
+```
 
 ```bash
 PROD_HEALTHCHECK_INSECURE_TLS=1 bash /opt/mywave/tourism/scripts/prod_healthcheck.sh

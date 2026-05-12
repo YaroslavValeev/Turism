@@ -158,7 +158,7 @@ docker compose --env-file .env.production -f docker-compose.production.yml exec 
 |---------------|------|-------------------|
 | **mywavetour.ru**, **www** | `/` | **web:3000** (Next, витрина) |
 | то же | `/api/media` | **web:3000** (Next API route) |
-| то же | `/api/*` | **api:3001** (Express; префикс `/api/` снимается при прокси) |
+| то же | `/api/*` (кроме `/api/media`) | **api:3001** (Express; в **`mywave.conf`** префикс снимает **`rewrite … break`**, затем **`proxy_pass $mw_api_pass`**) |
 | то же | `=/health` | **api:3001/health** |
 | **admin.mywavetour.ru** | `/` | **admin:3002** |
 | **api.mywavetour.ru** | `/` | **api:3001** |
@@ -183,7 +183,8 @@ docker compose --env-file .env.production -f docker-compose.production.yml exec 
 
 1. **Код в `main`** на GitHub (`git push` с ПК разработчика).
 2. **Доставка на VPS:** Actions (**Deploy production**) или **`bash scripts/manual_rsync_deploy_timeweb.sh`**.
-3. **`docker compose -f docker-compose.production.yml up -d --build …`** (или поэтапно: postgres → build → up).
+3. **`docker compose -f docker-compose.production.yml up -d --build …`** (или поэтапно: postgres → build → up).  
+   Если менялся **`infra/nginx/mywave.conf`**, перед **`git push`** на **`main`**: **`bash scripts/verify_nginx_config.sh`** (синтаксис nginx + временные PEM; не требует **`infra/nginx/certs/`** в git).
 4. **`prisma migrate deploy`** внутри контейнера **api** (если есть новые миграции).
 5. **`bash scripts/prod_healthcheck.sh`** (корень репо определяется от расположения `scripts/` или **`MYWAVE_ROOT`**).
 6. Проверка в браузере с **Ctrl+F5**.
@@ -198,6 +199,7 @@ docker compose --env-file .env.production -f docker-compose.production.yml exec 
 2. **`git push` на VPS** без полноценного клона — не то место; push только с ПК / CI.
 3. **Rsync с удалением сертификатов** — если не исключён **`infra/nginx/certs/`**, сломается HTTPS.
 4. **Путаница «папка vs проект»** — каталог на диске **`/opt/mywave/tourism`**; имя **Compose-проекта** по умолчанию совпадает с именем каталога (**`tourism`** → **`tourism-*`**), если явно не задан **`COMPOSE_PROJECT_NAME`**. В командах всегда **`export MW=/opt/mywave/tourism`** и **`cd "$MW"`**; реальные имена контейнеров — из **`docker compose ps`**.
+5. **`location /api/ { proxy_pass http://$variable/; }`** — nginx **не** снимает префикс `/api/` с URI; витрина получает **404** / **`Cannot GET /`** на **`/api/programs`**. Канон: **`rewrite` + `proxy_pass $mw_api_pass`** — см. **`infra/nginx/mywave.conf`**; локально **`bash scripts/verify_nginx_config.sh`**.
 6. **Ручной nginx: `location /` на `api` или `proxy_pass …/api/health` на бэкенде** — ломают сайт и `/api/health`; см. §5b и канон **`infra/nginx/mywave.conf`** в репозитории.
 
 ---

@@ -12,7 +12,10 @@
    На **пустой** БД: `pnpm --filter api exec prisma migrate deploy` (в контейнере API — тот же шаг в `CMD`/entrypoint). **Бэкап** снимается **до** миграции, если БД не пустая.
 
 4. **URL и CORS**  
-   `NEXT_PUBLIC_API_URL` / `NEXT_PUBLIC_SITE_URL` (web), `NEXT_PUBLIC_API_URL` (admin) — **публичные https** без хвостового `/`. Для `web` в Docker межсервисно: **`API_INTERNAL_BASE_URL`** (например `http://api:3001`), если RSC стучится к API **по внутреннему** имени.
+   `NEXT_PUBLIC_SITE_URL` (web) — **публичный https** сайта без хвостового `/`.  
+   **`NEXT_PUBLIC_API_URL` (web):** либо отдельный хост API (`https://api.mywavetour.ru`), либо same-origin **`/api`** или **`https://mywavetour.ru/api`**. Нельзя задавать только **`https://mywavetour.ru`** без пути `/api`: иначе браузер запросит `…/programs` у Next.js и получит **404** (в свежих сборках это подправлено в `getPublicApiBase`, но в env лучше сразу канон).  
+   Для admin: **`NEXT_PUBLIC_API_URL`** — публичный base API (часто `https://api.mywavetour.ru`).  
+   Для `web` в Docker межсервисно: **`API_INTERNAL_BASE_URL`** (например `http://api:3001`), если RSC стучится к API **по внутреннему** имени.
 
 5. **Postgres**  
    `POSTGRES_*` в `.env.production` совпадает с DSN `DATABASE_URL` в API. Health `postgres` в `docker-compose.production.yml` зелёный **до** старта `api`.

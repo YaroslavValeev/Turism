@@ -181,7 +181,7 @@ $DC exec reverse-proxy sh -c 'wget -qO- http://api:3001/health'
 PROD_HEALTHCHECK_INSECURE_TLS=1 bash /opt/mywave/tourism/scripts/prod_healthcheck.sh
 ```
 
-Пока на nginx **самоподписанный** сертификат, переменная **обязательна**. В начале stderr должна быть строка про **`--insecure`**.
+Пока на nginx **самоподписанный** сертификат, переменная **обязательна**. В начале stderr должна быть строка про **`--insecure`**. После перевода на **Let's Encrypt** (часть 9) — запускайте скрипт **без** этой переменной.
 
 Ручная проверка с VPS на локальный 443:
 
@@ -211,7 +211,63 @@ scp "F:\Проекты MyWave\NEW2026\Toutism\infra\nginx\mywave.conf" "root@5.1
 
 ---
 
-## Часть 8. Запуск **Deploy production** в GitHub (после пуша исправления)
+## Часть 9. Let's Encrypt: что вы увидите и что делать с **`certbot renew --dry-run`**
+
+Если вы уже выполняли **webroot**-выпуск, **`le-deploy-sync.sh`**, **`curl https://…/api/health` → `{"status":"ok"}`** и **`openssl`** показывает **Let's Encrypt** — канон достигнут.
+
+### 9.1. Нормальные сообщения
+
+- **`Certificate not yet due for renewal`** после **`certbot certonly --webroot …`** — сертификат уже есть, перевыпуск не нужен.
+- **`nginx: … syntax is ok`** в **`docker run … nginx -t`** — конфиг валиден (строка про **read-only** в entrypoint-скрипте alpine — шум, не ошибка).
+- После **`le-deploy-sync.sh`** в **`infra/nginx/certs/`** появляются свежие **`fullchain.pem`** / **`privkey.pem`**.
+
+### 9.2. Почему падает **`certbot renew --dry-run`** (у вас на скрине)
+
+В **`/etc/letsencrypt/renewal/`** остались **старые** конфиги с **`authenticator = manual`**. В неинтерактивном renew Certbot требует **`--manual-auth-hook`** — отсюда текст про **manual plugin**.
+
+Это **не** значит, что HTTPS сейчас сломан; это значит, что **автопродление по таймеру** для этих *старых* линий так не заработает, пока не оставите профили только с **webroot** (или не настроите DNS-01 для wildcard).
+
+### 9.3. Диагностика (точные команды на VPS)
+
+```bash
+export MW=/opt/mywave/tourism
+sudo certbot certificates
+```
+
+```bash
+sudo grep -H '^authenticator' /etc/letsencrypt/renewal/*.conf
+```
+
+Запомните **имя** сертификата (`Certificate Name`), у которого в соответствующем **`.conf`** стоит **`authenticator = webroot`** (не `manual`).
+
+Пробный renew **только для webroot-профиля** (подставьте **`ИМЯ_ИЗ_CERTBOT_CERTIFICATES`**):
+
+```bash
+sudo certbot renew --dry-run --cert-name 'ИМЯ_ИЗ_CERTBOT_CERTIFICATES'
+```
+
+Если **все** перечисленные линии только **manual**, а боевой PEM вы уже копируете из **`/etc/letsencrypt/live/mywavetour.ru`**, обсудите с поддержкой или заранее спланируйте **перевыпуск SAN через webroot** (четыре **`-d`**, без wildcard) по **`SSL_LE_AUTORENEW.md` § «Разово: перевыпуск»**, затем удаление устаревших линий **`certbot delete --cert-name …`** — только после того как новая линия проверена и **`le-deploy-sync`** от неё отрабатывает.
+
+### 9.4. Частые опечатки (по скринам)
+
+- Каталог на диске только **`/opt/mywave/tourism`**, не **`/opt/mywave/toutism`** (`toutism` — имя **Compose-проекта**, не папка).
+- Команда Docker Compose v2: **`docker compose`** (с пробелом), не устаревший **`docker-compose`** (дефис), если только у вас не настроен явный алиас.
+- Префикс контейнеров **`toutism-*`** даёт вызов с **`--env-file .env.production`**; без него снова появятся **`tourism-*`**.
+
+### 9.5. После настоящего LE
+
+Проверки без обхода TLS:
+
+```bash
+cd /opt/mywave/tourism
+bash scripts/prod_healthcheck.sh
+```
+
+(без **`PROD_HEALTHCHECK_INSECURE_TLS=1`**), если **`curl`** к **`https://mywavetour.ru/...`** проходит без **(60)**.
+
+---
+
+## Часть 10. Запуск **Deploy production** в GitHub (после пуша исправления)
 
 1. Откройте **`https://github.com`** и войдите в аккаунт.
 2. Откройте репозиторий **`YaroslavValeev/Turism`** (или ваш форк с тем же workflow).

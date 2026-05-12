@@ -3,7 +3,7 @@
 #
 # Секреты (Settings → Secrets and variables → Actions):
 #   DEPLOY_HOST, DEPLOY_USER, DEPLOY_OPENSSH_PRIVATE_KEY
-#   DEPLOY_PATH — опционально (по умолчанию /opt/mywave/toutism). Проверьте орфографию: toutism, не tourism.
+#   DEPLOY_PATH — опционально (по умолчанию /opt/mywave/tourism). На VPS в SSH используется `docker compose --env-file .env.production`, чтобы подхватывались в т.ч. `COMPOSE_PROJECT_NAME` и `NPM_CONFIG_REGISTRY`.
 #
 # Код копируется rsync с раннера GitHub на VPS (checkout уже с токеном для private repo).
 # ВАЖНО: исключить infra/nginx/certs/ — PEM не в git; при --delete без exclude rsync УДАЛЯЕТ их на VPS → nginx не стартует → 443 connection refused.
@@ -66,7 +66,7 @@ jobs:
           echo ">>> Проверка, что приватный ключ читается OpenSSH"
           ssh-keygen -lf ~/.ssh/deploy_key
           ssh-keyscan -4 -p 22 -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
-          DP="${DEPLOY_PATH:-/opt/mywave/toutism}"
+          DP="${DEPLOY_PATH:-/opt/mywave/tourism}"
           DP="$(echo "$DP" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
           # Короткий connect для быстрых probe-попыток
           SSH_PROBE="-4 -i ${HOME}/.ssh/deploy_key -p 22 -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=28 -o ConnectionAttempts=1 -o ServerAliveInterval=10 -o ServerAliveCountMax=30"
@@ -142,7 +142,7 @@ jobs:
           printenv DEPLOY_KEY | tr -d '\r' > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -4 -p 22 -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
-          DP="${DEPLOY_PATH:-/opt/mywave/toutism}"
+          DP="${DEPLOY_PATH:-/opt/mywave/tourism}"
           DP="$(echo "$DP" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
           SSH_LONG="-4 -i ${HOME}/.ssh/deploy_key -p 22 -o BatchMode=yes -o StrictHostKeyChecking=accept-new \
             -o ConnectTimeout=45 -o ConnectionAttempts=1 \
@@ -152,20 +152,20 @@ jobs:
             ssh $SSH_LONG "${DEPLOY_USER}@${DEPLOY_HOST}" \
               "set -euo pipefail; cd '${DP}'; \
                echo '>>> docker compose up -d --no-deps --build web reverse-proxy (код витрины в образе — нужен --build после rsync)'; \
-               docker compose -f docker-compose.production.yml up -d --no-deps --build web reverse-proxy; \
-               docker compose -f docker-compose.production.yml ps"
+               docker compose --env-file .env.production -f docker-compose.production.yml up -d --no-deps --build web reverse-proxy; \
+               docker compose --env-file .env.production -f docker-compose.production.yml ps"
           elif [ "$BUILD_MODE" = "full" ]; then
             ssh $SSH_LONG "${DEPLOY_USER}@${DEPLOY_HOST}" \
               "set -euo pipefail; cd '${DP}'; \
                echo '>>> docker compose build --no-cache api web admin'; \
-               docker compose -f docker-compose.production.yml build --no-cache api web admin; \
+               docker compose --env-file .env.production -f docker-compose.production.yml build --no-cache api web admin; \
                echo '>>> docker compose up -d api web admin reverse-proxy'; \
-               docker compose -f docker-compose.production.yml up -d api web admin reverse-proxy; \
-               docker compose -f docker-compose.production.yml ps"
+               docker compose --env-file .env.production -f docker-compose.production.yml up -d api web admin reverse-proxy; \
+               docker compose --env-file .env.production -f docker-compose.production.yml ps"
           else
             ssh $SSH_LONG "${DEPLOY_USER}@${DEPLOY_HOST}" \
               "set -euo pipefail; cd '${DP}'; \
                echo '>>> docker compose up -d --build api web admin reverse-proxy (incremental)'; \
-               docker compose -f docker-compose.production.yml up -d --build api web admin reverse-proxy; \
-               docker compose -f docker-compose.production.yml ps"
+               docker compose --env-file .env.production -f docker-compose.production.yml up -d --build api web admin reverse-proxy; \
+               docker compose --env-file .env.production -f docker-compose.production.yml ps"
           fi

@@ -1,6 +1,16 @@
 # Команды для терминала VPS (Timeweb / SSH)
 
-Вставляйте блоки **по порядку** в консоль сервера (пользователь с правами **root** или **docker**). Путь к проекту подставьте свой: чаще **`/opt/mywave/tourism`** или **`/opt/mywave/toutism`**.
+Вставляйте блоки **по порядку** в консоль сервера (пользователь с правами **root** или **docker**).
+
+**Канон Timeweb production:** рабочая папка **`/opt/mywave/tourism`** (здесь `docker-compose.production.yml`). Имя проекта Compose — **`toutism`** (строка **`COMPOSE_PROJECT_NAME=toutism`** в **`$MW/.env.production`**). Контейнеры: **`toutism-*`**. Всегда задавайте **`--env-file .env.production`**, иначе префикс станет **`tourism-*`** (имя папки). На VPS **нет `.git`** — **`git pull` не используется**.
+
+**Шаблон сессии (один раз после входа в SSH):**
+
+```bash
+export MW=/opt/mywave/tourism
+cd "$MW"
+export DC='docker compose --env-file .env.production -f docker-compose.production.yml'
+```
 
 ---
 
@@ -38,9 +48,10 @@ systemctl is-active ssh 2>/dev/null || systemctl is-active sshd
 
 ```bash
 cd "$MW"
-docker compose -f docker-compose.production.yml ps -a
-docker compose -f docker-compose.production.yml logs --tail=40 reverse-proxy
-docker compose -f docker-compose.production.yml logs --tail=40 api
+export DC='docker compose --env-file .env.production -f docker-compose.production.yml'
+$DC ps -a
+$DC logs --tail=40 reverse-proxy
+$DC logs --tail=40 api
 ```
 
 ---
@@ -49,9 +60,10 @@ docker compose -f docker-compose.production.yml logs --tail=40 api
 
 ```bash
 cd "$MW"
-docker compose -f docker-compose.production.yml up -d postgres
-docker compose -f docker-compose.production.yml up -d --build api web admin reverse-proxy
-docker compose -f docker-compose.production.yml ps
+export DC='docker compose --env-file .env.production -f docker-compose.production.yml'
+$DC up -d postgres
+$DC up -d --build api web admin reverse-proxy
+$DC ps
 ```
 
 ### 4a. «Зависание» на этом шаге — часто нормально
@@ -70,15 +82,17 @@ curl -sS -o /dev/null -w "npmjs HTTP %{http_code}\n" --max-time 25 https://regis
 
 ```bash
 cd "$MW"
-docker compose -f docker-compose.production.yml up -d reverse-proxy
-docker compose -f docker-compose.production.yml logs --tail=60 reverse-proxy
+export DC='docker compose --env-file .env.production -f docker-compose.production.yml'
+$DC up -d reverse-proxy
+$DC logs --tail=60 reverse-proxy
 ```
 
 Если в логах **api** видно **`ELIFECYCLE Command failed`** — полный хвост ошибки:
 
 ```bash
 cd "$MW"
-docker compose -f docker-compose.production.yml logs --tail=120 api
+export DC='docker compose --env-file .env.production -f docker-compose.production.yml'
+$DC logs --tail=120 api
 ```
 
 ---
@@ -87,7 +101,8 @@ docker compose -f docker-compose.production.yml logs --tail=120 api
 
 ```bash
 cd "$MW"
-docker compose -f docker-compose.production.yml exec -T api sh -c \
+export DC='docker compose --env-file .env.production -f docker-compose.production.yml'
+$DC exec -T api sh -c \
   "cd /app/services/api && pnpm exec prisma migrate deploy"
 ```
 
@@ -97,6 +112,7 @@ docker compose -f docker-compose.production.yml exec -T api sh -c \
 
 ```bash
 cd "$MW"
+export DC='docker compose --env-file .env.production -f docker-compose.production.yml'
 curl -sS -o /dev/null -w "локально api HTTP %{http_code}\n" http://127.0.0.1:3001/health || true
 curl -sS --max-time 15 https://mywavetour.ru/api/health || true
 MYWAVE_ROOT="$MW" bash scripts/prod_healthcheck.sh
@@ -126,16 +142,18 @@ docker pull node:20-bookworm-slim
 
 ```bash
 cd "$MW"
+export DC='docker compose --env-file .env.production -f docker-compose.production.yml'
 export NPM_CONFIG_REGISTRY="https://registry.npmmirror.com"
-docker compose -f docker-compose.production.yml build api web admin
-docker compose -f docker-compose.production.yml up -d api web admin reverse-proxy
+$DC build api web admin
+$DC up -d api web admin reverse-proxy
 ```
 
-Либо одной строкой без `export`:
+Либо одной строкой без `export` для registry:
 
 ```bash
+cd "$MW"
 NPM_CONFIG_REGISTRY="https://registry.npmmirror.com" \
-  docker compose -f docker-compose.production.yml up -d --build api web admin reverse-proxy
+  docker compose --env-file .env.production -f docker-compose.production.yml up -d --build api web admin reverse-proxy
 ```
 
 По умолчанию в compose и Dockerfile остаётся **`https://registry.npmjs.org/`**. Зеркало — компромисс при недоступности официального реестра; политику пакетов соблюдайте сами.

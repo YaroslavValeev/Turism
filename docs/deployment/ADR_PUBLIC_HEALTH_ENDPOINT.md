@@ -13,7 +13,7 @@
 ## Решение
 
 1. Канонический ответ API по-прежнему **`/health`** внутри сервиса и на **`https://api.mywavetour.ru/health`**.
-2. На основном домене **`https://mywavetour.ru/api/health`** остаётся рабочим путём (существующий `location /api/`).
+2. На основном домене **`https://mywavetour.ru/api/health`** — через **`location /api/`** и дублирующий явный блок **`location = /api/health`** в **`infra/nginx/mywave.conf`** (если старый порядок `location` отдавал 404 в Next).
 3. В **`infra/nginx/mywave.conf`** для `server_name mywavetour.ru www.mywavetour.ru` добавлено **`location = /health`** с **`proxy_pass http://api:3001/health`**, чтобы **`https://mywavetour.ru/health`** совпадал с телом API.
 
 ## Последствия

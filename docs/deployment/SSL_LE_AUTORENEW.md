@@ -7,7 +7,7 @@
 
 ## Целевая схема (HTTP-01 + webroot → Docker)
 
-На хосте VPS certbot кладёт токены в **`/opt/mywave/toutism/infra/certbot-webroot`**; nginx в контейнере отдаёт `/.well-known/acme-challenge/` с тома `./infra/certbot-webroot`.
+На хосте VPS certbot кладёт токены в **`/opt/mywave/tourism/infra/certbot-webroot`**; nginx в контейнере отдаёт `/.well-known/acme-challenge/` с тома `./infra/certbot-webroot`.
 
 После продления PEM копируются в **`infra/nginx/certs/`** скриптом **`scripts/le-deploy-sync.sh`** (как после ручного `cp -L`).
 
@@ -16,21 +16,21 @@
 На сервере (пути подставьте свои):
 
 ```bash
-cd /opt/mywave/toutism
+cd /opt/mywave/tourism
 # Поднять конфиг с location ACME и томом certbot-webroot:
 docker compose -f docker-compose.production.yml --env-file .env.production up -d reverse-proxy
 
 # Если старый manual-сертификат конфликтует — сохраните бэкап и переиздайте (один профиль имени линии):
 sudo certbot certonly --webroot \
-  -w /opt/mywave/toutism/infra/certbot-webroot \
+  -w /opt/mywave/tourism/infra/certbot-webroot \
   -d mywavetour.ru \
   -d www.mywavetour.ru \
   -d api.mywavetour.ru \
   -d admin.mywavetour.ru \
   --preferred-challenges http
 
-sudo chmod +x /opt/mywave/toutism/scripts/le-deploy-sync.sh
-sudo MYWAVE_ROOT=/opt/mywave/toutism /opt/mywave/toutism/scripts/le-deploy-sync.sh
+sudo chmod +x /opt/mywave/tourism/scripts/le-deploy-sync.sh
+sudo MYWAVE_ROOT=/opt/mywave/tourism /opt/mywave/tourism/scripts/le-deploy-sync.sh
 ```
 
 Проверка: `openssl x509 -in infra/nginx/certs/fullchain.pem -noout -text | grep -A5 SAN` и `curl -sSI https://api.mywavetour.ru/health`.
@@ -45,8 +45,8 @@ sudo MYWAVE_ROOT=/opt/mywave/toutism /opt/mywave/toutism/scripts/le-deploy-sync.
 sudo tee /etc/letsencrypt/renewal-hooks/deploy/99-mywave-le-deploy-sync.sh >/dev/null <<'EOF'
 #!/bin/sh
 set -e
-export MYWAVE_ROOT=/opt/mywave/toutism
-exec /opt/mywave/toutism/scripts/le-deploy-sync.sh
+export MYWAVE_ROOT=/opt/mywave/tourism
+exec /opt/mywave/tourism/scripts/le-deploy-sync.sh
 EOF
 sudo chmod +x /etc/letsencrypt/renewal-hooks/deploy/99-mywave-le-deploy-sync.sh
 ```

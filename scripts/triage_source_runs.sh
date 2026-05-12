@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT_DIR="${MYWAVE_ROOT:-/opt/mywave/toutism}"
+ROOT_DIR="${MYWAVE_ROOT:-/opt/mywave/tourism}"
 COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.production.yml}"
 cd "$ROOT_DIR"
 

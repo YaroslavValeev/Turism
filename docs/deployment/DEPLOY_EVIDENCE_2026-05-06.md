@@ -4,7 +4,13 @@
 **Версия / git SHA:** указать коммит из GitHub (`main`) **после** успешного «Deploy production» — на самом VPS **нет** каталога `.git`, `git pull` там не работает.  
 **Ответственный:** owner  
 
-### Важно: на Timeweb в `/opt/mywave/toutism` нет репозитория Git
+**Канон путей на VPS:** рабочий каталог **`/opt/mywave/tourism`**. Имя проекта Docker Compose — **`toutism`** (строка **`COMPOSE_PROJECT_NAME=toutism`** в **`.env.production`**); контейнеры **`toutism-*`**. Команды: **`docker compose --env-file .env.production -f docker-compose.production.yml …`**. **`working_dir`** проверяйте через **`ps -q api`** + **`docker inspect`**, не полагайтесь на имя контейнера «с памяти», если на хосте когда-либо был второй стек. На VPS **нет `.git`**.
+
+**Историческая справка:** в снимках до 2026-05-08 встречался префикс **`tourism-*`** (compose без **`COMPOSE_PROJECT_NAME`**); текущий канон — **папка `tourism`, проект `toutism`**.
+
+**Повтор команд из этого файла на VPS:** если в блоке указано только **`docker compose -f docker-compose.production.yml`**, для текущего канона подставляйте **`docker compose --env-file .env.production -f docker-compose.production.yml`** (или заранее **`export DC='…'`** как в [TIMEWEB_VPS_TERMINAL_COMMANDS.md](./TIMEWEB_VPS_TERMINAL_COMMANDS.md)).
+
+### Важно: в `/opt/mywave/tourism` на Timeweb нет репозитория Git
 
 Деплой идёт **rsync** из Actions ([`deploy-production.yml`](../../.github/workflows/deploy-production.yml), список исключений включает **`.git/`**). Обновить код на сервере можно так:
 
@@ -21,24 +27,25 @@
 Диагностика по порядку на VPS:
 
 ```bash
-cd /opt/mywave/toutism
-COMPOSE="docker compose -f docker-compose.production.yml"
+export MW=/opt/mywave/tourism
+cd "$MW"
+export DC='docker compose --env-file .env.production -f docker-compose.production.yml'
 
 # 1) Файл на ХОСТЕ (источник монтирования) — должен содержать api/media:
 grep -n 'api/media' infra/nginx/mywave.conf || echo 'НА ДИСКЕ СТАРЫЙ КОНФИГ — запустите Deploy production из GitHub'
 
 # 2) Реальное состояние reverse-proxy (не только "Started"):
-$COMPOSE ps -a reverse-proxy
-$COMPOSE logs --tail=100 reverse-proxy
+$DC ps -a reverse-proxy
+$DC logs --tail=100 reverse-proxy
 
 # 3) Синтаксис nginx внутри контейнера (если контейнер не в CrashLoop — выполнится):
-$COMPOSE exec -T reverse-proxy nginx -t 2>&1
+$DC exec -T reverse-proxy nginx -t 2>&1
 
 # 4) Кто слушает 443 на хосте:
 ss -tlnp | grep -E ':443|:80' || true
 ```
 
-Если п.1 пустой — **только** выкат через Actions обновит `infra/nginx/mywave.conf`. После зелёного job снова: `$COMPOSE up -d --force-recreate reverse-proxy` и проверка `curl -I https://mywavetour.ru/`.
+Если п.1 пустой — **только** выкат через Actions обновит `infra/nginx/mywave.conf`. После зелёного job снова: **`$DC up -d --force-recreate reverse-proxy`** и проверка `curl -I https://mywavetour.ru/`.
 
 ### Если в GitHub Actions падает шаг **«Rsync codebase to VPS»** (SSH probe 20/20, `Timeout, server … not responding`, exit **255**)
 
@@ -62,6 +69,7 @@ ss -tlnp | grep -E ':443|:80' || true
 - Источники и SQL: [`SOURCE_INVENTORY_2026-05-06.md`](./SOURCE_INVENTORY_2026-05-06.md)
 - Gates: [`../gates/GATE1_LOCAL_GREEN_SMOKE.md`](../gates/GATE1_LOCAL_GREEN_SMOKE.md), [`../gates/P1_CHECKPOINT.md`](../gates/P1_CHECKPOINT.md)
 - CI: деплой только **`workflow_dispatch`** — [`.github/workflows/deploy-production.yml`](../../.github/workflows/deploy-production.yml)
+- Сборка **api** на VPS: стадия **`build`** в **`services/api/Dockerfile`** должна вызывать **`prisma generate`** с фиктивным **`DATABASE_URL`** (иначе шаг **`pnpm --filter api db:generate`** падает — `schema.prisma` с **`env("DATABASE_URL")`**).
 - Health URL на основном домене: [`ADR_PUBLIC_HEALTH_ENDPOINT.md`](./ADR_PUBLIC_HEALTH_ENDPOINT.md)
 - Раннер / SSH-риск: [`ADR_TIMEWEB_DEPLOY_RUNNER.md`](./ADR_TIMEWEB_DEPLOY_RUNNER.md)
 
@@ -93,19 +101,22 @@ Runtime status: GREEN
 | Placeholder | **PASSED** |
 | Containers | **PASSED** |
 
-Контейнеры на сервере `/opt/mywave/toutism` (фактические имена):
+Контейнеры на сервере в **`/opt/mywave/tourism`** (снимок 2026-05-08; префикс **`tourism-*`** — до унификации с **`COMPOSE_PROJECT_NAME=toutism`**). **Текущий канон:** **`toutism-*`**.
 
-| Контейнер | Состояние |
+| Контейнер (исторический снимок) | Состояние |
 |-----------|-----------|
-| `toutism-admin-1` | Up |
-| `toutism-api-1` | Up / healthy |
-| `toutism-postgres-1` | Up / healthy |
-| `toutism-reverse-proxy-1` | Up |
-| `toutism-web-1` | Up |
+| `tourism-admin-1` | Up |
+| `tourism-api-1` | Up / healthy |
+| `tourism-postgres-1` | Up / healthy |
+| `tourism-reverse-proxy-1` | Up |
+| `tourism-web-1` | Up |
 
 **Зафиксированные команды и ответы:**
 
 ```bash
+export MW=/opt/mywave/tourism
+cd "$MW"
+export DC='docker compose --env-file .env.production -f docker-compose.production.yml'
 curl -sS -I https://mywavetour.ru/ | head -n 8
 # HTTP/2 200
 
@@ -119,7 +130,7 @@ curl -sS -I https://mywavetour.ru/images/placeholders/program-card.svg | head -n
 # HTTP/2 200
 # content-type: image/svg+xml
 
-docker compose -f docker-compose.production.yml exec -T reverse-proxy sh -lc 'wget -qO- http://api:3001/health'
+$DC exec -T reverse-proxy sh -lc 'wget -qO- http://api:3001/health'
 # {"status":"ok"}
 ```
 
@@ -152,7 +163,8 @@ Health alias from 813fac3: applied
 **На VPS после выката актуального `main`:**
 
 ```bash
-cd /opt/mywave/toutism
+export MW=/opt/mywave/tourism
+cd "$MW"
 git rev-parse --short HEAD 2>/dev/null || echo "No .git in deploy path"
 grep -n "location = /health" infra/nginx/mywave.conf || echo "NO /health alias in current VPS file"
 docker compose -f docker-compose.production.yml up -d --force-recreate reverse-proxy
@@ -257,7 +269,7 @@ Auto-publish ingestion: disabled
 Payments/invoices: disabled for pilot
 ```
 
-## 0c. Final P0 VPS evidence (2026-05-08, /opt/mywave/toutism)
+## 0c. Final P0 VPS evidence (2026-05-08, `/opt/mywave/tourism`)
 
 ```text
 P0 VPS evidence: PASSED
@@ -363,7 +375,7 @@ curl: (28) SSL connection timeout
 open /tmp/docker-compose.production.yml: no such file or directory
 ```
 
-Причина: `docker compose` был запущен из `/tmp`, а не из рабочего каталога `/opt/mywave/toutism`.
+Причина: `docker compose` был запущен из `/tmp`, а не из рабочего каталога **`/opt/mywave/tourism`** (`export MW=/opt/mywave/tourism` → `cd "$MW"`).
 
 Классификация:
 
@@ -402,7 +414,8 @@ Runtime impact: none
 Актуальный снимок контейнеров: **§0** (2026-05-08). Повторная проверка:
 
 ```bash
-cd /opt/mywave/toutism
+export MW=/opt/mywave/tourism
+cd "$MW"
 docker compose -f docker-compose.production.yml ps
 ```
 
@@ -523,10 +536,11 @@ docker compose -f docker-compose.production.yml exec api sh -lc \
 
 ### Проверка на сервере
 
-**Не использовать `git`** в `/opt/mywave/toutism`. Сначала дождаться выката через **Deploy production**, затем:
+**Не использовать `git`** в **`/opt/mywave/tourism`** (на деплой-пути нет `.git`). Сначала дождаться выката через **Deploy production**, затем:
 
 ```bash
-cd /opt/mywave/toutism
+export MW=/opt/mywave/tourism
+cd "$MW"
 COMPOSE="docker compose -f docker-compose.production.yml"
 
 # 0) /ingestion-media — готовая проверка без ручной подстановки имени файла:

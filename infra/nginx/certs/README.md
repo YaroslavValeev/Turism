@@ -7,7 +7,8 @@
 Восстановление на сервере после сбоя:
 
 ```bash
-cd /opt/mywave/toutism
+export MW=/opt/mywave/tourism
+cd "$MW"
 bash scripts/le-deploy-sync.sh
 docker compose -f docker-compose.production.yml up -d reverse-proxy
 ```

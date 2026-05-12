@@ -3,7 +3,7 @@
 # Вызывается certbot после успешного renew (renewal-hooks/deploy) или вручную.
 set -euo pipefail
 
-MYWAVE_ROOT="${MYWAVE_ROOT:-/opt/mywave/toutism}"
+MYWAVE_ROOT="${MYWAVE_ROOT:-/opt/mywave/tourism}"
 COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.production.yml}"
 ENV_FILE="${ENV_FILE:-.env.production}"
 COMPOSE_ENV=( -f "$COMPOSE_FILE" )

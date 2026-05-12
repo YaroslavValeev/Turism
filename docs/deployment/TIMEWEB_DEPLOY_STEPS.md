@@ -1,26 +1,48 @@
 # Timeweb: выкат в логичной последовательности
 
-Каталог на VPS по умолчанию: **`/opt/mywave/toutism`** (проверьте `DEPLOY_PATH` / орфографию **toutism**, не **`tourism`**).
+### Канон на production VPS (Timeweb)
 
-Файлы **`.env` / `.env.production`** на сервер **rsync не затирает** — секреты задаются один раз на VPS вручную.
+| Сущность | Значение |
+|----------|----------|
+| **Рабочий каталог** | **`/opt/mywave/tourism`** — здесь `docker-compose.production.yml` |
+| **Имя Docker Compose project** | **`toutism`** — из **`COMPOSE_PROJECT_NAME=toutism`** в **`$MW/.env.production`**. Контейнеры: **`toutism-api-1`**, **`toutism-web-1`**, … |
+| **Команды compose** | **`docker compose --env-file .env.production -f docker-compose.production.yml …`** — без **`--env-file`** имя проекта станет **`tourism`** (имя папки) → **`tourism-*`** (путаница с целевым **`toutism-*`**). |
+| **Секрет `DEPLOY_PATH` в GitHub** | **`/opt/mywave/tourism`** (по умолчанию в workflow). Путь **`/opt/mywave/toutism`** — только **историческая папка** в старых заметках, не смешивать с именем проекта **`toutism`**. |
+
+**Короткая формула:** папка на диске **`tourism`**, проект Compose **`toutism`**, префикс контейнеров **`toutism-*`**.
+
+**В каждой новой SSH-сессии на VPS:**
+
+```bash
+export MW=/opt/mywave/tourism
+cd "$MW"
+```
+
+Проверка каталога compose **без угадывания имени контейнера** (из **`$MW`**):
+
+```bash
+export MW=/opt/mywave/tourism
+cd "$MW"
+export DC='docker compose --env-file .env.production -f docker-compose.production.yml'
+CID=$($DC ps -q api | head -n1)
+docker inspect "$CID" --format '{{ index .Config.Labels "com.docker.compose.project.working_dir" }}'
+```
+
+Ожидается **`/opt/mywave/tourism`**. Имя контейнера (**`toutism-api-1`**) смотрите в **`$DC ps`** — не подставляйте имя «с памяти», если на сервере когда-то был второй стек.
+
+Файлы **`.env` / `.env.production`** на сервер **rsync не затирает** — секреты задаются один раз на VPS вручную. **`.git` на VPS нет** — **`git pull` не используется** для обновления кода.
 
 ---
 
-## Где что запускать (частая путаница)
+## Где что запускать
 
 | Где | Что делать |
 |-----|------------|
 | **Ваш ПК** (или WSL на ПК) | `git push`, запуск `manual_rsync_deploy_timeweb.sh`, кнопка **Deploy** в GitHub Actions |
-| **VPS (SSH root@…)** | Только `cd /opt/mywave/toutism` (или ваш реальный путь), `docker compose …`, `curl`, **без** `git push` |
+| **VPS (SSH root@…)** | `export MW=/opt/mywave/tourism`, `cd "$MW"`, затем `docker compose …`, `curl` — **без** `git push` |
 
-- В **§1** и **§2b** вместо абстрактного пути укажите **реальный** каталог клона на ПК (например WSL: `cd "/mnt/f/Проекты MyWave/NEW2026/Toutism"`). На сервере такого пути **не будет** — это нормально.
-- После rsync/Actions на VPS **нет каталога `.git`**, поэтому `git push` там выдаёт `fatal: not a git repository` — так и должно быть.
-- Если вы в **`/opt/mywave/tourism`** (с «ur»), а в инструкциях **`toutism`**: проверьте, где лежит `docker-compose.production.yml`:
-  ```bash
-  ls -la /opt/mywave/
-  find /opt/mywave -maxdepth 3 -name 'docker-compose.production.yml' 2>/dev/null
-  ```
-  Работайте из того каталога, где найден файл.
+- В **§1** и **§2b** на ПК укажите **реальный** путь к **клону** репозитория (например WSL: `cd "/mnt/f/Проекты MyWave/NEW2026/Toutism"`). Это **не** путь на VPS.
+- Если не уверены в каталоге на сервере: `find /opt/mywave -maxdepth 4 -name 'docker-compose.production.yml'`.
 
 ---
 
@@ -30,8 +52,9 @@
 sudo apt-get update && sudo apt-get install -y docker.io docker-compose-plugin
 # или Docker по инструкции Timeweb
 
-sudo mkdir -p /opt/mywave/toutism
-cd /opt/mywave/toutism
+sudo mkdir -p /opt/mywave/tourism
+export MW=/opt/mywave/tourism
+cd "$MW"
 ```
 
 Создайте на сервере (не в git):
@@ -85,14 +108,14 @@ export DEPLOY_HOST="ВАШ_IP_ИЛИ_HOST"
 export DEPLOY_USER="root"   # или deploy
 export DEPLOY_KEY_FILE="$HOME/.ssh/id_ed25519_timeweb"
 # опционально:
-# export DEPLOY_PATH="/opt/mywave/toutism"
+# export DEPLOY_PATH="/opt/mywave/tourism"
 # export DEPLOY_PORT="22"
 # export BUILD_MODE="full"   # полная пересборка без кэша образов
 
 bash scripts/manual_rsync_deploy_timeweb.sh
 ```
 
-Скрипт: rsync кода → на сервере `docker compose -f docker-compose.production.yml up -d --build …` (или `build --no-cache` при `BUILD_MODE=full`).
+Скрипт: rsync кода → на сервере **`docker compose --env-file .env.production -f docker-compose.production.yml up -d --build …`** (или `build --no-cache` при `BUILD_MODE=full`).
 
 ---
 
@@ -101,9 +124,11 @@ bash scripts/manual_rsync_deploy_timeweb.sh
 Первый запуск или после `docker compose down`:
 
 ```bash
-cd /opt/mywave/toutism
-docker compose -f docker-compose.production.yml up -d postgres
-docker compose -f docker-compose.production.yml ps
+export MW=/opt/mywave/tourism
+cd "$MW"
+export DC='docker compose --env-file .env.production -f docker-compose.production.yml'
+$DC up -d postgres
+$DC ps
 ```
 
 Дождитесь `healthy` у `postgres` (healthcheck в compose).
@@ -115,24 +140,28 @@ docker compose -f docker-compose.production.yml ps
 Выполняйте **после** того, как контейнер **api** поднят с актуальным образом:
 
 ```bash
-cd /opt/mywave/toutism
-docker compose -f docker-compose.production.yml exec -T api sh -c \
+export MW=/opt/mywave/tourism
+cd "$MW"
+export DC='docker compose --env-file .env.production -f docker-compose.production.yml'
+$DC exec -T api sh -c \
   "cd /app/services/api && pnpm exec prisma migrate deploy"
 ```
 
-Если контейнер api ещё не стартует — сначала исправьте логи (`docker compose ... logs api`), БД и `.env`.
+Если контейнер api ещё не стартует — сначала исправьте логи (`$DC logs api`), БД и `.env`.
 
 ---
 
 ## 5. Проверки после деплоя
 
 ```bash
-cd /opt/mywave/toutism
-docker compose -f docker-compose.production.yml ps
+export MW=/opt/mywave/tourism
+cd "$MW"
+export DC='docker compose --env-file .env.production -f docker-compose.production.yml'
+$DC ps
 bash scripts/prod_healthcheck.sh
 ```
 
-Скрипт сам переходит в **корень репозитория** (родитель каталога `scripts/`): работает и для **`/opt/mywave/tourism`**, и для **`toutism`**. При необходимости вручную: `MYWAVE_ROOT=/opt/mywave/tourism bash scripts/prod_healthcheck.sh`.
+Скрипт сам переходит в **корень репозитория** (родитель каталога `scripts/`). Канон каталога на VPS — **`/opt/mywave/tourism`**. Префикс контейнеров — **`toutism-*`** при **`COMPOSE_PROJECT_NAME=toutism`** и вызове compose с **`--env-file .env.production`**. При необходимости вручную: `MYWAVE_ROOT=/opt/mywave/tourism bash scripts/prod_healthcheck.sh`.
 
 Вручную:
 
@@ -150,12 +179,14 @@ curl -sS -o /dev/null -w "главная HTTP %{http_code}\n" https://mywavetour
 Если код уже на диске VPS (GitHub Actions или `manual_rsync_deploy_timeweb.sh`), **git pull не нужен** — в rsync-деплое каталог `.git` на сервер не копируется.
 
 ```bash
-cd /opt/mywave/toutism
+export MW=/opt/mywave/tourism
+cd "$MW"
+export DC='docker compose --env-file .env.production -f docker-compose.production.yml'
 
-docker compose -f docker-compose.production.yml up -d postgres
-docker compose -f docker-compose.production.yml up -d --build api web admin reverse-proxy
+$DC up -d postgres
+$DC up -d --build api web admin reverse-proxy
 
-docker compose -f docker-compose.production.yml exec -T api sh -c \
+$DC exec -T api sh -c \
   "cd /app/services/api && pnpm exec prisma migrate deploy"
 
 bash scripts/prod_healthcheck.sh
@@ -186,11 +217,12 @@ docker pull nginx:1.27-alpine
 Затем снова из каталога проекта:
 
 ```bash
-cd /opt/mywave/toutism
-# или /opt/mywave/tourism — где лежит docker-compose.production.yml
+export MW=/opt/mywave/tourism
+cd "$MW"
+export DC='docker compose --env-file .env.production -f docker-compose.production.yml'
 
-docker compose -f docker-compose.production.yml build api web admin
-docker compose -f docker-compose.production.yml up -d api web admin reverse-proxy
+$DC build api web admin
+$DC up -d api web admin reverse-proxy
 ```
 
 **GitHub Actions «Deploy production»** на шаге сборки выполняет **ту же** `docker compose build` **на вашем VPS** по SSH — если Hub «тупит», workflow упадёт с тем же текстом. Имеет смысл **Re-run job** позже или после успешного ручного `docker pull`.
@@ -230,7 +262,7 @@ export NPM_CONFIG_REGISTRY="https://registry.npmmirror.com"
 
 ## 8. `reverse-proxy` не стартует: `Bind for 0.0.0.0:80 failed: port is already allocated`
 
-На хосте **уже занят порт 80** (часто второй контейнер, **nginx на хосте** или панель). Пока конфликт не снят, контейнер **`tourism-reverse-proxy-1`** не поднимется; при этом **healthcheck может быть OK**, если снаружи отвечает **другой** процесс на 80/443.
+На хосте **уже занят порт 80** (часто второй контейнер, **nginx на хосте** или панель). Пока конфликт не снят, контейнер **`toutism-reverse-proxy-1`** (или тот **`…-reverse-proxy-1`**, что показывает **`docker compose --env-file .env.production … ps`**) не поднимется; при этом **healthcheck может быть OK**, если снаружи отвечает **другой** процесс на 80/443.
 
 **Кто слушает 80/443:**
 

@@ -33,9 +33,9 @@ docker compose version
 
 echo "==> каталог приложения"
 mkdir -p /opt/mywave
-echo "Дальше вручную: cd /opt/mywave && git clone <ваш репо> toutism && cd toutism"
+echo "Дальше вручную: cd /opt/mywave && git clone <ваш репо> tourism && cd tourism"
 echo "После клонирования запустите снова этот скрипт с аргументом пути к репо:"
-echo "  bash scripts/timeweb-gate3-bootstrap.sh /opt/mywave/toutism"
+echo "  bash scripts/timeweb-gate3-bootstrap.sh /opt/mywave/tourism"
 
 REPO_ROOT="${1:-}"
 if [[ -n "${REPO_ROOT}" ]]; then

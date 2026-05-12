@@ -2,7 +2,7 @@
 
 Копируйте **ровно одну** строку из каждого блока, выполняйте, затем переходите к следующей.
 
-Предполагается каталог **`/opt/mywave/toutism`** и уже рабочий Docker Compose production.
+Предполагается каталог **`/opt/mywave/tourism`** и уже рабочий Docker Compose production.
 
 Подробности: `docs/deployment/SSL_LE_AUTORENEW.md`.
 
@@ -11,7 +11,7 @@
 ## Обновление кода и nginx + webroot
 
 ```bash
-cd /opt/mywave/toutism
+cd /opt/mywave/tourism
 ```
 
 ```bash
@@ -21,7 +21,7 @@ git pull origin main
 **Если видите `fatal: not a git repository`** — каталог на VPS собран не через `git clone`: команду `git pull` **пропустите**. Обновляйте файлы так:
 
 - с ПК: **SFTP/WinSCP** или **`scp`** для `infra/nginx/mywave.conf`, `docker-compose.production.yml`, `scripts/le-deploy-sync.sh`; или
-- на сервере один раз: **`git clone`** в другой каталог и скопируйте нужные пути в `/opt/mywave/toutism/` (`cp`/`rsync`).
+- на сервере один раз: **`git clone`** в другой каталог и скопируйте нужные пути в `/opt/mywave/tourism/` (`cp`/`rsync`).
 
 Если ошибка авторизации GitHub при `pull` — тот же обход: архив, `scp` или RAW/API с токеном при приватном репо.
 
@@ -76,15 +76,15 @@ rm -f infra/certbot-webroot/.well-known/acme-challenge/probe-test
 ## Одноразовый выпуск SAN (4 имени, HTTP-01)
 
 ```bash
-chmod +x /opt/mywave/toutism/scripts/le-deploy-sync.sh
+chmod +x /opt/mywave/tourism/scripts/le-deploy-sync.sh
 ```
 
 ```bash
-sudo certbot certonly --webroot -w /opt/mywave/toutism/infra/certbot-webroot -d mywavetour.ru -d www.mywavetour.ru -d api.mywavetour.ru -d admin.mywavetour.ru --preferred-challenges http
+sudo certbot certonly --webroot -w /opt/mywave/tourism/infra/certbot-webroot -d mywavetour.ru -d www.mywavetour.ru -d api.mywavetour.ru -d admin.mywavetour.ru --preferred-challenges http
 ```
 
 ```bash
-sudo MYWAVE_ROOT=/opt/mywave/toutism /opt/mywave/toutism/scripts/le-deploy-sync.sh
+sudo MYWAVE_ROOT=/opt/mywave/tourism /opt/mywave/tourism/scripts/le-deploy-sync.sh
 ```
 
 ```bash
@@ -99,8 +99,8 @@ curl -sSI https://api.mywavetour.ru/health | head -n 5
 sudo tee /etc/letsencrypt/renewal-hooks/deploy/99-mywave-le-deploy-sync.sh >/dev/null <<'EOF'
 #!/bin/sh
 set -e
-export MYWAVE_ROOT=/opt/mywave/toutism
-exec /opt/mywave/toutism/scripts/le-deploy-sync.sh
+export MYWAVE_ROOT=/opt/mywave/tourism
+exec /opt/mywave/tourism/scripts/le-deploy-sync.sh
 EOF
 ```
 
@@ -125,7 +125,7 @@ sudo certbot renew --dry-run
 ## Если снова «рассинхрон» конфига в контейнере
 
 ```bash
-cd /opt/mywave/toutism
+cd /opt/mywave/tourism
 ```
 
 ```bash

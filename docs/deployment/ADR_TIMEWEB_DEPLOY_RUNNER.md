@@ -6,7 +6,7 @@ Accepted (current policy), self-hosted deferred.
 
 ## Context
 
-Production deploy выполняется через GitHub Actions `workflow_dispatch` и rsync по SSH на VPS (`/opt/mywave/toutism`).
+Production deploy выполняется через GitHub Actions `workflow_dispatch` и rsync по SSH на VPS (канон каталога: **`/opt/mywave/tourism`**).
 Наблюдались периодические сетевые сбои:
 
 - SSH probe timeout до VPS:22 (exit 255)

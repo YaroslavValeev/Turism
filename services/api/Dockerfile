@@ -25,12 +25,17 @@ RUN npm config set registry "$NPM_CONFIG_REGISTRY" \
   && pnpm install --frozen-lockfile
 
 FROM deps AS build
+ARG PRISMA_ENGINES_MIRROR=
+ENV PRISMA_ENGINES_MIRROR=${PRISMA_ENGINES_MIRROR}
 RUN pnpm --filter @mywave/config build
-RUN pnpm --filter api db:generate
+# prisma generate парсит datasource — нужен валидный DATABASE_URL (БД не должна быть доступна).
+RUN DATABASE_URL="postgresql://build:build@127.0.0.1:5432/build?schema=public" pnpm --filter api db:generate
 RUN pnpm --filter api build
 
 FROM node:20-bookworm-slim AS runtime
 ARG NPM_CONFIG_REGISTRY=https://registry.npmjs.org/
+ARG PRISMA_ENGINES_MIRROR=
+ENV PRISMA_ENGINES_MIRROR=${PRISMA_ENGINES_MIRROR}
 RUN apt-get update \
   && apt-get install -y --no-install-recommends openssl ca-certificates \
   && rm -rf /var/lib/apt/lists/*

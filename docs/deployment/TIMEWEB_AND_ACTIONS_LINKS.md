@@ -4,6 +4,8 @@
 
 **Копипаст в консоль VPS (Timeweb):** [TIMEWEB_VPS_TERMINAL_COMMANDS.md](./TIMEWEB_VPS_TERMINAL_COMMANDS.md).
 
+**Пошагово: каждый клик в панели Timeweb + команды по одной строке:** [TIMEWEB_CLICK_BY_CLICK.md](./TIMEWEB_CLICK_BY_CLICK.md).
+
 **Канон развёртывания (роли, конфиги, маршруты):** [DEPLOYMENT_CANON.md](./DEPLOYMENT_CANON.md).
 
 Используйте этот файл, когда **Deploy production** падает на SSH/rsync (таймаут до VPS:22).

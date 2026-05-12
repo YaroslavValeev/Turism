@@ -8,7 +8,7 @@
 #   DEPLOY_HOST       — IP или хост VPS
 #   DEPLOY_USER       — пользователь SSH (например root или deploy)
 #   DEPLOY_KEY_FILE   — путь к приватному ключу OpenSSH (chmod 600)
-#   DEPLOY_PATH       — каталог на сервере (по умолчанию /opt/mywave/toutism)
+#   DEPLOY_PATH       — каталог на сервере (по умолчанию /opt/mywave/tourism). Префикс контейнеров = имя Compose-проекта (часто tourism-* при каталоге tourism).
 #   DEPLOY_PORT       — SSH порт (по умолчанию 22)
 #   BUILD_MODE        — incremental (по умолчанию) или full
 #
@@ -29,7 +29,7 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 : "${DEPLOY_USER:?Задайте DEPLOY_USER}"
 : "${DEPLOY_KEY_FILE:?Задайте DEPLOY_KEY_FILE — путь к приватному ключу}"
 
-DEPLOY_PATH="${DEPLOY_PATH:-/opt/mywave/toutism}"
+DEPLOY_PATH="${DEPLOY_PATH:-/opt/mywave/tourism}"
 DEPLOY_PORT="${DEPLOY_PORT:-22}"
 BUILD_MODE="${BUILD_MODE:-incremental}"
 
@@ -69,14 +69,14 @@ rsync -avz -e "ssh -4 -i ${KEY_FILE} -p ${DEPLOY_PORT} -o BatchMode=yes -o Stric
 REMOTE_CMD="set -euo pipefail; cd '${DEPLOY_PATH}';"
 if [[ "$BUILD_MODE" == "full" ]]; then
   REMOTE_CMD+=" echo '>>> docker compose build --no-cache api web admin';"
-  REMOTE_CMD+=" docker compose -f docker-compose.production.yml build --no-cache api web admin;"
+  REMOTE_CMD+=" docker compose --env-file .env.production -f docker-compose.production.yml build --no-cache api web admin;"
   REMOTE_CMD+=" echo '>>> docker compose up -d api web admin reverse-proxy';"
-  REMOTE_CMD+=" docker compose -f docker-compose.production.yml up -d api web admin reverse-proxy;"
+  REMOTE_CMD+=" docker compose --env-file .env.production -f docker-compose.production.yml up -d api web admin reverse-proxy;"
 else
   REMOTE_CMD+=" echo '>>> docker compose up -d --build api web admin reverse-proxy (incremental)';"
-  REMOTE_CMD+=" docker compose -f docker-compose.production.yml up -d --build api web admin reverse-proxy;"
+  REMOTE_CMD+=" docker compose --env-file .env.production -f docker-compose.production.yml up -d --build api web admin reverse-proxy;"
 fi
-REMOTE_CMD+=" docker compose -f docker-compose.production.yml ps"
+REMOTE_CMD+=" docker compose --env-file .env.production -f docker-compose.production.yml ps"
 
 echo ">>> SSH: docker compose ($BUILD_MODE)"
 "${SSH_BASE[@]}" "${DEPLOY_USER}@${DEPLOY_HOST}" "$REMOTE_CMD"

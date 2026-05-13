@@ -139,7 +139,7 @@ grep -n 'location /' -A5 /opt/mywave/tourism/infra/nginx/mywave.conf | head -n 2
 Внутри блока **`location /`** для **`server_name mywavetour.ru`** должны быть **`set $mw_web web:3000`** и **`proxy_pass http://$mw_web`**.  
 Если вместо этого **`api:3001`** — конфиг **ошибочный** (витрина уйдёт на бэкенд). **Не переходите к части 5:** скачайте канонический **`infra/nginx/mywave.conf`** из репозитория (или `scp` с ПК) и снова откройте **`nano`**, как в §4.2.
 
-**Третья проверка — каталог (`/api/programs`):** в каноническом конфиге для **`location /api/`** должны быть **`rewrite ^/api/(.*)$ /$1 break;`**, затем **`set $mw_api_pass http://api:3001;`** и **`proxy_pass $mw_api_pass;`** (нельзя **`proxy_pass http://$…/;`** для префикса `/api/`: nginx не снимает префикс с URI, Express отвечает **`Cannot GET /`** и витрина пустая).
+**Третья проверка — каталог (`/api/programs`):** в каноническом конфиге для **`location /api/`** должны быть **`set $mw_api api:3001;`**, **`set $api_uri $uri;`**, затем блок **`if ($uri ~ ^/api/(.*)$)`** с **`set $api_uri /$1;`** и итоговый **`proxy_pass http://$mw_api$api_uri$is_args$args;`**. Это production-hotfix, уже подтверждённый на VPS: внешний **`/api/programs`** приходит в Express как **`/programs`** и не падает в **`Cannot GET /`**.
 
 ---
 

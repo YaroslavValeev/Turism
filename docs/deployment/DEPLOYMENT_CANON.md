@@ -158,7 +158,7 @@ docker compose --env-file .env.production -f docker-compose.production.yml exec 
 |---------------|------|-------------------|
 | **mywavetour.ru**, **www** | `/` | **web:3000** (Next, витрина) |
 | то же | `/api/media` | **web:3000** (Next API route) |
-| то же | `/api/*` (кроме `/api/media`) | **api:3001** (Express; в **`mywave.conf`** префикс снимает **`rewrite … break`**, затем **`proxy_pass $mw_api_pass`**) |
+| то же | `/api/*` (кроме `/api/media`) | **api:3001** (Express; в **`mywave.conf`** путь собирается как **`$api_uri`** и проксируется через **`proxy_pass http://$mw_api$api_uri$is_args$args`**) |
 | то же | `=/health` | **api:3001/health** |
 | **admin.mywavetour.ru** | `/` | **admin:3002** |
 | **api.mywavetour.ru** | `/` | **api:3001** |
@@ -199,7 +199,7 @@ docker compose --env-file .env.production -f docker-compose.production.yml exec 
 2. **`git push` на VPS** без полноценного клона — не то место; push только с ПК / CI.
 3. **Rsync с удалением сертификатов** — если не исключён **`infra/nginx/certs/`**, сломается HTTPS.
 4. **Путаница «папка vs проект»** — каталог на диске **`/opt/mywave/tourism`**; имя **Compose-проекта** по умолчанию совпадает с именем каталога (**`tourism`** → **`tourism-*`**), если явно не задан **`COMPOSE_PROJECT_NAME`**. В командах всегда **`export MW=/opt/mywave/tourism`** и **`cd "$MW"`**; реальные имена контейнеров — из **`docker compose ps`**.
-5. **`location /api/ { proxy_pass http://$variable/; }`** — nginx **не** снимает префикс `/api/` с URI; витрина получает **404** / **`Cannot GET /`** на **`/api/programs`**. Канон: **`rewrite` + `proxy_pass $mw_api_pass`** — см. **`infra/nginx/mywave.conf`**; локально **`bash scripts/verify_nginx_config.sh`**.
+5. **Неправильная сборка `proxy_pass` для `/api/`** — если nginx не пересобирает URI явно, витрина получает **404** / **`Cannot GET /`** на **`/api/programs`**. Канон: **`set $api_uri $uri`** + нормализация через **`if ($uri ~ ^/api/(.*)$)`** + **`proxy_pass http://$mw_api$api_uri$is_args$args`** — см. **`infra/nginx/mywave.conf`**; локально **`bash scripts/verify_nginx_config.sh`**.
 6. **Ручной nginx: `location /` на `api` или `proxy_pass …/api/health` на бэкенде** — ломают сайт и `/api/health`; см. §5b и канон **`infra/nginx/mywave.conf`** в репозитории.
 
 ---

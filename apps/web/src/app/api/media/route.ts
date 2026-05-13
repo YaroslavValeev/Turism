@@ -30,9 +30,8 @@ function buildPlaceholderSvg(url: string): string {
   <rect width="1200" height="900" rx="48" fill="url(#bg)"/>
   <rect x="72" y="72" width="1056" height="756" rx="36" fill="#F8FBFA" stroke="#BFE8E3" stroke-width="4"/>
   <text x="108" y="184" fill="#147A78" font-family="Arial, sans-serif" font-size="36" font-weight="700">MyWaveTour</text>
-  <text x="108" y="248" fill="#22313F" font-family="Arial, sans-serif" font-size="66" font-weight="700">Изображение недоступно</text>
-  <text x="108" y="326" fill="#5E6B73" font-family="Arial, sans-serif" font-size="32">Источник не отдал обложку или ссылка устарела.</text>
-  <text x="108" y="410" fill="#7A8A94" font-family="Arial, sans-serif" font-size="28">Источник: ${host}</text>
+  <text x="108" y="248" fill="#22313F" font-family="Arial, sans-serif" font-size="60" font-weight="700">Фото программы обновляется</text>
+  <text x="108" y="326" fill="#5E6B73" font-family="Arial, sans-serif" font-size="32">Источник: ${host}</text>
 </svg>`.trim();
 
   return svg;

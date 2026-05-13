@@ -18,8 +18,21 @@ function isLocalMediaUrl(url: string): boolean {
   return url.startsWith("/");
 }
 
+function shouldLoadDirectlyInBrowser(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    const host = parsed.hostname.toLowerCase();
+    // Подписанные CDN Instagram/Facebook часто режут server-to-server fetch из `/api/media`,
+    // но в обычном <img> у пользователя открываются нормально.
+    return host.includes("cdninstagram.com") || host.includes("fbcdn.net");
+  } catch {
+    return false;
+  }
+}
+
 function shouldProxyMediaUrl(url: string): boolean {
   if (isLocalMediaUrl(url)) return false;
+  if (shouldLoadDirectlyInBrowser(url)) return false;
   try {
     const parsed = new URL(url);
     return parsed.protocol === "http:" || parsed.protocol === "https:";

@@ -86,8 +86,29 @@ function SectionBlock({ title, children }: { title: string; children: ReactNode 
 
 const URL_PATTERN = /(https?:\/\/[^\s]+)/gi;
 
+function sanitizeScrapedProgramText(text: string): string {
+  const cleaned = String(text ?? "")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/\(\s*min-width:[^>]+type=["']text\/css["']>\s*/gi, " ")
+    .replace(/(?:https?:)?\/\/(?:static|thb)\.tildacdn\.com\/[^\s"'`<>]+/gi, " ")
+    .replace(/\b(?:src|href|role|type|style|class|data-[\w-]+)=["'][^"']*["']/gi, " ")
+    .replace(/<\/?(?:style|script|link|img|source)[^>]*>/gi, " ")
+    .replace(/<\/?[^>]+>/g, " ");
+
+  return cleaned
+    .split(/\r?\n/)
+    .map((line) =>
+      line
+        .replace(/\s+/g, " ")
+        .replace(/^[\s"'`;:.,)\]}>/\\-]+/, "")
+        .trim(),
+    )
+    .filter(Boolean)
+    .join("\n");
+}
+
 function renderTextWithLinks(text: string): ReactNode[] {
-  const lines = text.split(/\r?\n/);
+  const lines = sanitizeScrapedProgramText(text).split(/\r?\n/);
   const nodes: ReactNode[] = [];
 
   lines.forEach((line, lineIndex) => {
@@ -142,7 +163,7 @@ function ProgramInfoField({
 }
 
 function linesToBullets(text: string): string[] {
-  return text
+  return sanitizeScrapedProgramText(text)
     .split(/\r?\n/)
     .map((l) => l.replace(/^[-•*]\s*/, "").trim())
     .filter(Boolean);

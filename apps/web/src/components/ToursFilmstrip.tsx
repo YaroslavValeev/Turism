@@ -14,6 +14,7 @@ import {
 } from "./toursFilmstripModel";
 
 type DateWindow = "" | "30" | "60" | "90";
+const CANON_WINDOW_DAYS = 10;
 
 const DATE_FILTER_OPTIONS: { value: DateWindow; label: string }[] = [
   { value: "", label: "Все даты" },
@@ -34,6 +35,14 @@ function programStartsWithinDays(p: ProgramLike, days: number): boolean {
   limit.setDate(limit.getDate() + days);
   const start = startOfDay(new Date(p.startDate));
   return start >= now && start <= limit;
+}
+
+function programStartedWithinPastDays(p: ProgramLike, days: number): boolean {
+  const now = startOfDay(new Date());
+  const lower = new Date(now);
+  lower.setDate(lower.getDate() - days);
+  const start = startOfDay(new Date(p.startDate));
+  return start < now && start >= lower;
 }
 
 type Props = {
@@ -166,7 +175,7 @@ function TourCard({
           className="tour-card-badge"
           style={{ background: item.badge.bg, color: item.badge.color }}
         >
-          {item.badge.label}
+          {item.isArchived ? item.archivedStateLabel ?? "Архив" : item.badge.label}
         </span>
         <button
           type="button"
@@ -248,8 +257,10 @@ export function ToursFilmstrip({ programs, regionOptions, loading, allToursHref 
     return [...list];
   }, [programs, chip, region]);
 
-  const filteredCurrent = useMemo(() => {
+  const filteredUpcoming = useMemo(() => {
     let list = filteredBase.filter((p) => startOfDay(new Date(p.startDate)) >= startOfDay(new Date()));
+    // Канон витрины: показываем только старты в пределах ближайших 10 дней.
+    list = list.filter((p) => programStartsWithinDays(p, CANON_WINDOW_DAYS));
     if (dateWin) {
       const d = dateWin === "30" ? 30 : dateWin === "60" ? 60 : 90;
       list = list.filter((p) => programStartsWithinDays(p, d));
@@ -257,28 +268,29 @@ export function ToursFilmstrip({ programs, regionOptions, loading, allToursHref 
     return [...list].sort((a, b) => +new Date(a.startDate) - +new Date(b.startDate));
   }, [filteredBase, dateWin]);
 
-  const filteredPastLast5 = useMemo(() => {
-    const past = filteredBase
-      .filter((p) => startOfDay(new Date(p.startDate)) < startOfDay(new Date()))
+  const filteredStartedWithinCanon = useMemo(() => {
+    const started = filteredBase
+      // Уже начались (идут/завершились) и при этом старт был не более 10 дней назад — показываем как archived (ч/б).
+      .filter((p) => programStartedWithinPastDays(p, CANON_WINDOW_DAYS))
       .sort((a, b) => +new Date(b.startDate) - +new Date(a.startDate))
       .slice(0, 5);
-    return past;
+    return started;
   }, [filteredBase]);
 
   const cards: TourCardModel[] = useMemo(() => {
     if (loading) return [];
-    if (filteredCurrent.length > 0 || filteredPastLast5.length > 0) {
-      const currentCards = filteredCurrent.map((p, i) => programToTourCard(p, i));
-      const pastCards = filteredPastLast5.map((p, i) =>
-        programToTourCard(p, filteredCurrent.length + i, { isArchived: true }),
+    if (filteredUpcoming.length > 0 || filteredStartedWithinCanon.length > 0) {
+      const upcomingCards = filteredUpcoming.map((p, i) => programToTourCard(p, i));
+      const startedCards = filteredStartedWithinCanon.map((p, i) =>
+        programToTourCard(p, filteredUpcoming.length + i, { isArchived: true }),
       );
-      return [...currentCards, ...pastCards];
+      return [...upcomingCards, ...startedCards];
     }
     return DEMO_TOUR_CARDS;
-  }, [loading, filteredCurrent, filteredPastLast5]);
+  }, [loading, filteredUpcoming, filteredStartedWithinCanon]);
 
   /** Каталог есть, но текущий фильтр никого не прошёл — показываем демо-кадры и пояснение. */
-  const isFilterEmpty = !loading && programs.length > 0 && filteredCurrent.length === 0 && filteredPastLast5.length === 0;
+  const isFilterEmpty = !loading && programs.length > 0 && filteredUpcoming.length === 0 && filteredStartedWithinCanon.length === 0;
 
   const pageCount = loading || cards.length === 0 ? 1 : Math.max(1, Math.ceil(cards.length / PAGE));
 

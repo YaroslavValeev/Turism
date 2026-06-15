@@ -2,6 +2,7 @@ import type { Env } from "@mywave/config";
 import { prisma } from "../../lib/prisma";
 import { sendEmailIfConfigured } from "./mailer";
 import { safeLog } from "../../lib/safeLogger";
+import { callTelegramJson } from "../telegram/telegramApi";
 import {
   buildEmailProgramNotifyHtml,
   buildEmailProgramNotifyText,
@@ -119,27 +120,18 @@ async function sendTelegramDirectIfPossible(
   const base = env.TELEGRAM_BOT_API_BASE_URL?.trim();
   if (!base) return false;
   try {
-    const baseUrl = base.replace(/\/+$/, "");
     if (options?.mediaUrl && isPublicHttpUrl(options.mediaUrl)) {
-      await fetch(`${baseUrl}/sendPhoto`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          chat_id: `@${username.replace(/^@/, "")}`,
-          photo: options.mediaUrl,
-          disable_notification: true,
-        }),
+      await callTelegramJson(env, "sendPhoto", {
+        chat_id: `@${username.replace(/^@/, "")}`,
+        photo: options.mediaUrl,
+        disable_notification: true,
       }).catch(() => undefined);
     }
-    const resp = await fetch(`${base.replace(/\/+$/, "")}/sendMessage`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        chat_id: `@${username.replace(/^@/, "")}`,
-        text,
-        disable_web_page_preview: true,
-        ...(options?.parseMode ? { parse_mode: options.parseMode } : {}),
-      }),
+    const resp = await callTelegramJson(env, "sendMessage", {
+      chat_id: `@${username.replace(/^@/, "")}`,
+      text,
+      disable_web_page_preview: true,
+      ...(options?.parseMode ? { parse_mode: options.parseMode } : {}),
     });
     return resp.ok;
   } catch {
@@ -199,31 +191,22 @@ async function sendTelegramChannelUpdate(
   const chatId = env.TELEGRAM_UPDATES_CHANNEL_CHAT_ID?.trim();
   if (!base || !chatId) return false;
   try {
-    const baseUrl = base.replace(/\/+$/, "");
     if (options?.mediaUrl && isPublicHttpUrl(options.mediaUrl)) {
-      await fetch(`${baseUrl}/sendPhoto`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          chat_id: chatId,
-          photo: options.mediaUrl,
-          disable_notification: true,
-        }),
+      await callTelegramJson(env, "sendPhoto", {
+        chat_id: chatId,
+        photo: options.mediaUrl,
+        disable_notification: true,
       }).catch(() => undefined);
     }
-    const resp = await fetch(`${base.replace(/\/+$/, "")}/sendMessage`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        chat_id: chatId,
-        text,
-        disable_web_page_preview: false,
-        ...(options?.parseMode ? { parse_mode: options.parseMode } : {}),
-        ...(replyMarkup ? { reply_markup: replyMarkup } : {}),
-      }),
+    const resp = await callTelegramJson(env, "sendMessage", {
+      chat_id: chatId,
+      text,
+      disable_web_page_preview: false,
+      ...(options?.parseMode ? { parse_mode: options.parseMode } : {}),
+      ...(replyMarkup ? { reply_markup: replyMarkup } : {}),
     });
     if (!resp.ok) {
-      console.error("[subscriptions] telegram publish failed", resp.status);
+      console.error("[subscriptions] telegram publish failed", resp.description ?? "sendMessage failed");
     }
     return resp.ok;
   } catch (error) {

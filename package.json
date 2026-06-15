@@ -13,6 +13,7 @@
     "build:web": "pnpm --filter web build",
     "filmstrip:build-assets": "pnpm --filter web run filmstrip:build-assets",
     "build": "pnpm -r run build",
+    "test": "pnpm --filter @mywave/config test && pnpm --filter api test",
     "db:generate": "pnpm --filter api db:generate",
     "db:deploy": "pnpm --filter api db:deploy",
     "db:migrate": "pnpm --filter api db:migrate",
@@ -33,6 +34,8 @@
     "ingest:count-owner-sources": "pnpm --filter api exec tsx prisma/count_owner_sources.ts",
     "ingest:enable-autopublish-sources": "pnpm --filter api exec tsx prisma/enable_autopublish_active_sources.ts",
     "smoke": "node scripts/smoke.js",
+    "smoke:telegram-platform": "node scripts/smoke_telegram_platform.mjs",
+    "e2e:telegram-platform-real": "node scripts/e2e_telegram_platform_real.mjs",
     "smoke:content-pipeline": "node scripts/smoke_content_pipeline.mjs",
     "smoke:analytics": "pnpm --filter @mywave/config build && node -r ./scripts/preload-repo-env.cjs scripts/smoke_analytics_internal.js",
     "check:analytics-parity": "pnpm --filter @mywave/config build && node scripts/check_analytics_parity.mjs",
@@ -62,3 +65,4 @@
     }
   }
 }
+

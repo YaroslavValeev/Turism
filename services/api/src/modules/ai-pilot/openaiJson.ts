@@ -1,4 +1,5 @@
 import type { Env } from "@mywave/config";
+import { proxyFetch, redactSensitiveUrls } from "../../lib/proxyFetch";
 
 export type OpenAiJsonResult =
   | { ok: true; json: unknown; model: string }
@@ -21,20 +22,24 @@ export async function callOpenAiJson(
   const ac = new AbortController();
   const t = setTimeout(() => ac.abort(), timeoutMs);
   try {
-    const r = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      signal: ac.signal,
-      headers: {
-        Authorization: `Bearer ${env.OPENAI_API_KEY}`,
-        "Content-Type": "application/json",
+    const r = await proxyFetch(
+      "https://api.openai.com/v1/chat/completions",
+      {
+        method: "POST",
+        signal: ac.signal,
+        headers: {
+          Authorization: `Bearer ${env.OPENAI_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model,
+          temperature: 0.2,
+          response_format: { type: "json_object" },
+          messages,
+        }),
       },
-      body: JSON.stringify({
-        model,
-        temperature: 0.2,
-        response_format: { type: "json_object" },
-        messages,
-      }),
-    });
+      env.OPENAI_HTTP_PROXY,
+    );
     if (!r.ok) {
       const text = await r.text();
       return { ok: false, reason: "http_error", detail: text.slice(0, 500) };
@@ -49,7 +54,7 @@ export async function callOpenAiJson(
     const json = JSON.parse(raw) as unknown;
     return { ok: true, json, model };
   } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
+    const msg = redactSensitiveUrls(e instanceof Error ? e.message : String(e));
     if (msg.includes("abort") || msg.includes("Aborted")) {
       return { ok: false, reason: "timeout", detail: msg };
     }

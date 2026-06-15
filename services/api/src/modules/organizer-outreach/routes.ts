@@ -13,6 +13,7 @@ import {
   approveAndSendOutreachCampaign,
 } from "./service";
 import { safeError } from "../../lib/safeLogger";
+import { proxyFetch } from "../../lib/proxyFetch";
 
 function actor(req: Request): string | null {
   return (req as Request & { adminUserId?: string }).adminUserId ?? null;
@@ -124,28 +125,32 @@ export function organizerOutreachRoutes(env: Env): Router {
     }
     const tone = typeof req.body?.tone === "string" ? req.body.tone : "дружелюбный, короткие фразы";
     const metricsBlock = `Просмотры: ${c.viewsCount}. Переходы: ${c.clicksCount}. Заявки: ${c.leadsCount}. Брони: ${c.dealsCount}. Сумма сделок (₽): ${c.dealAmountTotal}. Тип: ${c.templateType}.`;
-    const rj = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${env.OPENAI_API_KEY}`,
-        "Content-Type": "application/json",
+    const rj = await proxyFetch(
+      "https://api.openai.com/v1/chat/completions",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${env.OPENAI_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "gpt-4o-mini",
+          messages: [
+            {
+              role: "system",
+              content:
+                "Ты редактор писем для организаторов MyWave. Не меняй и не выдумывай цифры. Используй ровно переданные числа. Русский язык.",
+            },
+            {
+              role: "user",
+              content: `Переформулируй письмо, тон: ${tone}.\n\nМетрики (канон, не трогать): ${metricsBlock}\n\nТема: ${c.emailSubject}\n\nТекст:\n${c.emailBody}`,
+            },
+          ],
+          temperature: 0.3,
+        }),
       },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [
-          {
-            role: "system",
-            content:
-              "Ты редактор писем для организаторов MyWave. Не меняй и не выдумывай цифры. Используй ровно переданные числа. Русский язык.",
-          },
-          {
-            role: "user",
-            content: `Переформулируй письмо, тон: ${tone}.\n\nМетрики (канон, не трогать): ${metricsBlock}\n\nТема: ${c.emailSubject}\n\nТекст:\n${c.emailBody}`,
-          },
-        ],
-        temperature: 0.3,
-      }),
-    });
+      env.OPENAI_HTTP_PROXY,
+    );
     if (!rj.ok) {
       res.status(502).json({ error: "openai", detail: await rj.text() });
       return;

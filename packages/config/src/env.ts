@@ -58,12 +58,22 @@ export interface Env {
   TELEGRAM_BOT_API_BASE_URL?: string;
   /** chat_id получателя алертов */
   TELEGRAM_ALERT_CHAT_ID?: string;
+  /** chat_id канала витрины/операционки (может совпадать с ALERT) */
+  TELEGRAM_CHANNEL_CHAT_ID?: string;
   /** chat_id owner для согласования контент-конвейера; иначе используется TELEGRAM_ALERT_CHAT_ID. */
   TELEGRAM_CONTENT_OWNER_CHAT_ID?: string;
   /** Секрет в path: `POST /public/telegram/content-pipeline/:token` */
   CONTENT_PIPELINE_TELEGRAM_WEBHOOK_TOKEN?: string;
+  /** Секрет для единого webhook ingress (`X-Telegram-Bot-Api-Secret-Token`). */
+  TELEGRAM_WEBHOOK_SECRET?: string;
+  /** Username бота (без @), если нужен для deep-link генерации/логов. */
+  TELEGRAM_BOT_USERNAME?: string;
   /** Опционально: OpenAI для расшифровки voice (rewrite). */
   OPENAI_API_KEY?: string;
+  /** SOCKS5/HTTP proxy URL for OpenAI egress from restricted RU VPS. */
+  OPENAI_HTTP_PROXY?: string;
+  /** Optional proxy URL for Telegram Bot API only when direct Bot API is unstable. */
+  TELEGRAM_BOT_HTTP_PROXY?: string;
   /** Публичная ссылка-приглашение в TG группу/канал с обновлениями */
   TELEGRAM_UPDATES_INVITE_LINK?: string;
   /** Username бота для deep-link opt-in (без @), опционально */
@@ -139,9 +149,14 @@ export function loadEnv(): Env {
     INTERNAL_ANALYTICS_TOKEN: optional("INTERNAL_ANALYTICS_TOKEN"),
     TELEGRAM_BOT_API_BASE_URL: optional("TELEGRAM_BOT_API_BASE_URL"),
     TELEGRAM_ALERT_CHAT_ID: optional("TELEGRAM_ALERT_CHAT_ID"),
+    TELEGRAM_CHANNEL_CHAT_ID: optional("TELEGRAM_CHANNEL_CHAT_ID"),
     TELEGRAM_CONTENT_OWNER_CHAT_ID: optional("TELEGRAM_CONTENT_OWNER_CHAT_ID"),
     CONTENT_PIPELINE_TELEGRAM_WEBHOOK_TOKEN: optional("CONTENT_PIPELINE_TELEGRAM_WEBHOOK_TOKEN"),
+    TELEGRAM_WEBHOOK_SECRET: optional("TELEGRAM_WEBHOOK_SECRET"),
+    TELEGRAM_BOT_USERNAME: optional("TELEGRAM_BOT_USERNAME"),
     OPENAI_API_KEY: optional("OPENAI_API_KEY"),
+    OPENAI_HTTP_PROXY: optional("OPENAI_HTTP_PROXY"),
+    TELEGRAM_BOT_HTTP_PROXY: optional("TELEGRAM_BOT_HTTP_PROXY"),
     TELEGRAM_UPDATES_INVITE_LINK: optional("TELEGRAM_UPDATES_INVITE_LINK"),
     TELEGRAM_UPDATES_BOT_USERNAME: optional("TELEGRAM_UPDATES_BOT_USERNAME"),
     TELEGRAM_UPDATES_CHANNEL_CHAT_ID: optional("TELEGRAM_UPDATES_CHANNEL_CHAT_ID"),

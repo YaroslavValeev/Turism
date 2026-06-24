@@ -12,6 +12,8 @@ describe("applyApiRuntimeEnvAliases", () => {
       "TELEGRAM_BOT_TOKEN",
       "TELEGRAM_ALERT_CHAT_ID",
       "OWNER_CHAT_ID",
+      "TELEGRAM_WEBHOOK_PUBLIC_BASE_URL",
+      "PUBLIC_API_BASE_URL",
     ]) {
       backup[k] = process.env[k];
       delete process.env[k];
@@ -34,13 +36,19 @@ describe("applyApiRuntimeEnvAliases", () => {
   it("builds TELEGRAM_BOT_API_BASE_URL from TELEGRAM_BOT_TOKEN", () => {
     process.env.TELEGRAM_BOT_TOKEN = "abc";
     applyApiRuntimeEnvAliases();
-    expect(process.env.TELEGRAM_BOT_API_BASE_URL).toBe("https://api.telegram.org/botabc");
+    expect(process.env.TELEGRAM_BOT_API_BASE_URL).toBe("https://api.telegram.org");
   });
 
   it("maps OWNER_CHAT_ID to TELEGRAM_ALERT_CHAT_ID", () => {
     process.env.OWNER_CHAT_ID = "999";
     applyApiRuntimeEnvAliases();
     expect(process.env.TELEGRAM_ALERT_CHAT_ID).toBe("999");
+  });
+
+  it("maps PUBLIC_API_BASE_URL to TELEGRAM_WEBHOOK_PUBLIC_BASE_URL", () => {
+    process.env.PUBLIC_API_BASE_URL = "https://api.mywavetour.ru/";
+    applyApiRuntimeEnvAliases();
+    expect(process.env.TELEGRAM_WEBHOOK_PUBLIC_BASE_URL).toBe("https://api.mywavetour.ru");
   });
 
   it("does not override explicit canonical vars", () => {

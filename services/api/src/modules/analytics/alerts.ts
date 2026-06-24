@@ -2,15 +2,15 @@ import { Prisma } from "@prisma/client";
 import type { Env } from "@mywave/config";
 import { prisma } from "../../lib/prisma";
 import { getApiEnv } from "./runtimeEnv";
+import { buildTelegramMethodUrl } from "../telegram/telegramApi";
 import { computeDqMetrics } from "./dqMetrics";
 
 type AlertFire = { key: string; message: string; fingerprint: string };
 
 async function sendTelegramMessage(env: Env, text: string): Promise<boolean> {
-  const base = env.TELEGRAM_BOT_API_BASE_URL?.trim();
   const chatId = env.TELEGRAM_ALERT_CHAT_ID?.trim();
-  if (!base || !chatId) return false;
-  const url = `${base.replace(/\/+$/, "")}/sendMessage`;
+  const url = buildTelegramMethodUrl(env, "sendMessage");
+  if (!url || !chatId) return false;
   const resp = await fetch(url, {
     method: "POST",
     headers: { "content-type": "application/json" },

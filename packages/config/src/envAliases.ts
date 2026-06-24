@@ -14,11 +14,14 @@ export function applyApiRuntimeEnvAliases(): void {
   }
 
   if (!trim(process.env.TELEGRAM_BOT_API_BASE_URL) && trim(process.env.TELEGRAM_BOT_TOKEN)) {
-    const token = trim(process.env.TELEGRAM_BOT_TOKEN);
-    process.env.TELEGRAM_BOT_API_BASE_URL = `https://api.telegram.org/bot${token}`;
+    process.env.TELEGRAM_BOT_API_BASE_URL = "https://api.telegram.org";
   }
 
   if (!trim(process.env.TELEGRAM_ALERT_CHAT_ID) && trim(process.env.OWNER_CHAT_ID)) {
     process.env.TELEGRAM_ALERT_CHAT_ID = trim(process.env.OWNER_CHAT_ID);
+  }
+
+  if (!trim(process.env.TELEGRAM_WEBHOOK_PUBLIC_BASE_URL) && trim(process.env.PUBLIC_API_BASE_URL)) {
+    process.env.TELEGRAM_WEBHOOK_PUBLIC_BASE_URL = trim(process.env.PUBLIC_API_BASE_URL).replace(/\/+$/, "");
   }
 }

@@ -183,10 +183,10 @@ jobs:
 
       - name: Upload selected artifact and run on VPS
         env:
-          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
-          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
-          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
-          DEPLOY_KEY: ${{ secrets.DEPLOY_OPENSSH_PRIVATE_KEY }}
+          DEPLOY_HOST: ${{ secrets.TOUR_VPS_HOST }}
+          DEPLOY_USER: ${{ secrets.TOUR_VPS_USER }}
+          DEPLOY_PATH: ${{ secrets.TOUR_VPS_PATH }}
+          DEPLOY_KEY: ${{ secrets.TOUR_VPS_SSH_KEY }}
           ROTATE_CAMP_TOKEN: ${{ inputs.rotate_camp_token }}
           BUILD_MODE: ${{ inputs.build_mode }}
         run: |

@@ -114,6 +114,8 @@ export interface Env {
   AI_OWNER_APPROVAL_REQUIRED: boolean;
   /** Запрещён автопаблиш AI; по умолчанию false. */
   AI_AUTOPUBLISH_ENABLED: boolean;
+  /** Внешний bearer token для Camp API endpoint `/api/v1/camps`. */
+  CAMP_API_TOKEN?: string;
 }
 
 export function loadEnv(): Env {
@@ -167,5 +169,6 @@ export function loadEnv(): Env {
     AI_ENABLED: optionalBoolean("AI_ENABLED", false),
     AI_OWNER_APPROVAL_REQUIRED: optionalBoolean("AI_OWNER_APPROVAL_REQUIRED", true),
     AI_AUTOPUBLISH_ENABLED: optionalBoolean("AI_AUTOPUBLISH_ENABLED", false),
+    CAMP_API_TOKEN: optional("CAMP_API_TOKEN"),
   };
 }

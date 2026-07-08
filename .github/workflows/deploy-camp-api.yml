@@ -1,0 +1,148 @@
+name: Deploy Camp API
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-camp-api
+  cancel-in-progress: true
+
+jobs:
+  deploy-camp-api:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Rsync selected Camp API files to VPS
+        env:
+          DEPLOY_HOST: ${{ secrets.TOUR_VPS_HOST }}
+          DEPLOY_USER: ${{ secrets.TOUR_VPS_USER }}
+          DEPLOY_PATH: ${{ secrets.TOUR_VPS_PATH }}
+          DEPLOY_KEY: ${{ secrets.TOUR_VPS_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          DEPLOY_HOST="$(printf '%s' "$DEPLOY_HOST" | tr -d '[:space:]')"
+          DEPLOY_USER="$(printf '%s' "$DEPLOY_USER" | tr -d '[:space:]')"
+          printenv DEPLOY_KEY | tr -d '\r' > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -4 -p 22 -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
+          DP="${DEPLOY_PATH:-/opt/mywave/tourism}"
+          DP="$(echo "$DP" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+          SSH="-4 -i ${HOME}/.ssh/deploy_key -p 22 -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=45 -o ConnectionAttempts=1"
+          ssh $SSH "${DEPLOY_USER}@${DEPLOY_HOST}" "mkdir -p '${DP}'"
+          rsync -avz --timeout=900 -e "ssh $SSH" \
+            --include='services/api/src/modules/camp-feed/' \
+            --include='services/api/src/modules/camp-feed/**' \
+            --include='services/api/src/index.ts' \
+            --include='services/api/src/routes/' \
+            --include='services/api/src/routes/**' \
+            --include='services/api/src/middleware/' \
+            --include='services/api/src/middleware/**' \
+            --include='packages/config/src/env.ts' \
+            --include='services/api/.env.example' \
+            --include='.env.example' \
+            --exclude='*' \
+            "$GITHUB_WORKSPACE/" "${DEPLOY_USER}@${DEPLOY_HOST}:${DP}/"
+
+      - name: Verify Camp API files on VPS
+        env:
+          DEPLOY_HOST: ${{ secrets.TOUR_VPS_HOST }}
+          DEPLOY_USER: ${{ secrets.TOUR_VPS_USER }}
+          DEPLOY_PATH: ${{ secrets.TOUR_VPS_PATH }}
+          DEPLOY_KEY: ${{ secrets.TOUR_VPS_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          DEPLOY_HOST="$(printf '%s' "$DEPLOY_HOST" | tr -d '[:space:]')"
+          DEPLOY_USER="$(printf '%s' "$DEPLOY_USER" | tr -d '[:space:]')"
+          printenv DEPLOY_KEY | tr -d '\r' > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -4 -p 22 -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
+          DP="${DEPLOY_PATH:-/opt/mywave/tourism}"
+          DP="$(echo "$DP" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+          SSH="-4 -i ${HOME}/.ssh/deploy_key -p 22 -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=45 -o ConnectionAttempts=1"
+          ssh $SSH "${DEPLOY_USER}@${DEPLOY_HOST}" "set -euo pipefail; cd '${DP}'; echo '--- verify ---'; grep -RInE 'camp-feed|api/v1/camps|camps-feed.json|INVALID_CAMP_API_TOKEN|CAMP_API_TOKEN' services/api/src packages/config/src services/api/.env.example .env.example || true"
+
+      - name: Ensure CAMP_API_TOKEN exists on VPS
+        env:
+          DEPLOY_HOST: ${{ secrets.TOUR_VPS_HOST }}
+          DEPLOY_USER: ${{ secrets.TOUR_VPS_USER }}
+          DEPLOY_PATH: ${{ secrets.TOUR_VPS_PATH }}
+          DEPLOY_KEY: ${{ secrets.TOUR_VPS_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          DEPLOY_HOST="$(printf '%s' "$DEPLOY_HOST" | tr -d '[:space:]')"
+          DEPLOY_USER="$(printf '%s' "$DEPLOY_USER" | tr -d '[:space:]')"
+          printenv DEPLOY_KEY | tr -d '\r' > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -4 -p 22 -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
+          DP="${DEPLOY_PATH:-/opt/mywave/tourism}"
+          DP="$(echo "$DP" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+          SSH="-4 -i ${HOME}/.ssh/deploy_key -p 22 -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=45 -o ConnectionAttempts=1"
+          ssh $SSH "${DEPLOY_USER}@${DEPLOY_HOST}" "set -euo pipefail; cd '${DP}'; if ! grep -Eq '^CAMP_API_TOKEN=' .env.production services/api/.env.production 2>/dev/null; then echo 'CAMP_API_TOKEN missing on VPS' >&2; exit 1; fi; echo 'CAMP_API_TOKEN configured on VPS'"
+
+      - name: Rebuild and restart API and reverse proxy on VPS
+        env:
+          DEPLOY_HOST: ${{ secrets.TOUR_VPS_HOST }}
+          DEPLOY_USER: ${{ secrets.TOUR_VPS_USER }}
+          DEPLOY_PATH: ${{ secrets.TOUR_VPS_PATH }}
+          DEPLOY_KEY: ${{ secrets.TOUR_VPS_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          DEPLOY_HOST="$(printf '%s' "$DEPLOY_HOST" | tr -d '[:space:]')"
+          DEPLOY_USER="$(printf '%s' "$DEPLOY_USER" | tr -d '[:space:]')"
+          printenv DEPLOY_KEY | tr -d '\r' > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -4 -p 22 -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
+          DP="${DEPLOY_PATH:-/opt/mywave/tourism}"
+          DP="$(echo "$DP" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+          SSH="-4 -i ${HOME}/.ssh/deploy_key -p 22 -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=45 -o ConnectionAttempts=1"
+          ssh $SSH "${DEPLOY_USER}@${DEPLOY_HOST}" "set -euo pipefail; cd '${DP}'; docker compose --env-file .env.production -f docker-compose.production.yml build --progress=plain api; docker compose --env-file .env.production -f docker-compose.production.yml up -d api reverse-proxy"
+
+      - name: Smoke Camp API via local nginx on VPS
+        env:
+          DEPLOY_HOST: ${{ secrets.TOUR_VPS_HOST }}
+          DEPLOY_USER: ${{ secrets.TOUR_VPS_USER }}
+          DEPLOY_PATH: ${{ secrets.TOUR_VPS_PATH }}
+          DEPLOY_KEY: ${{ secrets.TOUR_VPS_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          DEPLOY_HOST="$(printf '%s' "$DEPLOY_HOST" | tr -d '[:space:]')"
+          DEPLOY_USER="$(printf '%s' "$DEPLOY_USER" | tr -d '[:space:]')"
+          printenv DEPLOY_KEY | tr -d '\r' > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -4 -p 22 -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
+          DP="${DEPLOY_PATH:-/opt/mywave/tourism}"
+          DP="$(echo "$DP" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+          SSH="-4 -i ${HOME}/.ssh/deploy_key -p 22 -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=45 -o ConnectionAttempts=1"
+          CAMP_API_TOKEN="$(ssh $SSH "${DEPLOY_USER}@${DEPLOY_HOST}" "set -euo pipefail; cd '${DP}'; python3 - <<'PY'
+import os
+for path in ['.env.production', 'services/api/.env.production']:
+    if os.path.exists(path):
+        for line in open(path):
+            if line.startswith('CAMP_API_TOKEN='):
+                print(line.split('=', 1)[1].strip())
+                raise SystemExit
+raise SystemExit(1)
+PY")"
+          ssh $SSH "${DEPLOY_USER}@${DEPLOY_HOST}" "set -euo pipefail; cd '${DP}'; export CAMP_API_TOKEN='${CAMP_API_TOKEN}'; echo '--- unauthorized check ---'; curl -k -sS -o /dev/null -w '%{http_code}' --resolve api.mywavetour.ru:443:127.0.0.1 -H 'Host: api.mywavetour.ru' 'https://127.0.0.1/api/v1/camps' | tee /tmp/mywave-camps-unauth-status; test \"\$(cat /tmp/mywave-camps-unauth-status)\" = '401'; echo '--- smoke ---'; curl -k -sS --resolve api.mywavetour.ru:443:127.0.0.1 -H 'Host: api.mywavetour.ru' -H \"Authorization: Bearer \${CAMP_API_TOKEN}\" 'https://127.0.0.1/api/v1/camps?status=published&sports=wakesurf,wakeboard&audience=ru&limit=5&offset=0' -o /tmp/mywave-camps-sample.json; echo 'saved /tmp/mywave-camps-sample.json'; python3 - <<'PY'
+import json, os
+path='/tmp/mywave-camps-sample.json'
+if os.path.exists(path):
+    try:
+        data=json.load(open(path))
+    except Exception as exc:
+        print('sample-parse-error', exc)
+        raise
+    print(json.dumps({'items': len(data.get('items', [])), 'next_offset': data.get('next_offset')}, ensure_ascii=False))
+else:
+    raise SystemExit(1)
+PY"

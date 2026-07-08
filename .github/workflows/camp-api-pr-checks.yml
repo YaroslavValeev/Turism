@@ -1,0 +1,98 @@
+name: Camp API PR Checks
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/camp-api-pr-checks.yml"
+      - ".github/workflows/deploy-camp-api.yml"
+      - ".env.example"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "packages/**"
+      - "services/api/**"
+  workflow_dispatch:
+
+concurrency:
+  group: camp-api-pr-checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  camp-api-pr-checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install pnpm
+        run: |
+          set -euo pipefail
+          npm config set fetch-timeout 300000
+          npm config set fetch-retry-mintimeout 15000
+          npm config set fetch-retry-maxtimeout 300000
+          npm config set fetch-retries 10
+          npm install -g pnpm@9.0.0
+
+      - name: Install dependencies
+        run: |
+          set -euo pipefail
+          pnpm install --frozen-lockfile
+
+      - name: Validate deploy workflow syntax
+        run: |
+          set -euo pipefail
+          python3 -m pip install --disable-pip-version-check pyyaml
+          python3 <<'PY'
+          import pathlib
+          import re
+          import shutil
+          import yaml
+
+          workflow = yaml.safe_load(pathlib.Path(".github/workflows/deploy-camp-api.yml").read_text())
+          scripts_dir = pathlib.Path("tmp-workflow-runs")
+          shutil.rmtree(scripts_dir, ignore_errors=True)
+          scripts_dir.mkdir(parents=True, exist_ok=True)
+
+          for job in workflow["jobs"].values():
+              for step in job["steps"]:
+                  script = step.get("run")
+                  if not script:
+                      continue
+                  safe_name = re.sub(r"[^a-z0-9]+", "_", step.get("name", "run").lower()).strip("_")
+                  (scripts_dir / f"{safe_name}.sh").write_text(script)
+          PY
+          for script in tmp-workflow-runs/*.sh; do
+            bash -n "$script"
+          done
+          mkdir -p /tmp/camp-api-delivery
+          bash tmp-workflow-runs/create_remote_deploy_script.sh
+          bash -n /tmp/camp-api-delivery/deploy-camp-api-remote.sh
+
+      - name: Validate Camp API contract files
+        run: |
+          set -euo pipefail
+          grep -R 'router.get("/api/v1/camps"' -n services/api/src/modules/camp-feed/routes.ts
+          grep -R 'router.get("/api/v1/camps/:id"' -n services/api/src/modules/camp-feed/routes.ts
+          grep -R 'router.get("/camps-feed.json"' -n services/api/src/modules/camp-feed/routes.ts
+          grep -R 'campFeedRoutes' -n services/api/src/index.ts
+          grep -R 'CAMP_API_TOKEN' -n packages/config/src/env.ts
+          grep -R 'next_offset' -n services/api/src/modules/camp-feed/routes.ts
+
+      - name: Build and test API
+        env:
+          DATABASE_URL: postgresql://build:build@127.0.0.1:5432/build?schema=public
+        run: |
+          set -euo pipefail
+          pnpm --filter @mywave/config build
+          pnpm --filter api db:generate
+          pnpm --filter api build
+          pnpm --filter api test -- camp-feed
+          pnpm --filter api test

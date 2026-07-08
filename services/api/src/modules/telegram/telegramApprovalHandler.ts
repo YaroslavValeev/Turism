@@ -15,6 +15,7 @@ import {
   skipOutreachCampaign,
   declineOutreachCampaign,
 } from "../organizer-outreach/service";
+import { proxyFetch } from "../../lib/proxyFetch";
 
 type TgUser = { id: number; username?: string; first_name?: string };
 type CallbackQuery = {
@@ -55,7 +56,7 @@ export async function downloadTelegramFile(env: Env, fileId: string): Promise<{ 
   const token = base.split("/").pop();
   if (!token) return null;
   const u = `https://api.telegram.org/file/bot${token}/${g.result.file_path}`;
-  const r = await fetch(u);
+  const r = await proxyFetch(u, {}, env.TELEGRAM_BOT_HTTP_PROXY);
   if (!r.ok) return null;
   const ab = await r.arrayBuffer();
   return { buf: Buffer.from(ab), mime: g.result.file_path.endsWith("oga") || g.result.file_path.endsWith("ogg") ? "audio/ogg" : "audio/mpeg" };

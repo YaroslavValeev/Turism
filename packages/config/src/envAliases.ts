@@ -21,4 +21,14 @@ export function applyApiRuntimeEnvAliases(): void {
   if (!trim(process.env.TELEGRAM_ALERT_CHAT_ID) && trim(process.env.OWNER_CHAT_ID)) {
     process.env.TELEGRAM_ALERT_CHAT_ID = trim(process.env.OWNER_CHAT_ID);
   }
+
+  // Unified webhook secret: keep legacy TELEGRAM_PLATFORM_WEBHOOK_SECRET working.
+  if (!trim(process.env.TELEGRAM_WEBHOOK_SECRET) && trim(process.env.TELEGRAM_PLATFORM_WEBHOOK_SECRET)) {
+    process.env.TELEGRAM_WEBHOOK_SECRET = trim(process.env.TELEGRAM_PLATFORM_WEBHOOK_SECRET);
+  }
+
+  // Bot username alias: existing config uses TELEGRAM_UPDATES_BOT_USERNAME for opt-in/deeplink.
+  if (!trim(process.env.TELEGRAM_BOT_USERNAME) && trim(process.env.TELEGRAM_UPDATES_BOT_USERNAME)) {
+    process.env.TELEGRAM_BOT_USERNAME = trim(process.env.TELEGRAM_UPDATES_BOT_USERNAME);
+  }
 }

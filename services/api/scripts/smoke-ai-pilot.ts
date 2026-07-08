@@ -1,12 +1,37 @@
 /**
- * Смоук Gate 2 P0: API должен быть запущен (pnpm --filter api dev).
- * Запуск: pnpm --filter api smoke:ai-pilot
+ * OpenAI proxy smoke: API должен быть запущен (pnpm --filter api dev).
+ * Запуск: pnpm --filter api exec tsx scripts/smoke-ai-pilot.ts
+ * Для RU VPS требует реальные OPENAI_API_KEY + OPENAI_HTTP_PROXY + AI_ENABLED=1.
  */
 import "../src/env/loadProcessEnv";
 import { PrismaClient } from "@prisma/client";
 import jwt from "jsonwebtoken";
 
 const base = process.env.SMOKE_API_BASE ?? "http://127.0.0.1:3001";
+const REQUIRED_OPENAI_PROXY_ENV = ["OPENAI_API_KEY", "OPENAI_HTTP_PROXY", "AI_ENABLED"];
+
+function assertOpenAiProxyEnv() {
+  const missing = REQUIRED_OPENAI_PROXY_ENV.filter((name) => !process.env[name]?.trim());
+  const aiEnabled = process.env.AI_ENABLED?.trim();
+  if (aiEnabled && aiEnabled !== "1" && aiEnabled.toLowerCase() !== "true") {
+    missing.push("AI_ENABLED=1");
+  }
+  if (missing.length > 0) {
+    console.error(
+      JSON.stringify(
+        {
+          status: "missing_env",
+          reason: "openai_proxy_smoke_requires_real_openai_env",
+          missing,
+        },
+        null,
+        2,
+      ),
+    );
+    process.exit(2);
+  }
+  console.log("OPENAI_HTTP_PROXY=set");
+}
 
 function assertOk(status: number, expected: number, label: string, body: string) {
   if (status !== expected) {
@@ -15,6 +40,8 @@ function assertOk(status: number, expected: number, label: string, body: string)
 }
 
 async function main() {
+  assertOpenAiProxyEnv();
+
   const prisma = new PrismaClient();
   try {
     const admin = await prisma.user.findFirst({
@@ -95,18 +122,16 @@ async function main() {
     if (aiLogs <= 0) throw new Error("Expected ai_pilot audit logs after smoke.");
     console.log("OK audit log writes entityType=ai_pilot");
 
-    const fallbackExpected = !ownerPolicyJson.openaiConfigured || !ownerPolicyJson.AI_ENABLED;
-    if (fallbackExpected) {
-      if (normalizeJson.meta?.source !== "fallback") {
-        throw new Error("Expected normalize fallback without OPENAI/API enabled.");
-      }
-      if (founderJson.source !== "fallback") {
-        throw new Error("Expected founder-summary fallback without OPENAI/API enabled.");
-      }
-      console.log("OK fallback mode without OPENAI/API enabled");
-    } else {
-      console.log("INFO OPENAI configured + AI enabled; fallback assertions skipped");
+    if (!ownerPolicyJson.openaiConfigured || !ownerPolicyJson.AI_ENABLED) {
+      throw new Error("API reports OpenAI/AI disabled; check API process env OPENAI_API_KEY and AI_ENABLED=1.");
     }
+    if (normalizeJson.meta?.source !== "llm") {
+      throw new Error(`Expected normalize source=llm via OpenAI proxy, got ${normalizeJson.meta?.source ?? "unknown"}`);
+    }
+    if (founderJson.source !== "llm") {
+      throw new Error(`Expected founder-summary source=llm via OpenAI proxy, got ${founderJson.source ?? "unknown"}`);
+    }
+    console.log("OK OpenAI proxy smoke: API returned LLM-backed results");
 
     console.log("smoke-ai-pilot: all checks passed");
   } finally {

@@ -31,6 +31,9 @@ import { publicBlogRoutes } from "./modules/public-blog/routes";
 import { publicCollectionsRoutes } from "./modules/public-collections/routes";
 import { publicExploreRoutes } from "./modules/public-explore/routes";
 import { telegramContentPipelineRoutes } from "./modules/telegram/telegramContentRoutes";
+import { telegramUnifiedWebhookRoutes } from "./modules/telegram/webhookRoutes";
+import { telegramPlatformRoutes } from "./modules/telegram-platform/routes";
+import { telegramPlatformInternalRoutes } from "./modules/telegram-platform/internalRoutes";
 import { contentPipelineRoutes } from "./modules/content-pipeline/routes";
 import { internalContentPipelineRoutes } from "./modules/content-pipeline/internalMarketing.routes";
 import { organizerOutreachRoutes } from "./modules/organizer-outreach/routes";
@@ -39,9 +42,12 @@ import { campsV1Router } from "./routes/camps.v1";
 import { createPublicRateLimiter, isOriginAllowed } from "./middleware/security";
 import { safeError } from "./lib/safeLogger";
 import { assertPublicBaseUrlsForProduction } from "./lib/publicBaseUrlCheck";
+import { assertTelegramConfigForProduction } from "./lib/telegramConfigCheck";
+import { startTelegramPlatformScheduler } from "./modules/telegram-platform/platformScheduler";
 
 const env = loadEnv();
 assertPublicBaseUrlsForProduction(env);
+assertTelegramConfigForProduction(env);
 const app = express();
 app.use(helmet());
 app.use(
@@ -104,6 +110,9 @@ app.use("/public", publicRateLimiter, publicCollectionsRoutes(env));
 app.use("/public", publicRateLimiter, publicExploreRoutes(env));
 app.use("/public", publicRateLimiter, publicBlogRoutes(env));
 app.use("/public/telegram", publicRateLimiter, telegramContentPipelineRoutes(env));
+app.use("/public/telegram", telegramUnifiedWebhookRoutes(env));
+app.use("/public/telegram/platform", publicRateLimiter, telegramPlatformRoutes(env));
+app.use("/internal/telegram/platform", telegramPlatformInternalRoutes(env));
 
 // Minimal observability: log unhandled errors (no PII in logs)
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
@@ -118,3 +127,4 @@ app.listen(Number(PORT), "0.0.0.0", () => {
 
 startIngestionScheduler(env);
 startAnalyticsOpsScheduler(env);
+startTelegramPlatformScheduler(env);

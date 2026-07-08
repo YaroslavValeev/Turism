@@ -54,10 +54,20 @@ export interface Env {
   ANALYTICS_ENABLED: boolean;
   /** Секрет для `POST /internal/analytics/*` (не путать с admin JWT). */
   INTERNAL_ANALYTICS_TOKEN?: string;
-  /** Опционально: Telegram Bot API для алертов (`https://api.telegram.org/bot<token>/sendMessage`). */
+  /** Опционально: Telegram Bot API для алертов. Поддерживает legacy `https://api.telegram.org/bot<token>` и канон base `https://api.telegram.org` + TELEGRAM_BOT_TOKEN. */
   TELEGRAM_BOT_API_BASE_URL?: string;
+  /** Bot token отдельно от base URL; не логировать. */
+  TELEGRAM_BOT_TOKEN?: string;
   /** chat_id получателя алертов */
   TELEGRAM_ALERT_CHAT_ID?: string;
+  /** Единый production webhook secret для X-Telegram-Bot-Api-Secret-Token. */
+  TELEGRAM_WEBHOOK_SECRET?: string;
+  /** Public API/backend base used only for Telegram setWebhook URL, e.g. https://api.mywavetour.ru. */
+  TELEGRAM_WEBHOOK_PUBLIC_BASE_URL?: string;
+  /** Реальные OPS user ids через запятую для platform leadgen. */
+  TELEGRAM_PLATFORM_OPS_IDS?: string;
+  /** Канал/чат для platform OPS сообщений. */
+  TELEGRAM_CHANNEL_CHAT_ID?: string;
   /** chat_id owner для согласования контент-конвейера; иначе используется TELEGRAM_ALERT_CHAT_ID. */
   TELEGRAM_CONTENT_OWNER_CHAT_ID?: string;
   /** Секрет в path: `POST /public/telegram/content-pipeline/:token` */
@@ -140,7 +150,12 @@ export function loadEnv(): Env {
     ANALYTICS_ENABLED: optionalBoolean("ANALYTICS_ENABLED", false),
     INTERNAL_ANALYTICS_TOKEN: optional("INTERNAL_ANALYTICS_TOKEN"),
     TELEGRAM_BOT_API_BASE_URL: optional("TELEGRAM_BOT_API_BASE_URL"),
+    TELEGRAM_BOT_TOKEN: optional("TELEGRAM_BOT_TOKEN"),
     TELEGRAM_ALERT_CHAT_ID: optional("TELEGRAM_ALERT_CHAT_ID"),
+    TELEGRAM_WEBHOOK_SECRET: optional("TELEGRAM_WEBHOOK_SECRET"),
+    TELEGRAM_WEBHOOK_PUBLIC_BASE_URL: optional("TELEGRAM_WEBHOOK_PUBLIC_BASE_URL"),
+    TELEGRAM_PLATFORM_OPS_IDS: optional("TELEGRAM_PLATFORM_OPS_IDS"),
+    TELEGRAM_CHANNEL_CHAT_ID: optional("TELEGRAM_CHANNEL_CHAT_ID"),
     TELEGRAM_CONTENT_OWNER_CHAT_ID: optional("TELEGRAM_CONTENT_OWNER_CHAT_ID"),
     CONTENT_PIPELINE_TELEGRAM_WEBHOOK_TOKEN: optional("CONTENT_PIPELINE_TELEGRAM_WEBHOOK_TOKEN"),
     OPENAI_API_KEY: optional("OPENAI_API_KEY"),

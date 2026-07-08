@@ -11,6 +11,22 @@ function requiredEnv(name: string): string {
   return v;
 }
 
+function telegramMethodUrl(method: string): string {
+  const base = requiredEnv("TELEGRAM_BOT_API_BASE_URL").replace(/\/+$/, "");
+  if (/\/bot[^/]+$/.test(base)) return `${base}/${method}`;
+  const token = requiredEnv("TELEGRAM_BOT_TOKEN");
+  return `${base}/bot${token}/${method}`;
+}
+
+function publicWebhookBaseForSmoke(): string {
+  return (
+    process.env.TELEGRAM_WEBHOOK_PUBLIC_BASE_URL?.trim() ||
+    process.env.PUBLIC_API_BASE_URL?.trim() ||
+    process.env.PUBLIC_WEB_BASE_URL?.trim() ||
+    ""
+  ).replace(/\/+$/, "");
+}
+
 async function runCheck(name: string, fn: () => Promise<string | void>): Promise<CheckResult> {
   try {
     const details = await fn();
@@ -55,6 +71,7 @@ async function main() {
   checks.push(
     await runCheck("env: required", async () => {
       requiredEnv("TELEGRAM_BOT_API_BASE_URL");
+      if (!/\/bot[^/]+$/.test(requiredEnv("TELEGRAM_BOT_API_BASE_URL").replace(/\/+$/, ""))) requiredEnv("TELEGRAM_BOT_TOKEN");
       requiredEnv("TELEGRAM_CONTENT_OWNER_CHAT_ID");
       requiredEnv("CONTENT_PIPELINE_TELEGRAM_WEBHOOK_TOKEN");
       requiredEnv("TELEGRAM_UPDATES_CHANNEL_CHAT_ID");
@@ -72,12 +89,11 @@ async function main() {
 
   checks.push(
     await runCheck("telegram: webhook info", async () => {
-      const webBase = process.env.PUBLIC_WEB_BASE_URL?.trim() || "";
-      if (/localhost|127\.0\.0\.1/i.test(webBase)) {
-        return "skipped for local PUBLIC_WEB_BASE_URL";
+      const webhookBase = publicWebhookBaseForSmoke();
+      if (/localhost|127\.0\.0\.1/i.test(webhookBase)) {
+        return "skipped for local TELEGRAM_WEBHOOK_PUBLIC_BASE_URL/PUBLIC_API_BASE_URL";
       }
-      const base = requiredEnv("TELEGRAM_BOT_API_BASE_URL").replace(/\/+$/, "");
-      const r = await fetch(`${base}/getWebhookInfo`);
+      const r = await fetch(telegramMethodUrl("getWebhookInfo"));
       const j = (await r.json()) as { ok?: boolean; result?: { url?: string; pending_update_count?: number; last_error_message?: string } };
       if (!j.ok || !j.result) throw new Error("getWebhookInfo failed");
       if (!j.result.url) throw new Error("webhook url is empty");

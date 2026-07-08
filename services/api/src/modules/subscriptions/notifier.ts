@@ -1,4 +1,5 @@
 import type { Env } from "@mywave/config";
+import { buildTelegramMethodUrl } from "../telegram/telegramApi";
 import { prisma } from "../../lib/prisma";
 import { sendEmailIfConfigured } from "./mailer";
 import { safeLog } from "../../lib/safeLogger";
@@ -116,12 +117,12 @@ async function sendTelegramDirectIfPossible(
   text: string,
   options?: { parseMode?: "HTML"; mediaUrl?: string },
 ): Promise<boolean> {
-  const base = env.TELEGRAM_BOT_API_BASE_URL?.trim();
-  if (!base) return false;
+  const sendMessageUrl = buildTelegramMethodUrl(env, "sendMessage");
+  const sendPhotoUrl = buildTelegramMethodUrl(env, "sendPhoto");
+  if (!sendMessageUrl) return false;
   try {
-    const baseUrl = base.replace(/\/+$/, "");
-    if (options?.mediaUrl && isPublicHttpUrl(options.mediaUrl)) {
-      await fetch(`${baseUrl}/sendPhoto`, {
+    if (sendPhotoUrl && options?.mediaUrl && isPublicHttpUrl(options.mediaUrl)) {
+      await fetch(sendPhotoUrl, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -131,7 +132,7 @@ async function sendTelegramDirectIfPossible(
         }),
       }).catch(() => undefined);
     }
-    const resp = await fetch(`${base.replace(/\/+$/, "")}/sendMessage`, {
+    const resp = await fetch(sendMessageUrl, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
@@ -195,13 +196,13 @@ async function sendTelegramChannelUpdate(
   replyMarkup?: Record<string, unknown>,
   options?: { parseMode?: "HTML"; mediaUrl?: string },
 ): Promise<boolean> {
-  const base = env.TELEGRAM_BOT_API_BASE_URL?.trim();
+  const sendMessageUrl = buildTelegramMethodUrl(env, "sendMessage");
+  const sendPhotoUrl = buildTelegramMethodUrl(env, "sendPhoto");
   const chatId = env.TELEGRAM_UPDATES_CHANNEL_CHAT_ID?.trim();
-  if (!base || !chatId) return false;
+  if (!sendMessageUrl || !chatId) return false;
   try {
-    const baseUrl = base.replace(/\/+$/, "");
-    if (options?.mediaUrl && isPublicHttpUrl(options.mediaUrl)) {
-      await fetch(`${baseUrl}/sendPhoto`, {
+    if (sendPhotoUrl && options?.mediaUrl && isPublicHttpUrl(options.mediaUrl)) {
+      await fetch(sendPhotoUrl, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -211,7 +212,7 @@ async function sendTelegramChannelUpdate(
         }),
       }).catch(() => undefined);
     }
-    const resp = await fetch(`${base.replace(/\/+$/, "")}/sendMessage`, {
+    const resp = await fetch(sendMessageUrl, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({

@@ -1,10 +1,14 @@
 # Telegram Content Pipeline Webhook Runbook
 
+
+> Legacy note: this document describes the older content-pipeline-only webhook. Production Telegram Platform must use the unified dispatcher in `docs/telegram/RUNBOOK.md`: `POST /public/telegram/webhook`. Use `TELEGRAM_WEBHOOK_PUBLIC_BASE_URL` for the project backend domain and `TELEGRAM_BOT_API_BASE_URL=https://api.telegram.org` only for outbound Telegram Bot API calls.
+
 Полный production-чеклист (миграции, `PUBLIC_*`, smoke, ручные проверки, ротация секретов): [CONTENT_PIPELINE_PROD_ROLLOUT.md](./CONTENT_PIPELINE_PROD_ROLLOUT.md).
 
 ## Что нужно до старта
 
-- `TELEGRAM_BOT_API_BASE_URL=https://api.telegram.org/bot<token>`
+- `TELEGRAM_BOT_API_BASE_URL=https://api.telegram.org`
+- `TELEGRAM_BOT_TOKEN=<token>`
 - `TELEGRAM_CONTENT_OWNER_CHAT_ID=<chat_id owner>`
 - `CONTENT_PIPELINE_TELEGRAM_WEBHOOK_TOKEN=<long-random-secret>`
 - (опционально voice) `OPENAI_API_KEY=<...>`

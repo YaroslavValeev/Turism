@@ -29,3 +29,6 @@ infra/certbot-webroot/.well-known/
 
 # Одноразовые PEM для scripts/verify_nginx_config.sh (локально / CI)
 .tmp-nginx-verify/
+
+gitleaks-git-report.json
+gitleaks-dir-report.json

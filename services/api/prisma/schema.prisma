@@ -125,6 +125,7 @@ model Organizer {
   scoreSnapshots     OrganizerScoreSnapshot[]
   reviewRequests     ReviewRequest[]
   outreachCampaigns OrganizerOutreachCampaign[]
+  contactChannels OrganizerContactChannel[]
 
   @@map("organizers")
 }
@@ -209,6 +210,7 @@ model Program {
   scoreSnapshots          ProgramScoreSnapshot[]
   reviewRequests          ReviewRequest[]
   contentItems            ContentItem[]
+  organizerContactChannels OrganizerContactChannel[]
 
   @@index([sourceId])
   @@map("programs")
@@ -407,11 +409,46 @@ model Lead {
   payments              Payment[]
   refunds               Refund[]
   commissions           Commission[]
+  telegramPlatformActionLogs TelegramPlatformActionLog[]
 
   @@index([organizerId, leadStatus])
   @@index([programId, firstContactAt])
   @@index([travelerKeyHash])
   @@map("leads")
+}
+
+model OrganizerContactChannel {
+  id             String    @id @default(cuid())
+  organizerId    String
+  programId      String?
+  channelType    String
+  telegramChatId String?
+  username       String?
+  url            String?   @db.Text
+  verifiedAt     DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  organizer      Organizer @relation(fields: [organizerId], references: [id], onDelete: Cascade)
+  program        Program?  @relation(fields: [programId], references: [id], onDelete: SetNull)
+
+  @@index([organizerId, channelType])
+  @@index([programId])
+  @@map("organizer_contact_channels")
+}
+
+model TelegramPlatformActionLog {
+  id              String   @id @default(cuid())
+  leadId          String
+  action          String
+  actorTelegramId String?
+  callbackQueryId String?
+  metadataJson    String?  @db.Text
+  createdAt       DateTime @default(now())
+  lead            Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([leadId, createdAt])
+  @@index([callbackQueryId])
+  @@map("telegram_platform_action_logs")
 }
 
 // booking_data_contract.md, canonical_status_models. Booking = canonical business entity.

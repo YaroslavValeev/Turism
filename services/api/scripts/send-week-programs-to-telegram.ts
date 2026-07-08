@@ -36,6 +36,16 @@ function isPublicHttpUrl(value: string): boolean {
   }
 }
 
+
+function telegramMethodUrl(method: string): string | null {
+  const base = process.env.TELEGRAM_BOT_API_BASE_URL?.trim().replace(/\/+$/, "");
+  if (!base) return null;
+  if (/\/bot[^/]+$/.test(base)) return `${base}/${method}`;
+  const token = process.env.TELEGRAM_BOT_TOKEN?.trim();
+  if (!token) return null;
+  return `${base}/bot${token}/${method}`;
+}
+
 function normalizeMediaUrl(rawUrl: string | null | undefined, apiBase: string): string | null {
   const v = String(rawUrl ?? "").trim();
   if (!v) return null;
@@ -108,8 +118,8 @@ function isLowQualityTitle(title: string): { bad: boolean; reasons: string[] } {
   return { bad: reasons.length > 0, reasons };
 }
 
-async function sendPhoto(base: string, chatId: string, photoUrl: string): Promise<void> {
-  await fetch(`${base}/sendPhoto`, {
+async function sendPhoto(sendPhotoUrl: string, chatId: string, photoUrl: string): Promise<void> {
+  await fetch(sendPhotoUrl, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({
@@ -121,13 +131,13 @@ async function sendPhoto(base: string, chatId: string, photoUrl: string): Promis
 }
 
 async function sendMessage(
-  base: string,
+  sendMessageUrl: string,
   chatId: string,
   text: string,
   programUrl: string,
   webBase: string,
 ): Promise<void> {
-  await fetch(`${base}/sendMessage`, {
+  await fetch(sendMessageUrl, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({
@@ -151,15 +161,15 @@ async function main() {
   const weekStart = startOfWeekMonday(now);
   const weekEnd = endOfWeekSunday(now);
 
-  const baseRaw = process.env.TELEGRAM_BOT_API_BASE_URL?.trim();
+  const sendMessageUrl = telegramMethodUrl("sendMessage");
+  const sendPhotoUrl = telegramMethodUrl("sendPhoto");
   const chatId = process.env.TELEGRAM_UPDATES_CHANNEL_CHAT_ID?.trim();
   const webBase = process.env.PUBLIC_WEB_BASE_URL?.trim()?.replace(/\/+$/, "");
   const apiBase = process.env.PUBLIC_API_BASE_URL?.trim()?.replace(/\/+$/, "");
 
-  if (!baseRaw || !chatId || !webBase || !apiBase) {
-    throw new Error("Missing TELEGRAM_BOT_API_BASE_URL / TELEGRAM_UPDATES_CHANNEL_CHAT_ID / PUBLIC_WEB_BASE_URL / PUBLIC_API_BASE_URL");
+  if (!sendMessageUrl || !sendPhotoUrl || !chatId || !webBase || !apiBase) {
+    throw new Error("Missing TELEGRAM_BOT_API_BASE_URL + TELEGRAM_BOT_TOKEN (or legacy bot base) / TELEGRAM_UPDATES_CHANNEL_CHAT_ID / PUBLIC_WEB_BASE_URL / PUBLIC_API_BASE_URL");
   }
-  const base = baseRaw.replace(/\/+$/, "");
 
   const programs = await prisma.program.findMany({
     where: {
@@ -201,8 +211,8 @@ async function main() {
     const photoUrl = normalizeMediaUrl(row.media[0]?.url ?? null, apiBase);
 
     if (!dryRun) {
-      if (photoUrl) await sendPhoto(base, chatId, photoUrl);
-      await sendMessage(base, chatId, text, programUrl, webBase);
+      if (photoUrl) await sendPhoto(sendPhotoUrl, chatId, photoUrl);
+      await sendMessage(sendMessageUrl, chatId, text, programUrl, webBase);
     }
     sent.push({ id: row.id, title: row.title });
   }

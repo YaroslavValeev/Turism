@@ -91,6 +91,8 @@ jobs:
           DATABASE_URL: postgresql://build:build@127.0.0.1:5432/build?schema=public
         run: |
           set -euo pipefail
+          pnpm --filter @mywave/shared-types build
+          pnpm --filter @mywave/explore-links build
           pnpm --filter @mywave/config build
           pnpm --filter api db:generate
           pnpm --filter api build

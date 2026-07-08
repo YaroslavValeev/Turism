@@ -54,6 +54,8 @@ export interface Env {
   ANALYTICS_ENABLED: boolean;
   /** Секрет для `POST /internal/analytics/*` (не путать с admin JWT). */
   INTERNAL_ANALYTICS_TOKEN?: string;
+  /** Bearer token для private Camp API: GET /api/v1/camps, /api/v1/camps/:id, /camps-feed.json. */
+  CAMP_API_TOKEN?: string;
   /** Опционально: Telegram Bot API для алертов (`https://api.telegram.org/bot<token>/sendMessage`). */
   TELEGRAM_BOT_API_BASE_URL?: string;
   /** chat_id получателя алертов */
@@ -114,8 +116,6 @@ export interface Env {
   AI_OWNER_APPROVAL_REQUIRED: boolean;
   /** Запрещён автопаблиш AI; по умолчанию false. */
   AI_AUTOPUBLISH_ENABLED: boolean;
-  /** Внешний bearer token для Camp API endpoint `/api/v1/camps`. */
-  CAMP_API_TOKEN?: string;
 }
 
 export function loadEnv(): Env {
@@ -139,6 +139,7 @@ export function loadEnv(): Env {
     INGESTION_DEFAULT_FALLBACK_IMAGE_URL: optional("INGESTION_DEFAULT_FALLBACK_IMAGE_URL"),
     ANALYTICS_ENABLED: optionalBoolean("ANALYTICS_ENABLED", false),
     INTERNAL_ANALYTICS_TOKEN: optional("INTERNAL_ANALYTICS_TOKEN"),
+    CAMP_API_TOKEN: optional("CAMP_API_TOKEN"),
     TELEGRAM_BOT_API_BASE_URL: optional("TELEGRAM_BOT_API_BASE_URL"),
     TELEGRAM_ALERT_CHAT_ID: optional("TELEGRAM_ALERT_CHAT_ID"),
     TELEGRAM_CONTENT_OWNER_CHAT_ID: optional("TELEGRAM_CONTENT_OWNER_CHAT_ID"),
@@ -169,6 +170,5 @@ export function loadEnv(): Env {
     AI_ENABLED: optionalBoolean("AI_ENABLED", false),
     AI_OWNER_APPROVAL_REQUIRED: optionalBoolean("AI_OWNER_APPROVAL_REQUIRED", true),
     AI_AUTOPUBLISH_ENABLED: optionalBoolean("AI_AUTOPUBLISH_ENABLED", false),
-    CAMP_API_TOKEN: optional("CAMP_API_TOKEN"),
   };
 }

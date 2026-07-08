@@ -82,6 +82,15 @@ jobs:
           echo ">>> deploy path: $(pwd)"
           test -f docker-compose.production.yml
 
+          BACKUP_PATH="/tmp/camp-api-selected-backup-$(date +%Y%m%d%H%M%S).tgz"
+          tar -czf "$BACKUP_PATH" --ignore-failed-read \
+            .env.example \
+            packages/config/src/env.ts \
+            services/api/.env.example \
+            services/api/src/index.ts \
+            services/api/src/modules/camp-feed
+          echo ">>> selected source backup: $BACKUP_PATH"
+
           echo ">>> extract selected Camp/API/config files"
           tar -xzf /tmp/camp-api-release.tgz -C "$DEPLOY_PATH"
 

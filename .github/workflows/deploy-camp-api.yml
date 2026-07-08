@@ -1,0 +1,208 @@
+name: Deploy Camp API
+
+on:
+  workflow_dispatch:
+    inputs:
+      rotate_camp_token:
+        description: "Rotate CAMP_API_TOKEN on VPS without printing it"
+        type: boolean
+        default: true
+      build_mode:
+        description: "incremental uses Docker cache; full uses --no-cache for api"
+        type: choice
+        default: incremental
+        options:
+          - incremental
+          - full
+
+concurrency:
+  group: deploy-camp-api
+  cancel-in-progress: true
+
+jobs:
+  deploy-camp-api:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate local Camp API files
+        run: |
+          set -euo pipefail
+          test -f services/api/src/modules/camp-feed/routes.ts
+          test -f services/api/src/modules/camp-feed/mapper.ts
+          test -f services/api/src/modules/camp-feed/auth.ts
+          grep -R 'router.get("/api/v1/camps"' -n services/api/src/modules/camp-feed/routes.ts
+          grep -R 'router.get("/api/v1/camps/:id"' -n services/api/src/modules/camp-feed/routes.ts
+          grep -R 'router.get("/camps-feed.json"' -n services/api/src/modules/camp-feed/routes.ts
+          grep -R 'campFeedRoutes' -n services/api/src/index.ts
+          grep -R 'CAMP_API_TOKEN' -n packages/config/src/env.ts
+          grep -R 'next_offset' -n services/api/src/modules/camp-feed/routes.ts
+
+      - name: Create selected-files release artifact
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/camp-api-delivery
+          tar -czf /tmp/camp-api-delivery/camp-api-release.tgz \
+            .env.example \
+            packages/config/src/env.ts \
+            services/api/.env.example \
+            services/api/src/index.ts \
+            services/api/src/modules/camp-feed
+          tar -tzf /tmp/camp-api-delivery/camp-api-release.tgz
+
+      - name: Docker build API preflight
+        timeout-minutes: 35
+        run: |
+          set -euo pipefail
+          docker build --progress=plain \
+            -f services/api/Dockerfile \
+            --build-arg NPM_CONFIG_REGISTRY="${NPM_CONFIG_REGISTRY:-https://registry.npmjs.org/}" \
+            --build-arg PRISMA_ENGINES_MIRROR="${PRISMA_ENGINES_MIRROR:-}" \
+            -t "mywave-camp-api-preflight:${GITHUB_SHA}" \
+            .
+
+      - name: Create remote deploy script
+        run: |
+          set -euo pipefail
+          cat >/tmp/camp-api-delivery/deploy-camp-api-remote.sh <<'REMOTE'
+          #!/usr/bin/env bash
+          set -euo pipefail
+
+          : "${DEPLOY_PATH:?DEPLOY_PATH is required}"
+          : "${ROTATE_CAMP_TOKEN:?ROTATE_CAMP_TOKEN is required}"
+          : "${BUILD_MODE:?BUILD_MODE is required}"
+
+          cd "$DEPLOY_PATH"
+          export DC='docker compose --env-file .env.production -f docker-compose.production.yml'
+
+          echo ">>> deploy path: $(pwd)"
+          test -f docker-compose.production.yml
+
+          echo ">>> extract selected Camp/API/config files"
+          tar -xzf /tmp/camp-api-release.tgz -C "$DEPLOY_PATH"
+
+          echo ">>> verify Camp API source on host"
+          test -f services/api/src/modules/camp-feed/routes.ts
+          grep -R 'router.get("/api/v1/camps"' -n services/api/src/modules/camp-feed/routes.ts
+          grep -R 'router.get("/api/v1/camps/:id"' -n services/api/src/modules/camp-feed/routes.ts
+          grep -R 'router.get("/camps-feed.json"' -n services/api/src/modules/camp-feed/routes.ts
+          grep -R 'campFeedRoutes' -n services/api/src/index.ts
+          grep -R 'CAMP_API_TOKEN' -n packages/config/src/env.ts
+          grep -R 'next_offset' -n services/api/src/modules/camp-feed/routes.ts
+
+          if [ "$ROTATE_CAMP_TOKEN" = "true" ]; then
+            echo ">>> rotate CAMP_API_TOKEN on VPS"
+            umask 077
+            cp -a services/api/.env.production "services/api/.env.production.bak.$(date +%Y%m%d%H%M%S)"
+            NEW_CAMP_API_TOKEN="$(openssl rand -hex 32)"
+            if grep -q '^CAMP_API_TOKEN=' services/api/.env.production; then
+              sed -i "s|^CAMP_API_TOKEN=.*|CAMP_API_TOKEN=${NEW_CAMP_API_TOKEN}|" services/api/.env.production
+            else
+              printf '\nCAMP_API_TOKEN=%s\n' "$NEW_CAMP_API_TOKEN" >> services/api/.env.production
+            fi
+            printf '%s\n' "$NEW_CAMP_API_TOKEN" > /root/CAMP_API_TOKEN.current
+            chmod 600 /root/CAMP_API_TOKEN.current
+            unset NEW_CAMP_API_TOKEN
+            echo ">>> CAMP_API_TOKEN rotated; value saved only on VPS"
+          else
+            echo ">>> CAMP_API_TOKEN rotation skipped"
+            test -s /root/CAMP_API_TOKEN.current || grep '^CAMP_API_TOKEN=' services/api/.env.production | tail -n1 | cut -d= -f2- | tr -d '"' > /root/CAMP_API_TOKEN.current
+            chmod 600 /root/CAMP_API_TOKEN.current
+          fi
+
+          echo ">>> build only api"
+          if [ "$BUILD_MODE" = "full" ]; then
+            docker compose --progress=plain --env-file .env.production -f docker-compose.production.yml build --no-cache api
+          else
+            docker compose --progress=plain --env-file .env.production -f docker-compose.production.yml build api
+          fi
+
+          echo ">>> restart only api and reverse-proxy"
+          $DC up -d --no-deps api reverse-proxy
+          $DC ps
+
+          echo ">>> verify Camp API code inside api container"
+          $DC exec -T api sh -lc 'grep -R "api/v1/camps\|camps-feed.json\|campFeedRoutes" -n /app/services/api/dist /app/services/api/src 2>/tmp/camp-api-grep.err >/tmp/camp-api-grep.out; cat /tmp/camp-api-grep.out | head -80; test -s /tmp/camp-api-grep.out'
+
+          echo ">>> smoke local nginx without exposing token"
+          CAMP_API_TOKEN="$(cat /root/CAMP_API_TOKEN.current)"
+          curl -kfsS --resolve api.mywavetour.ru:443:127.0.0.1 \
+            -H "Authorization: Bearer ${CAMP_API_TOKEN}" \
+            "https://api.mywavetour.ru/api/v1/camps?status=published&sports=wakesurf,wakeboard&audience=ru&limit=1&offset=0" \
+            -o /tmp/camp-api-smoke.json
+
+          python3 - <<'PY'
+          import json
+          p = "/tmp/camp-api-smoke.json"
+          d = json.load(open(p, encoding="utf-8"))
+          assert isinstance(d, dict), type(d)
+          assert "items" in d, d
+          assert "next_offset" in d, d
+          print("smoke_status: ok")
+          print("smoke_items:", len(d.get("items") or []))
+          print("smoke_next_offset:", d.get("next_offset"))
+          PY
+
+          echo ">>> write Site sample on VPS"
+          CAMP_API_TOKEN="$(cat /root/CAMP_API_TOKEN.current)"
+          curl -kfsS --resolve api.mywavetour.ru:443:127.0.0.1 \
+            -H "Authorization: Bearer ${CAMP_API_TOKEN}" \
+            "https://api.mywavetour.ru/api/v1/camps?status=published&sports=wakesurf,wakeboard&audience=ru&limit=5&offset=0" \
+            -o /tmp/mywave-camps-sample.json
+
+          python3 - <<'PY'
+          import json
+          p = "/tmp/mywave-camps-sample.json"
+          d = json.load(open(p, encoding="utf-8"))
+          items = d.get("items") or []
+          empty = lambda v: v is None or v == "" or v == []
+          print("sample_file:", p)
+          print("records_returned:", len(items))
+          print("has_wake_camps:", bool(items))
+          print("next_offset:", d.get("next_offset"))
+          print("content_rights_unknown:", sum(1 for x in items if x.get("content_rights_status") == "unknown"))
+          print("without_photo:", sum(1 for x in items if empty(x.get("cover_image_url"))))
+          print("without_price:", sum(1 for x in items if empty(x.get("price_from"))))
+          print("without_booking_url:", sum(1 for x in items if empty(x.get("booking_url"))))
+          PY
+          REMOTE
+          chmod +x /tmp/camp-api-delivery/deploy-camp-api-remote.sh
+
+      - name: Upload selected artifact and run on VPS
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+          DEPLOY_KEY: ${{ secrets.DEPLOY_OPENSSH_PRIVATE_KEY }}
+          ROTATE_CAMP_TOKEN: ${{ inputs.rotate_camp_token }}
+          BUILD_MODE: ${{ inputs.build_mode }}
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          DEPLOY_HOST="$(printf '%s' "$DEPLOY_HOST" | tr -d '[:space:]')"
+          DEPLOY_USER="$(printf '%s' "$DEPLOY_USER" | tr -d '[:space:]')"
+          printenv DEPLOY_KEY | tr -d '\r' > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keygen -lf ~/.ssh/deploy_key
+          ssh-keyscan -4 -p 22 -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
+
+          DP="${DEPLOY_PATH:-/opt/mywave/toutism}"
+          DP="$(echo "$DP" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+          SSH_LONG="-4 -i ${HOME}/.ssh/deploy_key -p 22 -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=45 -o ConnectionAttempts=1 -o ServerAliveInterval=20 -o ServerAliveCountMax=240 -o TCPKeepAlive=yes"
+
+          echo ">>> SSH probe ${DEPLOY_USER}@${DEPLOY_HOST} (${DP})"
+          ssh $SSH_LONG "${DEPLOY_USER}@${DEPLOY_HOST}" "set -e; mkdir -p '${DP}'; test -f '${DP}/docker-compose.production.yml'; echo ssh-ok"
+
+          echo ">>> upload selected Camp API artifact only"
+          scp -4 -i ~/.ssh/deploy_key -P 22 -o BatchMode=yes -o StrictHostKeyChecking=accept-new \
+            /tmp/camp-api-delivery/camp-api-release.tgz \
+            /tmp/camp-api-delivery/deploy-camp-api-remote.sh \
+            "${DEPLOY_USER}@${DEPLOY_HOST}:/tmp/"
+
+          echo ">>> run remote Camp API delivery"
+          ssh $SSH_LONG "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            "DEPLOY_PATH='${DP}' ROTATE_CAMP_TOKEN='${ROTATE_CAMP_TOKEN}' BUILD_MODE='${BUILD_MODE}' bash /tmp/deploy-camp-api-remote.sh"

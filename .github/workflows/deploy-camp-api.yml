@@ -50,6 +50,7 @@ jobs:
             .env.example \
             packages/config/src/env.ts \
             services/api/.env.example \
+            services/api/Dockerfile \
             services/api/src/index.ts \
             services/api/src/modules/camp-feed
           tar -tzf /tmp/camp-api-delivery/camp-api-release.tgz
@@ -87,6 +88,7 @@ jobs:
             .env.example \
             packages/config/src/env.ts \
             services/api/.env.example \
+            services/api/Dockerfile \
             services/api/src/index.ts \
             services/api/src/modules/camp-feed
           echo ">>> selected source backup: $BACKUP_PATH"
@@ -95,6 +97,9 @@ jobs:
           tar -xzf /tmp/camp-api-release.tgz -C "$DEPLOY_PATH"
 
           echo ">>> verify Camp API source on host"
+          test -f services/api/Dockerfile
+          grep -R 'pnpm --filter @mywave/shared-types build' -n services/api/Dockerfile
+          grep -R 'pnpm --filter @mywave/explore-links build' -n services/api/Dockerfile
           test -f services/api/src/modules/camp-feed/routes.ts
           grep -R 'router.get("/api/v1/camps"' -n services/api/src/modules/camp-feed/routes.ts
           grep -R 'router.get("/api/v1/camps/:id"' -n services/api/src/modules/camp-feed/routes.ts

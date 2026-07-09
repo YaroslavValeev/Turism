@@ -27,7 +27,9 @@ RUN npm config set registry "$NPM_CONFIG_REGISTRY" \
 FROM deps AS build
 ARG PRISMA_ENGINES_MIRROR=
 ENV PRISMA_ENGINES_MIRROR=${PRISMA_ENGINES_MIRROR}
-RUN pnpm --filter @mywave/config build
+RUN pnpm --filter @mywave/shared-types build \
+  && pnpm --filter @mywave/explore-links build \
+  && pnpm --filter @mywave/config build
 # prisma generate парсит datasource — нужен валидный DATABASE_URL (БД не должна быть доступна).
 RUN DATABASE_URL="postgresql://build:build@127.0.0.1:5432/build?schema=public" pnpm --filter api db:generate
 RUN pnpm --filter api build

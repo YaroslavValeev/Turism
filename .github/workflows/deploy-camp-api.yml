@@ -277,10 +277,13 @@ jobs:
           ssh $SSH_LONG "${DEPLOY_USER}@${DEPLOY_HOST}" "set -e; mkdir -p '${DP}'; test -f '${DP}/docker-compose.production.yml'; echo ssh-ok"
 
           echo ">>> upload selected Camp API artifact only"
-          ssh $SSH_LONG "${DEPLOY_USER}@${DEPLOY_HOST}" "cat > /tmp/camp-api-release.tgz" \
-            < /tmp/camp-api-delivery/camp-api-release.tgz
-          ssh $SSH_LONG "${DEPLOY_USER}@${DEPLOY_HOST}" "cat > /tmp/deploy-camp-api-remote.sh && chmod 700 /tmp/deploy-camp-api-remote.sh" \
-            < /tmp/camp-api-delivery/deploy-camp-api-remote.sh
+          ARTIFACT_B64="$(base64 -w0 /tmp/camp-api-delivery/camp-api-release.tgz)"
+          SCRIPT_B64="$(base64 -w0 /tmp/camp-api-delivery/deploy-camp-api-remote.sh)"
+          ssh $SSH_LONG "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            "printf '%s' '${ARTIFACT_B64}' | base64 -d > /tmp/camp-api-release.tgz"
+          ssh $SSH_LONG "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            "printf '%s' '${SCRIPT_B64}' | base64 -d > /tmp/deploy-camp-api-remote.sh && chmod 700 /tmp/deploy-camp-api-remote.sh"
+          unset ARTIFACT_B64 SCRIPT_B64
 
           echo ">>> run remote Camp API delivery"
           ssh $SSH_LONG "${DEPLOY_USER}@${DEPLOY_HOST}" \

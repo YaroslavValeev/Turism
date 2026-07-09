@@ -273,18 +273,11 @@ jobs:
           DP="$(echo "$DP" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
           SSH_LONG="-4 -i ${HOME}/.ssh/deploy_key -p 22 -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=45 -o ConnectionAttempts=1 -o ServerAliveInterval=20 -o ServerAliveCountMax=240 -o TCPKeepAlive=yes"
 
-          echo ">>> SSH probe ${DEPLOY_USER}@${DEPLOY_HOST} (${DP})"
-          ssh $SSH_LONG "${DEPLOY_USER}@${DEPLOY_HOST}" "set -e; mkdir -p '${DP}'; test -f '${DP}/docker-compose.production.yml'; echo ssh-ok"
-
-          echo ">>> upload selected Camp API artifact only"
+          echo ">>> prepare selected Camp API artifact payload"
           ARTIFACT_B64="$(base64 -w0 /tmp/camp-api-delivery/camp-api-release.tgz)"
           SCRIPT_B64="$(base64 -w0 /tmp/camp-api-delivery/deploy-camp-api-remote.sh)"
-          ssh $SSH_LONG "${DEPLOY_USER}@${DEPLOY_HOST}" \
-            "printf '%s' '${ARTIFACT_B64}' | base64 -d > /tmp/camp-api-release.tgz"
-          ssh $SSH_LONG "${DEPLOY_USER}@${DEPLOY_HOST}" \
-            "printf '%s' '${SCRIPT_B64}' | base64 -d > /tmp/deploy-camp-api-remote.sh && chmod 700 /tmp/deploy-camp-api-remote.sh"
-          unset ARTIFACT_B64 SCRIPT_B64
 
-          echo ">>> run remote Camp API delivery"
+          echo ">>> run single-session remote Camp API delivery"
           ssh $SSH_LONG "${DEPLOY_USER}@${DEPLOY_HOST}" \
-            "DEPLOY_PATH='${DP}' ROTATE_CAMP_TOKEN='${ROTATE_CAMP_TOKEN}' BUILD_MODE='${BUILD_MODE}' bash /tmp/deploy-camp-api-remote.sh"
+            "set -euo pipefail; mkdir -p '${DP}'; test -f '${DP}/docker-compose.production.yml'; printf '%s' '${ARTIFACT_B64}' | base64 -d > /tmp/camp-api-release.tgz; printf '%s' '${SCRIPT_B64}' | base64 -d > /tmp/deploy-camp-api-remote.sh; chmod 700 /tmp/deploy-camp-api-remote.sh; DEPLOY_PATH='${DP}' ROTATE_CAMP_TOKEN='${ROTATE_CAMP_TOKEN}' BUILD_MODE='${BUILD_MODE}' bash /tmp/deploy-camp-api-remote.sh"
+          unset ARTIFACT_B64 SCRIPT_B64

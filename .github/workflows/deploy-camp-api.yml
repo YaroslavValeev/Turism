@@ -277,10 +277,10 @@ jobs:
           ssh $SSH_LONG "${DEPLOY_USER}@${DEPLOY_HOST}" "set -e; mkdir -p '${DP}'; test -f '${DP}/docker-compose.production.yml'; echo ssh-ok"
 
           echo ">>> upload selected Camp API artifact only"
-          scp -4 -i ~/.ssh/deploy_key -P 22 -o BatchMode=yes -o StrictHostKeyChecking=accept-new \
-            /tmp/camp-api-delivery/camp-api-release.tgz \
-            /tmp/camp-api-delivery/deploy-camp-api-remote.sh \
-            "${DEPLOY_USER}@${DEPLOY_HOST}:/tmp/"
+          ssh $SSH_LONG "${DEPLOY_USER}@${DEPLOY_HOST}" "cat > /tmp/camp-api-release.tgz" \
+            < /tmp/camp-api-delivery/camp-api-release.tgz
+          ssh $SSH_LONG "${DEPLOY_USER}@${DEPLOY_HOST}" "cat > /tmp/deploy-camp-api-remote.sh && chmod 700 /tmp/deploy-camp-api-remote.sh" \
+            < /tmp/camp-api-delivery/deploy-camp-api-remote.sh
 
           echo ">>> run remote Camp API delivery"
           ssh $SSH_LONG "${DEPLOY_USER}@${DEPLOY_HOST}" \

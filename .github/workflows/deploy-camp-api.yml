@@ -188,10 +188,10 @@ jobs:
 
       - name: Upload selected artifact and run on VPS
         env:
-          DEPLOY_HOST: ${{ secrets.TOUR_VPS_HOST }}
-          DEPLOY_USER: ${{ secrets.TOUR_VPS_USER }}
-          DEPLOY_PATH: ${{ secrets.TOUR_VPS_PATH }}
-          DEPLOY_KEY: ${{ secrets.TOUR_VPS_SSH_KEY }}
+          DEPLOY_HOST: ${{ secrets.TOUR_VPS_HOST || secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.TOUR_VPS_USER || secrets.DEPLOY_USER }}
+          DEPLOY_PATH: ${{ secrets.TOUR_VPS_PATH || secrets.DEPLOY_PATH }}
+          DEPLOY_KEY: ${{ secrets.TOUR_VPS_SSH_KEY || secrets.DEPLOY_SSH_KEY_TOUR || secrets.DEPLOY_OPENSSH_PRIVATE_KEY || secrets.DEPLOY_SSH_KEY }}
           ROTATE_CAMP_TOKEN: ${{ inputs.rotate_camp_token }}
           BUILD_MODE: ${{ inputs.build_mode }}
         run: |
@@ -199,6 +199,9 @@ jobs:
           install -m 700 -d ~/.ssh
           DEPLOY_HOST="$(printf '%s' "$DEPLOY_HOST" | tr -d '[:space:]')"
           DEPLOY_USER="$(printf '%s' "$DEPLOY_USER" | tr -d '[:space:]')"
+          : "${DEPLOY_HOST:?TOUR_VPS_HOST or DEPLOY_HOST secret is required}"
+          : "${DEPLOY_USER:?TOUR_VPS_USER or DEPLOY_USER secret is required}"
+          : "${DEPLOY_KEY:?TOUR_VPS_SSH_KEY, DEPLOY_SSH_KEY_TOUR, DEPLOY_OPENSSH_PRIVATE_KEY, or DEPLOY_SSH_KEY secret is required}"
           python3 - <<'PY' > ~/.ssh/deploy_key
           import os
           key = os.environ['DEPLOY_KEY']

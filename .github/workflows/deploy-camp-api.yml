@@ -191,7 +191,10 @@ jobs:
           DEPLOY_HOST: ${{ secrets.TOUR_VPS_HOST || secrets.DEPLOY_HOST }}
           DEPLOY_USER: ${{ secrets.TOUR_VPS_USER || secrets.DEPLOY_USER }}
           DEPLOY_PATH: ${{ secrets.TOUR_VPS_PATH || secrets.DEPLOY_PATH }}
-          DEPLOY_KEY: ${{ secrets.TOUR_VPS_SSH_KEY || secrets.DEPLOY_SSH_KEY_TOUR || secrets.DEPLOY_OPENSSH_PRIVATE_KEY || secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KEY_TOUR: ${{ secrets.TOUR_VPS_SSH_KEY }}
+          DEPLOY_KEY_TOUR_ALT: ${{ secrets.DEPLOY_SSH_KEY_TOUR }}
+          DEPLOY_KEY_OPENSSH: ${{ secrets.DEPLOY_OPENSSH_PRIVATE_KEY }}
+          DEPLOY_KEY_LEGACY: ${{ secrets.DEPLOY_SSH_KEY }}
           ROTATE_CAMP_TOKEN: ${{ inputs.rotate_camp_token }}
           BUILD_MODE: ${{ inputs.build_mode }}
         run: |
@@ -201,16 +204,69 @@ jobs:
           DEPLOY_USER="$(printf '%s' "$DEPLOY_USER" | tr -d '[:space:]')"
           : "${DEPLOY_HOST:?TOUR_VPS_HOST or DEPLOY_HOST secret is required}"
           : "${DEPLOY_USER:?TOUR_VPS_USER or DEPLOY_USER secret is required}"
-          : "${DEPLOY_KEY:?TOUR_VPS_SSH_KEY, DEPLOY_SSH_KEY_TOUR, DEPLOY_OPENSSH_PRIVATE_KEY, or DEPLOY_SSH_KEY secret is required}"
-          python3 - <<'PY' > ~/.ssh/deploy_key
+          python3 - <<'PY'
+          import base64
           import os
-          key = os.environ['DEPLOY_KEY']
-          key = key.replace('\\r', '')
-          key = key.replace('\\n', '\n')
-          print(key, end='')
+          from pathlib import Path
+
+          out = Path.home() / ".ssh" / "deploy_key_candidates"
+          out.mkdir(mode=0o700, exist_ok=True)
+          names = [
+              "DEPLOY_KEY_TOUR",
+              "DEPLOY_KEY_TOUR_ALT",
+              "DEPLOY_KEY_OPENSSH",
+              "DEPLOY_KEY_LEGACY",
+          ]
+
+          def variants(raw):
+              value = (raw or "").strip().strip('"').strip("'")
+              if not value:
+                  return []
+
+              values = [value, value.replace("\\r", "").replace("\\n", "\n")]
+              compact = value.replace("\n", "").replace("\r", "").strip()
+              if compact and "PRIVATE KEY" not in compact:
+                  try:
+                      decoded = base64.b64decode(compact, validate=True).decode()
+                      values.append(decoded)
+                  except Exception:
+                      pass
+
+              result = []
+              for item in values:
+                  item = item.replace("\r", "").strip()
+                  if "PRIVATE KEY" not in item:
+                      continue
+                  if not item.endswith("\n"):
+                      item += "\n"
+                  if item not in result:
+                      result.append(item)
+              return result
+
+          count = 0
+          for name in names:
+              for value in variants(os.environ.get(name, "")):
+                  count += 1
+                  path = out / f"deploy_key_{count}"
+                  path.write_text(value)
+                  path.chmod(0o600)
+
+          if count == 0:
+              raise SystemExit("No SSH private key candidates found in TOUR_VPS_SSH_KEY/DEPLOY_SSH_KEY_TOUR/DEPLOY_OPENSSH_PRIVATE_KEY/DEPLOY_SSH_KEY")
           PY
+          DEPLOY_KEY_FILE=""
+          for candidate in ~/.ssh/deploy_key_candidates/deploy_key_*; do
+            if ssh-keygen -y -f "$candidate" > /dev/null 2>&1; then
+              DEPLOY_KEY_FILE="$candidate"
+              break
+            fi
+          done
+          if [ -z "$DEPLOY_KEY_FILE" ]; then
+            echo "No valid SSH private key found in configured GitHub secrets" >&2
+            exit 255
+          fi
+          cp "$DEPLOY_KEY_FILE" ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          ssh-keygen -y -f ~/.ssh/deploy_key > /dev/null
           ssh-keyscan -4 -p 22 -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
 
           DP="${DEPLOY_PATH:-/opt/mywave/toutism}"

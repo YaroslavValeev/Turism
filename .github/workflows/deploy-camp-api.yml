@@ -199,9 +199,15 @@ jobs:
           install -m 700 -d ~/.ssh
           DEPLOY_HOST="$(printf '%s' "$DEPLOY_HOST" | tr -d '[:space:]')"
           DEPLOY_USER="$(printf '%s' "$DEPLOY_USER" | tr -d '[:space:]')"
-          printenv DEPLOY_KEY | tr -d '\r' > ~/.ssh/deploy_key
+          python3 - <<'PY' > ~/.ssh/deploy_key
+import os
+key = os.environ['DEPLOY_KEY']
+key = key.replace('\\r', '')
+key = key.replace('\\n', '\n')
+print(key, end='')
+PY
           chmod 600 ~/.ssh/deploy_key
-          ssh-keygen -lf ~/.ssh/deploy_key
+          ssh-keygen -y -f ~/.ssh/deploy_key > /dev/null
           ssh-keyscan -4 -p 22 -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
 
           DP="${DEPLOY_PATH:-/opt/mywave/toutism}"

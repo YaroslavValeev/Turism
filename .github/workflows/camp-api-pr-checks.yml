@@ -72,6 +72,24 @@ jobs:
           for script in tmp-workflow-runs/*.sh; do
             bash -n "$script"
           done
+          export GITHUB_STEP_SUMMARY=/tmp/camp-api-artifact-summary.md
+          export RELEASE_SOURCE_SHA="${GITHUB_SHA:-local}"
+          bash tmp-workflow-runs/create_selected_files_release_artifact.sh
+          rm -rf /tmp/camp-api-artifact-verify
+          mkdir -p /tmp/camp-api-artifact-verify
+          tar -xzf /tmp/camp-api-delivery/camp-api-release.tgz -C /tmp/camp-api-artifact-verify
+          (
+            cd /tmp/camp-api-artifact-verify
+            sha256sum -c SHA256SUMS
+            test -f .env.example
+            test -f packages/config/src/env.ts
+            test -f services/api/.env.example
+            test -f services/api/Dockerfile
+            test -f services/api/src/index.ts
+            test -f services/api/src/modules/camp-feed/routes.ts
+            test -f services/api/src/modules/camp-feed/mapper.ts
+            test -f services/api/src/modules/camp-feed/auth.ts
+          )
           mkdir -p /tmp/camp-api-delivery
           bash tmp-workflow-runs/create_remote_deploy_script.sh
           bash -n /tmp/camp-api-delivery/deploy-camp-api-remote.sh

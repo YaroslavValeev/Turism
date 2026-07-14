@@ -3,6 +3,15 @@ name: Deploy Camp API
 on:
   workflow_dispatch:
     inputs:
+      release_ref:
+        description: "Optional git ref/SHA to package; empty uses workflow ref"
+        type: string
+        required: false
+        default: ""
+      deploy_to_vps:
+        description: "Run SSH deploy after artifact upload"
+        type: boolean
+        default: false
       rotate_camp_token:
         description: "Rotate CAMP_API_TOKEN on VPS without printing it"
         type: boolean
@@ -28,6 +37,16 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.release_ref || github.ref }}
+
+      - name: Resolve release source SHA
+        id: release
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(git rev-parse HEAD)"
+          echo "source_sha=${SOURCE_SHA}" >> "$GITHUB_OUTPUT"
+          echo ">>> release source sha: ${SOURCE_SHA}"
 
       - name: Validate local Camp API files
         run: |
@@ -43,17 +62,45 @@ jobs:
           grep -R 'next_offset' -n services/api/src/modules/camp-feed/routes.ts
 
       - name: Create selected-files release artifact
+        env:
+          RELEASE_SOURCE_SHA: ${{ steps.release.outputs.source_sha }}
         run: |
           set -euo pipefail
           mkdir -p /tmp/camp-api-delivery
-          tar -czf /tmp/camp-api-delivery/camp-api-release.tgz \
-            .env.example \
-            packages/config/src/env.ts \
-            services/api/.env.example \
-            services/api/Dockerfile \
-            services/api/src/index.ts \
-            services/api/src/modules/camp-feed
-          tar -tzf /tmp/camp-api-delivery/camp-api-release.tgz
+          STAGE="/tmp/camp-api-delivery/stage"
+          rm -rf "$STAGE"
+          mkdir -p "$STAGE"
+
+          copy_file() {
+            local path="$1"
+            mkdir -p "$STAGE/$(dirname "$path")"
+            cp -a "$path" "$STAGE/$path"
+          }
+
+          copy_file .env.example
+          copy_file packages/config/src/env.ts
+          copy_file services/api/.env.example
+          copy_file services/api/Dockerfile
+          copy_file services/api/src/index.ts
+          mkdir -p "$STAGE/services/api/src/modules"
+          cp -a services/api/src/modules/camp-feed "$STAGE/services/api/src/modules/camp-feed"
+
+          (
+            cd "$STAGE"
+            find . -type f ! -name SHA256SUMS -print | sort | xargs sha256sum > SHA256SUMS
+            sha256sum -c SHA256SUMS
+          )
+
+          tar -C "$STAGE" -czf /tmp/camp-api-delivery/camp-api-release.tgz .
+          tar -tzf /tmp/camp-api-delivery/camp-api-release.tgz | tee /tmp/camp-api-delivery/camp-api-release.files
+          sha256sum /tmp/camp-api-delivery/camp-api-release.tgz | tee /tmp/camp-api-delivery/camp-api-release.tgz.sha256
+          {
+            echo "### Camp API release artifact"
+            echo "- source_sha: ${RELEASE_SOURCE_SHA}"
+            echo "- artifact: camp-api-release.tgz"
+            echo "- sha256:"
+            cat /tmp/camp-api-delivery/camp-api-release.tgz.sha256
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Docker build API preflight
         timeout-minutes: 35
@@ -66,7 +113,16 @@ jobs:
             -t "mywave-camp-api-preflight:${GITHUB_SHA}" \
             .
 
+      - name: Upload selected release artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: camp-api-release.tgz
+          path: /tmp/camp-api-delivery/camp-api-release.tgz
+          if-no-files-found: error
+          retention-days: 14
+
       - name: Create remote deploy script
+        if: ${{ inputs.deploy_to_vps }}
         run: |
           set -euo pipefail
           cat >/tmp/camp-api-delivery/deploy-camp-api-remote.sh <<'REMOTE'
@@ -93,8 +149,15 @@ jobs:
             services/api/src/modules/camp-feed
           echo ">>> selected source backup: $BACKUP_PATH"
 
+          echo ">>> verify selected Camp/API/config artifact"
+          VERIFY_DIR="/tmp/camp-api-release-verify"
+          rm -rf "$VERIFY_DIR"
+          mkdir -p "$VERIFY_DIR"
+          tar -xzf /tmp/camp-api-release.tgz -C "$VERIFY_DIR"
+          (cd "$VERIFY_DIR" && sha256sum -c SHA256SUMS)
+
           echo ">>> extract selected Camp/API/config files"
-          tar -xzf /tmp/camp-api-release.tgz -C "$DEPLOY_PATH"
+          tar -xzf /tmp/camp-api-release.tgz -C "$DEPLOY_PATH" --exclude=SHA256SUMS
 
           echo ">>> verify Camp API source on host"
           test -f services/api/Dockerfile
@@ -187,6 +250,7 @@ jobs:
           chmod +x /tmp/camp-api-delivery/deploy-camp-api-remote.sh
 
       - name: Upload selected artifact and run on VPS
+        if: ${{ inputs.deploy_to_vps }}
         env:
           DEPLOY_HOST: ${{ secrets.TOUR_VPS_HOST || secrets.DEPLOY_HOST }}
           DEPLOY_USER: ${{ secrets.TOUR_VPS_USER || secrets.DEPLOY_USER }}

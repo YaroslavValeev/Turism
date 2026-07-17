@@ -1,5 +1,5 @@
 import type { Env } from "@mywave/config";
-import { callTelegramJson } from "../telegram/telegramApi";
+import { callTelegramJson, isTelegramBotApiConfigured } from "../telegram/telegramApi";
 
 export function resolveOpsAlertChatId(env: Env): string | null {
   return (
@@ -21,7 +21,7 @@ export async function notifyLeadMissingContactToOps(
   }
 ): Promise<{ ok: boolean }> {
   const chat = resolveOpsAlertChatId(env);
-  if (!chat || !env.TELEGRAM_BOT_API_BASE_URL) {
+  if (!chat || !isTelegramBotApiConfigured(env)) {
     return { ok: false };
   }
 

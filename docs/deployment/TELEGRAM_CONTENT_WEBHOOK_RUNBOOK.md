@@ -4,7 +4,8 @@
 
 ## Что нужно до старта
 
-- `TELEGRAM_BOT_API_BASE_URL=https://api.telegram.org/bot<token>`
+- `TELEGRAM_API_BASE_URL=https://api.telegram.org`
+- `TELEGRAM_BOT_TOKEN=<token>` (secret manager / `.env`, не выводить в лог)
 - `TELEGRAM_CONTENT_OWNER_CHAT_ID=<chat_id owner>`
 - `CONTENT_PIPELINE_TELEGRAM_WEBHOOK_TOKEN=<long-random-secret>`
 - (опционально voice) `OPENAI_API_KEY=<...>`
@@ -22,15 +23,21 @@
 2. Выполнить:
 
 ```bash
-curl -X POST "https://api.telegram.org/bot<token>/setWebhook" \
+set +x
+BOT_API="${TELEGRAM_API_BASE_URL%/}/bot${TELEGRAM_BOT_TOKEN}"
+curl --fail --silent --show-error -X POST "${BOT_API}/setWebhook" \
   -H "Content-Type: application/json" \
   -d "{\"url\":\"https://<api-domain>/public/telegram/content-pipeline/<token>\"}"
+unset BOT_API
 ```
 
 3. Проверить:
 
 ```bash
-curl "https://api.telegram.org/bot<token>/getWebhookInfo"
+set +x
+BOT_API="${TELEGRAM_API_BASE_URL%/}/bot${TELEGRAM_BOT_TOKEN}"
+curl --fail --silent --show-error "${BOT_API}/getWebhookInfo"
+unset BOT_API
 ```
 
 Ожидаемо:
@@ -75,7 +82,10 @@ pnpm --filter api smoke:content-pipeline
 Отключить webhook:
 
 ```bash
-curl -X POST "https://api.telegram.org/bot<token>/deleteWebhook"
+set +x
+BOT_API="${TELEGRAM_API_BASE_URL%/}/bot${TELEGRAM_BOT_TOKEN}"
+curl --fail --silent --show-error -X POST "${BOT_API}/deleteWebhook"
+unset BOT_API
 ```
 
 Временно перейти на ручные действия из админки (`/content-review` и admin decision API).

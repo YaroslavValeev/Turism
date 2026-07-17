@@ -13,9 +13,8 @@ export function applyApiRuntimeEnvAliases(): void {
     process.env.INTERNAL_ANALYTICS_TOKEN = trim(process.env.TARGET_INTERNAL_TOKEN);
   }
 
-  if (!trim(process.env.TELEGRAM_BOT_API_BASE_URL) && trim(process.env.TELEGRAM_BOT_TOKEN)) {
-    const token = trim(process.env.TELEGRAM_BOT_TOKEN);
-    process.env.TELEGRAM_BOT_API_BASE_URL = `https://api.telegram.org/bot${token}`;
+  if (!trim(process.env.TELEGRAM_API_BASE_URL) && trim(process.env.TELEGRAM_BOT_TOKEN)) {
+    process.env.TELEGRAM_API_BASE_URL = "https://api.telegram.org";
   }
 
   if (!trim(process.env.TELEGRAM_ALERT_CHAT_ID) && trim(process.env.OWNER_CHAT_ID)) {

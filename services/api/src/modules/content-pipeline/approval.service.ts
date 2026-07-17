@@ -2,7 +2,7 @@ import type { ContentOwnerDecision, ContentWorkflowStatus } from "@prisma/client
 import { prisma } from "../../lib/prisma";
 import { writeAuditLog } from "../../lib/audit";
 import type { Env } from "@mywave/config";
-import { callTelegramJson, resolveContentOwnerChatId } from "../telegram/telegramApi";
+import { callTelegramJson, isTelegramBotApiConfigured, resolveContentOwnerChatId } from "../telegram/telegramApi";
 import { createRewriteDraftVersion } from "./draft.service";
 
 const CALLBACK_PREFIX = {
@@ -55,8 +55,8 @@ export async function sendDraftToOwner(
   if (!chat) {
     return { ok: false, error: "TELEGRAM_CONTENT_OWNER_CHAT_ID/TELEGRAM_ALERT_CHAT_ID not set" };
   }
-  if (!env.TELEGRAM_BOT_API_BASE_URL) {
-    return { ok: false, error: "TELEGRAM_BOT_API_BASE_URL not set" };
+  if (!isTelegramBotApiConfigured(env)) {
+    return { ok: false, error: "Telegram Bot API is not configured" };
   }
 
   const draft = await prisma.contentDraft.findUnique({
@@ -251,7 +251,7 @@ async function safeRecordCallback(id: string, draftId: string, itemId: string, a
  */
 export async function requestRewrite(env: Env, contentDraftId: string): Promise<void> {
   const chat = resolveContentOwnerChatId(env);
-  if (!chat || !env.TELEGRAM_BOT_API_BASE_URL) return;
+  if (!chat || !isTelegramBotApiConfigured(env)) return;
   await callTelegramJson(env, "sendMessage", {
     chat_id: chat,
     text: "Отправьте текст правок в ответ на это сообщение (или голосовое). Или снова нажмите кнопки на превью.",

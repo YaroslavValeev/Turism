@@ -8,6 +8,7 @@ describe("applyApiRuntimeEnvAliases", () => {
     for (const k of [
       "INTERNAL_ANALYTICS_TOKEN",
       "TARGET_INTERNAL_TOKEN",
+      "TELEGRAM_API_BASE_URL",
       "TELEGRAM_BOT_API_BASE_URL",
       "TELEGRAM_BOT_TOKEN",
       "TELEGRAM_ALERT_CHAT_ID",
@@ -35,10 +36,11 @@ describe("applyApiRuntimeEnvAliases", () => {
     expect(process.env.INTERNAL_ANALYTICS_TOKEN).toBe("t1");
   });
 
-  it("builds TELEGRAM_BOT_API_BASE_URL from TELEGRAM_BOT_TOKEN", () => {
+  it("defaults TELEGRAM_API_BASE_URL without duplicating TELEGRAM_BOT_TOKEN", () => {
     process.env.TELEGRAM_BOT_TOKEN = "abc";
     applyApiRuntimeEnvAliases();
-    expect(process.env.TELEGRAM_BOT_API_BASE_URL).toBe("https://api.telegram.org/botabc");
+    expect(process.env.TELEGRAM_API_BASE_URL).toBe("https://api.telegram.org");
+    expect(process.env.TELEGRAM_BOT_API_BASE_URL).toBeUndefined();
   });
 
   it("maps OWNER_CHAT_ID to TELEGRAM_ALERT_CHAT_ID", () => {

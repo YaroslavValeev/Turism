@@ -4,6 +4,7 @@ import { notifyLeadMissingContactToOps } from "./opsNotify";
 
 vi.mock("../telegram/telegramApi", () => ({
   callTelegramJson: vi.fn(async () => ({ ok: true })),
+  isTelegramBotApiConfigured: vi.fn(() => true),
 }));
 
 describe("notifyLeadMissingContactToOps", () => {
@@ -15,7 +16,8 @@ describe("notifyLeadMissingContactToOps", () => {
     await notifyLeadMissingContactToOps(
       {
         TELEGRAM_ALERT_CHAT_ID: "123",
-        TELEGRAM_BOT_API_BASE_URL: "https://api.telegram.org/bot-token",
+        TELEGRAM_API_BASE_URL: "https://api.telegram.org",
+        TELEGRAM_BOT_TOKEN: "test-token",
       } as never,
       {
         leadToken: "lead-123",

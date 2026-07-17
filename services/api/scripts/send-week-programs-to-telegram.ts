@@ -1,5 +1,7 @@
 import "dotenv/config";
+import { resolveTelegramBotApiBaseUrl } from "@mywave/config";
 import { prisma } from "../src/lib/prisma";
+import { proxyFetch } from "../src/lib/proxyFetch";
 import { buildTelegramProgramNotifyHtml, type ProgramNotifySource } from "../src/modules/subscriptions/programNotifyTemplates";
 
 function startOfDay(d: Date): Date {
@@ -109,7 +111,7 @@ function isLowQualityTitle(title: string): { bad: boolean; reasons: string[] } {
 }
 
 async function sendPhoto(base: string, chatId: string, photoUrl: string): Promise<void> {
-  await fetch(`${base}/sendPhoto`, {
+  const response = await proxyFetch(`${base}/sendPhoto`, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({
@@ -117,7 +119,8 @@ async function sendPhoto(base: string, chatId: string, photoUrl: string): Promis
       photo: photoUrl,
       disable_notification: true,
     }),
-  });
+  }, process.env.TELEGRAM_BOT_HTTP_PROXY);
+  if (!response.ok) throw new Error(`Telegram sendPhoto failed: ${response.status}`);
 }
 
 async function sendMessage(
@@ -127,7 +130,7 @@ async function sendMessage(
   programUrl: string,
   webBase: string,
 ): Promise<void> {
-  await fetch(`${base}/sendMessage`, {
+  const response = await proxyFetch(`${base}/sendMessage`, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({
@@ -142,7 +145,8 @@ async function sendMessage(
         ],
       },
     }),
-  });
+  }, process.env.TELEGRAM_BOT_HTTP_PROXY);
+  if (!response.ok) throw new Error(`Telegram sendMessage failed: ${response.status}`);
 }
 
 async function main() {
@@ -151,15 +155,14 @@ async function main() {
   const weekStart = startOfWeekMonday(now);
   const weekEnd = endOfWeekSunday(now);
 
-  const baseRaw = process.env.TELEGRAM_BOT_API_BASE_URL?.trim();
+  const base = resolveTelegramBotApiBaseUrl(process.env);
   const chatId = process.env.TELEGRAM_UPDATES_CHANNEL_CHAT_ID?.trim();
   const webBase = process.env.PUBLIC_WEB_BASE_URL?.trim()?.replace(/\/+$/, "");
   const apiBase = process.env.PUBLIC_API_BASE_URL?.trim()?.replace(/\/+$/, "");
 
-  if (!baseRaw || !chatId || !webBase || !apiBase) {
-    throw new Error("Missing TELEGRAM_BOT_API_BASE_URL / TELEGRAM_UPDATES_CHANNEL_CHAT_ID / PUBLIC_WEB_BASE_URL / PUBLIC_API_BASE_URL");
+  if (!base || !chatId || !webBase || !apiBase) {
+    throw new Error("Missing Telegram Bot API config / TELEGRAM_UPDATES_CHANNEL_CHAT_ID / PUBLIC_WEB_BASE_URL / PUBLIC_API_BASE_URL");
   }
-  const base = baseRaw.replace(/\/+$/, "");
 
   const programs = await prisma.program.findMany({
     where: {

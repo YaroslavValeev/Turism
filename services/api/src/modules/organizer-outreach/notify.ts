@@ -1,5 +1,5 @@
 import type { Env } from "@mywave/config";
-import { callTelegramJson, resolveContentOwnerChatId } from "../telegram/telegramApi";
+import { callTelegramJson, isTelegramBotApiConfigured, resolveContentOwnerChatId } from "../telegram/telegramApi";
 import type { OutreachMetrics } from "./metrics.js";
 
 type Action = "approve" | "rewrite" | "skip" | "noSend";
@@ -31,7 +31,7 @@ export async function notifyOutreachOwner(
   }
 ): Promise<{ error?: string }> {
   const chat = resolveContentOwnerChatId(env);
-  if (!chat || !env.TELEGRAM_BOT_API_BASE_URL) {
+  if (!chat || !isTelegramBotApiConfigured(env)) {
     return { error: "telegram not configured" };
   }
 

@@ -9,6 +9,7 @@ import { parseOrganizerLeadCallback, applyOrganizerLeadStatus } from "./organize
 import { parseOpsLeadCallback, applyOpsLeadStatus } from "./opsLeadStatus";
 import { parseReconciliationCallback, applyReconciliationCallback } from "./reconciliation";
 import { requiredConsentsForProgram, CONSENT_TEXTS, type RequiredConsentType } from "./consentTexts";
+import { consentLabel, formatConsentList, leadSubmitErrorMessage } from "./userMessages";
 import { prisma } from "../../lib/prisma";
 import { isProgramPubliclyVisible } from "../programs/publicVisibility";
 
@@ -51,7 +52,7 @@ async function handleCallback(env: Env, cb: CallbackQuery) {
     await callTelegramJson(env, "answerCallbackQuery", { callback_query_id: cb.id });
     await callTelegramJson(env, "sendMessage", {
       chat_id: cb.message?.chat.id,
-      text: "OPS: статус заявки обновлён.",
+      text: "Оператор: статус заявки обновлён.",
     });
     return { ok: true as const };
   }
@@ -97,7 +98,7 @@ async function handleCallback(env: Env, cb: CallbackQuery) {
     if (missing.length > 0) {
       await callTelegramJson(env, "sendMessage", {
         chat_id: chatId,
-        text: `Осталось подтвердить: ${missing.join(", ")}`,
+        text: `Осталось подтвердить: ${formatConsentList(missing)}`,
       });
       return { ok: true as const };
     }
@@ -114,7 +115,7 @@ async function handleCallback(env: Env, cb: CallbackQuery) {
       consents: session.consentsAccepted as RequiredConsentType[],
     });
     if (!out.ok) {
-      await callTelegramJson(env, "sendMessage", { chat_id: chatId, text: `Ошибка: ${out.error}` });
+      await callTelegramJson(env, "sendMessage", { chat_id: chatId, text: leadSubmitErrorMessage(out.error) });
       return { ok: true as const };
     }
     await clearLeadAttemptSession(String(chatId));
@@ -206,7 +207,7 @@ async function handleMessage(env: Env, msg: Message) {
       chat_id: chatId,
       text:
         "MyWave Tour — подбор активных поездок и заявки организаторам.\n\n" +
-        "Чтобы начать: откройте программу из канала (deep-link) и нажмите «Оставить заявку».",
+        "Чтобы начать: откройте программу по ссылке из канала и нажмите «Оставить заявку».",
     });
     return { ok: true as const };
   }
@@ -284,7 +285,9 @@ async function handleMessage(env: Env, msg: Message) {
       required.map((k) => `• ${mdEscape(CONSENT_TEXTS[k])}`).join("\n\n");
 
     const keyboard = {
-      inline_keyboard: required.map((k) => [{ text: `Принимаю: ${k}`, callback_data: `consent:${k}` }]),
+      inline_keyboard: required.map((k) => [
+        { text: `Подтверждаю: ${consentLabel(k)}`, callback_data: `consent:${k}` },
+      ]),
     };
     await callTelegramJson(env, "sendMessage", { chat_id: chatId, text: preview, reply_markup: keyboard });
     return { ok: true as const };

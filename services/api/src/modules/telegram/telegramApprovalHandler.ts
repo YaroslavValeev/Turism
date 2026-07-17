@@ -87,7 +87,7 @@ async function handleOutreachCallback(
   if (out.action === "approve") {
     const r = await approveAndSendOutreachCampaign(env, out.campaignId, decidedBy);
     if (!r.ok) {
-      await answerText(env, cb.id, r.error ?? "outreach");
+      await answerText(env, cb.id, "Не удалось выполнить действие. Повторите попытку.");
       return { ok: false, error: r.error ?? "outreach" };
     }
   } else if (out.action === "skip") {
@@ -141,7 +141,7 @@ async function handleCallbackQuery(
     callbackId: cb.id,
   });
   if (!res.ok) {
-    await answerText(env, cb.id, res.error);
+    await answerText(env, cb.id, "Не удалось выполнить действие. Повторите попытку.");
     return res;
   }
   if (res.duplicate) {
@@ -223,7 +223,7 @@ async function handleOwnerMessage(
   if (!r.ok) {
     await callTelegramJson(env, "sendMessage", {
       chat_id: String(msg.chat.id),
-      text: `Не удалось применить правки: ${(r as { error: string }).error}`,
+      text: "Не удалось применить правки. Повторите попытку.",
     });
     return { ok: false, error: (r as { error: string }).error };
   }

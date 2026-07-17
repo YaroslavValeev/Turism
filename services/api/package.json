@@ -15,6 +15,7 @@
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
     "db:seed": "tsx prisma/seed.ts",
+    "db:seed:camp-api-mvp": "tsx scripts/ensure-camp-api-mvp.ts",
     "db:import-sources": "tsx prisma/import_sources.ts",
     "backfill:traveler-key": "tsx scripts/backfill-traveler-key.ts",
     "smoke:content-pipeline": "tsx scripts/smoke-content-pipeline.ts",

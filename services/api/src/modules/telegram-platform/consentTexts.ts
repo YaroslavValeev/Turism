@@ -17,6 +17,14 @@ export const CONSENT_TEXTS = {
 
 export type RequiredConsentType = keyof typeof CONSENT_TEXTS;
 
+export const CONSENT_LABELS: Record<RequiredConsentType, string> = {
+  pd_processing: "обработку персональных данных",
+  contact_transfer: "передачу контактов организатору",
+  not_organizer: "роль MyWave Tour как посредника",
+  high_risk: "условия программы повышенного риска",
+  kids_parent: "полномочия законного представителя",
+};
+
 export function requiredConsentsForProgram(riskLevel: string | null | undefined, isKids: boolean): RequiredConsentType[] {
   const base: RequiredConsentType[] = ["pd_processing", "contact_transfer", "not_organizer"];
   if (riskLevel === "high" || riskLevel === "extreme") {

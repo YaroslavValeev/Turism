@@ -27,19 +27,19 @@ export async function notifyLeadMissingContactToOps(
 
   const text = `⚠️ Заявка требует ручной обработки
 
-Причина: у организатора не указан Telegram contact channel.
+Причина: у организатора не указан канал связи в Telegram.
 
-Lead: ${args.leadToken}
+Номер заявки: ${args.leadToken}
 Программа: ${args.programTitle}
 Организатор: ${args.organizerName}
-Источник: Telegram deep-link / bot
-Статус: organizer_telegram_channel_missing
+Источник: ссылка из Telegram / бот
+Статус: требуется контакт организатора
 
 Действия:
 1. Связаться с организатором вручную.
-2. Получить Telegram chat ID / username.
-3. Заполнить OrganizerContactChannel.
-4. Повторить отправку или отметить как contacted manually.`;
+2. Получить идентификатор чата или имя пользователя в Telegram.
+3. Заполнить канал связи организатора.
+4. Повторить отправку или отметить, что связь установлена вручную.`;
 
   const keyboard = {
     inline_keyboard: [

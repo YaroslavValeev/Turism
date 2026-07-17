@@ -12,6 +12,10 @@ describe("applyApiRuntimeEnvAliases", () => {
       "TELEGRAM_BOT_TOKEN",
       "TELEGRAM_ALERT_CHAT_ID",
       "OWNER_CHAT_ID",
+      "TELEGRAM_WEBHOOK_SECRET",
+      "TELEGRAM_PLATFORM_WEBHOOK_SECRET",
+      "TELEGRAM_BOT_USERNAME",
+      "TELEGRAM_UPDATES_BOT_USERNAME",
     ]) {
       backup[k] = process.env[k];
       delete process.env[k];
@@ -41,6 +45,18 @@ describe("applyApiRuntimeEnvAliases", () => {
     process.env.OWNER_CHAT_ID = "999";
     applyApiRuntimeEnvAliases();
     expect(process.env.TELEGRAM_ALERT_CHAT_ID).toBe("999");
+  });
+
+  it("maps the legacy platform webhook secret", () => {
+    process.env.TELEGRAM_PLATFORM_WEBHOOK_SECRET = "webhook-secret";
+    applyApiRuntimeEnvAliases();
+    expect(process.env.TELEGRAM_WEBHOOK_SECRET).toBe("webhook-secret");
+  });
+
+  it("maps the updates bot username", () => {
+    process.env.TELEGRAM_UPDATES_BOT_USERNAME = "MyWaveTour_bot";
+    applyApiRuntimeEnvAliases();
+    expect(process.env.TELEGRAM_BOT_USERNAME).toBe("MyWaveTour_bot");
   });
 
   it("does not override explicit canonical vars", () => {

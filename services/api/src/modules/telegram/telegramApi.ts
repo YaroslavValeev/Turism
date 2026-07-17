@@ -1,4 +1,5 @@
 import type { Env } from "@mywave/config";
+import { proxyFetch } from "../../lib/proxyFetch";
 
 type TelegramResponse<T> = { ok: boolean; result?: T; description?: string };
 
@@ -11,11 +12,15 @@ export async function callTelegramJson<T = unknown>(env: Env, method: string, bo
     return { ok: false, description: "TELEGRAM_BOT_API_BASE_URL not set" };
   }
   const url = `${base}/${method}`;
-  const r = await fetch(url, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(body),
-  });
+  const r = await proxyFetch(
+    url,
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    },
+    env.TELEGRAM_BOT_HTTP_PROXY,
+  );
   return (await r.json()) as TelegramResponse<T>;
 }
 

@@ -125,6 +125,9 @@ model Organizer {
   scoreSnapshots     OrganizerScoreSnapshot[]
   reviewRequests     ReviewRequest[]
   outreachCampaigns OrganizerOutreachCampaign[]
+  contactChannels   OrganizerContactChannel[]
+  telegramAccounts  OrganizerTelegramAccount[]
+  telegramLeadAttempts TelegramLeadAttempt[]
 
   @@map("organizers")
 }
@@ -209,6 +212,7 @@ model Program {
   scoreSnapshots          ProgramScoreSnapshot[]
   reviewRequests          ReviewRequest[]
   contentItems            ContentItem[]
+  telegramLeadAttempts    TelegramLeadAttempt[]
 
   @@index([sourceId])
   @@map("programs")
@@ -389,6 +393,11 @@ model Lead {
   programId             String
   organizerId           String
   source                String    @default("mywave")
+  /// Публичный токен заявки для deep-link и сверки (Telegram / assisted booking).
+  leadToken             String?   @unique
+  telegramUserId        String?
+  sourcePostId          String?
+  deeplinkPayload       String?
   // travelerKeyHash: HMAC guest contact, see docs/analytics/runtime/TRAVELER_KEY_POLICY.md
   travelerKeyHash       String?
   guestContact          String    @db.Text
@@ -399,18 +408,24 @@ model Lead {
   attributionWindowDays Int       @default(60)
   leadStatus            String    @default("new") // new | contacted | qualified | rejected
   notes                 String?   @db.Text
+  sentToOrganizerAt     DateTime?
+  organizerFirstResponseAt DateTime?
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
   program               Program   @relation(fields: [programId], references: [id], onDelete: Restrict)
   organizer             Organizer @relation(fields: [organizerId], references: [id], onDelete: Restrict)
+  telegramUser          TelegramUser? @relation(fields: [telegramUserId], references: [id], onDelete: SetNull)
   bookings              Booking[]
   payments              Payment[]
   refunds               Refund[]
   commissions           Commission[]
+  organizerLeadStatusEvents OrganizerLeadStatusEvent[]
+  reconciliationTasks   TelegramReconciliationTask[]
 
   @@index([organizerId, leadStatus])
   @@index([programId, firstContactAt])
   @@index([travelerKeyHash])
+  @@index([telegramUserId])
   @@map("leads")
 }
 
@@ -455,9 +470,16 @@ model Booking {
   /// Согласие с политикой и передачей контакта (PDP)
   legalConsentAt              DateTime?
   legalConsentPolicyVersion   String?
+  /// Денорм для Telegram-заявок (связь с Lead.leadToken).
+  leadToken           String?
+  telegramUserId      String?
+  participantsCount   Int?
+  childrenCount       Int?
+  riskAcknowledged    Boolean   @default(false)
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
   lead                Lead?     @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  telegramUser        TelegramUser? @relation(fields: [telegramUserId], references: [id], onDelete: SetNull)
   program             Program   @relation(fields: [programId], references: [id], onDelete: Restrict)
   organizer           Organizer @relation(fields: [organizerId], references: [id], onDelete: Restrict)
   contentItem         ContentItem? @relation(fields: [contentItemId], references: [id], onDelete: SetNull)
@@ -1101,6 +1123,297 @@ model ProcessedTelegramCallback {
 
   @@index([createdAt])
   @@map("processed_telegram_callbacks")
+}
+
+// --- Telegram platform (leadgen / assisted booking) — docs/telegram/REPO_AUDIT_AND_IMPLEMENTATION_PLAN.md ---
+
+model TelegramUser {
+  id                        String    @id @default(cuid())
+  telegramUserId            BigInt    @unique
+  username                  String?
+  firstName                 String?
+  lastName                  String?
+  languageCode              String?
+  phone                     String?
+  isBlocked                 Boolean   @default(false)
+  consentPdAt               DateTime?
+  consentContactTransferAt  DateTime?
+  lastSeenAt                DateTime  @default(now())
+  createdAt                 DateTime  @default(now())
+  updatedAt                 DateTime  @updatedAt
+  sessions                  TelegramSession[]
+  leadAttempts              TelegramLeadAttempt[]
+  leads                     Lead[]
+  bookings                  Booking[]
+  subscriptions             TelegramSubscription[]
+  digestPreferences         TelegramDigestPreference[]
+  consentRecords            TelegramConsentRecord[]
+  clicks                    TelegramClick[]
+  deepLinkOpens             TelegramDeepLinkOpen[]
+  abandonedLeads            TelegramAbandonedLead[]
+  eventLogs                 TelegramEventLog[]
+  organizerAccounts         OrganizerTelegramAccount[]
+
+  @@map("telegram_users")
+}
+
+model TelegramSession {
+  id              String   @id @default(cuid())
+  telegramUserId  String
+  currentFlow     String?
+  currentStep     String?
+  stateJson       Json?
+  expiresAt       DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  telegramUser    TelegramUser @relation(fields: [telegramUserId], references: [id], onDelete: Cascade)
+
+  @@index([telegramUserId, updatedAt])
+  @@map("telegram_sessions")
+}
+
+/// Черновик заявки в боте (FSM до submit).
+model TelegramLeadAttempt {
+  id                String   @id @default(cuid())
+  telegramUserId    String
+  programId         String
+  organizerId       String
+  status            String   @default("started") // started | step_* | preview | abandoned | submitted
+  step              String?
+  payloadJson       Json?
+  sourceChannel     String?
+  sourcePostId      String?
+  deeplinkPayload   String?
+  participantsCount Int?
+  childrenCount     Int?
+  expiresAt         DateTime?
+  submittedLeadId   String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  telegramUser      TelegramUser @relation(fields: [telegramUserId], references: [id], onDelete: Cascade)
+  program           Program  @relation(fields: [programId], references: [id], onDelete: Restrict)
+  organizer         Organizer @relation(fields: [organizerId], references: [id], onDelete: Restrict)
+  abandonedRecord   TelegramAbandonedLead?
+
+  @@index([telegramUserId, status])
+  @@index([programId])
+  @@map("telegram_lead_attempts")
+}
+
+model TelegramConsentRecord {
+  id              String   @id @default(cuid())
+  telegramUserId  String
+  consentType     String   // pd_processing | contact_transfer | not_organizer | high_risk | kids_parent
+  textVersion     String
+  acceptedAt      DateTime @default(now())
+  ipHash          String?
+  source          String?  // bot | webapp
+  leadId          String?
+  bookingId       String?
+  telegramUser    TelegramUser @relation(fields: [telegramUserId], references: [id], onDelete: Cascade)
+
+  @@index([telegramUserId, consentType])
+  @@map("telegram_consent_records")
+}
+
+model TelegramDeepLinkOpen {
+  id              String   @id @default(cuid())
+  telegramUserId  String?
+  payload         String
+  payloadKind     String?
+  programId       String?
+  leadToken       String?
+  sourcePostId    String?
+  campaign        String?
+  createdAt       DateTime @default(now())
+  telegramUser    TelegramUser? @relation(fields: [telegramUserId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@index([payload])
+  @@map("telegram_deep_link_opens")
+}
+
+model TelegramClick {
+  id              String   @id @default(cuid())
+  token           String   @unique @default(cuid())
+  telegramUserId  String?
+  programId       String?
+  organizerId     String?
+  sourcePostId    String?
+  destinationUrl  String   @db.Text
+  campaign        String?
+  channel         String?
+  clickedAt       DateTime?
+  createdAt       DateTime @default(now())
+  telegramUser    TelegramUser? @relation(fields: [telegramUserId], references: [id], onDelete: SetNull)
+
+  @@index([programId, createdAt])
+  @@map("telegram_clicks")
+}
+
+model TelegramSubscription {
+  id              String   @id @default(cuid())
+  telegramUserId  String
+  disciplineSlug  String?
+  regionSlug      String?
+  budgetMin       Int?
+  budgetMax       Int?
+  season          String?
+  digestFrequency String   @default("weekly") // instant | daily | weekly | digest_only
+  riskFilter      String   @default("default") // default | no_high_risk | allow_high_risk
+  kidsFilter      String   @default("any") // any | kids_only | no_kids
+  status          String   @default("active")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  telegramUser    TelegramUser @relation(fields: [telegramUserId], references: [id], onDelete: Cascade)
+
+  @@index([telegramUserId, status])
+  @@map("telegram_subscriptions")
+}
+
+model TelegramDigestPreference {
+  id              String   @id @default(cuid())
+  telegramUserId  String   @unique
+  frequency       String   @default("weekly")
+  lastSentAt      DateTime?
+  preferencesJson Json?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  telegramUser    TelegramUser @relation(fields: [telegramUserId], references: [id], onDelete: Cascade)
+
+  @@map("telegram_digest_preferences")
+}
+
+model OrganizerContactChannel {
+  id                String   @id @default(cuid())
+  organizerId       String
+  channelType       String   // telegram | email | phone | website | vk | instagram | other
+  telegramChatId    String?
+  telegramUsername  String?
+  email             String?
+  phone             String?
+  websiteUrl        String?
+  externalUrl       String?  @db.Text
+  isPrimary         Boolean  @default(false)
+  isVerified        Boolean  @default(false)
+  lastDeliveryStatus String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  organizer         Organizer @relation(fields: [organizerId], references: [id], onDelete: Cascade)
+
+  @@index([organizerId, channelType])
+  @@map("organizer_contact_channels")
+}
+
+model OrganizerTelegramAccount {
+  id              String   @id @default(cuid())
+  organizerId     String
+  telegramUserId  String
+  telegramAccountId BigInt
+  role            String   @default("operator") // operator | owner
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  organizer       Organizer @relation(fields: [organizerId], references: [id], onDelete: Cascade)
+  telegramUser    TelegramUser @relation(fields: [telegramUserId], references: [id], onDelete: Cascade)
+
+  @@unique([organizerId, telegramAccountId])
+  @@map("organizer_telegram_accounts")
+}
+
+model OrganizerLeadStatusEvent {
+  id          String   @id @default(cuid())
+  leadId      String
+  organizerId String
+  fromStatus  String?
+  toStatus    String
+  actorType   String   // organizer | ops | system
+  actorId     String?
+  note        String?  @db.Text
+  createdAt   DateTime @default(now())
+  lead        Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([leadId, createdAt])
+  @@index([organizerId, createdAt])
+  @@map("organizer_lead_status_events")
+}
+
+model TelegramReconciliationTask {
+  id              String   @id @default(cuid())
+  leadId          String
+  organizerId     String
+  dueAt           DateTime
+  status          String   @default("pending") // pending | sent | completed | skipped
+  result          String?
+  dealAmountRub   Int?
+  tripDate        DateTime?
+  commissionAmountRub Int?
+  comment         String?  @db.Text
+  completedAt     DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  lead            Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([status, dueAt])
+  @@index([organizerId])
+  @@map("telegram_reconciliation_tasks")
+}
+
+model TelegramAbandonedLead {
+  id              String   @id @default(cuid())
+  attemptId       String   @unique
+  telegramUserId  String
+  reminder2hAt    DateTime?
+  reminder24hAt   DateTime?
+  closedAt        DateTime?
+  status          String   @default("open") // open | reminded_2h | reminded_24h | closed
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  attempt         TelegramLeadAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  telegramUser    TelegramUser @relation(fields: [telegramUserId], references: [id], onDelete: Cascade)
+
+  @@index([status, reminder2hAt])
+  @@map("telegram_abandoned_leads")
+}
+
+model TelegramEventLog {
+  id              String   @id @default(cuid())
+  eventName       String
+  telegramUserId  String?
+  programId       String?
+  organizerId     String?
+  leadToken       String?
+  source          String?
+  campaign        String?
+  channelPostId   String?
+  propertiesJson  Json?
+  createdAt       DateTime @default(now())
+  telegramUser    TelegramUser? @relation(fields: [telegramUserId], references: [id], onDelete: SetNull)
+
+  @@index([eventName, createdAt])
+  @@index([leadToken])
+  @@map("telegram_event_log")
+}
+
+model TelegramPlatformActionLog {
+  id              String   @id @default(cuid())
+  leadId          String?
+  leadToken       String?
+  telegramUserId  String?
+  programId       String?
+  organizerId     String?
+  actorType       String
+  actorId         String?
+  action          String
+  source          String   @default("telegram_callback")
+  statusFrom      String?
+  statusTo        String?
+  propertiesJson  Json?
+  createdAt       DateTime @default(now())
+
+  @@index([leadToken, createdAt])
+  @@index([actorType, createdAt])
+  @@map("telegram_platform_action_logs")
 }
 
 model BlogPost {

@@ -21,4 +21,12 @@ export function applyApiRuntimeEnvAliases(): void {
   if (!trim(process.env.TELEGRAM_ALERT_CHAT_ID) && trim(process.env.OWNER_CHAT_ID)) {
     process.env.TELEGRAM_ALERT_CHAT_ID = trim(process.env.OWNER_CHAT_ID);
   }
+
+  if (!trim(process.env.TELEGRAM_WEBHOOK_SECRET) && trim(process.env.TELEGRAM_PLATFORM_WEBHOOK_SECRET)) {
+    process.env.TELEGRAM_WEBHOOK_SECRET = trim(process.env.TELEGRAM_PLATFORM_WEBHOOK_SECRET);
+  }
+
+  if (!trim(process.env.TELEGRAM_BOT_USERNAME) && trim(process.env.TELEGRAM_UPDATES_BOT_USERNAME)) {
+    process.env.TELEGRAM_BOT_USERNAME = trim(process.env.TELEGRAM_UPDATES_BOT_USERNAME);
+  }
 }

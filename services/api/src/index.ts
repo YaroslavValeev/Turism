@@ -31,6 +31,7 @@ import { publicBlogRoutes } from "./modules/public-blog/routes";
 import { publicCollectionsRoutes } from "./modules/public-collections/routes";
 import { publicExploreRoutes } from "./modules/public-explore/routes";
 import { telegramContentPipelineRoutes } from "./modules/telegram/telegramContentRoutes";
+import { telegramUnifiedWebhookRoutes } from "./modules/telegram/webhookRoutes";
 import { contentPipelineRoutes } from "./modules/content-pipeline/routes";
 import { internalContentPipelineRoutes } from "./modules/content-pipeline/internalMarketing.routes";
 import { organizerOutreachRoutes } from "./modules/organizer-outreach/routes";
@@ -103,6 +104,7 @@ app.use("/public/subscriptions", publicRateLimiter, publicSubscriptionsRoutes(en
 app.use("/public", publicRateLimiter, publicCollectionsRoutes(env));
 app.use("/public", publicRateLimiter, publicExploreRoutes(env));
 app.use("/public", publicRateLimiter, publicBlogRoutes(env));
+app.use("/public/telegram", telegramUnifiedWebhookRoutes(env));
 app.use("/public/telegram", publicRateLimiter, telegramContentPipelineRoutes(env));
 
 // Minimal observability: log unhandled errors (no PII in logs)

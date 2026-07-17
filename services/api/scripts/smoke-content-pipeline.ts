@@ -1,5 +1,7 @@
 import "dotenv/config";
 import { PrismaClient } from "@prisma/client";
+import { buildTelegramBotApiUrl } from "@mywave/config";
+import { proxyFetch } from "../src/lib/proxyFetch";
 
 type CheckResult = { name: string; ok: boolean; details?: string };
 
@@ -9,6 +11,12 @@ function requiredEnv(name: string): string {
   const v = process.env[name]?.trim();
   if (!v) throw new Error(`Missing env: ${name}`);
   return v;
+}
+
+function telegramMethodUrl(method: string): string {
+  const url = buildTelegramBotApiUrl(process.env, method);
+  if (!url) throw new Error("Missing Telegram Bot API configuration");
+  return url;
 }
 
 async function runCheck(name: string, fn: () => Promise<string | void>): Promise<CheckResult> {
@@ -54,7 +62,7 @@ async function main() {
 
   checks.push(
     await runCheck("env: required", async () => {
-      requiredEnv("TELEGRAM_BOT_API_BASE_URL");
+      telegramMethodUrl("getMe");
       requiredEnv("TELEGRAM_CONTENT_OWNER_CHAT_ID");
       requiredEnv("CONTENT_PIPELINE_TELEGRAM_WEBHOOK_TOKEN");
       requiredEnv("TELEGRAM_UPDATES_CHANNEL_CHAT_ID");
@@ -76,8 +84,11 @@ async function main() {
       if (/localhost|127\.0\.0\.1/i.test(webBase)) {
         return "skipped for local PUBLIC_WEB_BASE_URL";
       }
-      const base = requiredEnv("TELEGRAM_BOT_API_BASE_URL").replace(/\/+$/, "");
-      const r = await fetch(`${base}/getWebhookInfo`);
+      const r = await proxyFetch(
+        telegramMethodUrl("getWebhookInfo"),
+        {},
+        process.env.TELEGRAM_BOT_HTTP_PROXY,
+      );
       const j = (await r.json()) as { ok?: boolean; result?: { url?: string; pending_update_count?: number; last_error_message?: string } };
       if (!j.ok || !j.result) throw new Error("getWebhookInfo failed");
       if (!j.result.url) throw new Error("webhook url is empty");

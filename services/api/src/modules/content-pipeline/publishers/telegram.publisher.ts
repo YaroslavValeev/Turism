@@ -1,6 +1,6 @@
 import type { Env } from "@mywave/config";
 import type { ChannelPublisher, PublishAdapterInput, PublishAdapterResult } from "./types";
-import { callTelegramJson } from "../../telegram/telegramApi";
+import { callTelegramJson, isTelegramBotApiConfigured } from "../../telegram/telegramApi";
 
 export function createTelegramPublisher(env: Env): ChannelPublisher {
   return {
@@ -8,7 +8,7 @@ export function createTelegramPublisher(env: Env): ChannelPublisher {
     async publish(input: PublishAdapterInput): Promise<PublishAdapterResult> {
       const chatId = env.TELEGRAM_UPDATES_CHANNEL_CHAT_ID?.trim();
       if (!chatId) throw new Error("TELEGRAM_UPDATES_CHANNEL_CHAT_ID not set");
-      if (!env.TELEGRAM_BOT_API_BASE_URL) throw new Error("TELEGRAM_BOT_API_BASE_URL not set");
+      if (!isTelegramBotApiConfigured(env)) throw new Error("Telegram Bot API is not configured");
       const text = `${input.text}\n\n#mywave`;
       const res = await callTelegramJson<{ message_id: number }>(env, "sendMessage", {
         chat_id: chatId,

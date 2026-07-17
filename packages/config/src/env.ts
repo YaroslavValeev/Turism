@@ -1,6 +1,6 @@
 /**
  * Env parsing. Source of truth: config_and_secrets_map.csv
- * Алиасы legacy → канон (TARGET_INTERNAL_TOKEN, TELEGRAM_BOT_TOKEN, OWNER_CHAT_ID): см. applyApiRuntimeEnvAliases.
+ * Алиасы legacy → канон (TARGET_INTERNAL_TOKEN, OWNER_CHAT_ID): см. applyApiRuntimeEnvAliases.
  */
 
 function required(key: string): string {
@@ -56,7 +56,11 @@ export interface Env {
   INTERNAL_ANALYTICS_TOKEN?: string;
   /** Bearer token для private Camp API: GET /api/v1/camps, /api/v1/camps/:id, /camps-feed.json. */
   CAMP_API_TOKEN?: string;
-  /** Опционально: Telegram Bot API для алертов (`https://api.telegram.org/bot<token>/sendMessage`). */
+  /** Канонический origin Telegram Bot API без токена и path. */
+  TELEGRAM_API_BASE_URL?: string;
+  /** Секрет Telegram Bot API. */
+  TELEGRAM_BOT_TOKEN?: string;
+  /** @deprecated Secret-bearing compatibility fallback. */
   TELEGRAM_BOT_API_BASE_URL?: string;
   /** chat_id получателя алертов */
   TELEGRAM_ALERT_CHAT_ID?: string;
@@ -150,6 +154,8 @@ export function loadEnv(): Env {
     ANALYTICS_ENABLED: optionalBoolean("ANALYTICS_ENABLED", false),
     INTERNAL_ANALYTICS_TOKEN: optional("INTERNAL_ANALYTICS_TOKEN"),
     CAMP_API_TOKEN: optional("CAMP_API_TOKEN"),
+    TELEGRAM_API_BASE_URL: optional("TELEGRAM_API_BASE_URL"),
+    TELEGRAM_BOT_TOKEN: optional("TELEGRAM_BOT_TOKEN"),
     TELEGRAM_BOT_API_BASE_URL: optional("TELEGRAM_BOT_API_BASE_URL"),
     TELEGRAM_ALERT_CHAT_ID: optional("TELEGRAM_ALERT_CHAT_ID"),
     TELEGRAM_CHANNEL_CHAT_ID: optional("TELEGRAM_CHANNEL_CHAT_ID"),

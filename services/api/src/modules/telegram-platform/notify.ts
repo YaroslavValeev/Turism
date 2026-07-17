@@ -1,6 +1,6 @@
 import type { Env } from "@mywave/config";
 import { prisma } from "../../lib/prisma";
-import { callTelegramJson } from "../telegram/telegramApi";
+import { callTelegramJson, isTelegramBotApiConfigured } from "../telegram/telegramApi";
 import { notifyLeadMissingContactToOps } from "./opsNotify";
 
 async function hasOrganizerTelegramChat(organizerId: string): Promise<boolean> {
@@ -32,7 +32,7 @@ export async function notifyLeadToOrganizer(
   if (!args.consentGiven) {
     return { ok: false, error: "consent_required" };
   }
-  if (!env.TELEGRAM_BOT_API_BASE_URL) {
+  if (!isTelegramBotApiConfigured(env)) {
     return { ok: false, error: "telegram_not_configured" };
   }
 

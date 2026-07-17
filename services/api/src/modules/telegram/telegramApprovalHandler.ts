@@ -1,4 +1,4 @@
-import type { Env } from "@mywave/config";
+import { buildTelegramFileApiUrl, type Env } from "@mywave/config";
 import { prisma } from "../../lib/prisma";
 import { callTelegramJson, resolveContentOwnerChatId } from "./telegramApi";
 import {
@@ -51,11 +51,8 @@ export async function downloadTelegramFile(env: Env, fileId: string): Promise<{ 
   if (!g.ok || !g.result?.file_path) {
     return null;
   }
-  const base = env.TELEGRAM_BOT_API_BASE_URL?.replace(/\/+$/, "");
-  if (!base) return null;
-  const token = base.split("/").pop();
-  if (!token) return null;
-  const u = `https://api.telegram.org/file/bot${token}/${g.result.file_path}`;
+  const u = buildTelegramFileApiUrl(env, g.result.file_path);
+  if (!u) return null;
   const r = await proxyFetch(u, {}, env.TELEGRAM_BOT_HTTP_PROXY);
   if (!r.ok) return null;
   const ab = await r.arrayBuffer();

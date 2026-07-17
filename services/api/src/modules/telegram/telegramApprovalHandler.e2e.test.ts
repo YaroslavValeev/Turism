@@ -40,7 +40,8 @@ import { handleTelegramContentPipelineUpdate } from "./telegramApprovalHandler";
 import { applyRewrite, handleApprovalDecision, requestRewrite } from "../content-pipeline/approval.service";
 
 const env = {
-  TELEGRAM_BOT_API_BASE_URL: "https://api.telegram.org/botTOKEN",
+  TELEGRAM_API_BASE_URL: "https://api.telegram.org",
+  TELEGRAM_BOT_TOKEN: "TOKEN",
   TELEGRAM_CONTENT_OWNER_CHAT_ID: "123",
   TELEGRAM_ALERT_CHAT_ID: "123",
 } as unknown as import("@mywave/config").Env;

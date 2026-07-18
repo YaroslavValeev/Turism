@@ -23,6 +23,13 @@ on:
         options:
           - incremental
           - full
+      operation:
+        description: "deploy rebuilds API; restart_proxy_only only refreshes reverse-proxy and runs Camp API smoke"
+        type: choice
+        default: deploy
+        options:
+          - deploy
+          - restart_proxy_only
 
 concurrency:
   group: deploy-camp-api
@@ -132,12 +139,43 @@ jobs:
           : "${DEPLOY_PATH:?DEPLOY_PATH is required}"
           : "${ROTATE_CAMP_TOKEN:?ROTATE_CAMP_TOKEN is required}"
           : "${BUILD_MODE:?BUILD_MODE is required}"
+          : "${OPERATION:?OPERATION is required}"
 
           cd "$DEPLOY_PATH"
           export DC='docker compose --env-file .env.production -f docker-compose.production.yml'
 
           echo ">>> deploy path: $(pwd)"
           test -f docker-compose.production.yml
+
+          if [ "$OPERATION" = "restart_proxy_only" ]; then
+            echo ">>> restart only reverse-proxy"
+            $DC restart reverse-proxy
+            $DC ps api postgres reverse-proxy
+
+            echo ">>> verify published Camp API fixture through local nginx"
+            CAMP_API_TOKEN="$(grep '^CAMP_API_TOKEN=' services/api/.env.production | tail -n1 | cut -d= -f2- | tr -d '\"')"
+            test -n "$CAMP_API_TOKEN"
+            curl -kfsS --resolve api.mywavetour.ru:443:127.0.0.1 \
+              -H "Authorization: Bearer ${CAMP_API_TOKEN}" \
+              "https://api.mywavetour.ru/api/v1/camps?status=published&sports=wakesurf,wakeboard&audience=ru&limit=100&offset=0&restart_probe=$(date +%s)" \
+              -o /tmp/camp-api-restart-proxy-smoke.json
+
+            python3 - <<'PY'
+          import json
+
+          camp_id = "tour_camp_api_mvp_wakesurf_v1"
+          payload = json.load(open("/tmp/camp-api-restart-proxy-smoke.json", encoding="utf-8"))
+          items = payload.get("items") or []
+          camp = next((item for item in items if item.get("id") == camp_id), None)
+          assert camp is not None, {"camp_id": camp_id, "ids": [item.get("id") for item in items]}
+          assert camp.get("publication_status") == "published", camp
+          assert camp.get("content_rights_status") == "unknown", camp
+          print("restart_proxy_smoke: ok")
+          print("records_returned:", len(items))
+          print("camp_id:", camp_id)
+          PY
+            exit 0
+          fi
 
           BACKUP_PATH="/tmp/camp-api-selected-backup-$(date +%Y%m%d%H%M%S).tgz"
           tar -czf "$BACKUP_PATH" --ignore-failed-read \
@@ -261,6 +299,7 @@ jobs:
           DEPLOY_KEY_LEGACY: ${{ secrets.DEPLOY_SSH_KEY }}
           ROTATE_CAMP_TOKEN: ${{ inputs.rotate_camp_token }}
           BUILD_MODE: ${{ inputs.build_mode }}
+          OPERATION: ${{ inputs.operation }}
         run: |
           set -euo pipefail
           install -m 700 -d ~/.ssh
@@ -343,5 +382,5 @@ jobs:
 
           echo ">>> run single-session remote Camp API delivery"
           ssh $SSH_LONG "${DEPLOY_USER}@${DEPLOY_HOST}" \
-            "set -euo pipefail; mkdir -p '${DP}'; test -f '${DP}/docker-compose.production.yml'; printf '%s' '${ARTIFACT_B64}' | base64 -d > /tmp/camp-api-release.tgz; printf '%s' '${SCRIPT_B64}' | base64 -d > /tmp/deploy-camp-api-remote.sh; chmod 700 /tmp/deploy-camp-api-remote.sh; DEPLOY_PATH='${DP}' ROTATE_CAMP_TOKEN='${ROTATE_CAMP_TOKEN}' BUILD_MODE='${BUILD_MODE}' bash /tmp/deploy-camp-api-remote.sh"
+            "set -euo pipefail; mkdir -p '${DP}'; test -f '${DP}/docker-compose.production.yml'; printf '%s' '${ARTIFACT_B64}' | base64 -d > /tmp/camp-api-release.tgz; printf '%s' '${SCRIPT_B64}' | base64 -d > /tmp/deploy-camp-api-remote.sh; chmod 700 /tmp/deploy-camp-api-remote.sh; DEPLOY_PATH='${DP}' ROTATE_CAMP_TOKEN='${ROTATE_CAMP_TOKEN}' BUILD_MODE='${BUILD_MODE}' OPERATION='${OPERATION}' bash /tmp/deploy-camp-api-remote.sh"
           unset ARTIFACT_B64 SCRIPT_B64

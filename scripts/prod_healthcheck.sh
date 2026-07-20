@@ -35,7 +35,12 @@ echo "== HTTP health short alias (/health) =="
 echo
 
 echo "== Public catalog (nginx /api/ → api /programs) =="
-"${CURL_EXT[@]}" https://mywavetour.ru/api/programs | head -c 400
+_catalog_tmp="$(mktemp)"
+trap 'rm -f "$_catalog_tmp"' EXIT
+"${CURL_EXT[@]}" https://mywavetour.ru/api/programs -o "$_catalog_tmp"
+head -c 400 "$_catalog_tmp"
+rm -f "$_catalog_tmp"
+trap - EXIT
 echo
 echo "(truncated)"
 

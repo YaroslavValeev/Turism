@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Request } from "express";
-import { buildCampListResponse, buildCampWhere, parseCampListQuery } from "./routes";
+import { buildCampListResponse, buildCampWhere, collectCampListPage, parseCampListQuery } from "./routes";
 
 function req(query: Record<string, string | undefined>): Request {
   return { query } as unknown as Request;
@@ -68,6 +68,44 @@ describe("camp feed routes helpers", () => {
     expect(buildCampListResponse([one, two, three] as never, { limit: 2, offset: 10 })).toEqual({
       items: [one, two],
       next_offset: 12,
+    });
+  });
+
+  it("applies limit after rows rejected by the Camp mapper", async () => {
+    const one = { id: "tour_1" };
+    const two = { id: "tour_2" };
+    const three = { id: "tour_3" };
+    const candidates = [null, null, one, null, two, three];
+
+    const page = await collectCampListPage(
+      { limit: 2, offset: 0 },
+      async (skip, take) => candidates.slice(skip, skip + take),
+      (candidate) => candidate as never,
+      2,
+    );
+
+    expect(page).toEqual({
+      items: [one, two],
+      next_offset: 2,
+    });
+  });
+
+  it("applies offset to mapped Camps instead of raw Program rows", async () => {
+    const one = { id: "tour_1" };
+    const two = { id: "tour_2" };
+    const three = { id: "tour_3" };
+    const candidates = [null, one, null, two, three];
+
+    const page = await collectCampListPage(
+      { limit: 1, offset: 1 },
+      async (skip, take) => candidates.slice(skip, skip + take),
+      (candidate) => candidate as never,
+      2,
+    );
+
+    expect(page).toEqual({
+      items: [two],
+      next_offset: 2,
     });
   });
 });

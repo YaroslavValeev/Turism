@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Env } from "@mywave/config";
 import type { CampProgramRow } from "./mapper";
-import { mapProgramToCamp, normalizeAvailabilityStatus, normalizeSports, resolveProgramIdFromCampId } from "./mapper";
+import { mapProgramToCamp, normalizeAvailabilityStatus, normalizeSports, resolveCampId, resolveProgramIdFromCampId } from "./mapper";
 
 const env = {
   PUBLIC_WEB_BASE_URL: "https://mywavetour.ru",
@@ -110,5 +110,11 @@ describe("camp mapper", () => {
   it("accepts both external camp id and raw program id for detail lookup", () => {
     expect(resolveProgramIdFromCampId("tour_prog_123")).toBe("prog_123");
     expect(resolveProgramIdFromCampId("prog_123")).toBe("prog_123");
+  });
+
+  it("round-trips every Program id exposed by the Camp list", () => {
+    for (const programId of ["prog_123", "cmoshgoar002f7cc93bt6klvg", "tour_legacy_program"]) {
+      expect(resolveProgramIdFromCampId(resolveCampId(programId))).toBe(programId);
+    }
   });
 });

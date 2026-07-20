@@ -14,13 +14,15 @@ import { computeTravelerKeyHash } from "../../lib/travelerKey";
 import { ensureReviewRequestForCompletedBooking } from "../reviews/reviewRequests";
 import { createDealForBooking, resolveContentItemIdForAttribution, syncDealFromBooking } from "../deals/dealService";
 import { addRevenueToContentMetrics } from "../content-pipeline/contentRevenue";
+import { createPublicRateLimiter } from "../../middleware/security";
 
 export function bookingsRoutes(env: Env): Router {
   const router = Router();
   const admin = requireAdmin(env);
+  const publicRateLimiter = createPublicRateLimiter(env);
 
   // Assisted booking intake: public can create inquiry (new). organizer_id from program.
-  router.post("/", async (req: Request, res: Response) => {
+  router.post("/", publicRateLimiter, async (req: Request, res: Response) => {
     const body = req.body as {
       programId?: string;
       guestContact?: string;

@@ -1,8 +1,9 @@
 /**
  * Organizers CRUD. Source of truth: canonical_entity_model, canonical_status_models.
- * GET public; POST/PATCH admin only. verification-status change → audit log.
+ * Public list returns an allowlisted catalog DTO; sensitive reads and all writes are admin-only.
+ * verification-status change → audit log.
  */
-import { Router, Request, Response } from "express";
+import { Router, Request, Response, NextFunction } from "express";
 import { isOrganizerVerificationStatus, type OrganizerVerificationStatus } from "@mywave/shared-types";
 import { prisma } from "../../lib/prisma";
 import { writeAuditLog } from "../../lib/audit";
@@ -20,20 +21,44 @@ import { emitBackendAnalyticsEventBestEffort } from "../analytics/service";
 export function organizersRoutes(env: Env): Router {
   const router = Router();
   const admin = requireAdmin(env);
+  const publicOrAdmin = (req: Request, res: Response, next: NextFunction) => {
+    if (!req.headers.authorization) {
+      next();
+      return;
+    }
+    admin(req, res, next);
+  };
 
-  router.get("/", async (_req: Request, res: Response) => {
-    const verificationStatus = _req.query.verification_status as string | undefined;
+  router.get("/", publicOrAdmin, async (req: Request, res: Response) => {
+    const verificationStatus = req.query.verification_status as string | undefined;
     const where = verificationStatus && isOrganizerVerificationStatus(verificationStatus)
       ? { verificationStatus: verificationStatus as OrganizerVerificationStatus }
       : {};
+    if (req.headers.authorization) {
+      const list = await prisma.organizer.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+      });
+      res.json(list);
+      return;
+    }
     const list = await prisma.organizer.findMany({
       where,
       orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        displayName: true,
+        verificationStatus: true,
+      },
     });
-    res.json(list);
+    res.json(list.map((organizer) => ({
+      id: organizer.id,
+      displayName: organizer.displayName,
+      verificationStatus: organizer.verificationStatus,
+    })));
   });
 
-  router.get("/:id", async (req: Request, res: Response) => {
+  router.get("/:id", admin, async (req: Request, res: Response) => {
     const o = await prisma.organizer.findUnique({ where: { id: req.params.id } });
     if (!o) {
       res.status(404).json({ error: "Not found" });
@@ -186,7 +211,7 @@ export function organizersRoutes(env: Env): Router {
     res.json(o);
   });
 
-  router.get("/:id/billing-profile", async (req: Request, res: Response) => {
+  router.get("/:id/billing-profile", admin, async (req: Request, res: Response) => {
     const profile = await prisma.organizerBillingProfile.findUnique({
       where: { organizerId: req.params.id },
     });
@@ -286,7 +311,7 @@ export function organizersRoutes(env: Env): Router {
     res.json(profile);
   });
 
-  router.get("/:id/contracts", async (req: Request, res: Response) => {
+  router.get("/:id/contracts", admin, async (req: Request, res: Response) => {
     const list = await prisma.organizerContract.findMany({
       where: { organizerId: req.params.id },
       orderBy: { createdAt: "desc" },
@@ -392,22 +417,14 @@ export function organizersRoutes(env: Env): Router {
     res.json(contract);
   });
 
-  router.get("/:id/privileges", async (req: Request, res: Response) => {
+  router.get("/:id/privileges", admin, async (req: Request, res: Response) => {
     try {
       const derived = await deriveOrganizerPrivileges(req.params.id);
-      const organizer = await prisma.organizer.update({
-        where: { id: req.params.id },
-        data: {
-          onboardingStatus: derived.onboardingStatus,
-          billingStatus: derived.billingStatus,
-          privilegeStatus: derived.privilegeStatus,
-        },
-      });
       res.json({
-        organizerId: organizer.id,
-        onboardingStatus: organizer.onboardingStatus,
-        billingStatus: organizer.billingStatus,
-        privilegeStatus: organizer.privilegeStatus,
+        organizerId: req.params.id,
+        onboardingStatus: derived.onboardingStatus,
+        billingStatus: derived.billingStatus,
+        privilegeStatus: derived.privilegeStatus,
         contractStatus: derived.contractStatus,
       });
     } catch (error) {
@@ -457,7 +474,7 @@ export function organizersRoutes(env: Env): Router {
     res.json(organizer);
   });
 
-  router.get("/:id/analytics/overview", async (req: Request, res: Response) => {
+  router.get("/:id/analytics/overview", admin, async (req: Request, res: Response) => {
     const organizerId = req.params.id;
     const days = Math.min(180, Math.max(7, Number(req.query.days ?? 30) || 30));
     const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);

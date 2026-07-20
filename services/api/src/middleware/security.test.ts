@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { Env } from "@mywave/config";
-import { isOriginAllowed } from "./security";
+import express from "express";
+import type { AddressInfo } from "node:net";
+import { createAuthRateLimiter, createPublicRateLimiter, isOriginAllowed } from "./security";
 
 const baseEnv: Env = {
   APP_ENV: "production",
@@ -44,5 +46,48 @@ describe("isOriginAllowed", () => {
 
   it("rejects origin that is not in allowlist", () => {
     expect(isOriginAllowed("https://evil.example", baseEnv)).toBe(false);
+  });
+});
+
+async function withHttpApp(
+  middleware: ReturnType<typeof createAuthRateLimiter>,
+  test: (baseUrl: string) => Promise<void>,
+) {
+  const app = express();
+  app.use(middleware);
+  app.get("/", (_req, res) => res.json({ ok: true }));
+  const server = app.listen(0, "127.0.0.1");
+  await new Promise<void>((resolve) => server.once("listening", resolve));
+  const address = server.address() as AddressInfo;
+  try {
+    await test(`http://127.0.0.1:${address.port}`);
+  } finally {
+    await new Promise<void>((resolve, reject) => {
+      server.close((error) => (error ? reject(error) : resolve()));
+    });
+  }
+}
+
+describe("rate limiters", () => {
+  it("blocks the eleventh authentication request and returns standard headers", async () => {
+    await withHttpApp(createAuthRateLimiter(), async (baseUrl) => {
+      for (let attempt = 1; attempt <= 10; attempt += 1) {
+        const response = await fetch(baseUrl);
+        expect(response.status).toBe(200);
+      }
+      const blocked = await fetch(baseUrl);
+      expect(blocked.status).toBe(429);
+      expect(blocked.headers.get("ratelimit-policy")).toContain("10");
+      expect(blocked.headers.get("retry-after")).toBeTruthy();
+    });
+  });
+
+  it("uses the configured public quota", async () => {
+    const env = { ...baseEnv, PUBLIC_RATE_LIMIT_MAX: 2 };
+    await withHttpApp(createPublicRateLimiter(env), async (baseUrl) => {
+      expect((await fetch(baseUrl)).status).toBe(200);
+      expect((await fetch(baseUrl)).status).toBe(200);
+      expect((await fetch(baseUrl)).status).toBe(429);
+    });
   });
 });

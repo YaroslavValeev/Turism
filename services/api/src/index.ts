@@ -37,13 +37,18 @@ import { internalContentPipelineRoutes } from "./modules/content-pipeline/intern
 import { organizerOutreachRoutes } from "./modules/organizer-outreach/routes";
 import { aiPilotRoutes } from "./modules/ai-pilot/routes";
 import { campFeedRoutes } from "./modules/camp-feed/routes";
-import { createPublicRateLimiter, isOriginAllowed } from "./middleware/security";
+import { createAuthRateLimiter, createPublicRateLimiter, isOriginAllowed } from "./middleware/security";
 import { safeError } from "./lib/safeLogger";
 import { assertPublicBaseUrlsForProduction } from "./lib/publicBaseUrlCheck";
 
 const env = loadEnv();
 assertPublicBaseUrlsForProduction(env);
 const app = express();
+app.disable("x-powered-by");
+// Trust forwarded client IPs only when the immediate peer is a local/private
+// reverse proxy (the production nginx container). Direct public peers cannot
+// spoof X-Forwarded-For for rate-limit keys.
+app.set("trust proxy", "loopback, linklocal, uniquelocal");
 app.use(helmet());
 app.use(
   cors({
@@ -52,8 +57,9 @@ app.use(
     },
   }),
 );
-app.use(express.json());
+app.use(express.json({ limit: "100kb" }));
 const publicRateLimiter = createPublicRateLimiter(env);
+const authRateLimiter = createAuthRateLimiter();
 
 // Корень (в т.ч. после nginx `location /api/ → proxy_pass …/`): не «Cannot GET /»
 app.get("/", (_req, res) => {
@@ -69,7 +75,7 @@ app.get("/health", (_req, res) => {
   res.json({ status: "ok" });
 });
 
-app.use("/auth", authRoutes(env));
+app.use("/auth", authRateLimiter, authRoutes(env));
 app.use("/organizers", organizersRoutes(env));
 app.use("/programs", programsRoutes(env));
 app.use("/bookings", bookingsRoutes(env));
@@ -98,14 +104,17 @@ const aiPilot = aiPilotRoutes(env);
 app.use("/ai-pilot", aiPilot);
 app.use("/api/ai-pilot", aiPilot);
 app.use(campFeedRoutes(env));
-app.use("/bookings", publicRateLimiter);
-app.use("/public/organizer-intake", publicRateLimiter, publicOrganizerIntakeRoutes());
-app.use("/public/subscriptions", publicRateLimiter, publicSubscriptionsRoutes(env));
-app.use("/public", publicRateLimiter, publicCollectionsRoutes(env));
-app.use("/public", publicRateLimiter, publicExploreRoutes(env));
-app.use("/public", publicRateLimiter, publicBlogRoutes(env));
+// Apply the public limiter exactly once per /public request. Mounting it with
+// every sub-router would consume the quota multiple times while Express walks
+// routers that do not match the final endpoint.
+app.use("/public", publicRateLimiter);
+app.use("/public/organizer-intake", publicOrganizerIntakeRoutes());
+app.use("/public/subscriptions", publicSubscriptionsRoutes(env));
+app.use("/public", publicCollectionsRoutes(env));
+app.use("/public", publicExploreRoutes(env));
+app.use("/public", publicBlogRoutes(env));
 app.use("/public/telegram", telegramUnifiedWebhookRoutes(env));
-app.use("/public/telegram", publicRateLimiter, telegramContentPipelineRoutes(env));
+app.use("/public/telegram", telegramContentPipelineRoutes(env));
 
 // Minimal observability: log unhandled errors (no PII in logs)
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {

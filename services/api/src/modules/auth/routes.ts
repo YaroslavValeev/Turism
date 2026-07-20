@@ -18,8 +18,10 @@ export function authRoutes(env: Env): Router {
   const router = Router();
 
   router.post("/login", async (req: Request, res: Response) => {
-    const { email, password } = req.body as { email?: string; password?: string };
-    if (!email || !password) {
+    const body = req.body as { email?: unknown; password?: unknown } | null;
+    const email = typeof body?.email === "string" ? body.email.trim().toLowerCase() : "";
+    const password = typeof body?.password === "string" ? body.password : "";
+    if (!email || !password || email.length > 254 || password.length > 1_024) {
       res.status(400).json({ error: "email and password required" });
       return;
     }
@@ -47,7 +49,7 @@ export function authRoutes(env: Env): Router {
       });
     }
     const payload: AdminPayload = { sub: user.id, role: "admin" };
-    const token = jwt.sign(payload, env.ADMIN_JWT_SECRET, { expiresIn: "24h" });
+    const token = jwt.sign(payload, env.ADMIN_JWT_SECRET, { expiresIn: "8h" });
     res.json({ token, userId: user.id });
   });
 

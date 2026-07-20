@@ -109,7 +109,9 @@ export function programsRoutes(env: Env): Router {
       res.json(list);
       return;
     }
-    const publicList = dedupeProgramsByEventKey(list).filter((p) => !isSyntheticPublicProgram(p));
+    const publicList = dedupeProgramsByEventKey(list).filter(
+      (p) => isProgramPubliclyVisible(p) && !isSyntheticPublicProgram(p),
+    );
     res.json(publicList.map((p) => toPublicProgram(p)));
   });
 

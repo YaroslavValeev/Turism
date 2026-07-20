@@ -37,3 +37,18 @@ export function createPublicRateLimiter(env: Env) {
     message: { error: "Too many requests" },
   });
 }
+
+/**
+ * Login throttling is intentionally stricter than the general public API limit.
+ * Successful logins also count so one compromised credential cannot be used as
+ * an unbounded request source.
+ */
+export function createAuthRateLimiter() {
+  return rateLimit({
+    windowMs: 15 * 60_000,
+    limit: 10,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many authentication attempts" },
+  });
+}

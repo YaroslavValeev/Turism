@@ -92,7 +92,7 @@ export interface Env {
   OPENAI_API_KEY?: string;
   /** SOCKS5/HTTP proxy URL for OpenAI egress from restricted RU VPS. */
   OPENAI_HTTP_PROXY?: string;
-  /** Optional proxy URL for Telegram Bot API only when direct Bot API is unstable. */
+  /** Optional proxy URL for Telegram Bot API and t.me ingestion when direct Telegram egress is unavailable. */
   TELEGRAM_BOT_HTTP_PROXY?: string;
   /** Публичная ссылка-приглашение в TG группу/канал с обновлениями */
   TELEGRAM_UPDATES_INVITE_LINK?: string;

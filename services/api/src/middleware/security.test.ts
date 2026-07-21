@@ -14,6 +14,7 @@ const baseEnv: Env = {
   INGESTION_DAILY_ENABLED: false,
   INGESTION_DAILY_HOUR_LOCAL: 8,
   INGESTION_AUTOPUBLISH_ENABLED: true,
+  INGESTION_DAILY_SOURCE_LIMIT: 5,
   ANALYTICS_ENABLED: false,
   PUBLIC_WEB_BASE_URL: "https://mywavetour.ru",
   PUBLIC_API_BASE_URL: "https://api.mywavetour.ru",

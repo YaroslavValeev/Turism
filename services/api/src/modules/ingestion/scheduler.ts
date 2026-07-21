@@ -23,6 +23,7 @@ export function startIngestionScheduler(env: Env) {
       const summary = await runDailySyncJob("system", {
         autoPublishEnabled: env.INGESTION_AUTOPUBLISH_ENABLED,
         fallbackImageUrl: env.INGESTION_DEFAULT_FALLBACK_IMAGE_URL,
+        sourceLimit: env.INGESTION_DAILY_SOURCE_LIMIT,
       });
       lastSuccessfulDay = key;
       console.log("[ingestion-scheduler] daily sync complete", summary);

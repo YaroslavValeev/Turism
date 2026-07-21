@@ -12,6 +12,7 @@ import { writeAuditLog } from "../../lib/audit";
 import { canPublishAutopilot, programIncludeForPublishGate } from "../programs/publishGate";
 import { buildProgramDedupKey, pickPreferredProgram, type ProgramDedupShape } from "../programs/dedup";
 import { cacheExternalProgramMediaForWeb } from "./mediaCache";
+import { fetchIngestionTextWithRetry } from "./sourceFetch";
 import {
   EVENT_CANDIDATE_STATUSES,
   SOURCE_PRIORITY_RANK,
@@ -3178,37 +3179,6 @@ async function fetchJsonWithRetry(url: string, headers?: Record<string, string>)
   throw lastError ?? new Error("Unable to fetch JSON source");
 }
 
-async function fetchTextWithRetry(url: string): Promise<string> {
-  if (!fetchFn) throw new Error("Fetch API is not available in this runtime");
-  let lastError: Error | null = null;
-  for (let attempt = 1; attempt <= 3; attempt += 1) {
-    try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 15000);
-      const response = (await fetchFn(url, {
-        signal: controller.signal as unknown,
-        headers: {
-          "user-agent": "MyWaveTravelBot/0.1 (+internal ingestion pipeline)",
-          accept: "text/html,application/rss+xml,application/atom+xml,application/xml,text/xml,*/*",
-        },
-      })) as {
-        ok: boolean;
-        status: number;
-        text: () => Promise<string>;
-      };
-      clearTimeout(timeout);
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-      return await response.text();
-    } catch (error) {
-      lastError = error instanceof Error ? error : new Error(String(error));
-      await new Promise((resolve) => setTimeout(resolve, attempt * 400));
-    }
-  }
-  throw lastError ?? new Error("Unable to fetch source");
-}
-
 function extractInstagramUsername(value: string): string | null {
   const normalized = normalizeText(value);
   if (!normalized) return null;
@@ -3348,12 +3318,12 @@ async function parseTrialNinjaSiteItems(source: Source, html: string, pageUrl: s
   const bundleUrl = bundlePath ? resolveUrl(bundlePath, pageUrl) : null;
   if (!bundleUrl) return [];
 
-  const indexBundle = await fetchTextWithRetry(bundleUrl);
+  const indexBundle = await fetchIngestionTextWithRetry(bundleUrl);
   const routes = parseTrialNinjaRouteDescriptors(indexBundle, bundleUrl, pageUrl);
   const items: CollectedItem[] = [];
   for (const route of routes) {
     try {
-      const chunk = await fetchTextWithRetry(route.assetUrl);
+      const chunk = await fetchIngestionTextWithRetry(route.assetUrl);
       const item = buildTrialNinjaCollectedItem(source, route, chunk);
       if (item) items.push(item);
     } catch {
@@ -3486,7 +3456,10 @@ async function collectItemsForSource(source: Source): Promise<CollectedItem[]> {
         instagramSeenUsers.add(username);
         parsed = await parseInstagramWebProfileItems(source, url);
       } else {
-        const payload = await fetchTextWithRetry(resolveUrl(url, normalizeSourceUrl(source)) ?? url);
+        const payload = await fetchIngestionTextWithRetry(
+          resolveUrl(url, normalizeSourceUrl(source)) ?? url,
+          process.env.TELEGRAM_BOT_HTTP_PROXY,
+        );
         const lowerPayload = payload.toLowerCase();
 
         if (shouldUseTrialNinjaParser(source, url)) {

@@ -2,6 +2,10 @@ import crypto from "crypto";
 import fs from "fs";
 import path from "path";
 import { spawnSync } from "child_process";
+import {
+  DEFAULT_INGESTION_DAILY_SOURCE_LIMIT,
+  MAX_INGESTION_DAILY_SOURCE_LIMIT,
+} from "@mywave/config";
 import { Prisma, Source, EventCandidate, NormalizedItem, RawItem } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
 import { writeAuditLog } from "../../lib/audit";
@@ -196,6 +200,7 @@ type RunSummary = {
 type DailySyncOptions = {
   autoPublishEnabled?: boolean;
   fallbackImageUrl?: string | null;
+  sourceLimit?: number;
 };
 
 const fetchFn = (globalThis as { fetch?: (input: string, init?: Record<string, unknown>) => Promise<unknown> }).fetch;
@@ -444,11 +449,27 @@ function getPrimarySourceDiscipline(source: SourceWithOrganizer): string | null 
   return normalizeText(fromMeta);
 }
 
-function isSourceDueForCollection(source: Source, now = new Date()): boolean {
+type DueSource = Pick<Source, "id" | "isActive" | "lastCheckedAt" | "fetchIntervalMinutes">;
+
+function isSourceDueForCollection(source: DueSource, now = new Date()): boolean {
   if (!source.isActive) return false;
   if (!source.lastCheckedAt) return true;
   const intervalMinutes = Math.max(source.fetchIntervalMinutes, 15);
   return now.getTime() - source.lastCheckedAt.getTime() >= intervalMinutes * 60 * 1000;
+}
+
+export function selectDueSourceIds(
+  sources: readonly DueSource[],
+  sourceLimit = DEFAULT_INGESTION_DAILY_SOURCE_LIMIT,
+  now = new Date(),
+): string[] {
+  if (!Number.isInteger(sourceLimit) || sourceLimit < 1 || sourceLimit > MAX_INGESTION_DAILY_SOURCE_LIMIT) {
+    throw new Error(`Invalid daily source limit: expected an integer from 1 to ${MAX_INGESTION_DAILY_SOURCE_LIMIT}`);
+  }
+  return sources
+    .filter((source) => isSourceDueForCollection(source, now))
+    .slice(0, sourceLimit)
+    .map((source) => source.id);
 }
 
 function extractUrls(text: string): string[] {
@@ -4328,7 +4349,7 @@ export async function autoPublishReadyCandidates(
   actorId: string | null,
   options?: DailySyncOptions,
 ): Promise<AutopilotBatchStats & { published: number }> {
-  const globalOn = options?.autoPublishEnabled !== false;
+  const globalOn = options?.autoPublishEnabled === true;
   if (!globalOn) {
     const empty: AutopilotBatchStats & { published: number } = {
       checked: 0,
@@ -4472,7 +4493,7 @@ export async function runDailySyncJob(actorId: string | null, options?: DailySyn
     where: { isActive: true },
     orderBy: [{ priority: "asc" }, { updatedAt: "desc" }],
   });
-  const dueSourceIds = sources.filter((source) => isSourceDueForCollection(source)).map((source) => source.id);
+  const dueSourceIds = selectDueSourceIds(sources, options?.sourceLimit);
 
   if (dueSourceIds.length === 0) {
     const apZero: AutopilotBatchStats & { published: number } = {

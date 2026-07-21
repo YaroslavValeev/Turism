@@ -28,6 +28,19 @@ function optionalNumber(key: string, defaultValue: number): number {
   return Number.isFinite(parsed) ? parsed : defaultValue;
 }
 
+function optionalIntegerInRange(key: string, defaultValue: number, min: number, max: number): number {
+  const value = process.env[key];
+  if (value === undefined || value === "") return defaultValue;
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < min || parsed > max) {
+    throw new Error(`Invalid ${key}: expected an integer from ${min} to ${max}`);
+  }
+  return parsed;
+}
+
+export const DEFAULT_INGESTION_DAILY_SOURCE_LIMIT = 5;
+export const MAX_INGESTION_DAILY_SOURCE_LIMIT = 100;
+
 export interface Env {
   APP_ENV: string;
   DATABASE_URL: string;
@@ -49,6 +62,7 @@ export interface Env {
   INGESTION_DAILY_ENABLED: boolean;
   INGESTION_DAILY_HOUR_LOCAL: number;
   INGESTION_AUTOPUBLISH_ENABLED: boolean;
+  INGESTION_DAILY_SOURCE_LIMIT: number;
   INGESTION_DEFAULT_FALLBACK_IMAGE_URL?: string;
   /** Включает запись server-side analytics + ingestion. В prod рекомендуется включать явно. */
   ANALYTICS_ENABLED: boolean;
@@ -149,7 +163,13 @@ export function loadEnv(): Env {
     SENTRY_DSN: optional("SENTRY_DSN"),
     INGESTION_DAILY_ENABLED: optionalBoolean("INGESTION_DAILY_ENABLED", false),
     INGESTION_DAILY_HOUR_LOCAL: optionalNumber("INGESTION_DAILY_HOUR_LOCAL", 8),
-    INGESTION_AUTOPUBLISH_ENABLED: optionalBoolean("INGESTION_AUTOPUBLISH_ENABLED", true),
+    INGESTION_AUTOPUBLISH_ENABLED: optionalBoolean("INGESTION_AUTOPUBLISH_ENABLED", false),
+    INGESTION_DAILY_SOURCE_LIMIT: optionalIntegerInRange(
+      "INGESTION_DAILY_SOURCE_LIMIT",
+      DEFAULT_INGESTION_DAILY_SOURCE_LIMIT,
+      1,
+      MAX_INGESTION_DAILY_SOURCE_LIMIT,
+    ),
     INGESTION_DEFAULT_FALLBACK_IMAGE_URL: optional("INGESTION_DEFAULT_FALLBACK_IMAGE_URL"),
     ANALYTICS_ENABLED: optionalBoolean("ANALYTICS_ENABLED", false),
     INTERNAL_ANALYTICS_TOKEN: optional("INTERNAL_ANALYTICS_TOKEN"),

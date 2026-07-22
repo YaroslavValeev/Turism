@@ -653,7 +653,37 @@ function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+export function matchesLocationKeyword(text: string, keyword: string): boolean {
+  const normalizedKeyword = normalizeText(keyword).toLowerCase();
+  if (!normalizedKeyword) return false;
+  if (normalizedKeyword === "анд") {
+    return /(?:^|[^\p{L}\p{N}])анд(?:ы|ах|ами|ов)?(?=$|[^\p{L}\p{N}])/iu.test(text);
+  }
+  return text.toLowerCase().includes(normalizedKeyword);
+}
+
 function extractDates(text: string, fallbackDate: Date | null): { startDate: Date | null; endDate: Date | null } {
+  const crossMonthPattern =
+    /(\d{1,2})\s+(января|янв|февраля|фев|марта|мар|апреля|апр|мая|июня|июн|июля|июл|августа|авг|сентября|сент|сен|октября|окт|ноября|ноя|декабря|дек|january|jan|february|feb|march|mar|april|apr|may|june|jun|july|jul|august|aug|september|sep|october|oct|november|nov|december|dec)\s*(?:-|–|—)\s*(\d{1,2})\s+(января|янв|февраля|фев|марта|мар|апреля|апр|мая|июня|июн|июля|июл|августа|авг|сентября|сент|сен|октября|окт|ноября|ноя|декабря|дек|january|jan|february|feb|march|mar|april|apr|may|june|jun|july|jul|august|aug|september|sep|october|oct|november|nov|december|dec)\s*(\d{4})?/gi;
+  let crossMonthMatch: RegExpExecArray | null;
+  while ((crossMonthMatch = crossMonthPattern.exec(text)) !== null) {
+    const startDay = Number(crossMonthMatch[1]);
+    const startMonth = MONTHS[crossMonthMatch[2].toLowerCase()];
+    const endDay = Number(crossMonthMatch[3]);
+    const endMonth = MONTHS[crossMonthMatch[4].toLowerCase()];
+    const explicitYear = crossMonthMatch[5] ? Number(crossMonthMatch[5]) : null;
+    const baseYear = explicitYear ?? new Date().getUTCFullYear();
+    const startYear = explicitYear && endMonth < startMonth ? baseYear - 1 : baseYear;
+    const endYear = !explicitYear && endMonth < startMonth ? baseYear + 1 : baseYear;
+
+    if (!isValidCalendarDate(startYear, startMonth, startDay) || !isValidCalendarDate(endYear, endMonth, endDay)) continue;
+
+    return {
+      startDate: toMiddayDate(startYear, startMonth, startDay),
+      endDate: toMiddayDate(endYear, endMonth, endDay),
+    };
+  }
+
   const dates: Date[] = [];
   const numericPattern = /(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})/g;
   let numericMatch: RegExpExecArray | null;
@@ -709,6 +739,18 @@ function extractDates(text: string, fallbackDate: Date | null): { startDate: Dat
   };
 }
 
+export function extractDatesByPriority(
+  textSources: ReadonlyArray<string | null | undefined>,
+  fallbackDate: Date | null,
+): { startDate: Date | null; endDate: Date | null } {
+  for (const textSource of textSources) {
+    const explicitDates = extractDates(normalizeText(textSource), null);
+    if (explicitDates.startDate) return explicitDates;
+  }
+
+  return extractDates("", fallbackDate);
+}
+
 function computeDurationDays(startDate: Date | null, endDate: Date | null): number | null {
   if (!startDate || !endDate) return null;
   const diff = endDate.getTime() - startDate.getTime();
@@ -722,7 +764,7 @@ function addDays(date: Date, days: number): Date {
 
 function detectRegion(text: string, source: SourceWithOrganizer): { country: string | null; region: string | null; city: string | null } {
   const lower = text.toLowerCase();
-  const matched = LOCATION_SIGNALS.find(({ keywords }) => keywords.some((keyword) => lower.includes(keyword)));
+  const matched = LOCATION_SIGNALS.find(({ keywords }) => keywords.some((keyword) => matchesLocationKeyword(lower, keyword)));
   const city = matched?.city ?? null;
 
   return {
@@ -2378,9 +2420,11 @@ function buildNormalizedDraft(rawItem: RawItemWithSource): NormalizedDraft {
   const rawText = normalizeText(decodeHtmlEntities(rawItem.rawText ?? ""));
   const imageUrl = extractImageUrl(rawItem.rawMediaJson, `${JSON.stringify(rawItem.rawMediaJson ?? [])} ${rawText}`);
   const ocrText = extractOcrTextFromImage(rawItem.source, imageUrl, rawText);
+  const derivedTitle = looksLikeGenericRawTitle(rawTitle, rawItem.source) ? deriveTitleFromText(rawText) : null;
+  const title = firstNonEmpty(derivedTitle, rawTitle, truncate(rawText, 120));
   const combined = normalizeText(`${rawTitle ?? ""}\n${rawText ?? ""}\n${ocrText ?? ""}`);
   const lower = combined.toLowerCase();
-  const extractedDates = extractDates(lower, rawItem.publishedAt);
+  const extractedDates = extractDatesByPriority([title, rawText, ocrText], rawItem.publishedAt);
   const region = detectRegion(lower, rawItem.source);
   const eventType = detectEventType(lower);
   const discipline = detectDiscipline(lower, rawItem.source);
@@ -2389,8 +2433,6 @@ function buildNormalizedDraft(rawItem: RawItemWithSource): NormalizedDraft {
   const urls = extractUrls(rawText);
   const bookingUrl = urls.find((url) => !rawItem.sourceUrl || url !== rawItem.sourceUrl) ?? rawItem.sourceUrl ?? null;
   const organizerName = firstNonEmpty(rawItem.source.organizer?.displayName, rawItem.authorName, rawItem.source.name);
-  const derivedTitle = looksLikeGenericRawTitle(rawTitle, rawItem.source) ? deriveTitleFromText(rawText) : null;
-  const title = firstNonEmpty(derivedTitle, rawTitle, truncate(rawText, 120));
   const descriptionShort = truncate(rawText, 220);
   const descriptionFull = rawText || rawTitle;
   const durationDays = computeDurationDays(extractedDates.startDate, extractedDates.endDate);

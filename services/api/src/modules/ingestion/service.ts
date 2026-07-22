@@ -3820,6 +3820,146 @@ export async function runDedupJob(actorId: string | null, sourceIds?: string[]):
   };
 }
 
+/**
+ * Deduplicate an explicit, pre-reviewed set of candidates without refreshing
+ * older candidates from the same source. This is intentionally stricter than
+ * runDedupJob: only ungrouped needs_review candidates that have never been
+ * published are accepted, and an existing group key is treated as a conflict.
+ *
+ * All database preflight checks run inside the same transaction and complete
+ * before the first write. A concurrent unique-key conflict also rolls the
+ * transaction back, so the caller never receives a partially grouped batch.
+ */
+export async function runDedupCandidatesJob(actorId: string | null, candidateIds: string[]): Promise<RunSummary> {
+  if (!Array.isArray(candidateIds) || candidateIds.length === 0) {
+    throw new Error("candidateIds must contain at least one explicit candidate ID");
+  }
+
+  if (candidateIds.some((candidateId) => typeof candidateId !== "string" || candidateId.trim() !== candidateId || !candidateId)) {
+    throw new Error("candidateIds must contain non-empty IDs without surrounding whitespace");
+  }
+
+  if (new Set(candidateIds).size !== candidateIds.length) {
+    throw new Error("candidateIds must not contain duplicates");
+  }
+
+  return prisma.$transaction(async (tx) => {
+    const candidates = (await tx.eventCandidate.findMany({
+      where: { id: { in: candidateIds } },
+      include: {
+        publishedProgram: true,
+        normalizedItem: {
+          include: {
+            rawItem: {
+              include: {
+                source: {
+                  include: {
+                    organizer: { select: { id: true, displayName: true } },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      orderBy: [{ finalScore: "desc" }, { createdAt: "asc" }],
+    })) as CandidateWithRelations[];
+
+    const foundIds = new Set(candidates.map((candidate) => candidate.id));
+    const missingIds = candidateIds.filter((candidateId) => !foundIds.has(candidateId));
+    if (missingIds.length > 0) {
+      throw new Error(`Candidate-scoped dedup preflight failed: ${missingIds.length} candidate ID(s) were not found`);
+    }
+
+    const unsafeStatuses = candidates.filter((candidate) => candidate.status !== "needs_review");
+    if (unsafeStatuses.length > 0) {
+      throw new Error(
+        `Candidate-scoped dedup preflight failed: ${unsafeStatuses.length} candidate(s) are not in needs_review status`,
+      );
+    }
+
+    const publishedCandidates = candidates.filter((candidate) => candidate.publishedProgram);
+    if (publishedCandidates.length > 0) {
+      throw new Error(`Candidate-scoped dedup preflight failed: ${publishedCandidates.length} candidate(s) were already published`);
+    }
+
+    const alreadyGrouped = candidates.filter((candidate) => candidate.dedupGroupId);
+    if (alreadyGrouped.length > 0) {
+      throw new Error(`Candidate-scoped dedup preflight failed: ${alreadyGrouped.length} candidate(s) are already grouped`);
+    }
+
+    const byGroup = new Map<string, CandidateWithRelations[]>();
+    for (const candidate of candidates) {
+      const groupKey = buildCandidateGroupKey(candidate);
+      const list = byGroup.get(groupKey) ?? [];
+      list.push(candidate);
+      byGroup.set(groupKey, list);
+    }
+
+    const groupKeys = [...byGroup.keys()];
+    const existingGroups = await tx.eventGroup.findMany({
+      where: { groupKey: { in: groupKeys } },
+      select: { groupKey: true },
+    });
+    if (existingGroups.length > 0) {
+      throw new Error(
+        `Candidate-scoped dedup preflight failed: ${existingGroups.length} group key collision(s) already exist`,
+      );
+    }
+
+    let updated = 0;
+    for (const [groupKey, list] of byGroup.entries()) {
+      const sorted = [...list].sort((a, b) => {
+        const sourceDiff = sourceRank(a.normalizedItem.rawItem.source.type) - sourceRank(b.normalizedItem.rawItem.source.type);
+        if (sourceDiff !== 0) return sourceDiff;
+        const scoreDiff = b.finalScore - a.finalScore;
+        if (scoreDiff !== 0) return scoreDiff;
+        return a.createdAt.getTime() - b.createdAt.getTime();
+      });
+      const canonical = sorted[0];
+      const group = await tx.eventGroup.create({
+        data: {
+          groupKey,
+          canonicalCandidateId: canonical.id,
+          mergeStatus: list.length > 1 ? "merged" : "open",
+        },
+      });
+
+      for (const candidate of list) {
+        const isCanonical = candidate.id === canonical.id;
+        await tx.eventCandidate.update({
+          where: { id: candidate.id },
+          data: {
+            dedupGroupId: group.id,
+            duplicateScore: isCanonical ? 0 : 0.95,
+            status: isCanonical ? "needs_review" : "merged",
+          },
+        });
+        updated += 1;
+      }
+
+      await tx.auditLog.create({
+        data: {
+          entityType: "event_group",
+          entityId: group.id,
+          changedField: "dedup_candidates",
+          oldValue: null,
+          newValue: canonical.id,
+          changedBy: actorId,
+          reason: "candidate-scoped ingestion dedup",
+        },
+      });
+    }
+
+    return {
+      scope: `candidates:${candidateIds.length}`,
+      processed: candidates.length,
+      created: byGroup.size,
+      updated,
+    };
+  });
+}
+
 async function resolveOrganizerForCandidate(tx: Prisma.TransactionClient, candidate: CandidateWithRelations): Promise<string> {
   const sourceOrganizerId = candidate.normalizedItem.rawItem.source.organizerId;
   if (sourceOrganizerId) return sourceOrganizerId;

@@ -18,6 +18,11 @@ function normalizeTaxonomyText(value: string): string {
   return value.replace(/\s+/g, " ").trim().toLowerCase();
 }
 
+function stripLeadingSourceLabel(text: string, sourceLabel: string): string {
+  if (!text.startsWith(sourceLabel)) return text;
+  return text.slice(sourceLabel.length).replace(/^[\s:|–—-]+/u, "");
+}
+
 /**
  * The source is a curated calendar of motorcycle enduro races. Its scheduled
  * rows often contain only a date, event name and location, so generic keyword
@@ -29,9 +34,10 @@ export function applyEnduroRaceTaxonomy(
   text: string,
   current: IngestionTaxonomy,
 ): IngestionTaxonomy {
-  if (normalizeTaxonomyText(sourceName) !== ENDURO_RACE_ANNOUNCEMENTS_SOURCE) return current;
+  const normalizedSourceName = normalizeTaxonomyText(sourceName);
+  if (normalizedSourceName !== ENDURO_RACE_ANNOUNCEMENTS_SOURCE) return current;
 
-  const normalizedText = normalizeTaxonomyText(text);
+  const normalizedText = stripLeadingSourceLabel(normalizeTaxonomyText(text), normalizedSourceName);
   const hasEnduroSignal = ENDURO_DISCIPLINE_SIGNAL.test(normalizedText);
   const hasRaceSignal = RACE_EVENT_SIGNAL.test(normalizedText);
   const isScheduledAnnouncement = SCHEDULED_ANNOUNCEMENT_SIGNAL.test(normalizedText);
@@ -39,7 +45,7 @@ export function applyEnduroRaceTaxonomy(
   if (!hasEnduroSignal && !hasRaceSignal && !isScheduledAnnouncement) return current;
 
   return {
-    eventType: "race",
+    eventType: hasRaceSignal || isScheduledAnnouncement ? "race" : current.eventType,
     discipline: "enduro",
   };
 }

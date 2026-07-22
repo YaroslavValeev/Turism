@@ -45,6 +45,22 @@ describe("enduro race ingestion taxonomy", () => {
     });
   });
 
+  it("preserves camp format for an enduro hotel and tour post without a race signal", () => {
+    expect(
+      applyEnduroRaceTaxonomy(
+        SOURCE_NAME,
+        "Лучший отель для эндуро-экспертов: тур, проживание и программа лагеря",
+        {
+          eventType: "camp",
+          discipline: null,
+        },
+      ),
+    ).toEqual({
+      eventType: "camp",
+      discipline: "enduro",
+    });
+  });
+
   it("does not apply source-specific taxonomy to other sources", () => {
     const current = {
       eventType: "trip",
@@ -57,6 +73,7 @@ describe("enduro race ingestion taxonomy", () => {
   it.each([
     "Итоги недели и новые фотографии",
     "Скидки действуют до 15 августа 2026",
+    "Анонсы эндуро гонок\nИтоги недели и новые фотографии",
   ])("does not classify a non-event post from the curated source: %s", (text) => {
     const current = {
       eventType: null,

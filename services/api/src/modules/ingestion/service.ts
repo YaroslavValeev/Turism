@@ -15,6 +15,11 @@ import { cacheExternalProgramMediaForWeb } from "./mediaCache";
 import { fetchIngestionTextWithRetry } from "./sourceFetch";
 import { applyEnduroRaceTaxonomy } from "./taxonomy";
 import {
+  EXPLICIT_CANCELLATION_ROUTING_REASON,
+  isExplicitCancellationNotice,
+  routeCandidateStatus,
+} from "./candidateRouting";
+import {
   EVENT_CANDIDATE_STATUSES,
   SOURCE_PRIORITY_RANK,
   SOURCE_RUN_STATUSES,
@@ -2397,8 +2402,12 @@ function scoreNormalizedItem(source: SourceWithOrganizer, normalized: Omit<Norma
   );
   const confidenceScore = clampScore((completenessScore + eventLikelihoodScore + futureEventScore) / 3);
   const reviewPriority = Math.round(finalScore * 100);
-  const routedStatus: EventCandidateStatus =
-    finalScore >= 0.42 && futureEventScore >= 0.2 && eventLikelihoodScore >= 0.3 ? "needs_review" : "archived";
+  const routedStatus = routeCandidateStatus({
+    finalScore,
+    futureEventScore,
+    eventLikelihoodScore,
+    explicitCancellationNotice: getExtractedJsonFlag(normalized.extractedJson, "explicitCancellationNotice"),
+  });
 
   return {
     confidenceScore,
@@ -2438,6 +2447,7 @@ function buildNormalizedDraft(rawItem: RawItemWithSource): NormalizedDraft {
   const organizerName = firstNonEmpty(rawItem.source.organizer?.displayName, rawItem.authorName, rawItem.source.name);
   const descriptionShort = truncate(rawText, 220);
   const descriptionFull = rawText || rawTitle;
+  const explicitCancellationNotice = isExplicitCancellationNotice(title, descriptionFull);
   const durationDays = computeDurationDays(extractedDates.startDate, extractedDates.endDate);
   const explicitDateSignal = hasExplicitDateSignal(lower);
   const normalizedBase: Omit<NormalizedDraft, "scores"> = {
@@ -2466,6 +2476,7 @@ function buildNormalizedDraft(rawItem: RawItemWithSource): NormalizedDraft {
       extractedUrls: urls.slice(0, 5),
       rawPublishedAt: rawItem.publishedAt?.toISOString() ?? null,
       hasExplicitDateSignal: explicitDateSignal,
+      explicitCancellationNotice,
       ocrTextPreview: truncate(ocrText, 180),
     },
   };
@@ -3739,6 +3750,9 @@ export async function runNormalizationJob(actorId: string | null, sourceIds?: st
         completenessScore: normalized.scores.completenessScore,
         sourceTrustScore: normalized.scores.sourceTrustScore,
         tourismFitScore: normalized.scores.tourismFitScore,
+        decisionNotes: getExtractedJsonFlag(normalized.extractedJson, "explicitCancellationNotice")
+          ? `AUTO_ARCHIVED: ${EXPLICIT_CANCELLATION_ROUTING_REASON}`
+          : null,
       },
     });
     await prisma.contentItem.upsert({

@@ -13,6 +13,7 @@ import { canPublishAutopilot, programIncludeForPublishGate } from "../programs/p
 import { buildProgramDedupKey, pickPreferredProgram, type ProgramDedupShape } from "../programs/dedup";
 import { cacheExternalProgramMediaForWeb } from "./mediaCache";
 import { fetchIngestionTextWithRetry } from "./sourceFetch";
+import { applyEnduroRaceTaxonomy } from "./taxonomy";
 import {
   EVENT_CANDIDATE_STATUSES,
   SOURCE_PRIORITY_RANK,
@@ -2382,8 +2383,10 @@ function buildNormalizedDraft(rawItem: RawItemWithSource): NormalizedDraft {
   const lower = combined.toLowerCase();
   const extractedDates = extractDates(lower, rawItem.publishedAt);
   const region = detectRegion(lower, rawItem.source);
-  const eventType = detectEventType(lower);
-  const discipline = detectDiscipline(lower, rawItem.source);
+  const taxonomy = applyEnduroRaceTaxonomy(rawItem.source.name, combined, {
+    eventType: detectEventType(lower),
+    discipline: detectDiscipline(lower, rawItem.source),
+  });
   const level = detectLevel(lower);
   const price = extractPrice(lower);
   const urls = extractUrls(rawText);
@@ -2396,8 +2399,8 @@ function buildNormalizedDraft(rawItem: RawItemWithSource): NormalizedDraft {
   const durationDays = computeDurationDays(extractedDates.startDate, extractedDates.endDate);
   const explicitDateSignal = hasExplicitDateSignal(lower);
   const normalizedBase: Omit<NormalizedDraft, "scores"> = {
-    eventType,
-    discipline,
+    eventType: taxonomy.eventType,
+    discipline: taxonomy.discipline,
     title,
     descriptionShort,
     descriptionFull,

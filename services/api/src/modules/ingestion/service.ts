@@ -419,6 +419,93 @@ function deriveTitleFromText(rawText: string | null): string | null {
   return truncate(firstSentence.trim(), 140);
 }
 
+export type EnduroRaceFields = {
+  title: string | null;
+  country: string | null;
+  region: string | null;
+  city: string | null;
+};
+
+const ENDURO_RACE_LOCATIONS: Array<{
+  keywords: string[];
+  country: string;
+  region: string;
+  city: string | null;
+}> = [
+  {
+    keywords: ["узбекистан", "тахкентск", "ахангаран"],
+    country: "Uzbekistan",
+    region: "Ташкентская область",
+    city: "Ахангаран",
+  },
+  {
+    keywords: ["белокурих"],
+    country: "Russia",
+    region: "Алтайский край",
+    city: "Белокуриха",
+  },
+  {
+    keywords: ["поярков"],
+    country: "Russia",
+    region: "Московская область",
+    city: "Поярково",
+  },
+  {
+    keywords: ["юкков"],
+    country: "Russia",
+    region: "Ленинградская область",
+    city: "Юкковское",
+  },
+  {
+    keywords: ["лягушкин"],
+    country: "Russia",
+    region: "Смоленская область",
+    city: "Лягушкино",
+  },
+  {
+    keywords: ["схауат"],
+    country: "Russia",
+    region: "Карачаево-Черкесия",
+    city: "Схауат",
+  },
+  {
+    keywords: ["прискоков"],
+    country: "Russia",
+    region: "Костромская область",
+    city: "Прискоковское",
+  },
+];
+
+/**
+ * Extracts the race title and exact venue fields used by the dedicated
+ * "Анонсы эндуро гонок" Telegram source. Its posts start with a date and
+ * append the location and race conditions to the same line, so the generic
+ * title/location fallbacks are too broad for this feed.
+ */
+export function extractEnduroRaceFields(rawText: string | null | undefined): EnduroRaceFields {
+  const text = normalizeText(decodeHtmlEntities(rawText));
+  const lower = text.toLowerCase();
+  const matchedLocation = ENDURO_RACE_LOCATIONS.find(({ keywords }) => keywords.some((keyword) => lower.includes(keyword)));
+  const eventAfterDate =
+    /\d{1,2}(?:\s*(?:-|–|—)\s*\d{1,2})?\s+(?:января|февраля|марта|апреля|мая|июня|июля|августа|сентября|октября|ноября|декабря)\s+20\d{2}\s*(?:-|–|—)\s*(.+)/i.exec(text)?.[1] ??
+    null;
+  const title = eventAfterDate
+    ? normalizeText(
+        eventAfterDate.replace(
+          /\s+(?:республика\s+узбекистан|[а-яё-]+\s+обл\.?|алтайский край|карачаево-черкесская республика|классы|расписание|взнос|требования|регистрация|электронный хронометраж)(?=\s|,|$)[\s\S]*$/i,
+          "",
+        ),
+      )
+    : null;
+
+  return {
+    title: title || null,
+    country: matchedLocation?.country ?? null,
+    region: matchedLocation?.region ?? null,
+    city: matchedLocation?.city ?? null,
+  };
+}
+
 function getMetaObject(meta: Prisma.JsonValue | null | undefined): Record<string, unknown> {
   if (meta && typeof meta === "object" && !Array.isArray(meta)) {
     return meta as Record<string, unknown>;
@@ -624,8 +711,8 @@ function detectLevel(text: string): string | null {
   return null;
 }
 
-function extractPrice(text: string): { priceFrom: number | null; currency: string | null } {
-  const match = text.match(/(?:от|from)?\s*([\d\s]{2,})\s*(₽|руб|rub|eur|usd|\$|€)/i);
+export function extractPrice(text: string): { priceFrom: number | null; currency: string | null } {
+  const match = text.match(/(?:от|from)?\s*([\d\s]{2,})\s*(₽|р\.?|руб\.?|rub|eur|usd|\$|€)/i);
   if (!match) return { priceFrom: null, currency: null };
   const rawNumber = match[1].replace(/[^\d]/g, "");
   const priceFrom = rawNumber ? Number(rawNumber) : null;
@@ -2425,6 +2512,31 @@ function scoreNormalizedItem(source: SourceWithOrganizer, normalized: Omit<Norma
   };
 }
 
+function applyEnduroRaceOverrides(
+  rawItem: RawItemWithSource,
+  normalized: Omit<NormalizedDraft, "scores">,
+): Omit<NormalizedDraft, "scores"> {
+  if (!matchesSourceName(rawItem.source, /анонсы\s*эндуро\s*гонок/i)) return normalized;
+
+  const fields = extractEnduroRaceFields(rawItem.rawText);
+  if (!fields.title && !fields.country && !fields.region && !fields.city) return normalized;
+
+  return {
+    ...normalized,
+    title: fields.title ?? normalized.title,
+    country: fields.country ?? normalized.country,
+    region: fields.region ?? normalized.region,
+    city: fields.city ?? normalized.city,
+    parseVersion: "v1_rules_enduro_race",
+    extractedJson: {
+      ...(typeof normalized.extractedJson === "object" && normalized.extractedJson && !Array.isArray(normalized.extractedJson)
+        ? normalized.extractedJson
+        : {}),
+      sourceSpecificProfile: "enduro_race_announcements",
+    } as Prisma.InputJsonValue,
+  };
+}
+
 function buildNormalizedDraft(rawItem: RawItemWithSource): NormalizedDraft {
   const rawTitle = normalizeText(decodeHtmlEntities(rawItem.rawTitle ?? ""));
   const rawText = normalizeText(decodeHtmlEntities(rawItem.rawText ?? ""));
@@ -2495,7 +2607,8 @@ function buildNormalizedDraft(rawItem: RawItemWithSource): NormalizedDraft {
   const normalizedWithTeamSergeev = applyTeamSergeevTelegramOverrides(rawItem, normalizedWithKitePiter);
   const normalizedWithTalkToFish = applyTalkToFishOverrides(rawItem, normalizedWithTeamSergeev);
   const normalizedWithSokolov = applySokolovTravelOverrides(rawItem, normalizedWithTalkToFish);
-  const normalizedWithOverrides = applyKamchatkaFreerideCommunityOverrides(rawItem, normalizedWithSokolov);
+  const normalizedWithKamchatka = applyKamchatkaFreerideCommunityOverrides(rawItem, normalizedWithSokolov);
+  const normalizedWithOverrides = applyEnduroRaceOverrides(rawItem, normalizedWithKamchatka);
   const scores = scoreNormalizedItem(rawItem.source, normalizedWithOverrides);
   return {
     ...normalizedWithOverrides,

@@ -4,13 +4,50 @@ const prismaMock = vi.hoisted(() => ({}));
 
 vi.mock("../../lib/prisma", () => ({ prisma: prismaMock }));
 
-import { extractDatesByPriority, matchesLocationKeyword } from "./service";
+import { extractDatesByPriority, extractEnduroRaceFields, extractPrice, matchesLocationKeyword } from "./service";
 
 function midday(year: number, month: number, day: number): Date {
   return new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
 }
 
 describe("ingestion semantic normalization signals", () => {
+  describe("enduro race announcement fields", () => {
+    it("keeps the Uzbekistan race out of the generic Russia fallback", () => {
+      expect(
+        extractEnduroRaceFields(
+          "08-09 августа 2026 – UZBEKISTAN ENDURO CUP Республика Узбекистан, Ташкентская обл., г. Ахангаран Классы – один класс по системе Взнос – 20 000 р.",
+        ),
+      ).toEqual({
+        title: "UZBEKISTAN ENDURO CUP",
+        country: "Uzbekistan",
+        region: "Ташкентская область",
+        city: "Ахангаран",
+      });
+    });
+
+    it("uses the exact Belokurikha location before the broad Altai signal", () => {
+      expect(
+        extractEnduroRaceFields(
+          "26-27 сентября 2026 – Эволюция Алтайский край, г. Белокуриха Классы Золото Серебро Бронза Взнос – 15 000 р.",
+        ),
+      ).toEqual({
+        title: "Эволюция",
+        country: "Russia",
+        region: "Алтайский край",
+        city: "Белокуриха",
+      });
+    });
+
+    it("parses the enduro entry fee written with the r. abbreviation", () => {
+      expect(extractPrice("Взнос – 4 500 р. (до 23.08.2026)")).toEqual({ priceFrom: 4500, currency: "RUB" });
+      expect(extractPrice("Взнос – 20 000 р.")).toEqual({ priceFrom: 20000, currency: "RUB" });
+    });
+
+    it("does not treat a date as a price without a currency token", () => {
+      expect(extractPrice("26-27 сентября 2026 – Эволюция")).toEqual({ priceFrom: null, currency: null });
+    });
+  });
+
   describe("date source priority", () => {
     it.each([
       {

@@ -267,6 +267,25 @@ model SourceRun {
   @@map("source_runs")
 }
 
+/// Durable ownership of a once-per-day scheduler run. This survives API restarts
+/// and prevents two application instances from running the same daily pipeline.
+model SchedulerDailyRun {
+  id            String    @id @default(cuid())
+  jobKey        String
+  dayKey        String
+  status        String    @default("running") // running | success | failed
+  leaseToken    String
+  leaseExpiresAt DateTime
+  completedAt   DateTime?
+  errorMessage  String?   @db.Text
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@unique([jobKey, dayKey])
+  @@index([status, leaseExpiresAt])
+  @@map("scheduler_daily_runs")
+}
+
 model RawItem {
   id             String          @id @default(cuid())
   sourceId       String

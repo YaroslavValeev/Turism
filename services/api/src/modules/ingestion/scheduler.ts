@@ -1,4 +1,5 @@
 import type { Env } from "@mywave/config";
+import { claimDailyRun, completeDailyRun, failDailyRun } from "./dailyRunLock";
 import { runDailySyncJob } from "./service";
 
 function dayKey(now: Date): string {
@@ -9,25 +10,29 @@ export function startIngestionScheduler(env: Env) {
   if (!env.INGESTION_DAILY_ENABLED) return;
 
   let running = false;
-  let lastSuccessfulDay: string | null = null;
 
   const tick = async () => {
     const now = new Date();
     if (running) return;
     if (now.getHours() < env.INGESTION_DAILY_HOUR_LOCAL) return;
     const key = dayKey(now);
-    if (lastSuccessfulDay === key) return;
-
     running = true;
+    let claim: Awaited<ReturnType<typeof claimDailyRun>> = null;
     try {
+      claim = await claimDailyRun(key, now);
+      if (!claim) return;
+
       const summary = await runDailySyncJob("system", {
         autoPublishEnabled: env.INGESTION_AUTOPUBLISH_ENABLED,
         fallbackImageUrl: env.INGESTION_DEFAULT_FALLBACK_IMAGE_URL,
         sourceLimit: env.INGESTION_DAILY_SOURCE_LIMIT,
       });
-      lastSuccessfulDay = key;
+      await completeDailyRun(claim);
       console.log("[ingestion-scheduler] daily sync complete", summary);
     } catch (error) {
+      // A claim can fail before ownership is established; only an owned lease
+      // is eligible for a durable failure transition.
+      if (claim) await failDailyRun(claim, error);
       console.error(
         "[ingestion-scheduler] daily sync failed",
         error instanceof Error ? error.message : String(error),

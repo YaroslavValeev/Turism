@@ -200,33 +200,35 @@ a:hover {
 .mw-site-header__brand {
   order: -10;
   width: 100%;
-  font-weight: 750;
-  font-size: clamp(1.75rem, 4.5vw, 2.8rem);
-  line-height: 1.05;
-  letter-spacing: -0.04em;
-  color: var(--mw-text);
   text-decoration: none;
   margin: 0 auto;
   flex-shrink: 0;
-  font-feature-settings: "kern" 1, "liga" 1;
   cursor: pointer;
-  display: block;
-  text-align: center;
-  transition: color 0.18s ease, opacity 0.18s ease;
+  display: flex;
+  justify-content: center;
+  transition: opacity 0.18s ease;
 }
 
-.mw-site-header--premium .mw-site-header__brand {
-  color: #10100f;
+.mw-site-header__brand-image {
+  display: block;
+  width: clamp(220px, 28vw, 360px);
+  height: auto;
 }
 
 .mw-site-header--premium .mw-site-header__brand:hover {
-  color: var(--mw-accent-hover);
+  opacity: 0.84;
 }
 
 .mw-site-header--premium .mw-site-header__brand:focus-visible {
   outline: none;
   border-radius: 6px;
   box-shadow: 0 0 0 3px var(--mw-accent-soft);
+}
+
+@media (max-width: 640px) {
+  .mw-site-header__brand-image {
+    width: min(220px, 72vw);
+  }
 }
 
 .mw-site-header__role {

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { homePrimaryNav } from "../content/pilotLanding";
@@ -93,7 +94,15 @@ export function SiteHeader({
             aria-label="MyWaveTour — на главную"
             title="На главную"
           >
-            MyWaveTour
+            <Image
+              src="/brand/mywavetour-logo-human.png"
+              alt="MyWaveTour"
+              width={1881}
+              height={836}
+              priority
+              sizes="(max-width: 640px) 220px, (max-width: 1024px) 290px, 360px"
+              className="mw-site-header__brand-image"
+            />
           </Link>
 
           <nav className="mw-site-header__nav" aria-label="Разделы витрины">

@@ -3902,6 +3902,159 @@ export async function runNormalizationJob(actorId: string | null, sourceIds?: st
   };
 }
 
+function normalizedPersistenceData(normalized: NormalizedDraft) {
+  return {
+    eventType: textWellFormed(normalized.eventType),
+    discipline: textWellFormed(normalized.discipline),
+    title: textWellFormed(normalized.title),
+    descriptionShort: textWellFormed(normalized.descriptionShort),
+    descriptionFull: textWellFormed(normalized.descriptionFull),
+    country: textWellFormed(normalized.country),
+    region: textWellFormed(normalized.region),
+    city: textWellFormed(normalized.city),
+    venue: textWellFormed(normalized.venue),
+    startDate: normalized.startDate,
+    endDate: normalized.endDate,
+    durationDays: normalized.durationDays,
+    level: textWellFormed(normalized.level),
+    priceFrom: normalized.priceFrom,
+    currency: textWellFormed(normalized.currency),
+    organizerName: textWellFormed(normalized.organizerName),
+    bookingUrl: textWellFormed(normalized.bookingUrl),
+    imageUrl: textWellFormed(normalized.imageUrl),
+    confidenceScore: normalized.confidenceScore,
+    relevanceScore: normalized.scores.tourismFitScore,
+    parseVersion: normalized.parseVersion,
+    extractedJson: jsonForJsonb(normalized.extractedJson),
+  };
+}
+
+function candidateScorePersistenceData(normalized: NormalizedDraft) {
+  return {
+    reviewPriority: normalized.scores.reviewPriority,
+    trustScore: normalized.scores.trustScore,
+    fitScore: normalized.scores.fitScore,
+    futureEventScore: normalized.scores.futureEventScore,
+    duplicateScore: normalized.scores.duplicateScore,
+    finalScore: normalized.scores.finalScore,
+    eventLikelihoodScore: normalized.scores.eventLikelihoodScore,
+    completenessScore: normalized.scores.completenessScore,
+    sourceTrustScore: normalized.scores.sourceTrustScore,
+    tourismFitScore: normalized.scores.tourismFitScore,
+  };
+}
+
+/**
+ * Rebuild exactly seven ungrouped enduro-race candidates after a parser fix.
+ * This deliberately does not invoke deduplication, publication or collection,
+ * and refuses every lifecycle state except an unpublished needs_review record.
+ */
+export async function runEnduroCandidateRemediation(
+  actorId: string | null,
+  candidateIds: string[],
+): Promise<RunSummary & { updated: number }> {
+  if (!Array.isArray(candidateIds) || candidateIds.length !== 7) {
+    throw new Error("Enduro remediation requires exactly seven explicit candidate IDs");
+  }
+
+  if (candidateIds.some((candidateId) => typeof candidateId !== "string" || candidateId.trim() !== candidateId || !candidateId)) {
+    throw new Error("candidateIds must contain non-empty IDs without surrounding whitespace");
+  }
+
+  if (new Set(candidateIds).size !== candidateIds.length) {
+    throw new Error("candidateIds must not contain duplicates");
+  }
+
+  return prisma.$transaction(async (tx) => {
+    const candidates = (await tx.eventCandidate.findMany({
+      where: { id: { in: candidateIds } },
+      include: {
+        publishedProgram: true,
+        normalizedItem: {
+          include: {
+            rawItem: {
+              include: {
+                source: {
+                  include: {
+                    organizer: { select: { id: true, displayName: true } },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      orderBy: { createdAt: "asc" },
+    })) as CandidateWithRelations[];
+
+    const foundIds = new Set(candidates.map((candidate) => candidate.id));
+    const missingIds = candidateIds.filter((candidateId) => !foundIds.has(candidateId));
+    if (missingIds.length > 0) {
+      throw new Error(`Enduro remediation preflight failed: ${missingIds.length} candidate ID(s) were not found`);
+    }
+
+    const unsafeCandidates = candidates.filter(
+      (candidate) =>
+        candidate.status !== "needs_review" ||
+        candidate.dedupGroupId !== null ||
+        candidate.publishedProgram !== null ||
+        !matchesSourceName(candidate.normalizedItem.rawItem.source, /анонсы\s*эндуро\s*гонок/i),
+    );
+    if (unsafeCandidates.length > 0) {
+      throw new Error("Enduro remediation preflight failed: every candidate must be ungrouped, unpublished needs_review from Анонсы эндуро гонок");
+    }
+
+    for (const candidate of candidates) {
+      const normalized = buildNormalizedDraft(candidate.normalizedItem.rawItem);
+      const oldValue = JSON.stringify({
+        title: candidate.normalizedItem.title,
+        country: candidate.normalizedItem.country,
+        region: candidate.normalizedItem.region,
+        city: candidate.normalizedItem.city,
+        priceFrom: candidate.normalizedItem.priceFrom,
+        currency: candidate.normalizedItem.currency,
+        parseVersion: candidate.normalizedItem.parseVersion,
+      });
+      const newValue = JSON.stringify({
+        title: normalized.title,
+        country: normalized.country,
+        region: normalized.region,
+        city: normalized.city,
+        priceFrom: normalized.priceFrom,
+        currency: normalized.currency,
+        parseVersion: normalized.parseVersion,
+      });
+
+      await tx.normalizedItem.update({
+        where: { id: candidate.normalizedItemId },
+        data: normalizedPersistenceData(normalized),
+      });
+      await tx.eventCandidate.update({
+        where: { id: candidate.id },
+        data: candidateScorePersistenceData(normalized),
+      });
+      await tx.auditLog.create({
+        data: {
+          entityType: "event_candidate",
+          entityId: candidate.id,
+          changedField: "enduro_candidate_remediation",
+          oldValue,
+          newValue,
+          changedBy: actorId,
+          reason: "candidate-scoped enduro parser remediation; status, grouping and publication preserved",
+        },
+      });
+    }
+
+    return {
+      scope: "enduro-candidates:7",
+      processed: candidates.length,
+      created: 0,
+      updated: candidates.length,
+    };
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+}
+
 export async function runDedupJob(actorId: string | null, sourceIds?: string[]): Promise<RunSummary> {
   const candidates = await prisma.eventCandidate.findMany({
     where: {

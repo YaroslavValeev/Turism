@@ -87,12 +87,12 @@ export function ProgramCatalogTable({
     <table className="mw-admin-table mw-admin-table--programs">
       <colgroup>
         <col style={{ width: "280px" }} />
+        <col style={{ width: "200px" }} />
         <col style={{ width: "260px" }} />
         <col style={{ width: "180px" }} />
         <col style={{ width: "260px" }} />
         <col style={{ width: "240px" }} />
         <col style={{ width: "220px" }} />
-        <col style={{ width: "180px" }} />
         <col style={{ width: "170px" }} />
         <col style={{ width: "90px" }} />
         <col style={{ width: "170px" }} />
@@ -101,12 +101,12 @@ export function ProgramCatalogTable({
       <thead>
         <tr>
           <th>Название</th>
+          <th>Статус публикации</th>
           <th>Оценка (внутр.)</th>
           <th>Фокус</th>
           <th>Горячее предложение</th>
           <th>Наличие</th>
           <th>Источник (intake)</th>
-          <th>Статус публикации</th>
           <th>Даты</th>
           <th>Медиа</th>
           <th>Приоритет модерации</th>
@@ -145,6 +145,32 @@ export function ProgramCatalogTable({
                   {program.title}
                 </strong>
                 <div className="mw-admin-caption">{program.organizer?.displayName ?? "—"} · {program.discipline}</div>
+              </td>
+              <td className="mw-admin-program-td">
+                <div className="mw-admin-mb-8">
+                  <AdminStatusBadge tone={publishStatusTone(program.publishStatus)}>
+                    {getProgramPublishStatusLabel(program.publishStatus)}
+                  </AdminStatusBadge>
+                </div>
+                <select
+                  className="mw-admin-input mw-admin-input--fill"
+                  value={statusDrafts[program.id] ?? program.publishStatus}
+                  onChange={(e) => setStatusDrafts((c) => ({ ...c, [program.id]: e.target.value }))}
+                >
+                  {PROGRAM_PUBLISH_STATUSES.map((status) => (
+                    <option key={status} value={status}>
+                      {getProgramPublishStatusLabel(status)}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  className="mw-admin-btn mw-admin-btn--ghost mw-admin-mt-8"
+                  onClick={() => onSaveStatus(program.id)}
+                  disabled={savingStatusId === program.id || (statusDrafts[program.id] ?? program.publishStatus) === program.publishStatus}
+                >
+                  {savingStatusId === program.id ? "Сохраняем..." : "Сохранить статус"}
+                </button>
               </td>
               <td className="mw-admin-program-td mw-admin-program-td--score">
                 {score ? `${score.totalProgramScore.toFixed(1)} (${score.scoreBand})` : "—"}
@@ -273,24 +299,6 @@ export function ProgramCatalogTable({
                 </button>
               </td>
               <td className="mw-admin-program-td">
-                <div className="mw-admin-mb-8">
-                  <AdminStatusBadge tone={publishStatusTone(program.publishStatus)}>
-                    {getProgramPublishStatusLabel(program.publishStatus)}
-                  </AdminStatusBadge>
-                </div>
-                <select
-                  className="mw-admin-input mw-admin-minw-180"
-                  value={statusDrafts[program.id] ?? program.publishStatus}
-                  onChange={(e) => setStatusDrafts((c) => ({ ...c, [program.id]: e.target.value }))}
-                >
-                  {PROGRAM_PUBLISH_STATUSES.map((status) => (
-                    <option key={status} value={status}>
-                      {getProgramPublishStatusLabel(status)}
-                    </option>
-                  ))}
-                </select>
-              </td>
-              <td className="mw-admin-program-td">
                 {new Date(program.startDate).toLocaleDateString("ru-RU")} – {new Date(program.endDate).toLocaleDateString("ru-RU")}
               </td>
               <td className="mw-admin-program-td">{Array.isArray(program.media) ? program.media.length : 0}</td>
@@ -308,14 +316,6 @@ export function ProgramCatalogTable({
                 </AdminStatusBadge>
               </td>
               <td className="mw-admin-program-td mw-admin-program-td--actions">
-                <button
-                  type="button"
-                  className="mw-admin-btn mw-admin-mb-8"
-                  onClick={() => onSaveStatus(program.id)}
-                  disabled={savingStatusId === program.id || (statusDrafts[program.id] ?? program.publishStatus) === program.publishStatus}
-                >
-                  {savingStatusId === program.id ? "Сохраняем..." : "Сохранить статус"}
-                </button>
                 <div className="mw-admin-stack-8">
                   <input
                     className="mw-admin-input"

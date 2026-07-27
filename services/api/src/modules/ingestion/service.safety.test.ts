@@ -7,7 +7,7 @@ const prismaMock = vi.hoisted(() => ({
 
 vi.mock("../../lib/prisma", () => ({ prisma: prismaMock }));
 
-import { autoPublishReadyCandidates, selectDueSourceIds } from "./service";
+import { autoPublishReadyCandidates, normalizeInstagramSourceUrlCandidate, selectDueSourceIds } from "./service";
 
 describe("daily ingestion safety", () => {
   beforeEach(() => {
@@ -54,4 +54,19 @@ describe("daily ingestion safety", () => {
 
     expect(selectDueSourceIds(sources, 1, now)).toEqual(["due-1"]);
   });
+
+  it.each([
+    ["team_sergeev", "https://www.instagram.com/team_sergeev/"],
+    ["@wakehouse.ru", "https://www.instagram.com/wakehouse.ru/"],
+    ["https://www.instagram.com/kaif_camp/", "https://www.instagram.com/kaif_camp/"],
+  ])("normalizes an auxiliary Instagram candidate %s", (candidate, expected) => {
+    expect(normalizeInstagramSourceUrlCandidate(candidate)).toBe(expected);
+  });
+
+  it.each(["not a valid handle", "https://[broken", "@too/many/segments"])(
+    "drops an invalid auxiliary Instagram candidate %s",
+    (candidate) => {
+      expect(normalizeInstagramSourceUrlCandidate(candidate)).toBeNull();
+    },
+  );
 });

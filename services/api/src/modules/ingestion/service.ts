@@ -3284,7 +3284,17 @@ function getSourceUrlCandidates(source: Source): string[] {
     ...getSourceSpecificFetchUrls(source),
   ];
   const normalized = urls
-    .map((value) => value.trim())
+    .map((value, index) => {
+      const trimmed = value.trim();
+      // The primary URL remains unchanged so an invalid source configuration is
+      // still reported. Auxiliary Instagram values may contain display handles
+      // such as "@profile", which must not reach fetch() as bare URLs.
+      if (source.type === "instagram" && index > 0) {
+        return normalizeInstagramSourceUrlCandidate(trimmed);
+      }
+      return trimmed;
+    })
+    .filter((value): value is string => Boolean(value))
     .filter((value) => /^https?:\/\//i.test(value) || source.type === "telegram" || source.type === "instagram");
   return [...new Set(normalized)];
 }
@@ -3371,6 +3381,24 @@ function extractInstagramUsername(value: string): string | null {
     }
   }
   return normalized.replace(/^@/, "").replace(/^\/+|\/+$/g, "") || null;
+}
+
+export function normalizeInstagramSourceUrlCandidate(value: string): string | null {
+  const normalized = normalizeText(value);
+  if (!normalized) return null;
+
+  if (/^https?:\/\//i.test(normalized)) {
+    try {
+      new URL(normalized);
+      return normalized;
+    } catch {
+      return null;
+    }
+  }
+
+  const username = extractInstagramUsername(normalized);
+  if (!username || !/^[a-z0-9._]{1,30}$/i.test(username)) return null;
+  return `https://www.instagram.com/${username}/`;
 }
 
 function extractInstagramCaption(edge: Record<string, unknown>): string {

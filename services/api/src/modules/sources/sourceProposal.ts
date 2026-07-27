@@ -47,12 +47,23 @@ export function normalizeProposedSourceUrl(value: unknown): { normalizedUrl: str
   return { normalizedUrl, detectedType };
 }
 
+export function sourceUrlMatchesProposal(
+  type: string,
+  sourceUrlOrHandle: string,
+  normalizedProposalUrl: string,
+): boolean {
+  return normalizeSourceUrlOrHandle(type, sourceUrlOrHandle) === normalizedProposalUrl;
+}
+
 export async function submitSourceProposal(input: SourceProposalInput) {
   const { normalizedUrl, detectedType } = normalizeProposedSourceUrl(input.url);
-  const existingSource = await prisma.source.findFirst({
-    where: { type: detectedType, urlOrHandle: normalizedUrl },
-    select: { id: true },
+  const existingSources = await prisma.source.findMany({
+    where: { type: detectedType },
+    select: { id: true, urlOrHandle: true },
   });
+  const existingSource = existingSources.find((source) =>
+    sourceUrlMatchesProposal(detectedType, source.urlOrHandle, normalizedUrl),
+  );
   if (existingSource) return { kind: "existing_source" as const, sourceId: existingSource.id, normalizedUrl };
 
   const pending = await prisma.sourceProposal.findFirst({

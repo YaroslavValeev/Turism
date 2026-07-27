@@ -19,6 +19,8 @@ RUN npm config set registry "$NPM_CONFIG_REGISTRY" \
   && pnpm install --frozen-lockfile
 
 FROM deps AS build
+ARG NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 RUN pnpm --filter @mywave/shared-types build
 RUN pnpm --filter admin build
 

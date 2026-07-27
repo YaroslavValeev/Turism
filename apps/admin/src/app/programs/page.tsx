@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { getProgramPublishStatusLabel, PILOT_SCOPE_LABEL, PROGRAM_PUBLISH_STATUSES } from "@mywave/shared-types";
+import { getProgramPublishStatusLabel, PROGRAM_PUBLISH_STATUSES } from "@mywave/shared-types";
 import { adminJson, getAdminToken } from "../../lib/admin";
 import { AdminEmptyState } from "../../components/admin/AdminEmptyState";
 import { AdminFilterField, AdminFiltersBar } from "../../components/admin/AdminFiltersBar";
@@ -310,8 +310,7 @@ export default function AdminProgramsPage() {
         title="Программы"
         description={
           <>
-            Текущий операционный фокус каталога — <strong>{PILOT_SCOPE_LABEL}</strong>. Новые публикации вне этого фокуса
-            оставляем в подготовке до отдельного решения владельца. Политика источников intake:{" "}
+            Управление программами каталога и их статусами публикации. Политика источников intake:{" "}
             <span className="mw-admin-code">docs/INGESTION_POLICY.md</span>.
           </>
         }

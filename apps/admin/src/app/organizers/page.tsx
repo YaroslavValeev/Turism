@@ -227,18 +227,17 @@ export default function OrganizersQueuePage() {
             />
           ) : (
             <div className="mw-admin-table-outer mw-admin-table-outer--always-scroll">
-              <table className="mw-admin-table" style={{ minWidth: 1580 }}>
+              <table className="mw-admin-table" style={{ minWidth: 1440 }}>
                 <thead>
                   <tr>
                     <th>Название</th>
+                    <th>Статус верификации</th>
                     <th>Email</th>
-                    <th>Верификация</th>
                     <th>Onboarding</th>
                     <th>Billing</th>
                     <th>Privilege</th>
                     <th>Score (internal)</th>
                     <th>Moderation</th>
-                    <th>Изменить статус</th>
                     <th>Создан</th>
                   </tr>
                 </thead>
@@ -251,12 +250,40 @@ export default function OrganizersQueuePage() {
                     return (
                       <tr key={o.id}>
                         <td>{o.displayName}</td>
-                        <td>{o.contactEmail}</td>
-                        <td>
+                        <td style={{ minWidth: 220 }}>
                           <AdminStatusBadge tone={verificationBadgeTone(o.verificationStatus)}>
                             {getOrganizerVerificationStatusLabel(o.verificationStatus)}
                           </AdminStatusBadge>
+                          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                            <select
+                              className="mw-admin-input"
+                              value={draftStatusByOrganizerId[o.id] ?? o.verificationStatus}
+                              onChange={(e) =>
+                                setDraftStatusByOrganizerId((prev) => ({
+                                  ...prev,
+                                  [o.id]: e.target.value,
+                                }))
+                              }
+                              style={{ minWidth: 140 }}
+                            >
+                              {ORGANIZER_VERIFICATION_STATUSES.map((s) => (
+                                <option key={s} value={s}>
+                                  {getOrganizerVerificationStatusLabel(s)}
+                                </option>
+                              ))}
+                            </select>
+                            <button
+                              type="button"
+                              className="mw-admin-btn mw-admin-btn--ghost"
+                              onClick={() => void saveVerificationStatus(o.id)}
+                              disabled={savingOrganizerId === o.id || (draftStatusByOrganizerId[o.id] ?? o.verificationStatus) === o.verificationStatus}
+                              style={{ whiteSpace: "nowrap" }}
+                            >
+                              {savingOrganizerId === o.id ? "Сохраняем…" : "Сохранить"}
+                            </button>
+                          </div>
                         </td>
+                        <td>{o.contactEmail}</td>
                         <td className="mw-admin-muted">{getOrganizerOnboardingStatusLabel(o.onboardingStatus)}</td>
                         <td className="mw-admin-muted">{getOrganizerBillingStatusLabel(o.billingStatus)}</td>
                         <td className="mw-admin-muted">{getOrganizerPrivilegeStatusLabel(o.privilegeStatus)}</td>
@@ -293,36 +320,6 @@ export default function OrganizersQueuePage() {
                           >
                             {priority.label}
                           </AdminStatusBadge>
-                        </td>
-                        <td style={{ minWidth: 220 }}>
-                          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                            <select
-                              className="mw-admin-input"
-                              value={draftStatusByOrganizerId[o.id] ?? o.verificationStatus}
-                              onChange={(e) =>
-                                setDraftStatusByOrganizerId((prev) => ({
-                                  ...prev,
-                                  [o.id]: e.target.value,
-                                }))
-                              }
-                              style={{ minWidth: 140 }}
-                            >
-                              {ORGANIZER_VERIFICATION_STATUSES.map((s) => (
-                                <option key={s} value={s}>
-                                  {getOrganizerVerificationStatusLabel(s)}
-                                </option>
-                              ))}
-                            </select>
-                            <button
-                              type="button"
-                              className="mw-admin-btn mw-admin-btn--ghost"
-                              onClick={() => void saveVerificationStatus(o.id)}
-                              disabled={savingOrganizerId === o.id || (draftStatusByOrganizerId[o.id] ?? o.verificationStatus) === o.verificationStatus}
-                              style={{ whiteSpace: "nowrap" }}
-                            >
-                              {savingOrganizerId === o.id ? "Сохраняем…" : "Сохранить"}
-                            </button>
-                          </div>
                         </td>
                         <td className="mw-admin-muted">{new Date(o.createdAt).toLocaleDateString("ru-RU")}</td>
                       </tr>

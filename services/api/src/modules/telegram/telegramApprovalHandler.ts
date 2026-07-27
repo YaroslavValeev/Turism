@@ -16,6 +16,7 @@ import {
   declineOutreachCampaign,
 } from "../organizer-outreach/service";
 import { proxyFetch } from "../../lib/proxyFetch";
+import { submitSourceProposal } from "../sources/sourceProposal";
 
 type TgUser = { id: number; username?: string; first_name?: string };
 type CallbackQuery = {
@@ -169,7 +170,7 @@ async function handleOwnerMessage(
   }
 
   if (msg.text?.startsWith("/")) {
-    return { ok: true };
+    return handleSourceProposalCommand(env, msg);
   }
 
   const item = await prisma.contentItem.findFirst({
@@ -225,6 +226,51 @@ async function handleOwnerMessage(
     return { ok: false, error: (r as { error: string }).error };
   }
   return { ok: true };
+}
+
+function sourceProposalAllowedUserIds(env: Env): Set<string> {
+  return new Set(
+    (env.TELEGRAM_SOURCE_PROPOSAL_USER_IDS ?? "")
+      .split(",")
+      .map((value) => value.trim())
+      .filter((value) => /^\d+$/.test(value)),
+  );
+}
+
+async function handleSourceProposalCommand(env: Env, msg: Message): Promise<{ ok: true } | { ok: false; error: string }> {
+  const text = msg.text?.trim() ?? "";
+  const match = /^\/source(?:@[a-z0-9_]+)?\s+(.+)$/i.exec(text);
+  if (!match) return { ok: true };
+
+  const userId = msg.from?.id ? String(msg.from.id) : "";
+  if (!sourceProposalAllowedUserIds(env).has(userId)) {
+    // Intentionally no reply: this is an owner-chat command with an explicit allowlist.
+    return { ok: true };
+  }
+
+  const [url, ...nameParts] = match[1].trim().split(/\s+/);
+  try {
+    const result = await submitSourceProposal({
+      url,
+      displayName: nameParts.join(" "),
+      submittedVia: "telegram",
+      submittedBy: `tg:${userId}`,
+    });
+    const textByKind =
+      result.kind === "created"
+        ? "Заявка на источник принята. Она не запускает парсинг и ждёт проверки в админке."
+        : result.kind === "duplicate"
+          ? "Такая заявка уже ожидает проверки в админке."
+          : "Этот источник уже существует в каталоге.";
+    await callTelegramJson(env, "sendMessage", { chat_id: String(msg.chat.id), text: textByKind });
+    return { ok: true };
+  } catch {
+    await callTelegramJson(env, "sendMessage", {
+      chat_id: String(msg.chat.id),
+      text: "Не удалось принять заявку. Используйте: /source https://example.org Название",
+    });
+    return { ok: true };
+  }
 }
 
 export type { TelegramUpdate };

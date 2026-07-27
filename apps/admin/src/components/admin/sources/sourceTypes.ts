@@ -3,6 +3,20 @@ export type OrganizerOption = {
   displayName: string;
 };
 
+export type SourceProposal = {
+  id: string;
+  normalizedUrl: string;
+  detectedType: string;
+  displayName: string | null;
+  organizerName: string | null;
+  notes: string | null;
+  submittedVia: string;
+  submittedBy: string | null;
+  status: "pending" | "rejected";
+  rejectionReason: string | null;
+  createdAt: string;
+};
+
 export type SourceRun = {
   id: string;
   status: string;

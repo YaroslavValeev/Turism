@@ -8,7 +8,6 @@ import {
   getMediaTypeLabel,
   getProgramIntakeSourceLabel,
   getProgramPublishStatusLabel,
-  isPilotProgramScope,
 } from "@mywave/shared-types";
 import { AdminStatusBadge } from "../AdminStatusBadge";
 import {
@@ -89,7 +88,6 @@ export function ProgramCatalogTable({
         <col style={{ width: "280px" }} />
         <col style={{ width: "200px" }} />
         <col style={{ width: "260px" }} />
-        <col style={{ width: "180px" }} />
         <col style={{ width: "260px" }} />
         <col style={{ width: "240px" }} />
         <col style={{ width: "220px" }} />
@@ -103,7 +101,6 @@ export function ProgramCatalogTable({
           <th>Название</th>
           <th>Статус публикации</th>
           <th>Оценка (внутр.)</th>
-          <th>Фокус</th>
           <th>Горячее предложение</th>
           <th>Наличие</th>
           <th>Источник (intake)</th>
@@ -116,7 +113,6 @@ export function ProgramCatalogTable({
       <tbody>
         {programs.map((program) => {
           const mediaDraft = mediaDrafts[program.id] ?? EMPTY_MEDIA_DRAFT;
-          const isPilot = isPilotProgramScope(program.discipline, program.region);
           const availabilityDraft = availabilityDrafts[program.id] ?? {
             capacityTotal: program.capacityTotal != null ? String(program.capacityTotal) : "",
             spotsAvailable: program.spotsAvailable != null ? String(program.spotsAvailable) : "",
@@ -185,11 +181,6 @@ export function ProgramCatalogTable({
                     ))}
                   </ul>
                 ) : null}
-              </td>
-              <td className="mw-admin-program-td">
-                <span className={isPilot ? "mw-admin-focal-ok" : "mw-admin-focal-warn"}>
-                  {program.region} {isPilot ? "· основной фокус" : "· подготовка"}
-                </span>
               </td>
               <td className="mw-admin-program-td mw-admin-program-td--tight">
                 <div

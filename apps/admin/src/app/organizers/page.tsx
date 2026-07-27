@@ -95,6 +95,7 @@ export default function OrganizersQueuePage() {
   const [organizers, setOrganizers] = useState<Organizer[]>([]);
   const [scoreByOrganizerId, setScoreByOrganizerId] = useState<Record<string, OrganizerScoreRow>>({});
   const [filter, setFilter] = useState<string>("");
+  const [search, setSearch] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [savingOrganizerId, setSavingOrganizerId] = useState<string>("");
   const [draftStatusByOrganizerId, setDraftStatusByOrganizerId] = useState<Record<string, string>>({});
@@ -151,13 +152,23 @@ export default function OrganizersQueuePage() {
     };
   }, [loading, organizers]);
 
+  const visibleOrganizers = useMemo(() => {
+    const needle = search.trim().toLocaleLowerCase();
+    if (!needle) return organizers;
+    return organizers.filter((organizer) =>
+      [organizer.displayName, organizer.contactEmail, organizer.contactPhone, organizer.legalStatus]
+        .filter((value): value is string => Boolean(value))
+        .some((value) => value.toLocaleLowerCase().includes(needle)),
+    );
+  }, [organizers, search]);
+
   const stats = useMemo(() => {
-    const withScore = organizers.filter((o) => scoreByOrganizerId[o.id]).length;
-    const trustedVerified = organizers.filter(
+    const withScore = visibleOrganizers.filter((o) => scoreByOrganizerId[o.id]).length;
+    const trustedVerified = visibleOrganizers.filter(
       (o) => o.verificationStatus === "verified" || o.verificationStatus === "trusted_by_platform",
     ).length;
-    return { total: organizers.length, withScore, trustedVerified };
-  }, [organizers, scoreByOrganizerId]);
+    return { total: visibleOrganizers.length, withScore, trustedVerified };
+  }, [visibleOrganizers, scoreByOrganizerId]);
 
   function verificationBadgeTone(status: string): "ok" | "warn" | "danger" | "muted" {
     if (status === "trusted_by_platform" || status === "verified") return "ok";
@@ -203,6 +214,15 @@ export default function OrganizersQueuePage() {
           </AdminStatGrid>
 
           <AdminFiltersBar title="Фильтры">
+            <AdminFilterField label="Поиск организатора">
+              <input
+                className="mw-admin-input"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Название, e-mail или телефон"
+                style={{ minWidth: 280 }}
+              />
+            </AdminFilterField>
             <AdminFilterField label="Статус верификации">
               <select
                 className="mw-admin-input"
@@ -220,10 +240,10 @@ export default function OrganizersQueuePage() {
             </AdminFilterField>
           </AdminFiltersBar>
 
-          {organizers.length === 0 ? (
+          {visibleOrganizers.length === 0 ? (
             <AdminEmptyState
               title="Нет организаторов"
-              description="По текущему фильтру записей нет. Сбросьте фильтр или проверьте импорт данных."
+              description="По текущему поиску или фильтру записей нет. Сбросьте их или проверьте импорт данных."
             />
           ) : (
             <div className="mw-admin-table-outer mw-admin-table-outer--always-scroll">
@@ -242,7 +262,7 @@ export default function OrganizersQueuePage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {organizers.map((o) => {
+                  {visibleOrganizers.map((o) => {
                     const score = scoreByOrganizerId[o.id];
                     const scoreMeta = scoreBandMeta(score?.scoreBand ?? "unknown");
                     const priority = moderationPriority(o, score);

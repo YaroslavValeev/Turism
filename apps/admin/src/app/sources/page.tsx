@@ -11,6 +11,8 @@ import { AdminStatCard, AdminStatGrid } from "../../components/admin/AdminStatCa
 import { SourceCreateFormCard } from "../../components/admin/sources/SourceCreateFormCard";
 import { SourceInstagramQuickAddCard } from "../../components/admin/sources/SourceInstagramQuickAddCard";
 import { SourceLinkageBackfillCard } from "../../components/admin/sources/SourceLinkageBackfillCard";
+import { SourceProposalFormCard } from "../../components/admin/sources/SourceProposalFormCard";
+import { SourceProposalQueueCard } from "../../components/admin/sources/SourceProposalQueueCard";
 import { SourcesActiveTable } from "../../components/admin/sources/SourcesActiveTable";
 import {
   EMPTY_DRAFT,
@@ -18,17 +20,21 @@ import {
   type SourceActiveFilter,
   type SourceDraft,
   type SourceRecord,
+  type SourceProposal,
   toDraft,
 } from "../../components/admin/sources/sourceTypes";
 
 export default function SourcesPage() {
   const [sources, setSources] = useState<SourceRecord[]>([]);
+  const [proposals, setProposals] = useState<SourceProposal[]>([]);
   const [organizers, setOrganizers] = useState<{ id: string; displayName: string }[]>([]);
   const [drafts, setDrafts] = useState<Record<string, SourceDraft>>({});
   const [createDraft, setCreateDraft] = useState<SourceDraft>(EMPTY_DRAFT);
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState<string>("");
   const [runningId, setRunningId] = useState<string>("");
+  const [proposalSaving, setProposalSaving] = useState(false);
+  const [rejectingProposalId, setRejectingProposalId] = useState("");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [linkageOrgScope, setLinkageOrgScope] = useState("");
@@ -41,9 +47,14 @@ export default function SourcesPage() {
     setLoading(true);
     setError("");
     try {
-      const [sourcesData, organizersData] = await Promise.all([adminJson<SourceRecord[]>("/sources"), adminJson<typeof organizers>("/organizers")]);
+      const [sourcesData, organizersData, proposalsData] = await Promise.all([
+        adminJson<SourceRecord[]>("/sources"),
+        adminJson<typeof organizers>("/organizers"),
+        adminJson<SourceProposal[]>("/sources/proposals"),
+      ]);
       setSources(sourcesData);
       setOrganizers(organizersData);
+      setProposals(proposalsData);
       setDrafts(Object.fromEntries(sourcesData.map((source) => [source.id, toDraft(source)])));
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -112,6 +123,37 @@ export default function SourcesPage() {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setSavingId("");
+    }
+  }
+
+  async function handleProposalSubmit(input: { url: string; displayName: string; organizerName: string; notes: string }) {
+    setMessage("");
+    setError("");
+    setProposalSaving(true);
+    try {
+      const result = await adminJson<{ kind: "created" | "duplicate"; proposal?: SourceProposal }>("/sources/proposals", { method: "POST", body: JSON.stringify(input) });
+      setMessage(result.kind === "created" ? "Заявка принята в очередь проверки." : "Такая заявка уже ожидает проверки.");
+      await loadData();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setProposalSaving(false);
+    }
+  }
+
+  async function handleProposalReject(id: string) {
+    if (!window.confirm("Отклонить заявку? Активный источник создан не будет.")) return;
+    setMessage("");
+    setError("");
+    setRejectingProposalId(id);
+    try {
+      await adminJson<SourceProposal>(`/sources/proposals/${id}/reject`, { method: "PATCH", body: JSON.stringify({}) });
+      setMessage("Заявка отклонена.");
+      await loadData();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setRejectingProposalId("");
     }
   }
 
@@ -271,6 +313,10 @@ export default function SourcesPage() {
           </AdminStatGrid>
 
           <SourceInstagramQuickAddCard saving={savingId === "batch"} onAddUrls={handleCreateBatch} />
+
+          <SourceProposalFormCard saving={proposalSaving} onSubmit={handleProposalSubmit} />
+
+          <SourceProposalQueueCard proposals={proposals} rejectingId={rejectingProposalId} onReject={handleProposalReject} />
 
           <SourceLinkageBackfillCard
             organizers={organizers}

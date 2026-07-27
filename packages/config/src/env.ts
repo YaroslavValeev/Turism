@@ -88,6 +88,8 @@ export interface Env {
   TELEGRAM_WEBHOOK_SECRET?: string;
   /** Username бота (без @), если нужен для deep-link генерации/логов. */
   TELEGRAM_BOT_USERNAME?: string;
+  /** CSV Telegram user ids allowed to submit source proposals from the owner chat. Empty = disabled. */
+  TELEGRAM_SOURCE_PROPOSAL_USER_IDS?: string;
   /** Опционально: OpenAI для расшифровки voice (rewrite). */
   OPENAI_API_KEY?: string;
   /** SOCKS5/HTTP proxy URL for OpenAI egress from restricted RU VPS. */
@@ -183,6 +185,7 @@ export function loadEnv(): Env {
     CONTENT_PIPELINE_TELEGRAM_WEBHOOK_TOKEN: optional("CONTENT_PIPELINE_TELEGRAM_WEBHOOK_TOKEN"),
     TELEGRAM_WEBHOOK_SECRET: optional("TELEGRAM_WEBHOOK_SECRET"),
     TELEGRAM_BOT_USERNAME: optional("TELEGRAM_BOT_USERNAME"),
+    TELEGRAM_SOURCE_PROPOSAL_USER_IDS: optional("TELEGRAM_SOURCE_PROPOSAL_USER_IDS"),
     OPENAI_API_KEY: optional("OPENAI_API_KEY"),
     OPENAI_HTTP_PROXY: optional("OPENAI_HTTP_PROXY"),
     TELEGRAM_BOT_HTTP_PROXY: optional("TELEGRAM_BOT_HTTP_PROXY"),

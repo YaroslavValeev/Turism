@@ -250,6 +250,27 @@ model Source {
   @@map("sources")
 }
 
+/// A reviewed intake queue. A proposal is deliberately not an active ingestion
+/// source: accepting it and running collection remain explicit operator steps.
+model SourceProposal {
+  id              String   @id @default(cuid())
+  normalizedUrl   String
+  detectedType    String   // instagram | telegram | rss | site
+  displayName     String?
+  organizerName   String?
+  notes           String?  @db.Text
+  submittedVia    String   // admin | telegram
+  submittedBy     String?
+  status          String   @default("pending") // pending | rejected
+  rejectionReason String?  @db.Text
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([status, createdAt])
+  @@index([normalizedUrl])
+  @@map("source_proposals")
+}
+
 model SourceRun {
   id           String    @id @default(cuid())
   sourceId     String

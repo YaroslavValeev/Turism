@@ -261,7 +261,7 @@ model SourceProposal {
   notes           String?  @db.Text
   submittedVia    String   // admin | telegram
   submittedBy     String?
-  status          String   @default("pending") // pending | rejected
+  status          String   @default("pending") // pending | approved | rejected
   rejectionReason String?  @db.Text
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt

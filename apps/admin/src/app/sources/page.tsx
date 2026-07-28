@@ -34,6 +34,7 @@ export default function SourcesPage() {
   const [savingId, setSavingId] = useState<string>("");
   const [runningId, setRunningId] = useState<string>("");
   const [proposalSaving, setProposalSaving] = useState(false);
+  const [approvingProposalId, setApprovingProposalId] = useState("");
   const [rejectingProposalId, setRejectingProposalId] = useState("");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
@@ -154,6 +155,22 @@ export default function SourcesPage() {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setRejectingProposalId("");
+    }
+  }
+
+  async function handleProposalApprove(id: string) {
+    if (!window.confirm("Одобрить заявку? Будет создан выключенный источник. Парсинг, привязка организатора и публикация не запустятся.")) return;
+    setMessage("");
+    setError("");
+    setApprovingProposalId(id);
+    try {
+      await adminJson(`/sources/proposals/${id}/approve`, { method: "PATCH", body: JSON.stringify({}) });
+      setMessage("Заявка одобрена: создан выключенный источник. Включение и запуск — отдельные действия.");
+      await loadData();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setApprovingProposalId("");
     }
   }
 
@@ -316,7 +333,13 @@ export default function SourcesPage() {
 
           <SourceProposalFormCard saving={proposalSaving} onSubmit={handleProposalSubmit} />
 
-          <SourceProposalQueueCard proposals={proposals} rejectingId={rejectingProposalId} onReject={handleProposalReject} />
+          <SourceProposalQueueCard
+            proposals={proposals}
+            approvingId={approvingProposalId}
+            rejectingId={rejectingProposalId}
+            onApprove={handleProposalApprove}
+            onReject={handleProposalReject}
+          />
 
           <SourceLinkageBackfillCard
             organizers={organizers}

@@ -12,7 +12,7 @@ export type SourceProposal = {
   notes: string | null;
   submittedVia: string;
   submittedBy: string | null;
-  status: "pending" | "rejected";
+  status: "pending" | "approved" | "rejected";
   rejectionReason: string | null;
   createdAt: string;
 };

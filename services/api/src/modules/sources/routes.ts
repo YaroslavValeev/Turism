@@ -7,7 +7,7 @@ import { writeAuditLog } from "../../lib/audit";
 import { isSourceType } from "../ingestion/constants";
 import { runDedupJob, runNormalizationJob, runSourceCollection } from "../ingestion/service";
 import { runLinkageBackfillReport } from "./sourceLinkageBackfill";
-import { rejectSourceProposal, submitSourceProposal } from "./sourceProposal";
+import { approveSourceProposal, rejectSourceProposal, submitSourceProposal } from "./sourceProposal";
 import { safeError } from "../../lib/safeLogger";
 
 export function sourcesRoutes(env: Env): Router {
@@ -74,6 +74,24 @@ export function sourcesRoutes(env: Env): Router {
       res.json(proposal);
     } catch (error) {
       const message = error instanceof Error ? error.message : "source_proposal_reject_failed";
+      res.status(message === "proposal_not_pending" ? 409 : 400).json({ error: message });
+    }
+  });
+
+  router.patch("/proposals/:id/approve", admin, async (req: Request, res: Response) => {
+    try {
+      const result = await approveSourceProposal(req.params.id, req.adminUserId ?? null);
+      if (!result) {
+        res.status(404).json({ error: "Not found" });
+        return;
+      }
+      if (result.kind === "existing_source") {
+        res.status(409).json({ error: "source_already_exists", sourceId: result.sourceId });
+        return;
+      }
+      res.status(201).json(result);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "source_proposal_approve_failed";
       res.status(message === "proposal_not_pending" ? 409 : 400).json({ error: message });
     }
   });

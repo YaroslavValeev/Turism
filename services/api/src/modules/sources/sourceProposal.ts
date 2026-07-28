@@ -113,3 +113,78 @@ export async function rejectSourceProposal(id: string, changedBy: string | null,
   });
   return proposal;
 }
+
+/**
+ * Converts one reviewed proposal into a deliberately inactive source.
+ * Collection, organizer linkage, and any publication remain separate operator actions.
+ */
+export async function approveSourceProposal(id: string, changedBy: string | null) {
+  return prisma.$transaction(async (tx) => {
+    const proposal = await tx.sourceProposal.findUnique({ where: { id } });
+    if (!proposal) return null;
+    if (proposal.status !== "pending") throw new Error("proposal_not_pending");
+
+    const sameTypeSources = await tx.source.findMany({
+      where: { type: proposal.detectedType },
+      select: { id: true, urlOrHandle: true },
+    });
+    const existingSource = sameTypeSources.find((source) =>
+      sourceUrlMatchesProposal(proposal.detectedType, source.urlOrHandle, proposal.normalizedUrl),
+    );
+    if (existingSource) return { kind: "existing_source" as const, sourceId: existingSource.id };
+
+    // Claim the pending proposal in this transaction before creating the source,
+    // so a second operator cannot approve the same proposal concurrently.
+    const claim = await tx.sourceProposal.updateMany({
+      where: { id: proposal.id, status: "pending" },
+      data: { status: "approved", rejectionReason: null },
+    });
+    if (claim.count !== 1) throw new Error("proposal_not_pending");
+
+    const source = await tx.source.create({
+      data: {
+        type: proposal.detectedType,
+        name: proposal.displayName || proposal.normalizedUrl,
+        urlOrHandle: proposal.normalizedUrl,
+        priority: 100,
+        trustScore: 0.5,
+        fetchIntervalMinutes: 1440,
+        isActive: false,
+        metaJson: {
+          autoPublish: false,
+          sourceOrigin: "source_proposal",
+          lifecycleState: "inactive",
+          sourceProposalId: proposal.id,
+          proposedOrganizerName: proposal.organizerName,
+          submittedVia: proposal.submittedVia,
+        },
+      },
+    });
+    const approved = await tx.sourceProposal.findUniqueOrThrow({
+      where: { id: proposal.id },
+    });
+    await tx.auditLog.createMany({
+      data: [
+        {
+          entityType: "source_proposal",
+          entityId: proposal.id,
+          changedField: "approved_as_inactive_source",
+          oldValue: "pending",
+          newValue: source.id,
+          changedBy,
+          reason: "source proposal approved; source remains inactive",
+        },
+        {
+          entityType: "source",
+          entityId: source.id,
+          changedField: "created_from_source_proposal",
+          oldValue: null,
+          newValue: proposal.id,
+          changedBy,
+          reason: "created inactive from approved source proposal",
+        },
+      ],
+    });
+    return { kind: "approved" as const, proposal: approved, source };
+  });
+}

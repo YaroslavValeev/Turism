@@ -69,6 +69,10 @@ const programStatusLabels: Record<Exclude<ProgramPublishStatus, "published">, st
   archived: "В архиве",
 };
 
+function organizerStatusLabel(status: string): string {
+  return organizerStatusLabels[status as OrganizerVerificationStatus] ?? status;
+}
+
 function truncate(value: string, limit = 44): string {
   return value.length <= limit ? value : `${value.slice(0, limit - 1)}…`;
 }
@@ -197,7 +201,7 @@ async function sendOrganizerList(env: Env, chatId: number): Promise<void> {
   });
   await sendMessage(env, chatId, organizers.length ? "Выберите организатора для изменения статуса верификации." : "Организаторов нет.", {
     inline_keyboard: [
-      ...organizers.map((organizer) => [{ text: `${truncate(organizer.displayName)} · ${organizerStatusLabels[organizer.verificationStatus]}`, callback_data: `mw:org:${organizer.id}` }]),
+      ...organizers.map((organizer) => [{ text: `${truncate(organizer.displayName)} · ${organizerStatusLabel(organizer.verificationStatus)}`, callback_data: `mw:org:${organizer.id}` }]),
       [{ text: "← Меню", callback_data: "mw:menu" }],
     ],
   });
@@ -211,7 +215,7 @@ async function sendOrganizerStatusMenu(env: Env, chatId: number, organizerId: st
   }
   const entries = (Object.entries(organizerStatusCodes) as Array<[string, OrganizerVerificationStatus]>)
     .filter(([, status]) => status !== organizer.verificationStatus);
-  await sendMessage(env, chatId, `${organizer.displayName}\nТекущий статус: ${organizerStatusLabels[organizer.verificationStatus]}`, {
+  await sendMessage(env, chatId, `${organizer.displayName}\nТекущий статус: ${organizerStatusLabel(organizer.verificationStatus)}`, {
     inline_keyboard: [
       ...entries.map(([code, status]) => [{ text: organizerStatusLabels[status], callback_data: `mw:os:${organizer.id}:${code}` }]),
       [{ text: "← К организаторам", callback_data: "mw:orgs" }],
@@ -263,7 +267,7 @@ async function changeOrganizerStatus(env: Env, chatId: number, organizerId: stri
       properties_json: { from: existing.verificationStatus, to: organizer.verificationStatus },
     });
   }
-  await sendMessage(env, chatId, `${organizer.displayName}: ${organizerStatusLabels[organizer.verificationStatus]}.`);
+  await sendMessage(env, chatId, `${organizer.displayName}: ${organizerStatusLabel(organizer.verificationStatus)}.`);
 }
 
 async function sendProgramList(env: Env, chatId: number): Promise<void> {

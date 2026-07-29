@@ -1,8 +1,26 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+vi.mock("@mywave/config", () => ({
+  buildTelegramFileApiUrl: vi.fn(() => null),
+}));
+
 vi.mock("./telegramApi", () => ({
   callTelegramJson: vi.fn(async () => ({ ok: true })),
   resolveContentOwnerChatId: vi.fn(() => "123"),
+}));
+
+vi.mock("../../lib/proxyFetch", () => ({ proxyFetch: vi.fn() }));
+
+vi.mock("./operatorMenu", () => ({
+  handleTelegramOperatorCallback: vi.fn(async () => false),
+  isTelegramOperator: vi.fn(() => true),
+  sendTelegramOperatorMenu: vi.fn(async () => {}),
+}));
+
+vi.mock("../organizer-outreach/service", () => ({
+  approveAndSendOutreachCampaign: vi.fn(async () => ({ ok: true })),
+  skipOutreachCampaign: vi.fn(async () => ({ ok: true })),
+  declineOutreachCampaign: vi.fn(async () => ({ ok: true })),
 }));
 
 vi.mock("../content-pipeline/approval.service", () => ({
@@ -38,6 +56,7 @@ vi.mock("../../lib/prisma", () => ({
 
 import { handleTelegramContentPipelineUpdate } from "./telegramApprovalHandler";
 import { applyRewrite, handleApprovalDecision, requestRewrite } from "../content-pipeline/approval.service";
+import { sendTelegramOperatorMenu } from "./operatorMenu";
 
 const env = {
   TELEGRAM_API_BASE_URL: "https://api.telegram.org",
@@ -104,6 +123,14 @@ describe("telegram owner review e2e-ish", () => {
       env,
       expect.objectContaining({ parentDraftId: "d1", text: "сделай короче" }),
     );
+  });
+
+  it("/ops opens the protected operator menu", async () => {
+    await handleTelegramContentPipelineUpdate(env, {
+      update_id: 5,
+      message: { message_id: 12, from: { id: 42 }, chat: { id: 123 }, text: "/ops" },
+    });
+    expect(sendTelegramOperatorMenu).toHaveBeenCalledWith(env, 123);
   });
 });
 

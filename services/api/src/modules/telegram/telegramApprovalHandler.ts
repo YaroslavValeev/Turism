@@ -17,6 +17,7 @@ import {
 } from "../organizer-outreach/service";
 import { proxyFetch } from "../../lib/proxyFetch";
 import { submitSourceProposal } from "../sources/sourceProposal";
+import { handleTelegramOperatorCallback, isTelegramOperator, sendTelegramOperatorMenu } from "./operatorMenu";
 
 type TgUser = { id: number; username?: string; first_name?: string };
 type CallbackQuery = {
@@ -114,6 +115,9 @@ async function handleCallbackQuery(
     await answerEmpty(env, cb.id);
     return { ok: false, error: "no data" };
   }
+  if (await handleTelegramOperatorCallback(env, cb)) {
+    return { ok: true };
+  }
   const out = parseOutreachCallback(cb.data);
   if (out) {
     return handleOutreachCallback(env, cb, out);
@@ -170,6 +174,12 @@ async function handleOwnerMessage(
   }
 
   if (msg.text?.startsWith("/")) {
+    if (/^\/(?:start|ops|menu)(?:@[a-z0-9_]+)?\s*$/i.test(msg.text.trim())) {
+      if (isTelegramOperator(env, msg.chat.id, msg.from?.id)) {
+        await sendTelegramOperatorMenu(env, msg.chat.id);
+      }
+      return { ok: true };
+    }
     return handleSourceProposalCommand(env, msg);
   }
 

@@ -209,7 +209,8 @@ async function sendOrganizerStatusMenu(env: Env, chatId: number, organizerId: st
     await sendMessage(env, chatId, "Организатор не найден.");
     return;
   }
-  const entries = Object.entries(organizerStatusCodes).filter(([, status]) => status !== organizer.verificationStatus);
+  const entries = (Object.entries(organizerStatusCodes) as Array<[string, OrganizerVerificationStatus]>)
+    .filter(([, status]) => status !== organizer.verificationStatus);
   await sendMessage(env, chatId, `${organizer.displayName}\nТекущий статус: ${organizerStatusLabels[organizer.verificationStatus]}`, {
     inline_keyboard: [
       ...entries.map(([code, status]) => [{ text: organizerStatusLabels[status], callback_data: `mw:os:${organizer.id}:${code}` }]),
@@ -289,7 +290,8 @@ async function sendProgramStatusMenu(env: Env, chatId: number, programId: string
     await sendMessage(env, chatId, `${program.title} уже опубликована. Менять её статус можно только в Admin.`);
     return;
   }
-  const entries = Object.entries(programStatusCodes).filter(([, status]) => status !== program.publishStatus);
+  const entries = (Object.entries(programStatusCodes) as Array<[string, Exclude<ProgramPublishStatus, "published">]>)
+    .filter(([, status]) => status !== program.publishStatus);
   await sendMessage(env, chatId, `${program.title}\nТекущий статус: ${program.publishStatus}`, {
     inline_keyboard: [
       ...entries.map(([code, status]) => [{ text: programStatusLabels[status], callback_data: `mw:ps:${program.id}:${code}` }]),

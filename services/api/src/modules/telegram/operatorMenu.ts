@@ -73,8 +73,21 @@ function organizerStatusLabel(status: string): string {
   return organizerStatusLabels[status as OrganizerVerificationStatus] ?? status;
 }
 
+function programStatusLabel(status: string): string {
+  return programStatusLabels[status as Exclude<ProgramPublishStatus, "published">] ?? status;
+}
+
 function truncate(value: string, limit = 44): string {
-  return value.length <= limit ? value : `${value.slice(0, limit - 1)}…`;
+  const characters = Array.from(value);
+  return characters.length <= limit ? value : `${characters.slice(0, limit - 1).join("")}…`;
+}
+
+function buttonLabel(value: string, limit = 44): string {
+  const normalized = value
+    .replace(/[\u0000-\u001f\u007f-\u009f]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return truncate(normalized || "Без названия", limit);
 }
 
 function operatorUserIds(env: Env): Set<string> {
@@ -125,11 +138,14 @@ export function parseOperatorCallback(data: string | undefined): OperatorAction 
 }
 
 async function sendMessage(env: Env, chatId: number, text: string, keyboard?: unknown): Promise<void> {
-  await callTelegramJson(env, "sendMessage", {
+  const response = await callTelegramJson(env, "sendMessage", {
     chat_id: String(chatId),
     text,
     ...(keyboard ? { reply_markup: keyboard } : {}),
   });
+  if (!response.ok) {
+    throw new Error(`Telegram sendMessage failed: ${response.description ?? "unknown error"}`);
+  }
 }
 
 export async function sendTelegramOperatorMenu(env: Env, chatId: number): Promise<void> {
@@ -272,13 +288,17 @@ async function changeOrganizerStatus(env: Env, chatId: number, organizerId: stri
 
 async function sendProgramList(env: Env, chatId: number): Promise<void> {
   const programs = await prisma.program.findMany({
+    where: { publishStatus: { not: "published" } },
     select: { id: true, title: true, publishStatus: true },
     orderBy: { updatedAt: "desc" },
     take: MAX_MENU_ROWS,
   });
-  await sendMessage(env, chatId, programs.length ? "Выберите программу. Кнопки Telegram не публикуют программы; статус «Опубликована» доступен только через Admin с publish gate." : "Программ нет.", {
+  await sendMessage(env, chatId, programs.length ? "Выберите программу для изменения статуса. Публикация через Telegram недоступна." : "Нет программ, статус которых разрешено менять через Telegram. Опубликованные программы доступны только в Admin.", {
     inline_keyboard: [
-      ...programs.map((program) => [{ text: `${truncate(program.title)} · ${program.publishStatus}`, callback_data: `mw:program:${program.id}` }]),
+      ...programs.map((program) => [{
+        text: `${buttonLabel(program.title)} · ${programStatusLabel(program.publishStatus)}`,
+        callback_data: `mw:program:${program.id}`,
+      }]),
       [{ text: "← Меню", callback_data: "mw:menu" }],
     ],
   });

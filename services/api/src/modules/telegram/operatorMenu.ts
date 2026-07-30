@@ -316,7 +316,7 @@ async function sendProgramStatusMenu(env: Env, chatId: number, programId: string
   }
   const entries = (Object.entries(programStatusCodes) as Array<[string, Exclude<ProgramPublishStatus, "published">]>)
     .filter(([, status]) => status !== program.publishStatus);
-  await sendMessage(env, chatId, `${program.title}\nТекущий статус: ${program.publishStatus}`, {
+  await sendMessage(env, chatId, `${program.title}\nТекущий статус: ${programStatusLabel(program.publishStatus)}`, {
     inline_keyboard: [
       ...entries.map(([code, status]) => [{ text: programStatusLabels[status], callback_data: `mw:ps:${program.id}:${code}` }]),
       [{ text: "← К программам", callback_data: "mw:programs" }],

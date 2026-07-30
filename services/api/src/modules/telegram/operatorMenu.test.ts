@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   callTelegramJson: vi.fn(),
   findManyPrograms: vi.fn(),
+  findUniqueProgram: vi.fn(),
   updateProgram: vi.fn(),
   writeAuditLog: vi.fn(),
   runDedupJob: vi.fn(),
@@ -14,6 +15,7 @@ vi.mock("../../lib/prisma", () => ({
   prisma: {
     program: {
       findMany: mocks.findManyPrograms,
+      findUnique: mocks.findUniqueProgram,
       update: mocks.updateProgram,
     },
   },
@@ -113,6 +115,36 @@ describe("telegram operator menu contract", () => {
     expect(mocks.runSourceCollection).not.toHaveBeenCalled();
     expect(mocks.runNormalizationJob).not.toHaveBeenCalled();
     expect(mocks.runDedupJob).not.toHaveBeenCalled();
+  });
+
+  it("shows the localized current program status without changing data", async () => {
+    mocks.findUniqueProgram.mockResolvedValue({
+      id: "cmprogram123",
+      title: "Тестовая программа",
+      publishStatus: "needs_fix",
+    });
+
+    await expect(handleTelegramOperatorCallback(env, {
+      id: "callback-program",
+      from: { id: 510686579 },
+      message: { chat: { id: -1003491522243 } },
+      data: "mw:program:cmprogram123",
+    })).resolves.toBe(true);
+
+    expect(mocks.findUniqueProgram).toHaveBeenCalledWith({
+      where: { id: "cmprogram123" },
+      select: { id: true, title: true, publishStatus: true },
+    });
+    const sendBody = mocks.callTelegramJson.mock.calls[1]?.[2] as {
+      text: string;
+      reply_markup: {
+        inline_keyboard: Array<Array<{ text: string; callback_data: string }>>;
+      };
+    };
+    expect(sendBody.text).toBe("Тестовая программа\nТекущий статус: Доработать");
+    expect(sendBody.reply_markup.inline_keyboard.flat().map((button) => button.text)).not.toContain("Доработать");
+    expect(mocks.updateProgram).not.toHaveBeenCalled();
+    expect(mocks.writeAuditLog).not.toHaveBeenCalled();
   });
 
   it("surfaces Telegram sendMessage errors instead of hiding them", async () => {

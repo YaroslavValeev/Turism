@@ -74,7 +74,7 @@ function textWellFormed(s: string | null | undefined): string | null {
 }
 
 type SourceWithOrganizer = Source & {
-  organizer: { id: string; displayName: string } | null;
+  organizer: { id: string; displayName: string; verificationStatus?: string } | null;
 };
 
 type RawItemWithSource = RawItem & {
@@ -523,11 +523,22 @@ function getSourceBooleanMeta(source: Source, key: string): boolean {
   return value === true || value === "true" || value === "1";
 }
 
-/** Глобальный autopublish: все активные источники по умолчанию; opt-out: `metaJson.autoPublish: false`. */
-export function shouldRunAutoPublishForSource(source: Source, globalEnabled: boolean): boolean {
+type AutoPublishSource = Pick<Source, "isActive" | "metaJson"> & {
+  organizer?: { verificationStatus?: string | null } | null;
+};
+
+/**
+ * Autopublish is fail-closed:
+ * - the global switch must be enabled;
+ * - the source must be active and explicitly opted in;
+ * - the linked organizer must already be verified by an operator/platform.
+ */
+export function shouldRunAutoPublishForSource(source: AutoPublishSource, globalEnabled: boolean): boolean {
   if (!globalEnabled) return false;
-  if (getMetaObject(source.metaJson).autoPublish === false) return false;
-  return true;
+  if (!source.isActive) return false;
+  if (getMetaObject(source.metaJson).autoPublish !== true) return false;
+  const organizerStatus = source.organizer?.verificationStatus;
+  return organizerStatus === "verified" || organizerStatus === "trusted_by_platform";
 }
 
 function getSourceStringArrayMeta(source: Source, key: string): string[] {
@@ -4361,7 +4372,7 @@ export async function publishCandidateToDraft(
             include: {
               source: {
                 include: {
-                  organizer: { select: { id: true, displayName: true } },
+                  organizer: { select: { id: true, displayName: true, verificationStatus: true } },
                 },
               },
             },
@@ -4852,7 +4863,7 @@ export async function autoPublishReadyCandidates(
             include: {
               source: {
                 include: {
-                  organizer: { select: { id: true, displayName: true } },
+                  organizer: { select: { id: true, displayName: true, verificationStatus: true } },
                 },
               },
             },

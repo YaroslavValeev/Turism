@@ -36,6 +36,7 @@ export function jobsRoutes(env: Env): Router {
       const result = await runDailySyncJob(req.adminUserId ?? null, {
         autoPublishEnabled: env.INGESTION_AUTOPUBLISH_ENABLED,
         fallbackImageUrl: env.INGESTION_DEFAULT_FALLBACK_IMAGE_URL,
+        sourceLimit: env.INGESTION_DAILY_SOURCE_LIMIT,
       });
       res.json(result);
     } catch (error) {

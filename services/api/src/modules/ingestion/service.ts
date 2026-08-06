@@ -554,7 +554,7 @@ function getPrimarySourceDiscipline(source: SourceWithOrganizer): string | null 
   return normalizeText(fromMeta);
 }
 
-type DueSource = Pick<Source, "id" | "isActive" | "lastCheckedAt" | "fetchIntervalMinutes">;
+type DueSource = Pick<Source, "id" | "isActive" | "lastCheckedAt" | "fetchIntervalMinutes" | "priority">;
 
 function isSourceDueForCollection(source: DueSource, now = new Date()): boolean {
   if (!source.isActive) return false;
@@ -573,6 +573,19 @@ export function selectDueSourceIds(
   }
   return sources
     .filter((source) => isSourceDueForCollection(source, now))
+    .sort((left, right) => {
+      if (!left.lastCheckedAt && right.lastCheckedAt) return -1;
+      if (left.lastCheckedAt && !right.lastCheckedAt) return 1;
+
+      const lastCheckedDelta =
+        (left.lastCheckedAt?.getTime() ?? 0) - (right.lastCheckedAt?.getTime() ?? 0);
+      if (lastCheckedDelta !== 0) return lastCheckedDelta;
+
+      const priorityDelta = left.priority - right.priority;
+      if (priorityDelta !== 0) return priorityDelta;
+
+      return left.id.localeCompare(right.id);
+    })
     .slice(0, sourceLimit)
     .map((source) => source.id);
 }

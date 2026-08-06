@@ -37,6 +37,7 @@ describe("daily ingestion safety", () => {
       isActive: true,
       lastCheckedAt: null,
       fetchIntervalMinutes: 1440,
+      priority: index + 1,
     }));
 
     expect(selectDueSourceIds(sources, 5, now)).toEqual([
@@ -51,13 +52,45 @@ describe("daily ingestion safety", () => {
   it("excludes inactive and not-yet-due sources before applying the limit", () => {
     const now = new Date("2026-07-21T08:00:00.000Z");
     const sources = [
-      { id: "inactive", isActive: false, lastCheckedAt: null, fetchIntervalMinutes: 1440 },
-      { id: "recent", isActive: true, lastCheckedAt: new Date("2026-07-21T07:55:00.000Z"), fetchIntervalMinutes: 60 },
-      { id: "due-1", isActive: true, lastCheckedAt: null, fetchIntervalMinutes: 1440 },
-      { id: "due-2", isActive: true, lastCheckedAt: new Date("2026-07-19T08:00:00.000Z"), fetchIntervalMinutes: 1440 },
+      { id: "inactive", isActive: false, lastCheckedAt: null, fetchIntervalMinutes: 1440, priority: 1 },
+      { id: "recent", isActive: true, lastCheckedAt: new Date("2026-07-21T07:55:00.000Z"), fetchIntervalMinutes: 60, priority: 1 },
+      { id: "due-1", isActive: true, lastCheckedAt: null, fetchIntervalMinutes: 1440, priority: 2 },
+      { id: "due-2", isActive: true, lastCheckedAt: new Date("2026-07-19T08:00:00.000Z"), fetchIntervalMinutes: 1440, priority: 1 },
     ];
 
     expect(selectDueSourceIds(sources, 1, now)).toEqual(["due-1"]);
+  });
+
+  it("selects never-checked and stalest due sources before recently checked high-priority sources", () => {
+    const now = new Date("2026-08-05T08:00:00.000Z");
+    const sources = [
+      {
+        id: "recent-high-priority",
+        isActive: true,
+        lastCheckedAt: new Date("2026-08-04T07:00:00.000Z"),
+        fetchIntervalMinutes: 1440,
+        priority: 1,
+      },
+      {
+        id: "stalest-lower-priority",
+        isActive: true,
+        lastCheckedAt: new Date("2026-07-29T08:00:00.000Z"),
+        fetchIntervalMinutes: 1440,
+        priority: 50,
+      },
+      {
+        id: "never-checked",
+        isActive: true,
+        lastCheckedAt: null,
+        fetchIntervalMinutes: 1440,
+        priority: 100,
+      },
+    ];
+
+    expect(selectDueSourceIds(sources, 2, now)).toEqual([
+      "never-checked",
+      "stalest-lower-priority",
+    ]);
   });
 
   it.each([

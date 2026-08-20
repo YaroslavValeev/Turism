@@ -125,6 +125,7 @@ export type TourCardModel = {
   imageSrc: string;
   isRemote: boolean;
   isArchived?: boolean;
+  archivedStateLabel?: string;
   title: string;
   location: string;
   dateLine: string;
@@ -218,12 +219,19 @@ export function programToTourCard(
     ["ночь", "ночи", "ночей"],
   )}`;
 
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const end = new Date(p.endDate);
+  end.setHours(0, 0, 0, 0);
+  const archivedStateLabel = options?.isArchived === true ? (end >= today ? "Идёт" : "Завершён") : undefined;
+
   return {
     id: p.id,
     href: `/program/${p.id}`,
     imageSrc: url,
     isRemote,
     isArchived: options?.isArchived === true,
+    archivedStateLabel,
     title: p.title,
     location: loc,
     dateLine: formatDateRangeRu(p.startDate, p.endDate),

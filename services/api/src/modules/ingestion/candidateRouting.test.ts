@@ -40,13 +40,13 @@ describe("explicit cancellation detection", () => {
 });
 
 describe("candidate status routing", () => {
-  it("archives an explicit cancellation even when event scores are high", () => {
+  it("routes an explicit cancellation to operator review even when event scores are high", () => {
     expect(
       routeCandidateStatus({
         ...HIGH_EVENT_SCORES,
         explicitCancellationNotice: true,
       }),
-    ).toBe("archived");
+    ).toBe("needs_review");
   });
 
   it.each(["МЕСТО ГОНКИ ИЗМЕНЕНО", "ГОНКА ПЕРЕНЕСЕНА НА 22 АВГУСТА"])(

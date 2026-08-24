@@ -37,6 +37,22 @@ function hasSyntheticSignals(program: ProgramWithMedia): boolean {
   return sourceUrl.includes("example.com") || sourceUrl.includes("localhost");
 }
 
+const PUBLIC_TEXT_FIELDS = [
+  "title", "audienceFit", "itineraryDayByDay", "inclusions", "exclusions", "gearRequirements",
+  "medicalLimitations", "cancellationRules", "whatHappensAfterBooking", "trustReason",
+] as const satisfies readonly (keyof Program)[];
+
+function containsPlaceholderOrScrapedMarkup(value: string | null | undefined): boolean {
+  const text = String(value ?? "").trim().toLowerCase();
+  if (!text) return false;
+  return /требует\s+ручного\s+заполнения|(?:заполнить|добавить)\s+оператором|lorem\s+ipsum|todo\b|tbd\b/.test(text) ||
+    /<\/?(?:style|script|link|img|source)\b|\b(?:src|href|class|style|data-[\w-]+)=["']|@media\b|font-family\s*:|(?:min|max)-width\s*:|tildacdn\.com/.test(text);
+}
+
+function hasPlaceholderOrScrapedMarkup(program: ProgramWithMedia): boolean {
+  return PUBLIC_TEXT_FIELDS.some((field) => containsPlaceholderOrScrapedMarkup(program[field] as string | null | undefined));
+}
+
 export function canPublish(program: ProgramWithMedia): { ok: boolean; missing: string[] } {
   const missing: string[] = [];
   if (!filled(program.title)) missing.push("title");
@@ -54,6 +70,7 @@ export function canPublish(program: ProgramWithMedia): { ok: boolean; missing: s
   if (!hasSummary) missing.push("program summary/structure (itinerary_day_by_day, audience_fit or inclusions)");
   if (!program.media?.length) missing.push("at least 1 media");
   if (hasSyntheticSignals(program)) missing.push("synthetic_markers_detected");
+  if (hasPlaceholderOrScrapedMarkup(program)) missing.push("placeholder_or_scraped_markup_detected");
   return {
     ok: missing.length === 0,
     missing,
@@ -82,5 +99,6 @@ export function canPublishAutopilot(program: ProgramWithMedia): { ok: boolean; m
     missing.push("source_url_or_content_or_media");
   }
   if (hasSyntheticSignals(program)) missing.push("synthetic_markers_detected");
+  if (hasPlaceholderOrScrapedMarkup(program)) missing.push("placeholder_or_scraped_markup_detected");
   return { ok: missing.length === 0, missing };
 }

@@ -26,6 +26,7 @@ import {
   type EventCandidateStatus,
   type SourceType,
 } from "./constants";
+import { runReliableSourceBatch } from "./batchReliability";
 
 function toWellFormedString(s: string): string {
   const asAny = s as string & { toWellFormed?: () => string };
@@ -202,6 +203,10 @@ type RunSummary = {
   processed: number;
   created: number;
   updated?: number;
+  attemptedSources?: number;
+  succeededSources?: number;
+  failedSources?: number;
+  failedSourceIds?: string[];
 };
 
 type DailySyncOptions = {
@@ -3837,21 +3842,26 @@ export async function runIngestionJob(actorId: string | null, sourceIds?: string
     where: sourceIds?.length ? { id: { in: sourceIds }, isActive: true } : { isActive: true },
     orderBy: [{ priority: "asc" }, { updatedAt: "desc" }],
   });
-  let processed = 0;
-  let created = 0;
-  for (const source of sources) {
-    try {
-      const summary = await runSourceCollection(source.id, actorId);
-      processed += summary.processed;
-      created += summary.created;
-    } catch {
-      // One dead source must not stop the whole daily batch.
-    }
+  const stats = await runReliableSourceBatch(
+    sources.map((source) => source.id),
+    (sourceId) => runSourceCollection(sourceId, actorId),
+  );
+  if (stats.failedSources > 0) {
+    console.warn("[ingestion] partial source batch", {
+      attemptedSources: stats.attemptedSources,
+      succeededSources: stats.succeededSources,
+      failedSources: stats.failedSources,
+      failedSourceIds: stats.failedSourceIds,
+    });
   }
   return {
     scope: sources.length ? `sources:${sources.length}` : "sources:0",
-    processed,
-    created,
+    processed: stats.processed,
+    created: stats.created,
+    attemptedSources: stats.attemptedSources,
+    succeededSources: stats.succeededSources,
+    failedSources: stats.failedSources,
+    failedSourceIds: stats.failedSourceIds,
   };
 }
 

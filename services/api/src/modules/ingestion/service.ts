@@ -27,6 +27,7 @@ import {
   type SourceType,
 } from "./constants";
 import { runReliableSourceBatch } from "./batchReliability";
+import { runReliableItemBatch } from "./itemReliability";
 
 function toWellFormedString(s: string): string {
   const asAny = s as string & { toWellFormed?: () => string };
@@ -207,6 +208,8 @@ type RunSummary = {
   succeededSources?: number;
   failedSources?: number;
   failedSourceIds?: string[];
+  failedItems?: number;
+  failedItemIds?: string[];
 };
 
 type DailySyncOptions = {
@@ -3870,6 +3873,7 @@ export async function runNormalizationJob(actorId: string | null, sourceIds?: st
   const rawItems = await prisma.rawItem.findMany({
     where: {
       normalizedItem: null,
+      parseStatus: { in: ["ok", "partial"] },
       source: sourceIds?.length ? { id: { in: sourceIds } } : undefined,
     },
     include: {
@@ -3882,86 +3886,106 @@ export async function runNormalizationJob(actorId: string | null, sourceIds?: st
     orderBy: { fetchedAt: "asc" },
   });
 
-  let created = 0;
-  for (const rawItem of rawItems) {
-    const normalized = buildNormalizedDraft(rawItem as RawItemWithSource);
-    const normalizedItem = await prisma.normalizedItem.create({
-      data: {
-        rawItemId: rawItem.id,
-        eventType: textWellFormed(normalized.eventType),
-        discipline: textWellFormed(normalized.discipline),
-        title: textWellFormed(normalized.title),
-        descriptionShort: textWellFormed(normalized.descriptionShort),
-        descriptionFull: textWellFormed(normalized.descriptionFull),
-        country: textWellFormed(normalized.country),
-        region: textWellFormed(normalized.region),
-        city: textWellFormed(normalized.city),
-        venue: textWellFormed(normalized.venue),
-        startDate: normalized.startDate,
-        endDate: normalized.endDate,
-        durationDays: normalized.durationDays,
-        level: textWellFormed(normalized.level),
-        priceFrom: normalized.priceFrom,
-        currency: textWellFormed(normalized.currency),
-        organizerName: textWellFormed(normalized.organizerName),
-        bookingUrl: textWellFormed(normalized.bookingUrl),
-        imageUrl: textWellFormed(normalized.imageUrl),
-        confidenceScore: normalized.confidenceScore,
-        relevanceScore: normalized.scores.tourismFitScore,
-        parseVersion: normalized.parseVersion,
-        extractedJson: jsonForJsonb(normalized.extractedJson),
-      },
-    });
-    const eventCandidate = await prisma.eventCandidate.create({
-      data: {
-        normalizedItemId: normalizedItem.id,
-        status: normalized.scores.routedStatus,
-        reviewPriority: normalized.scores.reviewPriority,
-        trustScore: normalized.scores.trustScore,
-        fitScore: normalized.scores.fitScore,
-        futureEventScore: normalized.scores.futureEventScore,
-        duplicateScore: normalized.scores.duplicateScore,
-        finalScore: normalized.scores.finalScore,
-        eventLikelihoodScore: normalized.scores.eventLikelihoodScore,
-        completenessScore: normalized.scores.completenessScore,
-        sourceTrustScore: normalized.scores.sourceTrustScore,
-        tourismFitScore: normalized.scores.tourismFitScore,
-        decisionNotes: getExtractedJsonFlag(normalized.extractedJson, "explicitCancellationNotice")
-          ? `CRITICAL_REVIEW: ${EXPLICIT_CANCELLATION_ROUTING_REASON}`
-          : null,
-      },
-    });
-    await prisma.contentItem.upsert({
-      where: { rawItemId: rawItem.id },
-      create: {
-        rawItemId: rawItem.id,
-        idempotencyKey: `ingest:raw:${rawItem.id}`,
-        workflowStatus: "draft",
-        normalizedItemId: normalizedItem.id,
-        eventCandidateId: eventCandidate.id,
-      },
-      update: {
-        normalizedItemId: normalizedItem.id,
-        eventCandidateId: eventCandidate.id,
-        workflowStatus: "draft",
-      },
-    });
-    created += 1;
-    await writeAuditLog({
-      entityType: "normalized_item",
-      entityId: normalizedItem.id,
-      changedField: "created",
-      oldValue: null,
-      newValue: normalizedItem.id,
-      changedBy: actorId,
-      reason: "ingestion normalization",
-    });
-  }
+  const rawItemsById = new Map(rawItems.map((rawItem) => [rawItem.id, rawItem]));
+  const stats = await runReliableItemBatch(
+    rawItems.map((rawItem) => rawItem.id),
+    async (rawItemId) => {
+      const rawItem = rawItemsById.get(rawItemId);
+      if (!rawItem) throw new Error("Raw item disappeared from normalization batch");
+      const normalized = buildNormalizedDraft(rawItem as RawItemWithSource);
+      await prisma.$transaction(async (tx) => {
+        const normalizedItem = await tx.normalizedItem.create({
+          data: {
+            rawItemId: rawItem.id,
+            eventType: textWellFormed(normalized.eventType),
+            discipline: textWellFormed(normalized.discipline),
+            title: textWellFormed(normalized.title),
+            descriptionShort: textWellFormed(normalized.descriptionShort),
+            descriptionFull: textWellFormed(normalized.descriptionFull),
+            country: textWellFormed(normalized.country),
+            region: textWellFormed(normalized.region),
+            city: textWellFormed(normalized.city),
+            venue: textWellFormed(normalized.venue),
+            startDate: normalized.startDate,
+            endDate: normalized.endDate,
+            durationDays: normalized.durationDays,
+            level: textWellFormed(normalized.level),
+            priceFrom: normalized.priceFrom,
+            currency: textWellFormed(normalized.currency),
+            organizerName: textWellFormed(normalized.organizerName),
+            bookingUrl: textWellFormed(normalized.bookingUrl),
+            imageUrl: textWellFormed(normalized.imageUrl),
+            confidenceScore: normalized.confidenceScore,
+            relevanceScore: normalized.scores.tourismFitScore,
+            parseVersion: normalized.parseVersion,
+            extractedJson: jsonForJsonb(normalized.extractedJson),
+          },
+        });
+        const eventCandidate = await tx.eventCandidate.create({
+          data: {
+            normalizedItemId: normalizedItem.id,
+            status: normalized.scores.routedStatus,
+            reviewPriority: normalized.scores.reviewPriority,
+            trustScore: normalized.scores.trustScore,
+            fitScore: normalized.scores.fitScore,
+            futureEventScore: normalized.scores.futureEventScore,
+            duplicateScore: normalized.scores.duplicateScore,
+            finalScore: normalized.scores.finalScore,
+            eventLikelihoodScore: normalized.scores.eventLikelihoodScore,
+            completenessScore: normalized.scores.completenessScore,
+            sourceTrustScore: normalized.scores.sourceTrustScore,
+            tourismFitScore: normalized.scores.tourismFitScore,
+            decisionNotes: getExtractedJsonFlag(normalized.extractedJson, "explicitCancellationNotice")
+              ? `CRITICAL_REVIEW: ${EXPLICIT_CANCELLATION_ROUTING_REASON}`
+              : null,
+          },
+        });
+        await tx.contentItem.upsert({
+          where: { rawItemId: rawItem.id },
+          create: {
+            rawItemId: rawItem.id,
+            idempotencyKey: `ingest:raw:${rawItem.id}`,
+            workflowStatus: "draft",
+            normalizedItemId: normalizedItem.id,
+            eventCandidateId: eventCandidate.id,
+          },
+          update: {
+            normalizedItemId: normalizedItem.id,
+            eventCandidateId: eventCandidate.id,
+            workflowStatus: "draft",
+          },
+        });
+        await tx.auditLog.create({
+          data: {
+            entityType: "normalized_item",
+            entityId: normalizedItem.id,
+            changedField: "created",
+            oldValue: null,
+            newValue: normalizedItem.id,
+            changedBy: actorId,
+            reason: "ingestion normalization",
+          },
+        });
+      });
+    },
+    async (rawItemId, error) => {
+      await prisma.rawItem.updateMany({
+        where: { id: rawItemId, normalizedItem: null },
+        data: { parseStatus: "failed" },
+      });
+      console.warn("[normalization] item failed", {
+        rawItemId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    },
+  );
 
   return {
     scope: sourceIds?.length ? `sources:${sourceIds.length}` : "all",
-    processed: rawItems.length,
-    created,
+    processed: stats.processed,
+    created: stats.succeeded,
+    failedItems: stats.failed,
+    failedItemIds: stats.failedItemIds,
   };
 }
 

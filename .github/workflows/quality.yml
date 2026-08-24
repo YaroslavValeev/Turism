@@ -1,0 +1,78 @@
+name: Committed SHA quality
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: quality-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    name: Unit, build, compose
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - name: Checkout committed SHA
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.EXPECTED_SHA }}
+          fetch-depth: 1
+
+      - name: Verify checkout identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          ACTUAL_SHA="$(git rev-parse HEAD)"
+          test "$ACTUAL_SHA" = "$EXPECTED_SHA"
+          test -z "$(git status --porcelain)"
+          echo "QUALITY_COMMIT_SHA=$ACTUAL_SHA" >> "$GITHUB_ENV"
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.0.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: pnpm db:generate
+
+      - name: Run unit and production builds
+        run: pnpm run check:quality
+
+      - name: Validate local Compose
+        run: docker compose config --quiet
+
+      - name: Write committed-SHA evidence
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/quality
+          node -e 'const fs=require("fs"); fs.writeFileSync("artifacts/quality/evidence.json", JSON.stringify({sha:process.env.QUALITY_COMMIT_SHA,runId:process.env.GITHUB_RUN_ID,runAttempt:process.env.GITHUB_RUN_ATTEMPT,workflow:process.env.GITHUB_WORKFLOW,status:"passed",createdAt:new Date().toISOString()},null,2)+"\n")'
+          sha256sum artifacts/quality/evidence.json > artifacts/quality/SHA256SUMS
+
+      - name: Upload quality evidence
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: quality-evidence-${{ env.QUALITY_COMMIT_SHA }}
+          path: artifacts/quality/
+          if-no-files-found: error
+          retention-days: 30

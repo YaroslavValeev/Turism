@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import type { Program, ProgramMedia } from "@prisma/client";
-import { canPublishAutopilot, programIncludeForPublishGate } from "./publishGate";
+import { canPublish, canPublishAutopilot, programIncludeForPublishGate } from "./publishGate";
 
 type GateInput = Parameters<typeof canPublishAutopilot>[0];
 
@@ -100,11 +100,34 @@ describe("canPublishAutopilot", () => {
     expect(r.missing).toContain("synthetic_markers_detected");
   });
 
+  it.each([
+    { field: "gearRequirements", value: "Требует ручного заполнения оператором." },
+    { field: "itineraryDayByDay", value: "<style>@media (min-width: 600px) { .card {} }</style>" },
+    { field: "audienceFit", value: "font-family: Arial; min-width: 320px; tildacdn.com/raw.css" },
+  ])("блокирует placeholder или scraped markup в $field", ({ field, value }) => {
+    const r = canPublishAutopilot(programFixture({ [field]: value }));
+    expect(r.ok).toBe(false);
+    expect(r.missing).toContain("placeholder_or_scraped_markup_detected");
+  });
+
+  it("разрешает явное нейтральное unknown-значение", () => {
+    const r = canPublishAutopilot(programFixture({ gearRequirements: "Уточняется у организатора после заявки" }));
+    expect(r.missing).not.toContain("placeholder_or_scraped_markup_detected");
+  });
+
   it("при INGESTION_E2E_FORCE_GATE=1 всегда отказ (детерминированный e2e)", () => {
     process.env.INGESTION_E2E_FORCE_GATE = "1";
     const r = canPublishAutopilot(programFixture());
     expect(r.ok).toBe(false);
     expect(r.missing).toContain("e2e_forced_gate");
+  });
+});
+
+describe("manual publish content quality", () => {
+  it("не пропускает операторский placeholder в публичную карточку", () => {
+    const r = canPublish(programFixture({ cancellationRules: "TODO: добавить оператором" }));
+    expect(r.ok).toBe(false);
+    expect(r.missing).toContain("placeholder_or_scraped_markup_detected");
   });
 });
 

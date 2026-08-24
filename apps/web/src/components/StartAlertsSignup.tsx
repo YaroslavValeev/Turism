@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, type FormEvent } from "react";
 import { postPublicSubscription } from "../lib/publicApi";
 
@@ -13,7 +14,7 @@ export function StartAlertsSignup({ discipline, region }: Props) {
   const [email, setEmail] = useState("");
   const [telegramUsername, setTelegramUsername] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [consent, setConsent] = useState(true);
+  const [consent, setConsent] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [tgOptInUrl, setTgOptInUrl] = useState<string | null>(null);
@@ -25,6 +26,10 @@ export function StartAlertsSignup({ discipline, region }: Props) {
     setSuccess("");
     if (!email.trim() && !telegramUsername.trim()) {
       setError("Укажите email или Telegram username.");
+      return;
+    }
+    if (!consent) {
+      setError("Подтвердите согласие на получение обновлений.");
       return;
     }
     setSubmitting(true);
@@ -65,14 +70,16 @@ export function StartAlertsSignup({ discipline, region }: Props) {
       <p className="mw-alerts-signup__lead">
         Подпишись на обновления MyWaveTour в email или Telegram.
       </p>
-      <a
-        className="mw-alerts-signup__tg-link"
-        href={(tgGroupInviteUrl ?? telegramInviteFallback) || "#"}
-        target="_blank"
-        rel="noreferrer"
-      >
-        Подписаться в Telegram
-      </a>
+      {(tgGroupInviteUrl ?? telegramInviteFallback) && (
+        <a
+          className="mw-alerts-signup__tg-link"
+          href={tgGroupInviteUrl ?? telegramInviteFallback}
+          target="_blank"
+          rel="noreferrer"
+        >
+          Подписаться в Telegram
+        </a>
+      )}
       <form onSubmit={onSubmit} className="mw-alerts-signup__form">
         <div className="mw-alerts-signup__grid">
           <div className="mw-field">
@@ -85,6 +92,8 @@ export function StartAlertsSignup({ discipline, region }: Props) {
               value={email}
               onChange={(ev) => setEmail(ev.target.value)}
               disabled={submitting}
+              aria-describedby={error ? "alerts-signup-feedback" : undefined}
+              aria-invalid={Boolean(error && !email.trim() && !telegramUsername.trim())}
             />
           </div>
           <div className="mw-field">
@@ -96,24 +105,31 @@ export function StartAlertsSignup({ discipline, region }: Props) {
               value={telegramUsername}
               onChange={(ev) => setTelegramUsername(ev.target.value)}
               disabled={submitting}
+              aria-describedby={error ? "alerts-signup-feedback" : undefined}
+              aria-invalid={Boolean(error && !email.trim() && !telegramUsername.trim())}
             />
           </div>
           <button type="submit" className="mw-btn mw-btn--primary mw-alerts-signup__submit" disabled={submitting}>
             {submitting ? "Сохраняем..." : "Подписаться"}
           </button>
         </div>
-        <label className="mw-alerts-signup__consent">
-          <input
-            type="checkbox"
-            checked={consent}
-            onChange={(ev) => setConsent(ev.target.checked)}
-            disabled={submitting}
-          />
-          <span>Согласен получать обновления MyWaveTour</span>
-        </label>
+        <div className="mw-alerts-signup__consent">
+          <label>
+            <input
+              type="checkbox"
+              checked={consent}
+              onChange={(ev) => setConsent(ev.target.checked)}
+              disabled={submitting}
+              aria-describedby={error ? "alerts-signup-feedback" : undefined}
+              aria-invalid={Boolean(error && !consent)}
+            />
+            <span>Согласен получать обновления MyWaveTour выбранным способом.</span>
+          </label>
+          <Link href="/privacy-and-consent" prefetch={false}>Политика и согласие</Link>
+        </div>
       </form>
-      {error && <p className="mw-alerts-signup__error">{error}</p>}
-      {success && <p className="mw-alerts-signup__success">{success}</p>}
+      {error && <p id="alerts-signup-feedback" className="mw-alerts-signup__error" role="alert">{error}</p>}
+      {success && <p id="alerts-signup-feedback" className="mw-alerts-signup__success" role="status" aria-live="polite">{success}</p>}
       {(tgOptInUrl || tgGroupInviteUrl) && (
         <p className="mw-alerts-signup__hint">
           Telegram подключается через opt-in:{" "}

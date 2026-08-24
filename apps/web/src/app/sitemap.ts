@@ -3,53 +3,62 @@ import { getServerApiBaseUrl, safeServerFetch } from "../lib/serverApiBase";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://mywavetour.ru").replace(/\/+$/, "");
-  const now = new Date();
   const staticEntries: MetadataRoute.Sitemap = [
     {
       url: `${siteUrl}/`,
-      lastModified: now,
       changeFrequency: "daily",
       priority: 1,
     },
     {
       url: `${siteUrl}/blog`,
-      lastModified: now,
       changeFrequency: "daily",
       priority: 0.8,
     },
     {
       url: `${siteUrl}/collections`,
-      lastModified: now,
       changeFrequency: "weekly",
       priority: 0.78,
     },
     {
       url: `${siteUrl}/explore`,
-      lastModified: now,
       changeFrequency: "weekly",
       priority: 0.76,
     },
     {
       url: `${siteUrl}/organizers/program`,
-      lastModified: now,
       changeFrequency: "weekly",
       priority: 0.7,
     },
     {
       url: `${siteUrl}/organizers/verification`,
-      lastModified: now,
       changeFrequency: "weekly",
       priority: 0.7,
     },
     {
       url: `${siteUrl}/privacy-and-consent`,
-      lastModified: now,
       changeFrequency: "monthly",
       priority: 0.5,
     },
   ];
 
   const base = getServerApiBaseUrl();
+  {
+    const resPrograms = await safeServerFetch(`${base}/programs`, { next: { revalidate: 300 } });
+    if (resPrograms?.ok) {
+      const data = (await resPrograms.json()) as { id?: string; updatedAt?: string }[];
+      for (const it of Array.isArray(data) ? data : []) {
+        if (!it.id) continue;
+        const updatedAt = it.updatedAt ? new Date(it.updatedAt) : undefined;
+        staticEntries.push({
+          url: `${siteUrl}/program/${encodeURIComponent(it.id)}`,
+          ...(updatedAt && !Number.isNaN(updatedAt.getTime()) ? { lastModified: updatedAt } : {}),
+          changeFrequency: "weekly",
+          priority: 0.8,
+        });
+      }
+    }
+  }
+
   {
     const res = await safeServerFetch(`${base}/public/blog?limit=500`, { next: { revalidate: 300 } });
     if (res?.ok) {

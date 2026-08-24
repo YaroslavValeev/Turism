@@ -7,6 +7,7 @@ export const metadata: Metadata = {
   title: "Темы и направления — программы, подборки, статьи | MyWave",
   description:
     "Тематические страницы MyWaveTour: дисциплины, регионы, сезоны — актуальные программы, материалы и подборки.",
+  alternates: { canonical: "/explore" },
 };
 
 function typeLabelRu(t: ExploreHubType): string {

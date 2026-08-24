@@ -31,8 +31,8 @@ export function ProgramIntakeForm() {
   const [contactPhone, setContactPhone] = useState("");
   const [organization, setOrganization] = useState("");
   const [programTitle, setProgramTitle] = useState("");
-  const [discipline, setDiscipline] = useState("Wakesurf");
-  const [regionChoice, setRegionChoice] = useState<string>("Krasnodar");
+  const [discipline, setDiscipline] = useState("");
+  const [regionChoice, setRegionChoice] = useState<string>("");
   const [regionCustom, setRegionCustom] = useState("");
   const [plannedDates, setPlannedDates] = useState("");
   const [message, setMessage] = useState("");
@@ -179,6 +179,7 @@ export function ProgramIntakeForm() {
           <div className="mw-field">
             <label htmlFor="pi-discipline">Дисциплина *</label>
             <select id="pi-discipline" className="mw-select" required value={discipline} onChange={(e) => setDiscipline(e.target.value)}>
+              <option value="" disabled>Выберите дисциплину…</option>
               {DISCIPLINES.map((o) => (
                 <option key={o.value} value={o.value}>
                   {o.label}
@@ -195,6 +196,7 @@ export function ProgramIntakeForm() {
               value={regionChoice}
               onChange={(e) => setRegionChoice(e.target.value)}
             >
+              <option value="" disabled>Выберите регион или локацию…</option>
               {REGION_PRESETS.map((o) => (
                 <option key={o.value} value={o.value}>
                   {o.label}

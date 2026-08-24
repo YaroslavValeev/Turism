@@ -159,10 +159,19 @@ function isWinterDiscipline(program: Pick<Program, "title" | "discipline">): boo
 
 type ScenarioExtra = null | "kids" | "weekend";
 
+function SearchParamSync({ onChange }: { onChange: (query: string) => void }) {
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    onChange(searchParams.toString());
+  }, [onChange, searchParams]);
+
+  return null;
+}
+
 function HomePageInner() {
   const router = useRouter();
   const pathname = usePathname();
-  const searchParams = useSearchParams();
 
   const [allPrograms, setAllPrograms] = useState<Program[]>([]);
   const [loading, setLoading] = useState(true);
@@ -184,18 +193,19 @@ function HomePageInner() {
     return "";
   }, []);
 
-  useEffect(() => {
-    setSelectedDisciplines(searchParams.getAll("discipline").map((s) => s.trim()).filter(Boolean));
+  const applySearchParams = useCallback((query: string) => {
+    const params = new URLSearchParams(query);
+    setSelectedDisciplines(params.getAll("discipline").map((s) => s.trim()).filter(Boolean));
 
-    const region = searchParams.get("region") ?? "";
-    const legacyCountry = searchParams.get("country") ?? "";
+    const region = params.get("region") ?? "";
+    const legacyCountry = params.get("country") ?? "";
     setAppliedRegionQuery(region.trim() ? region : legacyCountry);
-    setNearestStartsOnly(searchParams.get("nearest") === "1");
-    setSeasonFilter(readSeasonFromQuery(searchParams.get("season")));
+    setNearestStartsOnly(params.get("nearest") === "1");
+    setSeasonFilter(readSeasonFromQuery(params.get("season")));
 
-    const fromLevels = searchParams.getAll("level").map((s) => s.trim()).filter((s) => LEVEL_VALUE_SET.has(s));
+    const fromLevels = params.getAll("level").map((s) => s.trim()).filter((s) => LEVEL_VALUE_SET.has(s));
     setLevelFilters(fromLevels);
-  }, [searchParams, readSeasonFromQuery]);
+  }, [readSeasonFromQuery]);
 
   useEffect(() => {
     let cancelled = false;
@@ -510,6 +520,9 @@ function HomePageInner() {
 
   return (
     <>
+      <Suspense fallback={null}>
+        <SearchParamSync onChange={applySearchParams} />
+      </Suspense>
       <SiteHeader
         role={role}
         onRoleChange={handleRoleChange}
@@ -1028,9 +1041,5 @@ function HomePageInner() {
 }
 
 export function HomePage() {
-  return (
-    <Suspense fallback={<main className="mw-container" style={{ padding: "3rem 0" }}><p style={{ color: "var(--mw-muted)" }}>Загрузка каталога…</p></main>}>
-      <HomePageInner />
-    </Suspense>
-  );
+  return <HomePageInner />;
 }

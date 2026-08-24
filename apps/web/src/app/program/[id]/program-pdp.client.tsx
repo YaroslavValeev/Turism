@@ -14,7 +14,7 @@ import { trackProductEvent } from "../../../lib/analytics/client";
 
 import { getPublicApiBase } from "../../../lib/publicApiBase";
 
-type Program = {
+export type Program = {
   id: string;
   title: string;
   discipline: string;
@@ -60,7 +60,7 @@ function sourceTypeLabelRuPdp(t: string | null | undefined): string {
   return t ? t : "источник";
 }
 
-type PublicReview = {
+export type PublicReview = {
   id: string;
   rating: number;
   comment: string | null;
@@ -187,7 +187,7 @@ function organizerVerificationLabelRu(status: string | null | undefined): string
     case "verified":
       return "Профиль: данные проверены платформой (стадия verified)";
     case "checked":
-      return "Профиль: проверка данных (стадия checked)";
+      return "Профиль: данные проходят проверку";
     case "listed":
       return "Профиль: базовая публикация в каталоге";
     case "paused":
@@ -206,12 +206,17 @@ const DEFAULT_AFTER_STEPS = [
   "Дальше вы согласуете участие и оплату напрямую с организатором по его правилам.",
 ];
 
-type PdpProps = { id: string; validHubKeys: Set<string> };
+type PdpProps = {
+  id: string;
+  validHubKeys: Set<string>;
+  initialProgram: Program;
+  initialReviews: PublicReview[];
+};
 
-export function ProgramPdpClient({ id, validHubKeys }: PdpProps) {
-  const [program, setProgram] = useState<Program | null>(null);
-  const [reviews, setReviews] = useState<PublicReview[]>([]);
-  const [loading, setLoading] = useState(true);
+export function ProgramPdpClient({ id, validHubKeys, initialProgram, initialReviews }: PdpProps) {
+  const [program, setProgram] = useState<Program | null>(initialProgram);
+  const [reviews, setReviews] = useState<PublicReview[]>(initialReviews);
+  const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState("");
   const [guestContact, setGuestContact] = useState("");
   const [notes, setNotes] = useState("");
@@ -244,6 +249,25 @@ export function ProgramPdpClient({ id, validHubKeys }: PdpProps) {
 
   useEffect(() => {
     if (!id) return;
+    if (initialProgram.id === id) {
+      void trackProductEvent("page_view", {
+        page_type: "program_detail",
+        program_id: initialProgram.id,
+        organizer_id: initialProgram.organizer?.id,
+        discipline: initialProgram.discipline,
+        region: initialProgram.region,
+        traffic_source: "program_page",
+      });
+      void trackProductEvent("view_item", {
+        page_type: "program_detail",
+        program_id: initialProgram.id,
+        organizer_id: initialProgram.organizer?.id,
+        discipline: initialProgram.discipline,
+        region: initialProgram.region,
+        traffic_source: "program_page",
+      });
+      return;
+    }
     let cancelled = false;
     (async () => {
       try {
@@ -294,7 +318,7 @@ export function ProgramPdpClient({ id, validHubKeys }: PdpProps) {
     return () => {
       cancelled = true;
     };
-  }, [id]);
+  }, [id, initialProgram]);
 
   const overrides = useMemo(() => (program ? getProgramFieldOverrides(program.title) : {}), [program]);
 
@@ -322,7 +346,7 @@ export function ProgramPdpClient({ id, validHubKeys }: PdpProps) {
   if (!program) {
     return (
       <main className="mw-container" style={{ padding: "3rem 0" }}>
-        <p>{loadError || "Программа не найдена."}</p>
+        <p role={loadError ? "alert" : undefined}>{loadError || "Программа не найдена."}</p>
         <Link href="/" className="mw-page-back">
           ← На главную
         </Link>
@@ -512,15 +536,13 @@ export function ProgramPdpClient({ id, validHubKeys }: PdpProps) {
             <p style={{ margin: "0 0 12px", color: "var(--mw-muted)", fontSize: "0.95rem" }}>Пока нет отзывов по этой программе в MyWaveTour.</p>
             )}
             <a href="#request" className="mw-btn mw-btn--primary">
-              Забронировать место
+              Оставить заявку
             </a>
             <p style={{ margin: "10px 0 0", fontSize: "0.9rem", color: "var(--mw-muted)", lineHeight: 1.45 }}>
               Остались вопросы? Напиши - подскажем
             </p>
             <p style={{ margin: "8px 0 0" }}>
-              <Link href={`/organizers/program?${programEntryQuery}`} className="mw-btn mw-btn--ghost" prefetch={false}>
-                Задать вопрос
-              </Link>
+              <a href="#request" className="mw-btn mw-btn--ghost">Задать вопрос в заявке</a>
             </p>
             <p className="mw-pdp-cta-note" style={{ margin: "12px 0 0", fontSize: "0.92rem", color: "var(--mw-muted)", maxWidth: "52ch", lineHeight: 1.55 }}>
               После отправки заявки организатор подтверждает наличие мест и связывается с участником. Данные программы предоставлены организатором.
@@ -780,7 +802,7 @@ export function ProgramPdpClient({ id, validHubKeys }: PdpProps) {
               {displayMedia.map((m) => (
                 <div key={m.id} style={{ marginBottom: 16 }}>
                   {m.mediaType === "image" ? (
-                    <img src={presentProgramMediaUrl(m.url) ?? m.url} alt={m.caption ?? ""} style={{ maxWidth: "100%", height: "auto", borderRadius: 12 }} />
+                    <img src={presentProgramMediaUrl(m.url) ?? m.url} alt={m.caption?.trim() || `${program.title} — фото программы`} style={{ maxWidth: "100%", height: "auto", borderRadius: 12 }} />
                   ) : (
                     <a href={m.url} target="_blank" rel="noreferrer">
                       {m.caption ?? m.url}
@@ -792,10 +814,10 @@ export function ProgramPdpClient({ id, validHubKeys }: PdpProps) {
           )}
 
           <section id="request" className="mw-form-card">
-            <h2 className="mw-h2">Записаться на кэмп</h2>
+            <h2 className="mw-h2">Оставить заявку организатору</h2>
             <p className="mw-form-hint">Ты выбираешь — организатор подтверждает — вы едете вместе.</p>
-            {submitError && <p style={{ color: "#b00020", marginBottom: 12 }}>{submitError}</p>}
-            {submitSuccess && <p style={{ color: "#047857", marginBottom: 12, fontWeight: 600 }}>{submitSuccess}</p>}
+            {submitError && <p id="program-request-feedback" role="alert" style={{ color: "#b00020", marginBottom: 12 }}>{submitError}</p>}
+            {submitSuccess && <p id="program-request-feedback" role="status" aria-live="polite" style={{ color: "#047857", marginBottom: 12, fontWeight: 600 }}>{submitSuccess}</p>}
             <form onSubmit={handleSubmit}>
               <div className="mw-field" style={{ marginBottom: 16 }}>
                 <label htmlFor="guestContact">Телефон, Telegram или email</label>
@@ -808,6 +830,8 @@ export function ProgramPdpClient({ id, validHubKeys }: PdpProps) {
                   placeholder="+7…, @telegram или почта"
                   disabled={submitting}
                   autoComplete="tel"
+                  aria-describedby={submitError || submitSuccess ? "program-request-feedback" : undefined}
+                  aria-invalid={Boolean(submitError)}
                 />
               </div>
               <div className="mw-field" style={{ marginBottom: 20 }}>
@@ -859,7 +883,7 @@ export function ProgramPdpClient({ id, validHubKeys }: PdpProps) {
                 disabled={submitting || !guestContact.trim() || !consentTransfer || !consentPrivacy}
                 className="mw-btn mw-btn--primary"
               >
-                {submitting ? "Отправляем…" : "Забронировать место"}
+                {submitting ? "Отправляем…" : "Оставить заявку"}
               </button>
               <p className="mw-form-note" style={{ marginTop: 12 }}>
                 Ответим в течение дня • без обязательств
@@ -880,7 +904,7 @@ export function ProgramPdpClient({ id, validHubKeys }: PdpProps) {
             )}
             <p style={{ margin: "0 0 12px", color: "var(--mw-muted)", fontSize: "0.92rem" }}>Ближайшие даты: {datesLine}</p>
             <a href="#request" className="mw-btn mw-btn--primary" style={{ width: "100%", textAlign: "center" }}>
-              Забронировать место
+              Оставить заявку
             </a>
             <p style={{ margin: "10px 0 0", fontSize: "0.82rem", color: "var(--mw-muted)", lineHeight: 1.45 }}>
               Ответ организатора после подтверждения наличия мест.
@@ -898,7 +922,7 @@ export function ProgramPdpClient({ id, validHubKeys }: PdpProps) {
             <span style={{ display: "block", fontSize: "0.8rem", color: "var(--mw-muted)" }}>{datesLine}</span>
           </div>
           <a href="#request" className="mw-btn mw-btn--primary">
-            Забронировать
+            Оставить заявку
           </a>
         </div>
       </div>

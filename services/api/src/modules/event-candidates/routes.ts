@@ -9,6 +9,7 @@ import {
   publishCandidateToDraft,
   rejectCandidate,
 } from "../ingestion/service";
+import { archiveProgramFromCancellationCandidate, ReconciliationError } from "./reconciliation";
 
 export function eventCandidatesRoutes(env: Env): Router {
   const router = Router();
@@ -169,6 +170,28 @@ export function eventCandidatesRoutes(env: Env): Router {
       res.json(result);
     } catch (error) {
       res.status(400).json({ error: error instanceof Error ? error.message : "Publish failed" });
+    }
+  });
+
+  router.post("/:id/archive-confirm", admin, async (req: Request, res: Response) => {
+    const targetProgramId = typeof req.body?.targetProgramId === "string" ? req.body.targetProgramId.trim() : "";
+    const reason = typeof req.body?.reason === "string" ? req.body.reason.trim() : "";
+    try {
+      const result = await archiveProgramFromCancellationCandidate({
+        candidateId: req.params.id,
+        targetProgramId,
+        actorId: req.adminUserId ?? null,
+        reason,
+        confirm: typeof req.body?.confirm === "string" ? req.body.confirm : "",
+        expectedCandidateUpdatedAt: typeof req.body?.expectedCandidateUpdatedAt === "string" ? req.body.expectedCandidateUpdatedAt : "",
+        expectedProgramUpdatedAt: typeof req.body?.expectedProgramUpdatedAt === "string" ? req.body.expectedProgramUpdatedAt : "",
+      });
+      res.json(result);
+    } catch (error) {
+      const status = error instanceof ReconciliationError ? error.statusCode : 500;
+      res.status(status).json({
+        error: error instanceof Error ? error.message : "Cancellation reconciliation failed",
+      });
     }
   });
 

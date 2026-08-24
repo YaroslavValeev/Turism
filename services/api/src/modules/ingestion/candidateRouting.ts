@@ -41,7 +41,7 @@ export function isExplicitCancellationNotice(
 
 export function routeCandidateStatus(input: CandidateRoutingInput): EventCandidateStatus {
   if (input.explicitCancellationNotice) {
-    return "archived";
+    return "needs_review";
   }
 
   return input.finalScore >= 0.42 && input.futureEventScore >= 0.2 && input.eventLikelihoodScore >= 0.3

@@ -2517,12 +2517,13 @@ function scoreNormalizedItem(source: SourceWithOrganizer, normalized: Omit<Norma
       tourismFitScore * 0.12,
   );
   const confidenceScore = clampScore((completenessScore + eventLikelihoodScore + futureEventScore) / 3);
-  const reviewPriority = Math.round(finalScore * 100);
+  const explicitCancellationNotice = getExtractedJsonFlag(normalized.extractedJson, "explicitCancellationNotice");
+  const reviewPriority = explicitCancellationNotice ? 100 : Math.round(finalScore * 100);
   const routedStatus = routeCandidateStatus({
     finalScore,
     futureEventScore,
     eventLikelihoodScore,
-    explicitCancellationNotice: getExtractedJsonFlag(normalized.extractedJson, "explicitCancellationNotice"),
+    explicitCancellationNotice,
   });
 
   return {
@@ -3926,7 +3927,7 @@ export async function runNormalizationJob(actorId: string | null, sourceIds?: st
         sourceTrustScore: normalized.scores.sourceTrustScore,
         tourismFitScore: normalized.scores.tourismFitScore,
         decisionNotes: getExtractedJsonFlag(normalized.extractedJson, "explicitCancellationNotice")
-          ? `AUTO_ARCHIVED: ${EXPLICIT_CANCELLATION_ROUTING_REASON}`
+          ? `CRITICAL_REVIEW: ${EXPLICIT_CANCELLATION_ROUTING_REASON}`
           : null,
       },
     });

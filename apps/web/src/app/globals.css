@@ -570,7 +570,7 @@ a:hover {
 
   .mw-site-header__role {
     width: 100%;
-    flex-direction: column;
+    grid-template-columns: 1fr;
     border-radius: 18px;
   }
 
@@ -998,6 +998,17 @@ a:hover {
 }
 
 @media (max-width: 640px) {
+  .mw-site-header__role-btn {
+    min-width: 0;
+    padding: 12px 10px;
+  }
+
+  .mw-site-header__role-title,
+  .mw-site-header__role-sub {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+
   .mw-hero-inner {
     padding-top: 2rem;
   }
@@ -2821,11 +2832,18 @@ a:hover {
 }
 
 .mw-alerts-signup__consent {
-  display: inline-flex;
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
   color: var(--mw-muted2);
   font-size: 0.86rem;
+}
+
+.mw-alerts-signup__consent label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .mw-alerts-signup__error {
@@ -3462,5 +3480,31 @@ a:hover {
 
   .mw-pdp-mobile-cta {
     display: none;
+  }
+}
+
+.mw-site-header__nav-hint {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .mw-site-header__nav {
+    justify-content: flex-start;
+  }
+
+  .mw-site-header__nav-hint {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    display: inline-flex;
+    align-items: center;
+    align-self: stretch;
+    flex: 0 0 auto;
+    padding: 0 10px;
+    color: var(--mw-muted);
+    background: var(--mw-surface, #fff);
+    font-size: 0.78rem;
+    font-weight: 700;
+    white-space: nowrap;
   }
 }

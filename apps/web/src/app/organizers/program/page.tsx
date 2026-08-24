@@ -7,6 +7,7 @@ export const metadata: Metadata = {
   title: "Подать программу — организаторам | MyWaveTour",
   description:
     "Подача программы в MyWaveTour: контакты, формат выезда и следующий шаг до публикации в витрине.",
+  alternates: { canonical: "/organizers/program" },
 };
 
 export default function OrganizerProgramPage() {

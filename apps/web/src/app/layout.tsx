@@ -17,6 +17,19 @@ export const metadata: Metadata = {
   alternates: {
     canonical: "/",
   },
+  openGraph: {
+    type: "website",
+    locale: "ru_RU",
+    siteName: "MyWaveTour",
+    url: "/",
+    title: "MyWaveTour — кэмпы и спортивные выезды по России",
+    description: "Выбирайте спортивные программы и кэмпы по России и связывайтесь с организаторами напрямую.",
+  },
+  twitter: {
+    card: "summary",
+    title: "MyWaveTour — кэмпы и спортивные выезды по России",
+    description: "Спортивные программы, кэмпы и активные поездки по России.",
+  },
   icons: {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",

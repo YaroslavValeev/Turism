@@ -106,6 +106,7 @@ export function SiteHeader({
           </Link>
 
           <nav className="mw-site-header__nav" aria-label="Разделы витрины">
+            <span className="mw-site-header__nav-hint" aria-hidden="true">Разделы →</span>
             {homePrimaryNav.map((item) => (
               <Link key={item.href + item.label} href={item.href} className="mw-site-header__nav-link">
                 {item.label}

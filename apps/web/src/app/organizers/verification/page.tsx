@@ -9,6 +9,7 @@ export const metadata: Metadata = {
   title: "Верификация организатора | MyWaveTour",
   description:
     "Как устроена проверка организаторов в MyWaveTour и как запросить консультацию.",
+  alternates: { canonical: "/organizers/verification" },
 };
 
 export default function OrganizerVerificationPage() {

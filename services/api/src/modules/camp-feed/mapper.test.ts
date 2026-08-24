@@ -81,7 +81,7 @@ describe("camp mapper", () => {
       availability_status: "few_spots",
       publication_status: "published",
       audience_language: ["ru"],
-      content_rights_status: "partner_allowed",
+      content_rights_status: "unknown",
       source_url: "https://partner.example/camp",
       updated_at: "2026-07-07T10:30:00.000Z",
     });
@@ -106,6 +106,19 @@ describe("camp mapper", () => {
     expect(normalizeAvailabilityStatus({ spotsAvailable: 8, capacityTotal: 10, publishStatus: "published" })).toBe("available");
     expect(normalizeAvailabilityStatus({ spotsAvailable: null, capacityTotal: null, publishStatus: "published" })).toBe("unknown");
   });
+
+  it("marks flagged rows as restricted for content rights", () => {
+    const camp = mapProgramToCamp(row({ reviewStatus: "flagged" }), env);
+    expect(camp?.content_rights_status).toBe("restricted");
+  });
+
+  it.each(["organizer_form", "admin_manual", "ingestion_auto"])(
+    "does not infer partner_allowed rights from the %s intake source",
+    (intakeSource) => {
+      const camp = mapProgramToCamp(row({ intakeSource }), env);
+      expect(camp?.content_rights_status).toBe("unknown");
+    },
+  );
 
   it("accepts both external camp id and raw program id for detail lookup", () => {
     expect(resolveProgramIdFromCampId("tour_prog_123")).toBe("prog_123");

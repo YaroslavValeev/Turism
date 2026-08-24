@@ -4,7 +4,7 @@ import type { Organizer, Program, ProgramMedia, Source } from "@prisma/client";
 export type CampSport = "wakesurf" | "wakeboard";
 export type CampAvailabilityStatus = "available" | "few_spots" | "sold_out" | "waitlist" | "unknown";
 export type CampPublicationStatus = "published" | "hidden" | "archived" | "cancelled";
-export type CampContentRightsStatus = "partner_allowed" | "unknown";
+export type CampContentRightsStatus = "partner_allowed" | "unknown" | "restricted";
 
 export type CampProgramRow = Program & {
   media: ProgramMedia[];
@@ -186,7 +186,10 @@ function resolveRegion(row: CampProgramRow): string | null {
 }
 
 function resolveContentRightsStatus(row: CampProgramRow): CampContentRightsStatus {
-  return row.intakeSource === "organizer_form" || row.intakeSource === "admin_manual" ? "partner_allowed" : "unknown";
+  if (row.reviewStatus === "flagged") return "restricted";
+  // Intake provenance is not a legal rights grant. `partner_allowed` must only
+  // be emitted after an explicit, persisted rights confirmation is introduced.
+  return "unknown";
 }
 
 export function mapProgramToCamp(row: CampProgramRow, env: Env): CampContract | null {

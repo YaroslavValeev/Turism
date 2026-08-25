@@ -327,8 +327,8 @@ model RawItem {
   normalizedItem NormalizedItem?
   contentItem    ContentItem?
 
-  @@unique([sourceId, externalItemId])
   @@unique([sourceId, contentHash])
+  @@index([sourceId, externalItemId])
   @@index([sourceId, fetchedAt])
   @@map("raw_items")
 }

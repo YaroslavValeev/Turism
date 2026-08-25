@@ -3758,13 +3758,7 @@ async function persistCollectedItems(source: Source, items: CollectedItem[], act
   for (const item of items) {
     const contentHash = makeHash(item.externalItemId, item.sourceUrl, item.rawTitle, item.rawText);
     const existing = await prisma.rawItem.findFirst({
-      where: {
-        sourceId: source.id,
-        OR: [
-          item.externalItemId ? { externalItemId: item.externalItemId } : undefined,
-          { contentHash },
-        ].filter(Boolean) as Prisma.RawItemWhereInput[],
-      },
+      where: buildRawItemContentIdentityWhere(source.id, contentHash),
     });
     if (existing) continue;
     const raw = await prisma.$transaction(async (tx) => {
@@ -3806,6 +3800,10 @@ async function persistCollectedItems(source: Source, items: CollectedItem[], act
     });
   }
   return created;
+}
+
+export function buildRawItemContentIdentityWhere(sourceId: string, contentHash: string): Prisma.RawItemWhereInput {
+  return { sourceId, contentHash };
 }
 
 export async function runSourceCollection(sourceId: string, actorId: string | null): Promise<RunSummary & { runId: string }> {

@@ -36,6 +36,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Prepare release identity
+        run: |
+          set -euo pipefail
+          mkdir -p .release
+          printf '%s\n' "$GITHUB_SHA" > .release/REVISION
+          printf '%s\n' "$GITHUB_RUN_ID" > .release/GITHUB_RUN_ID
+          printf '%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > .release/BUILT_AT
+
       - name: Verify nginx config (syntax)
         run: |
           set -euo pipefail
@@ -59,6 +67,9 @@ jobs:
           ssh-keyscan -4 -p 22 -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
           DP="${DEPLOY_PATH:-/opt/mywave/tourism}"
           DP="$(echo "$DP" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+          case "$DP" in
+            ""|"/"|"/opt"|"/opt/"|"/opt/mywave"|"/opt/mywave/") echo "Unsafe DEPLOY_PATH: $DP" >&2; exit 64 ;;
+          esac
           SSH_PROBE="-4 -i ${HOME}/.ssh/deploy_key -p 22 -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=28 -o ConnectionAttempts=1 -o ServerAliveInterval=10 -o ServerAliveCountMax=30"
           SSH_RSYNC="-4 -i ${HOME}/.ssh/deploy_key -p 22 -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=60 -o ConnectionAttempts=1 -o ServerAliveInterval=20 -o ServerAliveCountMax=240 -o TCPKeepAlive=yes"
           PROBE_OK=0
@@ -73,6 +84,7 @@ jobs:
             echo "SSH probe failed" >&2
             exit 255
           fi
+          ssh $SSH_PROBE "${DEPLOY_USER}@${DEPLOY_HOST}" "set -euo pipefail; DP='${DP}'; case \"\$DP\" in ''|'/'|'/opt'|'/opt/'|'/opt/mywave'|'/opt/mywave/') echo \"Unsafe DEPLOY_PATH: \$DP\" >&2; exit 64 ;; esac; install -m 700 -d /var/backups/mywave-tourism /var/lib/mywave-tourism; if [ -d \"\$DP\" ]; then BACKUP_PATH=\"/var/backups/mywave-tourism/release-\$(date -u +%Y%m%dT%H%M%SZ)-${GITHUB_SHA}.tgz\"; tar --warning=no-file-changed --ignore-failed-read -czf \"\$BACKUP_PATH\" -C \"\$(dirname \"\$DP\")\" \"\$(basename \"\$DP\")\" --exclude='node_modules' --exclude='.next' --exclude='dist' --exclude='logs' --exclude='backups'; printf '%s\n' \"\$BACKUP_PATH\" > /var/lib/mywave-tourism/last-release-backup; echo \"release_backup=\$BACKUP_PATH\"; fi"
           if rsync -avz --timeout=900 -e "ssh $SSH_RSYNC" --delete --exclude='.git/' --exclude='node_modules/' --exclude='.next/' --exclude='dist/' --exclude='backups/' --exclude='logs/' --exclude='.env' --exclude='.env.*' --exclude='.cursor/' --exclude='.turbo/' --exclude='coverage/' --exclude='**/.turbo/' --exclude='**/test-results/' --exclude='**/*.tsbuildinfo' --exclude='infra/nginx/certs/' "$GITHUB_WORKSPACE/" "${DEPLOY_USER}@${DEPLOY_HOST}:${DP}/"; then
             echo "Rsync complete"
           else
@@ -100,12 +112,31 @@ jobs:
           ssh-keyscan -4 -p 22 -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
           DP="${DEPLOY_PATH:-/opt/mywave/tourism}"
           DP="$(echo "$DP" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+          case "$DP" in
+            ""|"/"|"/opt"|"/opt/"|"/opt/mywave"|"/opt/mywave/") echo "Unsafe DEPLOY_PATH: $DP" >&2; exit 64 ;;
+          esac
           SSH_LONG="-4 -i ${HOME}/.ssh/deploy_key -p 22 -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=45 -o ConnectionAttempts=1 -o ServerAliveInterval=20 -o ServerAliveCountMax=300"
-          if [ "$DEPLOY_MODE" = "web_only" ]; then
-            ssh $SSH_LONG "${DEPLOY_USER}@${DEPLOY_HOST}" "set -euo pipefail; cd '${DP}'; docker compose --env-file .env.production -f docker-compose.production.yml up -d --no-deps --build web reverse-proxy; docker compose --env-file .env.production -f docker-compose.production.yml ps"
-          elif [ "$BUILD_MODE" = "full" ]; then
-            ssh $SSH_LONG "${DEPLOY_USER}@${DEPLOY_HOST}" "set -euo pipefail; cd '${DP}'; docker compose --env-file .env.production -f docker-compose.production.yml build --no-cache api web admin; docker compose --env-file .env.production -f docker-compose.production.yml up -d api web admin reverse-proxy; docker compose --env-file .env.production -f docker-compose.production.yml ps"
-          else
-            ssh $SSH_LONG "${DEPLOY_USER}@${DEPLOY_HOST}" "set -euo pipefail; cd '${DP}'; docker compose --env-file .env.production -f docker-compose.production.yml up -d --build api web admin reverse-proxy; docker compose --env-file .env.production -f docker-compose.production.yml ps"
+          ssh $SSH_LONG "${DEPLOY_USER}@${DEPLOY_HOST}" "DEPLOY_PATH='${DP}' DEPLOY_MODE='${DEPLOY_MODE}' BUILD_MODE='${BUILD_MODE}' EXPECTED_SHA='${GITHUB_SHA}' bash -s" <<'REMOTE'
+          set -euo pipefail
+          cd "$DEPLOY_PATH"
+          DC=(docker compose --env-file .env.production -f docker-compose.production.yml)
+          if [ "$(cat .release/REVISION)" != "$EXPECTED_SHA" ]; then
+            echo "Release SHA mismatch on VPS" >&2
+            exit 65
           fi
-
+          if [ "$DEPLOY_MODE" = "web_only" ]; then
+            "${DC[@]}" up -d --no-deps --build web reverse-proxy
+          elif [ "$BUILD_MODE" = "full" ]; then
+            "${DC[@]}" build --no-cache api web admin
+            "${DC[@]}" run --rm api sh -lc 'cd /app/services/api && pnpm exec prisma migrate deploy'
+            "${DC[@]}" up -d api web admin reverse-proxy
+          else
+            "${DC[@]}" build api web admin
+            "${DC[@]}" run --rm api sh -lc 'cd /app/services/api && pnpm exec prisma migrate deploy'
+            "${DC[@]}" up -d api web admin reverse-proxy
+          fi
+          "${DC[@]}" ps
+          MYWAVE_ROOT="$DEPLOY_PATH" bash scripts/prod_healthcheck.sh
+          echo "release_sha=$EXPECTED_SHA"
+          echo "rollback_backup=$(cat /var/lib/mywave-tourism/last-release-backup 2>/dev/null || true)"
+          REMOTE

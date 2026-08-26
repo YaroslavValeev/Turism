@@ -22,6 +22,9 @@ services:
       args:
         NPM_CONFIG_REGISTRY: ${NPM_CONFIG_REGISTRY:-https://registry.npmjs.org/}
         PRISMA_ENGINES_MIRROR: ${PRISMA_ENGINES_MIRROR:-}
+        RELEASE_SHA: ${EXPECTED_SHA:-unknown}
+        RELEASE_BUILT_AT: ${RELEASE_BUILT_AT:-}
+        GITHUB_RUN_ID: ${GITHUB_RUN_ID:-}
     restart: unless-stopped
     env_file:
       - .env.production

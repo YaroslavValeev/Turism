@@ -32,8 +32,20 @@ if [[ "$_insecure_tls" == "1" ]]; then
 fi
 
 echo "== HTTP health (канон на основном домене: /api/health) =="
-"${CURL_EXT[@]}" "${PUBLIC_ORIGIN}/api/health"
+_health_tmp="$(mktemp)"
+trap 'rm -f "$_health_tmp"' EXIT
+"${CURL_EXT[@]}" "${PUBLIC_ORIGIN}/api/health" -o "$_health_tmp"
+cat "$_health_tmp"
 echo
+if [[ -n "${PROD_HEALTHCHECK_EXPECTED_SHA:-}" ]]; then
+  if ! grep -q "\"releaseSha\"[[:space:]]*:[[:space:]]*\"${PROD_HEALTHCHECK_EXPECTED_SHA}\"" "$_health_tmp"; then
+    echo "prod_healthcheck: expected /api/health releaseSha ${PROD_HEALTHCHECK_EXPECTED_SHA}" >&2
+    exit 1
+  fi
+  echo "release identity: ok (${PROD_HEALTHCHECK_EXPECTED_SHA})"
+fi
+rm -f "$_health_tmp"
+trap - EXIT
 echo "== HTTP health short alias (/health) =="
 "${CURL_EXT[@]}" "${PUBLIC_ORIGIN}/health"
 echo

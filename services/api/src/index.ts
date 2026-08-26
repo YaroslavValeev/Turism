@@ -40,6 +40,7 @@ import { campFeedRoutes } from "./modules/camp-feed/routes";
 import { createAuthRateLimiter, createPublicRateLimiter, isOriginAllowed } from "./middleware/security";
 import { safeError } from "./lib/safeLogger";
 import { assertPublicBaseUrlsForProduction } from "./lib/publicBaseUrlCheck";
+import { getReleaseIdentity } from "./lib/releaseIdentity";
 
 const env = loadEnv();
 assertPublicBaseUrlsForProduction(env);
@@ -60,19 +61,21 @@ app.use(
 app.use(express.json({ limit: "100kb" }));
 const publicRateLimiter = createPublicRateLimiter(env);
 const authRateLimiter = createAuthRateLimiter();
+const releaseIdentity = getReleaseIdentity();
 
 // Корень (в т.ч. после nginx `location /api/ → proxy_pass …/`): не «Cannot GET /»
 app.get("/", (_req, res) => {
   res.status(200).json({
     ok: true,
     service: "mywave-api",
+    release: releaseIdentity,
     healthPath: "/health",
     hint: "Проверка: GET /health на том же хосте и префиксе, что и этот запрос.",
   });
 });
 
 app.get("/health", (_req, res) => {
-  res.json({ status: "ok" });
+  res.json({ status: "ok", service: "mywave-api", release: releaseIdentity });
 });
 
 app.use("/auth", authRateLimiter, authRoutes(env));

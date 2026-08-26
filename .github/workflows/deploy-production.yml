@@ -116,7 +116,7 @@ jobs:
             ""|"/"|"/opt"|"/opt/"|"/opt/mywave"|"/opt/mywave/") echo "Unsafe DEPLOY_PATH: $DP" >&2; exit 64 ;;
           esac
           SSH_LONG="-4 -i ${HOME}/.ssh/deploy_key -p 22 -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=45 -o ConnectionAttempts=1 -o ServerAliveInterval=20 -o ServerAliveCountMax=300"
-          ssh $SSH_LONG "${DEPLOY_USER}@${DEPLOY_HOST}" "DEPLOY_PATH='${DP}' DEPLOY_MODE='${DEPLOY_MODE}' BUILD_MODE='${BUILD_MODE}' EXPECTED_SHA='${GITHUB_SHA}' bash -s" <<'REMOTE'
+          ssh $SSH_LONG "${DEPLOY_USER}@${DEPLOY_HOST}" "DEPLOY_PATH='${DP}' DEPLOY_MODE='${DEPLOY_MODE}' BUILD_MODE='${BUILD_MODE}' EXPECTED_SHA='${GITHUB_SHA}' RELEASE_BUILT_AT='$(cat .release/BUILT_AT)' GITHUB_RUN_ID='${GITHUB_RUN_ID}' bash -s" <<'REMOTE'
           set -euo pipefail
           cd "$DEPLOY_PATH"
           DC=(docker compose --env-file .env.production -f docker-compose.production.yml)
@@ -136,7 +136,7 @@ jobs:
             "${DC[@]}" up -d api web admin reverse-proxy
           fi
           "${DC[@]}" ps
-          MYWAVE_ROOT="$DEPLOY_PATH" bash scripts/prod_healthcheck.sh
+          PROD_HEALTHCHECK_EXPECTED_SHA="$EXPECTED_SHA" MYWAVE_ROOT="$DEPLOY_PATH" bash scripts/prod_healthcheck.sh
           echo "release_sha=$EXPECTED_SHA"
           echo "rollback_backup=$(cat /var/lib/mywave-tourism/last-release-backup 2>/dev/null || true)"
           REMOTE

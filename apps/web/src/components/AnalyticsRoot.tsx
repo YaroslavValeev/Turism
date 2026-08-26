@@ -55,10 +55,10 @@ export function AnalyticsRoot() {
 
       {showBanner ? (
         <div
+          className="mw-cookie-banner"
           style={{
             position: "fixed",
             right: 14,
-            bottom: 14,
             padding: 10,
             borderRadius: 12,
             background: "rgba(240, 247, 246, 0.92)",

@@ -163,6 +163,16 @@ bash scripts/prod_healthcheck.sh
 
 Скрипт сам переходит в **корень репозитория** (родитель каталога `scripts/`). Канон каталога на VPS — **`/opt/mywave/tourism`**. Префикс контейнеров — **`toutism-*`** при **`COMPOSE_PROJECT_NAME=toutism`** и вызове compose с **`--env-file .env.production`**. При необходимости вручную: `MYWAVE_ROOT=/opt/mywave/tourism bash scripts/prod_healthcheck.sh`.
 
+По умолчанию `prod_healthcheck.sh` проверяет booking intake без создания заявки: `POST /api/bookings` без legal consent должен вернуть **400**. Для полного production E2E с реальной тестовой заявкой выберите опубликованную программу и запустите:
+
+```bash
+export PROD_HEALTHCHECK_CREATE_BOOKING=1
+export PROD_HEALTHCHECK_BOOKING_PROGRAM_ID="<published_program_id>"
+MYWAVE_ROOT=/opt/mywave/tourism bash scripts/prod_healthcheck.sh
+```
+
+Ожидание: первая заявка возвращает **201** и `legalConsentAt`, повтор того же payload в duplicate window возвращает **409**. Созданную строку с `sourceChannel=prod_healthcheck` после evidence можно архивировать/пометить как тестовую в админке.
+
 Вручную:
 
 ```bash

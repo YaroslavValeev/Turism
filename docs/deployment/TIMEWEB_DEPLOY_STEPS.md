@@ -160,6 +160,7 @@ export DC='docker compose --env-file .env.production -f docker-compose.productio
 $DC ps
 bash scripts/prod_healthcheck.sh
 pnpm --filter api audit:ingestion-trace
+pnpm --filter api audit:pilot-readiness
 ```
 
 Скрипт сам переходит в **корень репозитория** (родитель каталога `scripts/`). Канон каталога на VPS — **`/opt/mywave/tourism`**. Префикс контейнеров — **`toutism-*`** при **`COMPOSE_PROJECT_NAME=toutism`** и вызове compose с **`--env-file .env.production`**. При необходимости вручную: `MYWAVE_ROOT=/opt/mywave/tourism bash scripts/prod_healthcheck.sh`.
@@ -182,6 +183,15 @@ INGESTION_TRACE_AUDIT_STRICT=1 pnpm --filter api audit:ingestion-trace
 ```
 
 Обычный режим печатает счётчики lineage. Strict mode должен использоваться как release gate после того, как текущие опубликованные программы имеют полный `SourceRun → RawItem → NormalizedItem → EventCandidate → PublishedProgram` trace; исторические записи без `sourceRunId` будут явно показаны в `publishedProgramsWithoutFullTrace`.
+
+Business pilot readiness audit:
+
+```bash
+pnpm --filter api audit:pilot-readiness
+PILOT_READINESS_AUDIT_STRICT=1 pnpm --filter api audit:pilot-readiness
+```
+
+Gate v1 controlled pilot: 10–20 опубликованных программ, минимум 3 организатора с опубликованными программами, минимум 5 completed bookings и минимум 1 approved review. Обычный режим печатает PASS/FAIL без остановки деплоя; strict mode завершится с ошибкой, если business pilot ещё не доказан.
 
 Вручную:
 

@@ -74,6 +74,7 @@ curl -sS "https://<API_BASE>/health"
 |----------|----------|------------|
 | `GET /health` | 200, ok body | |
 | `GET` программы (ваш публичный путь) | 200 + JSON | |
+| `POST /bookings` без `legalConsent` | **400** `legal_consent_required` | |
 | `POST /bookings` (тело теста) | **201** | |
 | Повтор тот же запрос (duplicate window) | **409** | |
 

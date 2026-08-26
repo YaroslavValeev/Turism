@@ -89,44 +89,44 @@ model User {
   email        String   @unique
   name         String?
   phone        String?
-  role         String   // admin | organizer | user (Sprint 1: admin only)
-  passwordHash String?  // for admin login only
+  role         String // admin | organizer | user (Sprint 1: admin only)
+  passwordHash String? // for admin login only
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }
 
 model Organizer {
-  id                 String    @id @default(cuid())
-  displayName        String
-  legalStatus        String?   // self-employed / ИП / ООО
-  contactEmail       String
-  contactPhone       String?
-  responseScore      Int?      // optional metric
-  verificationStatus String    // listed | checked | verified | trusted_by_platform | paused | rejected
-  onboardingStatus   String    @default("applied") // applied | under_review | approved | contract_pending | contract_signed | billing_connected | active | limited | suspended
-  billingStatus      String    @default("not_connected") // not_connected | billing_connected | suspended
-  privilegeStatus    String    @default("limited") // limited | active | suspended
-  commissionRateBps  Int       @default(300) // Fair Success Fee default 3%
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
-  programs           Program[]
-  leads              Lead[]
-  bookings           Booking[]
+  id                   String                          @id @default(cuid())
+  displayName          String
+  legalStatus          String? // self-employed / ИП / ООО
+  contactEmail         String
+  contactPhone         String?
+  responseScore        Int? // optional metric
+  verificationStatus   String // listed | checked | verified | trusted_by_platform | paused | rejected
+  onboardingStatus     String                          @default("applied") // applied | under_review | approved | contract_pending | contract_signed | billing_connected | active | limited | suspended
+  billingStatus        String                          @default("not_connected") // not_connected | billing_connected | suspended
+  privilegeStatus      String                          @default("limited") // limited | active | suspended
+  commissionRateBps    Int                             @default(300) // Fair Success Fee default 3%
+  createdAt            DateTime                        @default(now())
+  updatedAt            DateTime                        @updatedAt
+  programs             Program[]
+  leads                Lead[]
+  bookings             Booking[]
   verificationEvidence OrganizerVerificationEvidence[]
-  incidents          Incident[]
-  reviews            Review[]
-  commissions        Commission[]
-  sources            Source[]   @relation("SourceOrganizer")
-  payments           Payment[]
-  refunds            Refund[]
-  billingProfile     OrganizerBillingProfile?
-  contracts          OrganizerContract[]
-  billingStatements  BillingStatement[]
-  scoreSnapshots     OrganizerScoreSnapshot[]
-  reviewRequests     ReviewRequest[]
-  outreachCampaigns OrganizerOutreachCampaign[]
-  contactChannels   OrganizerContactChannel[]
-  telegramAccounts  OrganizerTelegramAccount[]
+  incidents            Incident[]
+  reviews              Review[]
+  commissions          Commission[]
+  sources              Source[]                        @relation("SourceOrganizer")
+  payments             Payment[]
+  refunds              Refund[]
+  billingProfile       OrganizerBillingProfile?
+  contracts            OrganizerContract[]
+  billingStatements    BillingStatement[]
+  scoreSnapshots       OrganizerScoreSnapshot[]
+  reviewRequests       ReviewRequest[]
+  outreachCampaigns    OrganizerOutreachCampaign[]
+  contactChannels      OrganizerContactChannel[]
+  telegramAccounts     OrganizerTelegramAccount[]
   telegramLeadAttempts TelegramLeadAttempt[]
 
   @@map("organizers")
@@ -134,18 +134,18 @@ model Organizer {
 
 /// Коммерческий слой сделки (1:1 с booking). Статусы: new | contacted | confirmed | completed | canceled
 model Deal {
-  id                    String   @id @default(cuid())
-  bookingId             String   @unique
-  contentItemId         String?
-  dealStatus            String   @default("new")
-  dealAmountRub         Int      @default(0)
+  id                  String       @id @default(cuid())
+  bookingId           String       @unique
+  contentItemId       String?
+  dealStatus          String       @default("new")
+  dealAmountRub       Int          @default(0)
   /// Процент, целое (3 = 3%)
-  commissionRatePct     Int      @default(3)
-  commissionAmountRub   Int      @default(0)
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
-  booking               Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-  contentItem           ContentItem? @relation(fields: [contentItemId], references: [id], onDelete: SetNull)
+  commissionRatePct   Int          @default(3)
+  commissionAmountRub Int          @default(0)
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+  booking             Booking      @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  contentItem         ContentItem? @relation(fields: [contentItemId], references: [id], onDelete: SetNull)
 
   @@index([contentItemId])
   @@index([dealStatus])
@@ -154,7 +154,7 @@ model Deal {
 
 // program_card_schema.md, db_schema_draft. publish_status: canonical_status_models (Program Publication Status)
 model Program {
-  id                      String    @id @default(cuid())
+  id                      String                 @id @default(cuid())
   organizerId             String
   title                   String
   discipline              String
@@ -163,43 +163,43 @@ model Program {
   startDate               DateTime
   endDate                 DateTime
   durationDays            Int
-  formatType              String?   // tour | camp | clinic | training | ...
-  audienceFit             String?   @db.Text
-  levelRequired           String?   // beginner | intermediate | advanced | expert
-  riskLevel               String?   // low | medium | high | extreme (safety)
+  formatType              String? // tour | camp | clinic | training | ...
+  audienceFit             String?                @db.Text
+  levelRequired           String? // beginner | intermediate | advanced | expert
+  riskLevel               String? // low | medium | high | extreme (safety)
   priceFromRub            Int?
   capacityTotal           Int?
   spotsAvailable          Int?
-  isStarred               Boolean   @default(false)
-  currency                String?   @default("RUB")
-  inclusions              String?   @db.Text
-  exclusions              String?   @db.Text
-  gearRequirements        String?   @db.Text
-  medicalLimitations      String?   @db.Text  // safety
-  itineraryDayByDay       String?   @db.Text
-  organizerName           String?   // denorm for display
-  trustReason             String?   @db.Text
-  reviewsSummary          String?   @db.Text
-  cancellationRules       String?   @db.Text  // required for publish
-  whatHappensAfterBooking String?   @db.Text
+  isStarred               Boolean                @default(false)
+  currency                String?                @default("RUB")
+  inclusions              String?                @db.Text
+  exclusions              String?                @db.Text
+  gearRequirements        String?                @db.Text
+  medicalLimitations      String?                @db.Text // safety
+  itineraryDayByDay       String?                @db.Text
+  organizerName           String? // denorm for display
+  trustReason             String?                @db.Text
+  reviewsSummary          String?                @db.Text
+  cancellationRules       String?                @db.Text // required for publish
+  whatHappensAfterBooking String?                @db.Text
   cta                     String?
   // Canonical publish intake: organizer_form | admin_manual | email | telegram | sheets_csv | seed | ingestion_auto
   intakeSource            String?
   // Данные с ingestion без ручного approve
-  autoPublished           Boolean   @default(false)
+  autoPublished           Boolean                @default(false)
   sourceId                String?
   // denorm: instagram | telegram | rss | site
   sourceType              String?
-  sourceUrl               String?   @db.Text
+  sourceUrl               String?                @db.Text
   ingestedAt              DateTime?
   updatedFromSourceAt     DateTime?
   // auto_pending | ok | flagged
-  reviewStatus            String    @default("ok")
-  publishStatus           String    // draft | internal_review | needs_fix | approved | published | paused | archived
-  createdAt               DateTime  @default(now())
-  updatedAt               DateTime  @updatedAt
-  organizer               Organizer @relation(fields: [organizerId], references: [id], onDelete: Cascade)
-  source                  Source?   @relation(fields: [sourceId], references: [id], onDelete: SetNull)
+  reviewStatus            String                 @default("ok")
+  publishStatus           String // draft | internal_review | needs_fix | approved | published | paused | archived
+  createdAt               DateTime               @default(now())
+  updatedAt               DateTime               @updatedAt
+  organizer               Organizer              @relation(fields: [organizerId], references: [id], onDelete: Cascade)
+  source                  Source?                @relation(fields: [sourceId], references: [id], onDelete: SetNull)
   media                   ProgramMedia[]
   leads                   Lead[]
   bookings                Booking[]
@@ -219,29 +219,29 @@ model Program {
 }
 
 model Source {
-  id                   String      @id @default(cuid())
-  type                 String      // instagram | telegram | rss | site
+  id                   String          @id @default(cuid())
+  type                 String // instagram | telegram | rss | site
   name                 String
   urlOrHandle          String
   discipline           String?
   country              String?
   region               String?
   language             String?
-  priority             Int         @default(100)
-  trustScore           Float       @default(0.5)
+  priority             Int             @default(100)
+  trustScore           Float           @default(0.5)
   parserProfile        String?
   // Ключ адаптера/парсера (например telegram_channel_html). См. ingestion adapters.
   adapterKey           String?
-  fetchIntervalMinutes Int         @default(60)
-  isActive             Boolean     @default(true)
+  fetchIntervalMinutes Int             @default(60)
+  isActive             Boolean         @default(true)
   lastCheckedAt        DateTime?
   lastSuccessAt        DateTime?
   metaJson             Json?
   organizerId          String?
-  createdAt            DateTime    @default(now())
-  updatedAt            DateTime    @updatedAt
-  organizer            Organizer?  @relation("SourceOrganizer", fields: [organizerId], references: [id], onDelete: SetNull)
-  programs              Program[]
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+  organizer            Organizer?      @relation("SourceOrganizer", fields: [organizerId], references: [id], onDelete: SetNull)
+  programs             Program[]
   runs                 SourceRun[]
   rawItems             RawItem[]
   contentMetrics       ContentMetric[]
@@ -255,11 +255,11 @@ model Source {
 model SourceProposal {
   id              String   @id @default(cuid())
   normalizedUrl   String
-  detectedType    String   // instagram | telegram | rss | site
+  detectedType    String // instagram | telegram | rss | site
   displayName     String?
   organizerName   String?
   notes           String?  @db.Text
-  submittedVia    String   // admin | telegram
+  submittedVia    String // admin | telegram
   submittedBy     String?
   status          String   @default("pending") // pending | approved | rejected
   rejectionReason String?  @db.Text
@@ -277,12 +277,13 @@ model SourceRun {
   runType      String    @default("collect") // collect | normalize | dedup | publish
   startedAt    DateTime  @default(now())
   finishedAt   DateTime?
-  status       String    // running | success | partial | failed
+  status       String // running | success | partial | failed
   itemsFound   Int       @default(0)
   itemsCreated Int       @default(0)
   errorMessage String?   @db.Text
   metaJson     Json?
   source       Source    @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  rawItems     RawItem[]
 
   @@index([sourceId, startedAt])
   @@map("source_runs")
@@ -291,16 +292,16 @@ model SourceRun {
 /// Durable ownership of a once-per-day scheduler run. This survives API restarts
 /// and prevents two application instances from running the same daily pipeline.
 model SchedulerDailyRun {
-  id            String    @id @default(cuid())
-  jobKey        String
-  dayKey        String
-  status        String    @default("running") // running | success | failed
-  leaseToken    String
+  id             String    @id @default(cuid())
+  jobKey         String
+  dayKey         String
+  status         String    @default("running") // running | success | failed
+  leaseToken     String
   leaseExpiresAt DateTime
-  completedAt   DateTime?
-  errorMessage  String?   @db.Text
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  completedAt    DateTime?
+  errorMessage   String?   @db.Text
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
   @@unique([jobKey, dayKey])
   @@index([status, leaseExpiresAt])
@@ -308,65 +309,68 @@ model SchedulerDailyRun {
 }
 
 model RawItem {
-  id             String          @id @default(cuid())
+  id             String             @id @default(cuid())
   sourceId       String
+  sourceRunId    String?
   externalItemId String?
   sourceType     String
   sourceUrl      String?
   authorName     String?
   publishedAt    DateTime?
-  rawTitle       String?         @db.Text
-  rawText        String?         @db.Text
+  rawTitle       String?            @db.Text
+  rawText        String?            @db.Text
   rawMediaJson   Json?
   rawPayloadJson Json?
   /// Стабильный дедуп-ключ внутри источника (тот же смысл, что dedup_key в спеке).
   contentHash    String
-  fetchedAt      DateTime        @default(now())
+  fetchedAt      DateTime           @default(now())
   parseStatus    RawItemParseStatus @default(ok)
-  source         Source          @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  source         Source             @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  sourceRun      SourceRun?         @relation(fields: [sourceRunId], references: [id], onDelete: SetNull)
   normalizedItem NormalizedItem?
   contentItem    ContentItem?
 
   @@unique([sourceId, contentHash])
   @@index([sourceId, externalItemId])
   @@index([sourceId, fetchedAt])
+  @@index([sourceRunId])
   @@map("raw_items")
 }
 
 model NormalizedItem {
-  id               String           @id @default(cuid())
-  rawItemId        String           @unique
-  eventType        String?
-  discipline       String?
-  title            String?
-  descriptionShort String?          @db.Text
-  descriptionFull  String?          @db.Text
-  country          String?
-  region           String?
-  city             String?
-  venue            String?
-  startDate        DateTime?
-  endDate          DateTime?
-  durationDays     Int?
-  level            String?
-  priceFrom        Int?
-  currency         String?
-  organizerName    String?
-  bookingUrl       String?
-  imageUrl         String?
-  confidenceScore  Float?
+  id                    String           @id @default(cuid())
+  rawItemId             String           @unique
+  eventType             String?
+  discipline            String?
+  title                 String?
+  descriptionShort      String?          @db.Text
+  descriptionFull       String?          @db.Text
+  country               String?
+  region                String?
+  city                  String?
+  venue                 String?
+  startDate             DateTime?
+  endDate               DateTime?
+  durationDays          Int?
+  level                 String?
+  priceFrom             Int?
+  currency              String?
+  organizerName         String?
+  bookingUrl            String?
+  imageUrl              String?
+  confidenceScore       Float?
   // Релевантность для витрины/конвейера; отдельно от scoring на EventCandidate.
-  relevanceScore   Float?
-  moderationFlagsJson Json?
+  relevanceScore        Float?
+  moderationFlagsJson   Json?
   // Каноническая нормализованная структура; дублирует/дополняет extractedJson по мере внедрения.
   normalizedPayloadJson Json?
-  parseVersion     String
-  extractedJson    Json?
-  createdAt        DateTime         @default(now())
-  updatedAt        DateTime         @updatedAt
-  rawItem          RawItem          @relation(fields: [rawItemId], references: [id], onDelete: Cascade)
-  candidates       EventCandidate[]
-  contentItem      ContentItem?
+  parseVersion          String
+  extractedJson         Json?
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+  rawItem               RawItem          @relation(fields: [rawItemId], references: [id], onDelete: Cascade)
+  candidates            EventCandidate[]
+  contentItem           ContentItem?
 
   @@index([discipline, startDate])
   @@map("normalized_items")
@@ -386,27 +390,27 @@ model EventGroup {
 }
 
 model EventCandidate {
-  id                   String          @id @default(cuid())
+  id                   String            @id @default(cuid())
   normalizedItemId     String
   dedupGroupId         String?
-  status               String          @default("new") // new | needs_review | approved | rejected | merged | published | archived
-  reviewPriority       Int             @default(0)
-  trustScore           Float           @default(0)
-  fitScore             Float           @default(0)
-  futureEventScore     Float           @default(0)
-  duplicateScore       Float           @default(0)
-  finalScore           Float           @default(0)
-  eventLikelihoodScore Float           @default(0)
-  completenessScore    Float           @default(0)
-  sourceTrustScore     Float           @default(0)
-  tourismFitScore      Float           @default(0)
-  decisionNotes        String?         @db.Text
+  status               String            @default("new") // new | needs_review | approved | rejected | merged | published | archived
+  reviewPriority       Int               @default(0)
+  trustScore           Float             @default(0)
+  fitScore             Float             @default(0)
+  futureEventScore     Float             @default(0)
+  duplicateScore       Float             @default(0)
+  finalScore           Float             @default(0)
+  eventLikelihoodScore Float             @default(0)
+  completenessScore    Float             @default(0)
+  sourceTrustScore     Float             @default(0)
+  tourismFitScore      Float             @default(0)
+  decisionNotes        String?           @db.Text
   reviewedBy           String?
   reviewedAt           DateTime?
-  createdAt            DateTime        @default(now())
-  updatedAt            DateTime        @updatedAt
-  normalizedItem       NormalizedItem  @relation(fields: [normalizedItemId], references: [id], onDelete: Cascade)
-  dedupGroup           EventGroup?     @relation(fields: [dedupGroupId], references: [id], onDelete: SetNull)
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+  normalizedItem       NormalizedItem    @relation(fields: [normalizedItemId], references: [id], onDelete: Cascade)
+  dedupGroup           EventGroup?       @relation(fields: [dedupGroupId], references: [id], onDelete: SetNull)
   publishedProgram     PublishedProgram?
   contentItem          ContentItem?
 
@@ -420,7 +424,7 @@ model PublishedProgram {
   candidateId   String         @unique
   programId     String         @unique
   publishedAt   DateTime       @default(now())
-  publishStatus String         // draft_created | internal_review | published | archived
+  publishStatus String // draft_created | internal_review | published | archived
   editorNotes   String?        @db.Text
   candidate     EventCandidate @relation(fields: [candidateId], references: [id], onDelete: Restrict)
   program       Program        @relation(fields: [programId], references: [id], onDelete: Restrict)
@@ -429,38 +433,38 @@ model PublishedProgram {
 }
 
 model Lead {
-  id                    String    @id @default(cuid())
-  programId             String
-  organizerId           String
-  source                String    @default("mywave")
+  id                        String                       @id @default(cuid())
+  programId                 String
+  organizerId               String
+  source                    String                       @default("mywave")
   /// Публичный токен заявки для deep-link и сверки (Telegram / assisted booking).
-  leadToken             String?   @unique
-  telegramUserId        String?
-  sourcePostId          String?
-  deeplinkPayload       String?
+  leadToken                 String?                      @unique
+  telegramUserId            String?
+  sourcePostId              String?
+  deeplinkPayload           String?
   // travelerKeyHash: HMAC guest contact, see docs/analytics/runtime/TRAVELER_KEY_POLICY.md
-  travelerKeyHash       String?
-  guestContact          String    @db.Text
-  sourceChannel         String?
-  sourceCampaign        String?
-  partnerId             String?
-  firstContactAt        DateTime  @default(now())
-  attributionWindowDays Int       @default(60)
-  leadStatus            String    @default("new") // new | contacted | qualified | rejected
-  notes                 String?   @db.Text
-  sentToOrganizerAt     DateTime?
-  organizerFirstResponseAt DateTime?
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
-  program               Program   @relation(fields: [programId], references: [id], onDelete: Restrict)
-  organizer             Organizer @relation(fields: [organizerId], references: [id], onDelete: Restrict)
-  telegramUser          TelegramUser? @relation(fields: [telegramUserId], references: [id], onDelete: SetNull)
-  bookings              Booking[]
-  payments              Payment[]
-  refunds               Refund[]
-  commissions           Commission[]
+  travelerKeyHash           String?
+  guestContact              String                       @db.Text
+  sourceChannel             String?
+  sourceCampaign            String?
+  partnerId                 String?
+  firstContactAt            DateTime                     @default(now())
+  attributionWindowDays     Int                          @default(60)
+  leadStatus                String                       @default("new") // new | contacted | qualified | rejected
+  notes                     String?                      @db.Text
+  sentToOrganizerAt         DateTime?
+  organizerFirstResponseAt  DateTime?
+  createdAt                 DateTime                     @default(now())
+  updatedAt                 DateTime                     @updatedAt
+  program                   Program                      @relation(fields: [programId], references: [id], onDelete: Restrict)
+  organizer                 Organizer                    @relation(fields: [organizerId], references: [id], onDelete: Restrict)
+  telegramUser              TelegramUser?                @relation(fields: [telegramUserId], references: [id], onDelete: SetNull)
+  bookings                  Booking[]
+  payments                  Payment[]
+  refunds                   Refund[]
+  commissions               Commission[]
   organizerLeadStatusEvents OrganizerLeadStatusEvent[]
-  reconciliationTasks   TelegramReconciliationTask[]
+  reconciliationTasks       TelegramReconciliationTask[]
 
   @@index([organizerId, leadStatus])
   @@index([programId, firstContactAt])
@@ -471,65 +475,65 @@ model Lead {
 
 // booking_data_contract.md, canonical_status_models. Booking = canonical business entity.
 model Booking {
-  id                  String    @id @default(cuid())
-  leadId              String?
-  programId           String
-  organizerId         String
-  source              String    @default("mywave")
+  id                        String         @id @default(cuid())
+  leadId                    String?
+  programId                 String
+  organizerId               String
+  source                    String         @default("mywave")
   // travelerKeyHash: HMAC guest contact, see docs/analytics/runtime/TRAVELER_KEY_POLICY.md
-  travelerKeyHash     String?
-  guestContact        String    @db.Text  // name, phone, email (assisted intake)
-  sourceChannel       String?   // landing | program_page | referral | tg | ...
-  sourceCampaign      String?
-  partnerId           String?
-  leadOwner           String?
+  travelerKeyHash           String?
+  guestContact              String         @db.Text // name, phone, email (assisted intake)
+  sourceChannel             String? // landing | program_page | referral | tg | ...
+  sourceCampaign            String?
+  partnerId                 String?
+  leadOwner                 String?
   /// Атрибуция контента / explore (G4.1), дублирует читаемые поля (не только sourceCampaign).
-  contentItemId       String?
-  entryType           String?
-  entryId             String?
-  exploreType         String?
-  exploreSlug         String?
-  utmSource           String?
-  utmMedium           String?
-  bookingStatus       String    // created | booked | paid_partial | paid_full | completed | canceled | refunded_* | disputed (+ legacy statuses)
-  attributionWindowDays Int     @default(60)
-  firstResponseAt     DateTime?
-  bookedAt            DateTime?
-  completedAt         DateTime?
-  cancellationReason  String?   @db.Text
-  refundAmountRub     Int?
-  paidAmountRub       Int       @default(0)
-  refundedAmountRub   Int       @default(0)
-  netAmountRub        Int       @default(0)
-  gmvRub              Int?      // required for revenue; no negative
-  expectedCommissionRub  Int?
-  accruedCommissionRub   Int?
-  collectedCommissionRub Int?
-  proofOfCompletion   String?   @db.Text
-  notes               String?   @db.Text
+  contentItemId             String?
+  entryType                 String?
+  entryId                   String?
+  exploreType               String?
+  exploreSlug               String?
+  utmSource                 String?
+  utmMedium                 String?
+  bookingStatus             String // created | booked | paid_partial | paid_full | completed | canceled | refunded_* | disputed (+ legacy statuses)
+  attributionWindowDays     Int            @default(60)
+  firstResponseAt           DateTime?
+  bookedAt                  DateTime?
+  completedAt               DateTime?
+  cancellationReason        String?        @db.Text
+  refundAmountRub           Int?
+  paidAmountRub             Int            @default(0)
+  refundedAmountRub         Int            @default(0)
+  netAmountRub              Int            @default(0)
+  gmvRub                    Int? // required for revenue; no negative
+  expectedCommissionRub     Int?
+  accruedCommissionRub      Int?
+  collectedCommissionRub    Int?
+  proofOfCompletion         String?        @db.Text
+  notes                     String?        @db.Text
   /// Согласие с политикой и передачей контакта (PDP)
-  legalConsentAt              DateTime?
-  legalConsentPolicyVersion   String?
+  legalConsentAt            DateTime?
+  legalConsentPolicyVersion String?
   /// Денорм для Telegram-заявок (связь с Lead.leadToken).
-  leadToken           String?
-  telegramUserId      String?
-  participantsCount   Int?
-  childrenCount       Int?
-  riskAcknowledged    Boolean   @default(false)
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
-  lead                Lead?     @relation(fields: [leadId], references: [id], onDelete: SetNull)
-  telegramUser        TelegramUser? @relation(fields: [telegramUserId], references: [id], onDelete: SetNull)
-  program             Program   @relation(fields: [programId], references: [id], onDelete: Restrict)
-  organizer           Organizer @relation(fields: [organizerId], references: [id], onDelete: Restrict)
-  contentItem         ContentItem? @relation(fields: [contentItemId], references: [id], onDelete: SetNull)
-  deal                Deal?
-  payments            Payment[]
-  refunds             Refund[]
-  reviews             Review[]
-  reviewRequest       ReviewRequest?
-  incidents           Incident[]
-  commissions         Commission[]
+  leadToken                 String?
+  telegramUserId            String?
+  participantsCount         Int?
+  childrenCount             Int?
+  riskAcknowledged          Boolean        @default(false)
+  createdAt                 DateTime       @default(now())
+  updatedAt                 DateTime       @updatedAt
+  lead                      Lead?          @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  telegramUser              TelegramUser?  @relation(fields: [telegramUserId], references: [id], onDelete: SetNull)
+  program                   Program        @relation(fields: [programId], references: [id], onDelete: Restrict)
+  organizer                 Organizer      @relation(fields: [organizerId], references: [id], onDelete: Restrict)
+  contentItem               ContentItem?   @relation(fields: [contentItemId], references: [id], onDelete: SetNull)
+  deal                      Deal?
+  payments                  Payment[]
+  refunds                   Refund[]
+  reviews                   Review[]
+  reviewRequest             ReviewRequest?
+  incidents                 Incident[]
+  commissions               Commission[]
 
   @@index([leadId])
   @@index([organizerId, bookingStatus])
@@ -590,24 +594,24 @@ model Refund {
 }
 
 model ProgramMedia {
-  id         String  @id @default(cuid())
+  id        String  @id @default(cuid())
   programId String
-  mediaType  String  // image | video
-  url        String
-  caption    String?
-  program    Program @relation(fields: [programId], references: [id], onDelete: Cascade)
+  mediaType String // image | video
+  url       String
+  caption   String?
+  program   Program @relation(fields: [programId], references: [id], onDelete: Cascade)
 
   @@map("program_media")
 }
 
 // db_schema_draft, verification_framework. Support for verified/trusted organizer.
 model OrganizerVerificationEvidence {
-  id          String   @id @default(cuid())
-  organizerId String
-  evidenceType String  // document | media_report | review_batch | ...
+  id           String    @id @default(cuid())
+  organizerId  String
+  evidenceType String // document | media_report | review_batch | ...
   evidenceUrl  String?
-  notes        String?  @db.Text
-  createdAt    DateTime @default(now())
+  notes        String?   @db.Text
+  createdAt    DateTime  @default(now())
   organizer    Organizer @relation(fields: [organizerId], references: [id], onDelete: Cascade)
 
   @@map("organizer_verification_evidence")
@@ -615,41 +619,41 @@ model OrganizerVerificationEvidence {
 
 // db_schema_draft. Review only after completed booking (canonical rule).
 model Review {
-  id              String   @id @default(cuid())
-  bookingId       String   @unique
-  programId       String
-  organizerId     String
-  rating          Int      // 1-5 or scale
-  comment         String?  @db.Text
-  moderationStatus String  @default("pending") // pending | approved | rejected
-  createdAt       DateTime @default(now())
-  booking         Booking  @relation(fields: [bookingId], references: [id], onDelete: Restrict)
-  program         Program  @relation(fields: [programId], references: [id], onDelete: Restrict)
-  organizer       Organizer @relation(fields: [organizerId], references: [id], onDelete: Restrict)
+  id               String    @id @default(cuid())
+  bookingId        String    @unique
+  programId        String
+  organizerId      String
+  rating           Int // 1-5 or scale
+  comment          String?   @db.Text
+  moderationStatus String    @default("pending") // pending | approved | rejected
+  createdAt        DateTime  @default(now())
+  booking          Booking   @relation(fields: [bookingId], references: [id], onDelete: Restrict)
+  program          Program   @relation(fields: [programId], references: [id], onDelete: Restrict)
+  organizer        Organizer @relation(fields: [organizerId], references: [id], onDelete: Restrict)
 
   @@map("reviews")
 }
 
 model ReviewRequest {
-  id                String   @id @default(cuid())
-  bookingId         String   @unique
-  organizerId       String
-  programId         String
-  guestContact      String   @db.Text
-  status            String   @default("queued") // queued | sent | delivery_failed | skipped_no_contact | skipped_no_email | skipped_staging_allowlist | skipped_review_exists
-  requestToken      String   @unique
-  requestedAt       DateTime @default(now())
-  firstSentAt       DateTime?
-  lastSentAt        DateTime?
-  nextReminderAt    DateTime?
-  reminderCount     Int      @default(0)
-  maxReminders      Int      @default(2)
-  lastAttemptAt     DateTime?
-  lastError         String?  @db.Text
+  id                 String    @id @default(cuid())
+  bookingId          String    @unique
+  organizerId        String
+  programId          String
+  guestContact       String    @db.Text
+  status             String    @default("queued") // queued | sent | delivery_failed | skipped_no_contact | skipped_no_email | skipped_staging_allowlist | skipped_review_exists
+  requestToken       String    @unique
+  requestedAt        DateTime  @default(now())
+  firstSentAt        DateTime?
+  lastSentAt         DateTime?
+  nextReminderAt     DateTime?
+  reminderCount      Int       @default(0)
+  maxReminders       Int       @default(2)
+  lastAttemptAt      DateTime?
+  lastError          String?   @db.Text
   bookingCompletedAt DateTime?
-  booking           Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-  organizer         Organizer @relation(fields: [organizerId], references: [id], onDelete: Restrict)
-  program           Program   @relation(fields: [programId], references: [id], onDelete: Restrict)
+  booking            Booking   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  organizer          Organizer @relation(fields: [organizerId], references: [id], onDelete: Restrict)
+  program            Program   @relation(fields: [programId], references: [id], onDelete: Restrict)
 
   @@index([status, nextReminderAt])
   @@index([organizerId, status])
@@ -658,55 +662,55 @@ model ReviewRequest {
 
 // db_schema_draft, canonical_status_models. Incident status: open | triaged | ... | closed
 model Incident {
-  id            String   @id @default(cuid())
-  bookingId     String?
-  organizerId   String
-  programId     String?
-  type          String   // complaint | safety | refund | fraud | ...
-  severity      String   // low | medium | high | critical
-  summary       String   @db.Text
-  incidentStatus String  // open | triaged | investigating | ... | closed
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  booking       Booking?  @relation(fields: [bookingId], references: [id], onDelete: SetNull)
-  organizer     Organizer @relation(fields: [organizerId], references: [id], onDelete: Restrict)
-  program       Program?  @relation(fields: [programId], references: [id], onDelete: SetNull)
+  id             String    @id @default(cuid())
+  bookingId      String?
+  organizerId    String
+  programId      String?
+  type           String // complaint | safety | refund | fraud | ...
+  severity       String // low | medium | high | critical
+  summary        String    @db.Text
+  incidentStatus String // open | triaged | investigating | ... | closed
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  booking        Booking?  @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  organizer      Organizer @relation(fields: [organizerId], references: [id], onDelete: Restrict)
+  program        Program?  @relation(fields: [programId], references: [id], onDelete: SetNull)
 
   @@map("incidents")
 }
 
 // commission_data_contract. Commission only after completed deal. Auditable.
 model Commission {
-  id                    String   @id @default(cuid())
-  bookingId             String
-  leadId                String?
-  organizerId           String
-  programId             String
-  gmvRub                Int      @default(0)
-  commissionRatePct     Int?
-  commissionRateBps     Int      @default(300)
-  commissionBaseRub     Int      @default(0)
-  commissionAmountRub   Int      @default(0)
-  commissionFixedRub    Int?
-  commissionAccruedRub  Int?
+  id                     String                 @id @default(cuid())
+  bookingId              String
+  leadId                 String?
+  organizerId            String
+  programId              String
+  gmvRub                 Int                    @default(0)
+  commissionRatePct      Int?
+  commissionRateBps      Int                    @default(300)
+  commissionBaseRub      Int                    @default(0)
+  commissionAmountRub    Int                    @default(0)
+  commissionFixedRub     Int?
+  commissionAccruedRub   Int?
   commissionCollectedRub Int?
-  calculationJson       Json?
-  invoiceStatus         String?
-  paymentDueDate        DateTime?
-  paymentReceivedDate   DateTime?
-  accruedAt             DateTime?
-  approvedAt            DateTime?
-  invoicedAt            DateTime?
-  paidAt                DateTime?
-  reversedAt            DateTime?
-  reconciliationStatus String   // draft | accrued | approved | invoiced | paid | reversed (+ legacy statuses)
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
-  booking               Booking  @relation(fields: [bookingId], references: [id], onDelete: Restrict)
-  lead                  Lead?    @relation(fields: [leadId], references: [id], onDelete: SetNull)
-  organizer             Organizer @relation(fields: [organizerId], references: [id], onDelete: Restrict)
-  program               Program  @relation(fields: [programId], references: [id], onDelete: Restrict)
-  statementLines        BillingStatementLine[]
+  calculationJson        Json?
+  invoiceStatus          String?
+  paymentDueDate         DateTime?
+  paymentReceivedDate    DateTime?
+  accruedAt              DateTime?
+  approvedAt             DateTime?
+  invoicedAt             DateTime?
+  paidAt                 DateTime?
+  reversedAt             DateTime?
+  reconciliationStatus   String // draft | accrued | approved | invoiced | paid | reversed (+ legacy statuses)
+  createdAt              DateTime               @default(now())
+  updatedAt              DateTime               @updatedAt
+  booking                Booking                @relation(fields: [bookingId], references: [id], onDelete: Restrict)
+  lead                   Lead?                  @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  organizer              Organizer              @relation(fields: [organizerId], references: [id], onDelete: Restrict)
+  program                Program                @relation(fields: [programId], references: [id], onDelete: Restrict)
+  statementLines         BillingStatementLine[]
 
   @@unique([bookingId])
   @@index([organizerId, reconciliationStatus])
@@ -757,22 +761,22 @@ model OrganizerContract {
 }
 
 model BillingStatement {
-  id                 String    @id @default(cuid())
+  id                 String                 @id @default(cuid())
   organizerId        String
   periodStart        DateTime
   periodEnd          DateTime
-  status             String    @default("draft") // draft | review | invoiced | paid | disputed | void
-  grossPaidRub       Int       @default(0)
-  refundedRub        Int       @default(0)
-  netSalesRub        Int       @default(0)
-  commissionTotalRub Int       @default(0)
+  status             String                 @default("draft") // draft | review | invoiced | paid | disputed | void
+  grossPaidRub       Int                    @default(0)
+  refundedRub        Int                    @default(0)
+  netSalesRub        Int                    @default(0)
+  commissionTotalRub Int                    @default(0)
   objectionDeadline  DateTime?
   issuedAt           DateTime?
   paidAt             DateTime?
-  notes              String?   @db.Text
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
-  organizer          Organizer @relation(fields: [organizerId], references: [id], onDelete: Restrict)
+  notes              String?                @db.Text
+  createdAt          DateTime               @default(now())
+  updatedAt          DateTime               @updatedAt
+  organizer          Organizer              @relation(fields: [organizerId], references: [id], onDelete: Restrict)
   lines              BillingStatementLine[]
 
   @@index([organizerId, periodStart, periodEnd])
@@ -781,18 +785,18 @@ model BillingStatement {
 }
 
 model BillingStatementLine {
-  id                String           @id @default(cuid())
-  statementId       String
-  commissionId      String
-  bookingId         String
-  paidAmountRub     Int              @default(0)
-  refundedAmountRub Int              @default(0)
-  netAmountRub      Int              @default(0)
-  commissionRateBps Int              @default(300)
-  commissionAmountRub Int            @default(0)
-  createdAt         DateTime         @default(now())
-  statement         BillingStatement @relation(fields: [statementId], references: [id], onDelete: Cascade)
-  commission        Commission       @relation(fields: [commissionId], references: [id], onDelete: Restrict)
+  id                  String           @id @default(cuid())
+  statementId         String
+  commissionId        String
+  bookingId           String
+  paidAmountRub       Int              @default(0)
+  refundedAmountRub   Int              @default(0)
+  netAmountRub        Int              @default(0)
+  commissionRateBps   Int              @default(300)
+  commissionAmountRub Int              @default(0)
+  createdAt           DateTime         @default(now())
+  statement           BillingStatement @relation(fields: [statementId], references: [id], onDelete: Cascade)
+  commission          Commission       @relation(fields: [commissionId], references: [id], onDelete: Restrict)
 
   @@index([statementId])
   @@index([commissionId])
@@ -805,10 +809,10 @@ model AuditLog {
   id           String   @id @default(cuid())
   entityType   String
   entityId     String
-  changedField String   // action (e.g. verification_status_change, publish_status_change)
-  oldValue     String?  // diff
-  newValue     String?  // diff
-  changedBy    String?  // actor
+  changedField String // action (e.g. verification_status_change, publish_status_change)
+  oldValue     String? // diff
+  newValue     String? // diff
+  changedBy    String? // actor
   reason       String?
   createdAt    DateTime @default(now()) // timestamp
 
@@ -817,20 +821,20 @@ model AuditLog {
 
 // Публичные заявки с лендинга (пилот): без авторизации, обработка оператором вручную.
 model PublicOrganizerIntake {
-  id             String   @id @default(cuid())
-  intakeType     String   // program_submission | verification_inquiry
-  contactName    String
-  contactEmail   String
-  contactPhone   String?
-  organization   String?
-  programTitle   String?
-  discipline     String?
-  region         String?
-  plannedDates   String?
-  message        String?  @db.Text
-  links          String?  @db.Text
-  meta           Json?
-  createdAt      DateTime @default(now())
+  id           String   @id @default(cuid())
+  intakeType   String // program_submission | verification_inquiry
+  contactName  String
+  contactEmail String
+  contactPhone String?
+  organization String?
+  programTitle String?
+  discipline   String?
+  region       String?
+  plannedDates String?
+  message      String?  @db.Text
+  links        String?  @db.Text
+  meta         Json?
+  createdAt    DateTime @default(now())
 
   @@map("public_organizer_intakes")
 }
@@ -861,36 +865,36 @@ model UpdateSubscription {
 
 // Analytics event store (non-PII). Source: docs/analytics/*
 model AnalyticsEvent {
-  id               String   @id @default(cuid())
-  eventName        String
-  eventVersion     Int      @default(1)
-  eventSource      String // frontend | backend | system
-  eventTime        DateTime
-  ingestedAt       DateTime @default(now())
-  idempotencyKey   String   @unique
+  id             String   @id @default(cuid())
+  eventName      String
+  eventVersion   Int      @default(1)
+  eventSource    String // frontend | backend | system
+  eventTime      DateTime
+  ingestedAt     DateTime @default(now())
+  idempotencyKey String   @unique
 
-  traceId          String?
-  sessionId        String?
-  userIdHash       String?
-  userRole         String?
-  pageType         String?
+  traceId    String?
+  sessionId  String?
+  userIdHash String?
+  userRole   String?
+  pageType   String?
 
-  programId        String?
-  organizerId      String?
-  discipline       String?
-  region           String?
-  verifiedStatus   String?
-  trafficSource    String?
+  programId      String?
+  organizerId    String?
+  discipline     String?
+  region         String?
+  verifiedStatus String?
+  trafficSource  String?
 
-  leadId           String?
-  bookingId        String?
-  statementId      String?
-  paymentId         String?
-  refundId          String?
-  commissionId      String?
+  leadId       String?
+  bookingId    String?
+  statementId  String?
+  paymentId    String?
+  refundId     String?
+  commissionId String?
 
-  contractVersion  String?
-  paymentStatus    String?
+  contractVersion String?
+  paymentStatus   String?
 
   grossAmount      Int?
   netAmount        Int?
@@ -898,9 +902,9 @@ model AnalyticsEvent {
   commissionRate   Int?
   commissionAmount Int?
 
-  propertiesJson   Json?
-  schemaValid      Boolean  @default(true)
-  piiFlag          Boolean  @default(false)
+  propertiesJson Json?
+  schemaValid    Boolean @default(true)
+  piiFlag        Boolean @default(false)
 
   @@index([eventTime])
   @@index([eventName, eventTime])
@@ -943,16 +947,16 @@ model AnalyticsMartRefreshLog {
 }
 
 model OrganizerScoreSnapshot {
-  id               String    @id @default(cuid())
-  organizerId      String
-  periodStart      DateTime
-  periodEnd        DateTime
-  organizerScore   Float
-  scoreBand        String // low | medium | high | unknown
-  componentsJson   Json
-  sampleBookings   Int       @default(0)
-  recalculatedAt   DateTime  @default(now())
-  organizer        Organizer @relation(fields: [organizerId], references: [id], onDelete: Cascade)
+  id             String    @id @default(cuid())
+  organizerId    String
+  periodStart    DateTime
+  periodEnd      DateTime
+  organizerScore Float
+  scoreBand      String // low | medium | high | unknown
+  componentsJson Json
+  sampleBookings Int       @default(0)
+  recalculatedAt DateTime  @default(now())
+  organizer      Organizer @relation(fields: [organizerId], references: [id], onDelete: Cascade)
 
   @@unique([organizerId, periodEnd])
   @@index([recalculatedAt])
@@ -961,26 +965,26 @@ model OrganizerScoreSnapshot {
 
 /// Письма организаторам после free period: сначала review owner, потом send (MVP: без auto-send).
 model OrganizerOutreachCampaign {
-  id              String   @id @default(cuid())
+  id              String    @id @default(cuid())
   organizerId     String
   periodStart     DateTime
   periodEnd       DateTime
-  viewsCount      Int      @default(0)
-  clicksCount     Int      @default(0)
-  leadsCount      Int      @default(0)
-  dealsCount      Int      @default(0)
-  dealAmountTotal Int      @default(0) // RUB, сумма GMV/сделки в периоде
+  viewsCount      Int       @default(0)
+  clicksCount     Int       @default(0)
+  leadsCount      Int       @default(0)
+  dealsCount      Int       @default(0)
+  dealAmountTotal Int       @default(0) // RUB, сумма GMV/сделки в периоде
   /// A_soft | B_leads | C_deals
   templateType    String
   emailSubject    String
-  emailBody       String   @db.Text
+  emailBody       String    @db.Text
   /// draft | pending_owner_review | approved | sent | failed | skipped
   status          String
   ownerApprovedAt DateTime?
   sentAt          DateTime?
-  errorMessage    String?  @db.Text
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  errorMessage    String?   @db.Text
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
   organizer       Organizer @relation(fields: [organizerId], references: [id], onDelete: Cascade)
 
   @@unique([organizerId, periodStart, periodEnd])
@@ -1010,66 +1014,66 @@ model ProgramScoreSnapshot {
 
 /// Сквозной идентификатор контент-конвейера (аналог content_item_id в ТЗ). Связывает raw → normalized → candidate → черновики → публикации.
 model ContentItem {
-  id     String @id @default(cuid())
+  id                         String                @id @default(cuid())
   /// Один content item на одну сырую запись ingestion.
-  rawItemId         String  @unique
-  normalizedItemId  String? @unique
-  eventCandidateId  String? @unique
+  rawItemId                  String                @unique
+  normalizedItemId           String?               @unique
+  eventCandidateId           String?               @unique
   // Связь с опубликованной в каталоге программой, если применимо.
-  programId         String?
-  workflowStatus    ContentWorkflowStatus @default(ingest_collected)
-  lastError         String?  @db.Text
-  idempotencyKey    String?  @unique
+  programId                  String?
+  workflowStatus             ContentWorkflowStatus @default(ingest_collected)
+  lastError                  String?               @db.Text
+  idempotencyKey             String?               @unique
   /// Draft, по которому ждём текст/голос owner после «Rewrite».
-  ownerReviewAwaitingDraftId String? @unique
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-  rawItem           RawItem        @relation(fields: [rawItemId], references: [id], onDelete: Cascade)
-  normalizedItem    NormalizedItem? @relation(fields: [normalizedItemId], references: [id], onDelete: SetNull)
-  eventCandidate    EventCandidate? @relation(fields: [eventCandidateId], references: [id], onDelete: SetNull)
-  program           Program?    @relation(fields: [programId], references: [id], onDelete: SetNull)
-  ownerReviewAwaitingDraft   ContentDraft? @relation("OwnerReviewAwaiting", fields: [ownerReviewAwaitingDraftId], references: [id], onDelete: SetNull)
-  drafts            ContentDraft[]
-  approvals         ContentApproval[]
-  publications      ContentPublication[]
-  metrics           ContentMetric[]
-  blogPosts         BlogPost[]
-  bookings          Booking[]
-  deals             Deal[]
+  ownerReviewAwaitingDraftId String?               @unique
+  createdAt                  DateTime              @default(now())
+  updatedAt                  DateTime              @updatedAt
+  rawItem                    RawItem               @relation(fields: [rawItemId], references: [id], onDelete: Cascade)
+  normalizedItem             NormalizedItem?       @relation(fields: [normalizedItemId], references: [id], onDelete: SetNull)
+  eventCandidate             EventCandidate?       @relation(fields: [eventCandidateId], references: [id], onDelete: SetNull)
+  program                    Program?              @relation(fields: [programId], references: [id], onDelete: SetNull)
+  ownerReviewAwaitingDraft   ContentDraft?         @relation("OwnerReviewAwaiting", fields: [ownerReviewAwaitingDraftId], references: [id], onDelete: SetNull)
+  drafts                     ContentDraft[]
+  approvals                  ContentApproval[]
+  publications               ContentPublication[]
+  metrics                    ContentMetric[]
+  blogPosts                  BlogPost[]
+  bookings                   Booking[]
+  deals                      Deal[]
 
   @@index([workflowStatus, updatedAt])
   @@map("content_items")
 }
 
 model ContentDraft {
-  id               String   @id @default(cuid())
-  contentItemId    String
-  draftType        ContentDraftType
+  id                       String               @id @default(cuid())
+  contentItemId            String
+  draftType                ContentDraftType
   /// Целевые каналы (JSON: массив enum-значений ContentPublicationChannel).
-  channelTargetsJson Json?
-  generatedHeadline String? @db.Text
-  shortCopy         String? @db.Text
-  longCopy          String? @db.Text
-  cta               String? @db.Text
-  ownerNotes        String? @db.Text
-  voiceTranscript   String? @db.Text
-  aiModel           String?
-  aiPromptVersion   String?
-  inputPayloadJson  Json?
-  rawDraftText      String?  @db.Text
-  finalDraftText    String?  @db.Text
-  version           Int      @default(1)
-  status            ContentDraftStatus @default(draft)
+  channelTargetsJson       Json?
+  generatedHeadline        String?              @db.Text
+  shortCopy                String?              @db.Text
+  longCopy                 String?              @db.Text
+  cta                      String?              @db.Text
+  ownerNotes               String?              @db.Text
+  voiceTranscript          String?              @db.Text
+  aiModel                  String?
+  aiPromptVersion          String?
+  inputPayloadJson         Json?
+  rawDraftText             String?              @db.Text
+  finalDraftText           String?              @db.Text
+  version                  Int                  @default(1)
+  status                   ContentDraftStatus   @default(draft)
   /// Сообщение с превью в Telegram (owner)
   telegramPreviewMessageId Int?
-  telegramPreviewChatId   String?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-  contentItem       ContentItem        @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
-  contentItemAwaitingInput ContentItem? @relation("OwnerReviewAwaiting")
-  approvals         ContentApproval[]
-  publications      ContentPublication[]
-  blogPosts         BlogPost[]
+  telegramPreviewChatId    String?
+  createdAt                DateTime             @default(now())
+  updatedAt                DateTime             @updatedAt
+  contentItem              ContentItem          @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
+  contentItemAwaitingInput ContentItem?         @relation("OwnerReviewAwaiting")
+  approvals                ContentApproval[]
+  publications             ContentPublication[]
+  blogPosts                BlogPost[]
 
   @@unique([contentItemId, draftType, version])
   @@index([contentItemId, status])
@@ -1077,20 +1081,20 @@ model ContentDraft {
 }
 
 model ContentApproval {
-  id               String  @id @default(cuid())
+  id               String               @id @default(cuid())
   contentItemId    String
   contentDraftId   String?
   decision         ContentOwnerDecision @default(pending)
-  comment          String?  @db.Text
+  comment          String?              @db.Text
   // Решение owner: Telegram / админ (строка user id или username).
   decidedBy        String?
   // telegram | admin | system
-  source           String?  @default("telegram")
+  source           String?              @default("telegram")
   ownerVoiceFileId String?
   decidedAt        DateTime?
-  createdAt        DateTime @default(now())
-  contentItem      ContentItem  @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
-  contentDraft     ContentDraft? @relation(fields: [contentDraftId], references: [id], onDelete: SetNull)
+  createdAt        DateTime             @default(now())
+  contentItem      ContentItem          @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
+  contentDraft     ContentDraft?        @relation(fields: [contentDraftId], references: [id], onDelete: SetNull)
 
   @@index([contentItemId, createdAt])
   @@index([contentDraftId])
@@ -1098,23 +1102,23 @@ model ContentApproval {
 }
 
 model ContentPublication {
-  id                 String  @id @default(cuid())
-  contentItemId      String
-  contentDraftId     String
-  channel            ContentPublicationChannel
-  state              ContentPublishState @default(pending)
-  externalPostId     String?
-  externalUrl        String? @db.Text
-  idempotencyKey     String? @unique
-  publishedAt        DateTime?
-  errorCode          String?
-  errorDetail        String?  @db.Text
-  retryCount         Int     @default(0)
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
-  contentItem        ContentItem   @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
-  contentDraft       ContentDraft  @relation(fields: [contentDraftId], references: [id], onDelete: Restrict)
-  metrics            ContentMetric[]
+  id             String                    @id @default(cuid())
+  contentItemId  String
+  contentDraftId String
+  channel        ContentPublicationChannel
+  state          ContentPublishState       @default(pending)
+  externalPostId String?
+  externalUrl    String?                   @db.Text
+  idempotencyKey String?                   @unique
+  publishedAt    DateTime?
+  errorCode      String?
+  errorDetail    String?                   @db.Text
+  retryCount     Int                       @default(0)
+  createdAt      DateTime                  @default(now())
+  updatedAt      DateTime                  @updatedAt
+  contentItem    ContentItem               @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
+  contentDraft   ContentDraft              @relation(fields: [contentDraftId], references: [id], onDelete: Restrict)
+  metrics        ContentMetric[]
 
   /// Идемпотентность публикации по задаче F.
   @@unique([contentDraftId, channel])
@@ -1125,27 +1129,27 @@ model ContentPublication {
 
 /// Срезы эффективности (агрегаты; детализация по UTM/сессиям — в analytics + propertiesJson).
 model ContentMetric {
-  id                    String  @id @default(cuid())
-  contentItemId         String
-  contentPublicationId  String?
-  sourceId              String?
-  channel               ContentPublicationChannel?
-  publishedAt           DateTime?
-  utmSource             String?
-  utmCampaign           String?
-  asOfDate              DateTime @db.Date
-  views                 Int     @default(0)
-  clicks                Int     @default(0)
-  leads                 Int     @default(0)
-  applications         Int     @default(0)
-  siteSessions          Int     @default(0)
-  bookingCount         Int     @default(0)
+  id                   String                     @id @default(cuid())
+  contentItemId        String
+  contentPublicationId String?
+  sourceId             String?
+  channel              ContentPublicationChannel?
+  publishedAt          DateTime?
+  utmSource            String?
+  utmCampaign          String?
+  asOfDate             DateTime                   @db.Date
+  views                Int                        @default(0)
+  clicks               Int                        @default(0)
+  leads                Int                        @default(0)
+  applications         Int                        @default(0)
+  siteSessions         Int                        @default(0)
+  bookingCount         Int                        @default(0)
   /// Агрегат выручки (₽), только проверенные сделки с атрибуцией к content_item
-  revenueRub            Int     @default(0)
-  propertiesJson        Json?
-  contentItem         ContentItem @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
-  contentPublication  ContentPublication? @relation(fields: [contentPublicationId], references: [id], onDelete: SetNull)
-  source                Source? @relation(fields: [sourceId], references: [id], onDelete: SetNull)
+  revenueRub           Int                        @default(0)
+  propertiesJson       Json?
+  contentItem          ContentItem                @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
+  contentPublication   ContentPublication?        @relation(fields: [contentPublicationId], references: [id], onDelete: SetNull)
+  source               Source?                    @relation(fields: [sourceId], references: [id], onDelete: SetNull)
 
   @@index([contentItemId, asOfDate])
   @@index([sourceId, asOfDate])
@@ -1155,11 +1159,11 @@ model ContentMetric {
 
 /// Идемпотентность: Telegram callback_query.id глобально уникален.
 model ProcessedTelegramCallback {
-  id               String   @id
-  contentDraftId   String?
-  contentItemId    String?
-  action           String?
-  createdAt        DateTime @default(now())
+  id             String   @id
+  contentDraftId String?
+  contentItemId  String?
+  action         String?
+  createdAt      DateTime @default(now())
 
   @@index([createdAt])
   @@map("processed_telegram_callbacks")
@@ -1168,45 +1172,45 @@ model ProcessedTelegramCallback {
 // --- Telegram platform (leadgen / assisted booking) — docs/telegram/REPO_AUDIT_AND_IMPLEMENTATION_PLAN.md ---
 
 model TelegramUser {
-  id                        String    @id @default(cuid())
-  telegramUserId            BigInt    @unique
-  username                  String?
-  firstName                 String?
-  lastName                  String?
-  languageCode              String?
-  phone                     String?
-  isBlocked                 Boolean   @default(false)
-  consentPdAt               DateTime?
-  consentContactTransferAt  DateTime?
-  lastSeenAt                DateTime  @default(now())
-  createdAt                 DateTime  @default(now())
-  updatedAt                 DateTime  @updatedAt
-  sessions                  TelegramSession[]
-  leadAttempts              TelegramLeadAttempt[]
-  leads                     Lead[]
-  bookings                  Booking[]
-  subscriptions             TelegramSubscription[]
-  digestPreferences         TelegramDigestPreference[]
-  consentRecords            TelegramConsentRecord[]
-  clicks                    TelegramClick[]
-  deepLinkOpens             TelegramDeepLinkOpen[]
-  abandonedLeads            TelegramAbandonedLead[]
-  eventLogs                 TelegramEventLog[]
-  organizerAccounts         OrganizerTelegramAccount[]
+  id                       String                     @id @default(cuid())
+  telegramUserId           BigInt                     @unique
+  username                 String?
+  firstName                String?
+  lastName                 String?
+  languageCode             String?
+  phone                    String?
+  isBlocked                Boolean                    @default(false)
+  consentPdAt              DateTime?
+  consentContactTransferAt DateTime?
+  lastSeenAt               DateTime                   @default(now())
+  createdAt                DateTime                   @default(now())
+  updatedAt                DateTime                   @updatedAt
+  sessions                 TelegramSession[]
+  leadAttempts             TelegramLeadAttempt[]
+  leads                    Lead[]
+  bookings                 Booking[]
+  subscriptions            TelegramSubscription[]
+  digestPreferences        TelegramDigestPreference[]
+  consentRecords           TelegramConsentRecord[]
+  clicks                   TelegramClick[]
+  deepLinkOpens            TelegramDeepLinkOpen[]
+  abandonedLeads           TelegramAbandonedLead[]
+  eventLogs                TelegramEventLog[]
+  organizerAccounts        OrganizerTelegramAccount[]
 
   @@map("telegram_users")
 }
 
 model TelegramSession {
-  id              String   @id @default(cuid())
-  telegramUserId  String
-  currentFlow     String?
-  currentStep     String?
-  stateJson       Json?
-  expiresAt       DateTime?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  telegramUser    TelegramUser @relation(fields: [telegramUserId], references: [id], onDelete: Cascade)
+  id             String       @id @default(cuid())
+  telegramUserId String
+  currentFlow    String?
+  currentStep    String?
+  stateJson      Json?
+  expiresAt      DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  telegramUser   TelegramUser @relation(fields: [telegramUserId], references: [id], onDelete: Cascade)
 
   @@index([telegramUserId, updatedAt])
   @@map("telegram_sessions")
@@ -1214,11 +1218,11 @@ model TelegramSession {
 
 /// Черновик заявки в боте (FSM до submit).
 model TelegramLeadAttempt {
-  id                String   @id @default(cuid())
+  id                String                 @id @default(cuid())
   telegramUserId    String
   programId         String
   organizerId       String
-  status            String   @default("started") // started | step_* | preview | abandoned | submitted
+  status            String                 @default("started") // started | step_* | preview | abandoned | submitted
   step              String?
   payloadJson       Json?
   sourceChannel     String?
@@ -1228,11 +1232,11 @@ model TelegramLeadAttempt {
   childrenCount     Int?
   expiresAt         DateTime?
   submittedLeadId   String?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-  telegramUser      TelegramUser @relation(fields: [telegramUserId], references: [id], onDelete: Cascade)
-  program           Program  @relation(fields: [programId], references: [id], onDelete: Restrict)
-  organizer         Organizer @relation(fields: [organizerId], references: [id], onDelete: Restrict)
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+  telegramUser      TelegramUser           @relation(fields: [telegramUserId], references: [id], onDelete: Cascade)
+  program           Program                @relation(fields: [programId], references: [id], onDelete: Restrict)
+  organizer         Organizer              @relation(fields: [organizerId], references: [id], onDelete: Restrict)
   abandonedRecord   TelegramAbandonedLead?
 
   @@index([telegramUserId, status])
@@ -1241,32 +1245,32 @@ model TelegramLeadAttempt {
 }
 
 model TelegramConsentRecord {
-  id              String   @id @default(cuid())
-  telegramUserId  String
-  consentType     String   // pd_processing | contact_transfer | not_organizer | high_risk | kids_parent
-  textVersion     String
-  acceptedAt      DateTime @default(now())
-  ipHash          String?
-  source          String?  // bot | webapp
-  leadId          String?
-  bookingId       String?
-  telegramUser    TelegramUser @relation(fields: [telegramUserId], references: [id], onDelete: Cascade)
+  id             String       @id @default(cuid())
+  telegramUserId String
+  consentType    String // pd_processing | contact_transfer | not_organizer | high_risk | kids_parent
+  textVersion    String
+  acceptedAt     DateTime     @default(now())
+  ipHash         String?
+  source         String? // bot | webapp
+  leadId         String?
+  bookingId      String?
+  telegramUser   TelegramUser @relation(fields: [telegramUserId], references: [id], onDelete: Cascade)
 
   @@index([telegramUserId, consentType])
   @@map("telegram_consent_records")
 }
 
 model TelegramDeepLinkOpen {
-  id              String   @id @default(cuid())
-  telegramUserId  String?
-  payload         String
-  payloadKind     String?
-  programId       String?
-  leadToken       String?
-  sourcePostId    String?
-  campaign        String?
-  createdAt       DateTime @default(now())
-  telegramUser    TelegramUser? @relation(fields: [telegramUserId], references: [id], onDelete: SetNull)
+  id             String        @id @default(cuid())
+  telegramUserId String?
+  payload        String
+  payloadKind    String?
+  programId      String?
+  leadToken      String?
+  sourcePostId   String?
+  campaign       String?
+  createdAt      DateTime      @default(now())
+  telegramUser   TelegramUser? @relation(fields: [telegramUserId], references: [id], onDelete: SetNull)
 
   @@index([createdAt])
   @@index([payload])
@@ -1274,37 +1278,37 @@ model TelegramDeepLinkOpen {
 }
 
 model TelegramClick {
-  id              String   @id @default(cuid())
-  token           String   @unique @default(cuid())
-  telegramUserId  String?
-  programId       String?
-  organizerId     String?
-  sourcePostId    String?
-  destinationUrl  String   @db.Text
-  campaign        String?
-  channel         String?
-  clickedAt       DateTime?
-  createdAt       DateTime @default(now())
-  telegramUser    TelegramUser? @relation(fields: [telegramUserId], references: [id], onDelete: SetNull)
+  id             String        @id @default(cuid())
+  token          String        @unique @default(cuid())
+  telegramUserId String?
+  programId      String?
+  organizerId    String?
+  sourcePostId   String?
+  destinationUrl String        @db.Text
+  campaign       String?
+  channel        String?
+  clickedAt      DateTime?
+  createdAt      DateTime      @default(now())
+  telegramUser   TelegramUser? @relation(fields: [telegramUserId], references: [id], onDelete: SetNull)
 
   @@index([programId, createdAt])
   @@map("telegram_clicks")
 }
 
 model TelegramSubscription {
-  id              String   @id @default(cuid())
+  id              String       @id @default(cuid())
   telegramUserId  String
   disciplineSlug  String?
   regionSlug      String?
   budgetMin       Int?
   budgetMax       Int?
   season          String?
-  digestFrequency String   @default("weekly") // instant | daily | weekly | digest_only
-  riskFilter      String   @default("default") // default | no_high_risk | allow_high_risk
-  kidsFilter      String   @default("any") // any | kids_only | no_kids
-  status          String   @default("active")
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  digestFrequency String       @default("weekly") // instant | daily | weekly | digest_only
+  riskFilter      String       @default("default") // default | no_high_risk | allow_high_risk
+  kidsFilter      String       @default("any") // any | kids_only | no_kids
+  status          String       @default("active")
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
   telegramUser    TelegramUser @relation(fields: [telegramUserId], references: [id], onDelete: Cascade)
 
   @@index([telegramUserId, status])
@@ -1312,50 +1316,50 @@ model TelegramSubscription {
 }
 
 model TelegramDigestPreference {
-  id              String   @id @default(cuid())
-  telegramUserId  String   @unique
-  frequency       String   @default("weekly")
+  id              String       @id @default(cuid())
+  telegramUserId  String       @unique
+  frequency       String       @default("weekly")
   lastSentAt      DateTime?
   preferencesJson Json?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
   telegramUser    TelegramUser @relation(fields: [telegramUserId], references: [id], onDelete: Cascade)
 
   @@map("telegram_digest_preferences")
 }
 
 model OrganizerContactChannel {
-  id                String   @id @default(cuid())
-  organizerId       String
-  channelType       String   // telegram | email | phone | website | vk | instagram | other
-  telegramChatId    String?
-  telegramUsername  String?
-  email             String?
-  phone             String?
-  websiteUrl        String?
-  externalUrl       String?  @db.Text
-  isPrimary         Boolean  @default(false)
-  isVerified        Boolean  @default(false)
+  id                 String    @id @default(cuid())
+  organizerId        String
+  channelType        String // telegram | email | phone | website | vk | instagram | other
+  telegramChatId     String?
+  telegramUsername   String?
+  email              String?
+  phone              String?
+  websiteUrl         String?
+  externalUrl        String?   @db.Text
+  isPrimary          Boolean   @default(false)
+  isVerified         Boolean   @default(false)
   lastDeliveryStatus String?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-  organizer         Organizer @relation(fields: [organizerId], references: [id], onDelete: Cascade)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  organizer          Organizer @relation(fields: [organizerId], references: [id], onDelete: Cascade)
 
   @@index([organizerId, channelType])
   @@map("organizer_contact_channels")
 }
 
 model OrganizerTelegramAccount {
-  id              String   @id @default(cuid())
-  organizerId     String
-  telegramUserId  String
+  id                String       @id @default(cuid())
+  organizerId       String
+  telegramUserId    String
   telegramAccountId BigInt
-  role            String   @default("operator") // operator | owner
-  isActive        Boolean  @default(true)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  organizer       Organizer @relation(fields: [organizerId], references: [id], onDelete: Cascade)
-  telegramUser    TelegramUser @relation(fields: [telegramUserId], references: [id], onDelete: Cascade)
+  role              String       @default("operator") // operator | owner
+  isActive          Boolean      @default(true)
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  organizer         Organizer    @relation(fields: [organizerId], references: [id], onDelete: Cascade)
+  telegramUser      TelegramUser @relation(fields: [telegramUserId], references: [id], onDelete: Cascade)
 
   @@unique([organizerId, telegramAccountId])
   @@map("organizer_telegram_accounts")
@@ -1367,7 +1371,7 @@ model OrganizerLeadStatusEvent {
   organizerId String
   fromStatus  String?
   toStatus    String
-  actorType   String   // organizer | ops | system
+  actorType   String // organizer | ops | system
   actorId     String?
   note        String?  @db.Text
   createdAt   DateTime @default(now())
@@ -1379,20 +1383,20 @@ model OrganizerLeadStatusEvent {
 }
 
 model TelegramReconciliationTask {
-  id              String   @id @default(cuid())
-  leadId          String
-  organizerId     String
-  dueAt           DateTime
-  status          String   @default("pending") // pending | sent | completed | skipped
-  result          String?
-  dealAmountRub   Int?
-  tripDate        DateTime?
+  id                  String    @id @default(cuid())
+  leadId              String
+  organizerId         String
+  dueAt               DateTime
+  status              String    @default("pending") // pending | sent | completed | skipped
+  result              String?
+  dealAmountRub       Int?
+  tripDate            DateTime?
   commissionAmountRub Int?
-  comment         String?  @db.Text
-  completedAt     DateTime?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  lead            Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  comment             String?   @db.Text
+  completedAt         DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  lead                Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
 
   @@index([status, dueAt])
   @@index([organizerId])
@@ -1400,35 +1404,35 @@ model TelegramReconciliationTask {
 }
 
 model TelegramAbandonedLead {
-  id              String   @id @default(cuid())
-  attemptId       String   @unique
-  telegramUserId  String
-  reminder2hAt    DateTime?
-  reminder24hAt   DateTime?
-  closedAt        DateTime?
-  status          String   @default("open") // open | reminded_2h | reminded_24h | closed
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  attempt         TelegramLeadAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
-  telegramUser    TelegramUser @relation(fields: [telegramUserId], references: [id], onDelete: Cascade)
+  id             String              @id @default(cuid())
+  attemptId      String              @unique
+  telegramUserId String
+  reminder2hAt   DateTime?
+  reminder24hAt  DateTime?
+  closedAt       DateTime?
+  status         String              @default("open") // open | reminded_2h | reminded_24h | closed
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  attempt        TelegramLeadAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  telegramUser   TelegramUser        @relation(fields: [telegramUserId], references: [id], onDelete: Cascade)
 
   @@index([status, reminder2hAt])
   @@map("telegram_abandoned_leads")
 }
 
 model TelegramEventLog {
-  id              String   @id @default(cuid())
-  eventName       String
-  telegramUserId  String?
-  programId       String?
-  organizerId     String?
-  leadToken       String?
-  source          String?
-  campaign        String?
-  channelPostId   String?
-  propertiesJson  Json?
-  createdAt       DateTime @default(now())
-  telegramUser    TelegramUser? @relation(fields: [telegramUserId], references: [id], onDelete: SetNull)
+  id             String        @id @default(cuid())
+  eventName      String
+  telegramUserId String?
+  programId      String?
+  organizerId    String?
+  leadToken      String?
+  source         String?
+  campaign       String?
+  channelPostId  String?
+  propertiesJson Json?
+  createdAt      DateTime      @default(now())
+  telegramUser   TelegramUser? @relation(fields: [telegramUserId], references: [id], onDelete: SetNull)
 
   @@index([eventName, createdAt])
   @@index([leadToken])
@@ -1436,20 +1440,20 @@ model TelegramEventLog {
 }
 
 model TelegramPlatformActionLog {
-  id              String   @id @default(cuid())
-  leadId          String?
-  leadToken       String?
-  telegramUserId  String?
-  programId       String?
-  organizerId     String?
-  actorType       String
-  actorId         String?
-  action          String
-  source          String   @default("telegram_callback")
-  statusFrom      String?
-  statusTo        String?
-  propertiesJson  Json?
-  createdAt       DateTime @default(now())
+  id             String   @id @default(cuid())
+  leadId         String?
+  leadToken      String?
+  telegramUserId String?
+  programId      String?
+  organizerId    String?
+  actorType      String
+  actorId        String?
+  action         String
+  source         String   @default("telegram_callback")
+  statusFrom     String?
+  statusTo       String?
+  propertiesJson Json?
+  createdAt      DateTime @default(now())
 
   @@index([leadToken, createdAt])
   @@index([actorType, createdAt])
@@ -1457,34 +1461,34 @@ model TelegramPlatformActionLog {
 }
 
 model BlogPost {
-  id              String   @id @default(cuid())
-  contentItemId   String
-  contentDraftId  String
-  placement       String // blog | landing
-  slug            String
-  title           String
-  excerpt         String?  @db.Text
+  id                   String       @id @default(cuid())
+  contentItemId        String
+  contentDraftId       String
+  placement            String // blog | landing
+  slug                 String
+  title                String
+  excerpt              String?      @db.Text
   /// Основной текст (аналог "content" в продуктовой схеме)
-  body            String?  @db.Text
-  sourceUrl       String?  @db.Text
-  status          String    @default("published")
+  body                 String?      @db.Text
+  sourceUrl            String?      @db.Text
+  status               String       @default("published")
   // --- G2: SEO (редактируемые; fallback на title/excerpt/URL в API) ---
-  seoTitle        String?  @db.Text
-  seoDescription  String?  @db.Text
-  canonicalUrl    String?  @db.Text
-  ogImage         String?  @db.Text
+  seoTitle             String?      @db.Text
+  seoDescription       String?      @db.Text
+  canonicalUrl         String?      @db.Text
+  ogImage              String?      @db.Text
   // --- G2: классификация и связи ---
-  tags            String[]  @default([])
-  discipline      String?
-  region          String?
-  country         String?
-  relatedProgramIds   String[] @default([])
-  relatedOrganizerIds String[] @default([])
-  relatedCollectionIds String[] @default([])
-  publishedAt     DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  contentItem     ContentItem @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
-  contentDraft    ContentDraft @relation(fields: [contentDraftId], references: [id], onDelete: Cascade)
+  tags                 String[]     @default([])
+  discipline           String?
+  region               String?
+  country              String?
+  relatedProgramIds    String[]     @default([])
+  relatedOrganizerIds  String[]     @default([])
+  relatedCollectionIds String[]     @default([])
+  publishedAt          DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
+  contentItem          ContentItem  @relation(fields: [contentItemId], references: [id], onDelete: Cascade)
+  contentDraft         ContentDraft @relation(fields: [contentDraftId], references: [id], onDelete: Cascade)
 
   @@unique([contentDraftId, placement])
   @@unique([slug, placement])

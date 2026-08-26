@@ -159,6 +159,7 @@ cd "$MW"
 export DC='docker compose --env-file .env.production -f docker-compose.production.yml'
 $DC ps
 bash scripts/prod_healthcheck.sh
+pnpm --filter api audit:ingestion-trace
 ```
 
 Скрипт сам переходит в **корень репозитория** (родитель каталога `scripts/`). Канон каталога на VPS — **`/opt/mywave/tourism`**. Префикс контейнеров — **`toutism-*`** при **`COMPOSE_PROJECT_NAME=toutism`** и вызове compose с **`--env-file .env.production`**. При необходимости вручную: `MYWAVE_ROOT=/opt/mywave/tourism bash scripts/prod_healthcheck.sh`.
@@ -172,6 +173,15 @@ MYWAVE_ROOT=/opt/mywave/tourism bash scripts/prod_healthcheck.sh
 ```
 
 Ожидание: первая заявка возвращает **201** и `legalConsentAt`, повтор того же payload в duplicate window возвращает **409**. Созданную строку с `sourceChannel=prod_healthcheck` после evidence можно архивировать/пометить как тестовую в админке.
+
+Trace audit:
+
+```bash
+pnpm --filter api audit:ingestion-trace
+INGESTION_TRACE_AUDIT_STRICT=1 pnpm --filter api audit:ingestion-trace
+```
+
+Обычный режим печатает счётчики lineage. Strict mode должен использоваться как release gate после того, как текущие опубликованные программы имеют полный `SourceRun → RawItem → NormalizedItem → EventCandidate → PublishedProgram` trace; исторические записи без `sourceRunId` будут явно показаны в `publishedProgramsWithoutFullTrace`.
 
 Вручную:
 

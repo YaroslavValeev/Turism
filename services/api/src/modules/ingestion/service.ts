@@ -3753,7 +3753,7 @@ async function finalizeSourceRun(
   });
 }
 
-async function persistCollectedItems(source: Source, items: CollectedItem[], actorId: string | null): Promise<number> {
+async function persistCollectedItems(source: Source, sourceRunId: string, items: CollectedItem[], actorId: string | null): Promise<number> {
   let created = 0;
   for (const item of items) {
     const contentHash = makeHash(item.externalItemId, item.sourceUrl, item.rawTitle, item.rawText);
@@ -3765,6 +3765,7 @@ async function persistCollectedItems(source: Source, items: CollectedItem[], act
       const r = await tx.rawItem.create({
         data: {
           sourceId: source.id,
+          sourceRunId,
           externalItemId: item.externalItemId ?? null,
           sourceType: source.type,
           sourceUrl: item.sourceUrl ?? normalizeSourceUrl(source),
@@ -3819,7 +3820,7 @@ export async function runSourceCollection(sourceId: string, actorId: string | nu
 
   try {
     const items = await collectItemsForSource(source);
-    const created = await persistCollectedItems(source, items, actorId);
+    const created = await persistCollectedItems(source, runId, items, actorId);
     await finalizeSourceRun(runId, "success", { itemsFound: items.length, itemsCreated: created });
     await prisma.source.update({
       where: { id: source.id },

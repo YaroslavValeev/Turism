@@ -43,8 +43,6 @@ _catalog_tmp="$(mktemp)"
 trap 'rm -f "$_catalog_tmp"' EXIT
 "${CURL_EXT[@]}" "${PUBLIC_ORIGIN}/api/programs" -o "$_catalog_tmp"
 head -c 400 "$_catalog_tmp"
-rm -f "$_catalog_tmp"
-trap - EXIT
 echo
 echo "(truncated)"
 
@@ -65,13 +63,22 @@ echo "booking negative: ok"
 
 if [[ "${PROD_HEALTHCHECK_CREATE_BOOKING:-0}" == "1" ]]; then
   : "${PROD_HEALTHCHECK_BOOKING_PROGRAM_ID:?PROD_HEALTHCHECK_BOOKING_PROGRAM_ID is required when PROD_HEALTHCHECK_CREATE_BOOKING=1}"
+  _booking_program_id="$PROD_HEALTHCHECK_BOOKING_PROGRAM_ID"
+  if [[ "$_booking_program_id" == "auto" ]]; then
+    _booking_program_id="$(grep -o '"id"[[:space:]]*:[[:space:]]*"[^"]*"' "$_catalog_tmp" | head -n 1 | sed 's/.*"id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/')"
+    if [[ -z "$_booking_program_id" ]]; then
+      echo "prod_healthcheck: could not auto-select a published program id from /api/programs" >&2
+      exit 1
+    fi
+    echo "booking auto program id: $_booking_program_id"
+  fi
   _booking_contact="prod-healthcheck+$(date -u +%Y%m%dT%H%M%SZ)@example.invalid"
   _booking_payload="$(mktemp)"
   _booking_create_tmp="$(mktemp)"
   _booking_duplicate_tmp="$(mktemp)"
-  trap 'rm -f "$_booking_payload" "$_booking_create_tmp" "$_booking_duplicate_tmp"' EXIT
+  trap 'rm -f "$_catalog_tmp" "$_booking_payload" "$_booking_create_tmp" "$_booking_duplicate_tmp"' EXIT
   cat >"$_booking_payload" <<JSON
-{"programId":"${PROD_HEALTHCHECK_BOOKING_PROGRAM_ID}","guestContact":"${_booking_contact}","sourceChannel":"prod_healthcheck","sourceCampaign":"prod_healthcheck","notes":"Automated production healthcheck booking. Safe to archive after release evidence.","legalConsent":true}
+{"programId":"${_booking_program_id}","guestContact":"${_booking_contact}","sourceChannel":"prod_healthcheck","sourceCampaign":"prod_healthcheck","notes":"Automated production healthcheck booking. Safe to archive after release evidence.","legalConsent":true}
 JSON
   _booking_create_status="$("${CURL_STATUS[@]}" -o "$_booking_create_tmp" -w '%{http_code}' \
     -X POST "${PUBLIC_ORIGIN}/api/bookings" \
@@ -101,8 +108,10 @@ JSON
   trap - EXIT
   echo "booking create + duplicate: ok"
 else
-  echo "booking create + duplicate: skipped (set PROD_HEALTHCHECK_CREATE_BOOKING=1 and PROD_HEALTHCHECK_BOOKING_PROGRAM_ID)"
+  echo "booking create + duplicate: skipped (set PROD_HEALTHCHECK_CREATE_BOOKING=1 and PROD_HEALTHCHECK_BOOKING_PROGRAM_ID=<id|auto>)"
 fi
+rm -f "$_catalog_tmp"
+trap - EXIT
 
 echo "== Home page =="
 "${CURL_EXT[@]}" "${PUBLIC_ORIGIN}/" >/dev/null

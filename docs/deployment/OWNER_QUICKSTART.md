@@ -30,6 +30,6 @@
 
 ## Быстрые проверки после рестарта
 - `https://mywavetour.ru` открывается.
-- `https://api.mywavetour.ru/health` возвращает `{"status":"ok"}` (или эквивалент с префиксом `/api`, если API за reverse proxy).
+- `https://api.mywavetour.ru/health` возвращает JSON со `status: "ok"` и `release.releaseSha` (или эквивалент с префиксом `/api`, если API за reverse proxy).
 - Открытие корня API в браузере (`/api/` или корень хоста API) после деплоя даёт краткий JSON с подсказкой; для мониторинга используйте **`GET /health`**.
 - Вход в админку работает.

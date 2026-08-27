@@ -5,7 +5,7 @@
 
 ## Контекст
 
-- Backend отдаёт **`GET /health`** → `{"status":"ok"}` на порте API (`api:3001`).
+- Backend отдаёт **`GET /health`** → JSON со `status: "ok"`, `service: "mywave-api"` и `release.releaseSha` на порте API (`api:3001`).
 - На `https://mywavetour.ru` запрос **`GET /health`** попадал в **`location /`** → Next.js и мог возвращать **404**, хотя **`GET /api/health`** уже шёл в API через `location /api/` и работал.
 
 Нужен предсказуемый короткий URL для мониторинга и runbook без привязки к префиксу `/api`.
@@ -19,6 +19,7 @@
 ## Последствия
 
 - Скрипты и алерты могут использовать **`/health`** или **`/api/health`** на основном домене; оба допустимы после выката nginx.
+- Release acceptance должна проверять не только HTTP 200, но и совпадение `release.releaseSha` с `.release/REVISION` текущего деплоя.
 - При смене только web-контейнера без reverse-proxy убедиться, что конфиг nginx на VPS актуален.
 
 ## Откат

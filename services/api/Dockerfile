@@ -37,6 +37,9 @@ RUN pnpm --filter api build
 FROM node:20-bookworm-slim AS runtime
 ARG NPM_CONFIG_REGISTRY=https://registry.npmjs.org/
 ARG PRISMA_ENGINES_MIRROR=
+ARG RELEASE_SHA=unknown
+ARG RELEASE_BUILT_AT=
+ARG GITHUB_RUN_ID=
 ENV PRISMA_ENGINES_MIRROR=${PRISMA_ENGINES_MIRROR}
 RUN apt-get update \
   && apt-get install -y --no-install-recommends openssl ca-certificates \
@@ -49,6 +52,9 @@ RUN npm config set fetch-timeout 300000 \
   && npm config set registry "$NPM_CONFIG_REGISTRY" \
   && npm install -g pnpm@9.0.0
 ENV NODE_ENV=production
+ENV RELEASE_SHA=${RELEASE_SHA}
+ENV RELEASE_BUILT_AT=${RELEASE_BUILT_AT}
+ENV GITHUB_RUN_ID=${GITHUB_RUN_ID}
 COPY --from=build /app/package.json /app/pnpm-lock.yaml /app/pnpm-workspace.yaml ./
 COPY --from=build /app/packages ./packages
 COPY --from=build /app/services/api ./services/api

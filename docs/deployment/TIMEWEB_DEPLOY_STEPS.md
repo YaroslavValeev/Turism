@@ -165,7 +165,7 @@ pnpm --filter api audit:pilot-readiness
 
 Скрипт сам переходит в **корень репозитория** (родитель каталога `scripts/`). Канон каталога на VPS — **`/opt/mywave/tourism`**. Префикс контейнеров — **`toutism-*`** при **`COMPOSE_PROJECT_NAME=toutism`** и вызове compose с **`--env-file .env.production`**. При необходимости вручную: `PROD_HEALTHCHECK_EXPECTED_SHA="$(cat /opt/mywave/tourism/.release/REVISION)" MYWAVE_ROOT=/opt/mywave/tourism bash scripts/prod_healthcheck.sh`.
 
-По умолчанию `prod_healthcheck.sh` проверяет booking intake без создания заявки: `POST /api/bookings` без legal consent должен вернуть **400**. Для полного production E2E с реальной тестовой заявкой укажите id опубликованной программы или `auto`, чтобы взять первую программу из `/api/programs`:
+По умолчанию `prod_healthcheck.sh` проверяет release SHA в `/api/health`, каталог `/api/programs`, `/explore` и первые публичные `/explore/*` страницы, а также booking intake без создания заявки: `POST /api/bookings` без legal consent должен вернуть **400**. Для полного production E2E с реальной тестовой заявкой укажите id опубликованной программы или `auto`, чтобы взять первую программу из `/api/programs`:
 
 ```bash
 export PROD_HEALTHCHECK_CREATE_BOOKING=1

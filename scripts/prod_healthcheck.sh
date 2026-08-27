@@ -58,6 +58,31 @@ head -c 400 "$_catalog_tmp"
 echo
 echo "(truncated)"
 
+echo "== Explore hub pages =="
+_explore_tmp="$(mktemp)"
+_explore_links_tmp="$(mktemp)"
+trap 'rm -f "$_catalog_tmp" "$_explore_tmp" "$_explore_links_tmp"' EXIT
+"${CURL_EXT[@]}" "${PUBLIC_ORIGIN}/explore" -o "$_explore_tmp"
+grep -o 'href="/explore/[^"?#]*' "$_explore_tmp" \
+  | sed 's/^href="//' \
+  | sort -u \
+  | head -n "${PROD_HEALTHCHECK_EXPLORE_LINK_LIMIT:-5}" >"$_explore_links_tmp"
+if [[ ! -s "$_explore_links_tmp" ]]; then
+  echo "prod_healthcheck: /explore contains no /explore/* links" >&2
+  exit 1
+fi
+while IFS= read -r _explore_path; do
+  [[ -n "$_explore_path" ]] || continue
+  _explore_status="$("${CURL_STATUS[@]}" -o /dev/null -w '%{http_code}' "${PUBLIC_ORIGIN}${_explore_path}")"
+  echo "${_explore_path}: HTTP ${_explore_status}"
+  if [[ "$_explore_status" != "200" ]]; then
+    echo "prod_healthcheck: expected ${_explore_path} to return 200, got ${_explore_status}" >&2
+    exit 1
+  fi
+done <"$_explore_links_tmp"
+rm -f "$_explore_tmp" "$_explore_links_tmp"
+trap 'rm -f "$_catalog_tmp"' EXIT
+
 echo "== Booking intake contract (safe negative) =="
 _booking_negative_tmp="$(mktemp)"
 _booking_negative_status="$("${CURL_STATUS[@]}" -o "$_booking_negative_tmp" -w '%{http_code}' \

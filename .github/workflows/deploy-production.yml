@@ -137,6 +137,10 @@ jobs:
           fi
           "${DC[@]}" ps
           PROD_HEALTHCHECK_EXPECTED_SHA="$EXPECTED_SHA" MYWAVE_ROOT="$DEPLOY_PATH" bash scripts/prod_healthcheck.sh
+          if [ "$DEPLOY_MODE" = "full" ]; then
+            "${DC[@]}" exec -T api sh -lc 'cd /app && pnpm --filter api audit:ingestion-trace'
+            "${DC[@]}" exec -T api sh -lc 'cd /app && pnpm --filter api audit:pilot-readiness'
+          fi
           echo "release_sha=$EXPECTED_SHA"
           echo "rollback_backup=$(cat /var/lib/mywave-tourism/last-release-backup 2>/dev/null || true)"
           REMOTE

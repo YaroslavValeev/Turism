@@ -53,6 +53,14 @@ jobs:
       - name: Generate Prisma client
         run: pnpm db:generate
 
+      - name: Validate shell scripts
+        shell: bash
+        run: |
+          set -euo pipefail
+          git ls-files 'scripts/*.sh' | while IFS= read -r script; do
+            bash -n "$script"
+          done
+
       - name: Run unit and production builds
         run: pnpm run check:quality
 

@@ -115,7 +115,7 @@ export DEPLOY_KEY_FILE="$HOME/.ssh/id_ed25519_timeweb"
 bash scripts/manual_rsync_deploy_timeweb.sh
 ```
 
-Скрипт: rsync кода → на сервере **`docker compose --env-file .env.production -f docker-compose.production.yml up -d --build …`** (или `build --no-cache` при `BUILD_MODE=full`).
+Скрипт: rsync кода → на сервере **`docker compose --env-file .env.production -f docker-compose.production.yml up -d --build …`** (или `build --no-cache` при `BUILD_MODE=full`) → SHA-verified `prod_healthcheck.sh` → non-strict `audit:ingestion-trace` и `audit:pilot-readiness` внутри API container при `deploy_mode=full`.
 
 ---
 
@@ -162,6 +162,8 @@ PROD_HEALTHCHECK_EXPECTED_SHA="$(cat .release/REVISION)" bash scripts/prod_healt
 pnpm --filter api audit:ingestion-trace
 pnpm --filter api audit:pilot-readiness
 ```
+
+GitHub Actions при `deploy_mode=full` запускает эти non-strict audits автоматически внутри API container. Ручные команды выше полезны для повторной проверки без нового деплоя.
 
 Скрипт сам переходит в **корень репозитория** (родитель каталога `scripts/`). Канон каталога на VPS — **`/opt/mywave/tourism`**. Префикс контейнеров — **`toutism-*`** при **`COMPOSE_PROJECT_NAME=toutism`** и вызове compose с **`--env-file .env.production`**. При необходимости вручную: `PROD_HEALTHCHECK_EXPECTED_SHA="$(cat /opt/mywave/tourism/.release/REVISION)" MYWAVE_ROOT=/opt/mywave/tourism bash scripts/prod_healthcheck.sh`.
 

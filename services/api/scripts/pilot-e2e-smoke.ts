@@ -5,26 +5,28 @@
  * Проверяет: GET /health; POST /bookings без legalConsent → 400;
  * legalConsent: false → 400; legalConsent: true → 201; дубликат → 409.
  */
-import { PrismaClient } from "@prisma/client";
-
 const base = process.env.SMOKE_API_BASE ?? "http://127.0.0.1:3001";
 
+type PublicProgram = { id?: string; publishStatus?: string | null };
+
 async function main() {
-  const prisma = new PrismaClient();
   const h = await fetch(`${base}/health`);
   if (!h.ok) throw new Error(`health ${h.status}`);
   const hj = (await h.json()) as { status?: string };
   if (hj.status !== "ok") throw new Error(`health body: ${JSON.stringify(hj)}`);
   console.log("OK /health");
 
-  const program = await prisma.program.findFirst({
-    where: { publishStatus: "published" },
-    orderBy: { updatedAt: "desc" },
-    select: { id: true },
-  });
-  if (!program) {
-    await prisma.$disconnect();
-    throw new Error("No published program — run SEED_DEMO_CATALOG=1 pnpm --filter api db:seed");
+  // Select through the public catalog, not directly from Prisma. A program may
+  // still be marked published in the database while being unavailable for a
+  // public booking (for example, an archived or stale PublishedProgram row).
+  const catalogResponse = await fetch(`${base}/programs`);
+  if (!catalogResponse.ok) {
+    throw new Error(`public catalog ${catalogResponse.status}`);
+  }
+  const catalog = (await catalogResponse.json()) as PublicProgram[];
+  const program = catalog.find((item) => typeof item.id === "string" && item.id.length > 0);
+  if (!program?.id) {
+    throw new Error("No publicly available program for booking smoke");
   }
 
   const noConsentBody = {
@@ -39,12 +41,10 @@ async function main() {
   });
   if (r400omit.status !== 400) {
     const t = await r400omit.text();
-    await prisma.$disconnect();
     throw new Error(`expected 400 without legalConsent, got ${r400omit.status}: ${t.slice(0, 500)}`);
   }
   const j400omit = (await r400omit.json().catch(() => ({}))) as { error?: string };
   if (j400omit.error !== "legal_consent_required") {
-    await prisma.$disconnect();
     throw new Error(`expected error legal_consent_required, got ${JSON.stringify(j400omit)}`);
   }
   console.log("OK POST /bookings 400 (omit legalConsent)");
@@ -56,7 +56,6 @@ async function main() {
   });
   if (r400false.status !== 400) {
     const t = await r400false.text();
-    await prisma.$disconnect();
     throw new Error(`expected 400 legalConsent false, got ${r400false.status}: ${t.slice(0, 500)}`);
   }
   console.log("OK POST /bookings 400 (legalConsent false)");
@@ -75,12 +74,10 @@ async function main() {
   });
   if (b1.status !== 201) {
     const t = await b1.text();
-    await prisma.$disconnect();
     throw new Error(`bookings first POST ${b1.status}: ${t.slice(0, 500)}`);
   }
   const created = (await b1.json()) as { legalConsentAt?: string | null; legalConsentPolicyVersion?: string | null };
   if (!created.legalConsentAt) {
-    await prisma.$disconnect();
     throw new Error("expected legalConsentAt on created booking");
   }
   console.log("OK POST /bookings 201 (legalConsent true, legalConsentAt set)");
@@ -92,11 +89,9 @@ async function main() {
   });
   if (b2.status !== 409) {
     const t = await b2.text();
-    await prisma.$disconnect();
     throw new Error(`expected 409 duplicate, got ${b2.status}: ${t.slice(0, 500)}`);
   }
   console.log("OK POST /bookings duplicate 409");
-  await prisma.$disconnect();
   console.log("pilot-e2e-smoke: all checks passed");
 }
 

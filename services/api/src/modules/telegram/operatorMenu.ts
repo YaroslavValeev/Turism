@@ -151,7 +151,7 @@ async function sendMessage(env: Env, chatId: number, text: string, keyboard?: un
 export async function sendTelegramOperatorMenu(env: Env, chatId: number): Promise<void> {
   await sendMessage(env, chatId, "Панель оператора MyWaveTour. Все действия доступны только разрешённому оператору.", {
     inline_keyboard: [
-      [{ text: "➕ Предложить источник", callback_data: "mw:source" }],
+      [{ text: "➕ Добавить Telegram / Instagram", callback_data: "mw:source" }],
       [{ text: "▶️ Прогнать источник", callback_data: "mw:sources" }],
       [{ text: "🏢 Статус организатора", callback_data: "mw:orgs" }],
       [{ text: "📅 Статус программы", callback_data: "mw:programs" }],
@@ -371,7 +371,20 @@ export async function handleTelegramOperatorCallback(env: Env, callback: Telegra
   const actorId = `tg:${callback.from.id}`;
   if (chatId == null) return true;
   if (action.kind === "menu") await sendTelegramOperatorMenu(env, chatId);
-  if (action.kind === "source_help") await sendMessage(env, chatId, "Отправьте: /source https://example.org Название. Заявка не запускает парсинг и ждёт одобрения в Admin.");
+  if (action.kind === "source_help") {
+    await sendMessage(
+      env,
+      chatId,
+      [
+        "Добавьте найденный Telegram-канал или Instagram-профиль в очередь:",
+        "",
+        "/source https://t.me/example Название организатора",
+        "/source https://instagram.com/example Название организатора",
+        "",
+        "Ссылка проверяется на дубли и ждёт одобрения в Admin. Парсинг и публикация сами не запускаются.",
+      ].join("\n"),
+    );
+  }
   if (action.kind === "source_list") await sendSourceList(env, chatId);
   if (action.kind === "source_confirm") await sendSourceRunConfirmation(env, chatId, action.sourceId);
   if (action.kind === "source_run") await runActiveSource(env, chatId, action.sourceId, actorId);

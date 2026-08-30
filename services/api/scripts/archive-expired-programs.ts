@@ -11,7 +11,7 @@ type ExpiredProgram = {
   endDate: Date;
   publishStatus: string;
   updatedAt: Date;
-  publishedProgram: { id: string; publishStatus: string; candidate: { id: string; status: string } } | null;
+  publishedPrograms: { id: string; publishStatus: string; candidate: { id: string; status: string } }[];
 };
 
 async function expiredPrograms(now: Date): Promise<ExpiredProgram[]> {
@@ -23,7 +23,7 @@ async function expiredPrograms(now: Date): Promise<ExpiredProgram[]> {
       endDate: true,
       publishStatus: true,
       updatedAt: true,
-      publishedProgram: { select: { id: true, publishStatus: true, candidate: { select: { id: true, status: true } } } },
+      publishedPrograms: { select: { id: true, publishStatus: true, candidate: { select: { id: true, status: true } } } },
     },
     orderBy: [{ endDate: "asc" }, { id: "asc" }],
   });
@@ -31,6 +31,10 @@ async function expiredPrograms(now: Date): Promise<ExpiredProgram[]> {
 
 async function archiveProgram(program: ExpiredProgram, now: Date) {
   return prisma.$transaction(async (tx) => {
+    if (program.publishedPrograms.length > 1) {
+      throw new Error(`Program ${program.id} has more than one publication link`);
+    }
+    const publishedProgram = program.publishedPrograms[0] ?? null;
     const changed = await tx.program.updateMany({
       where: { id: program.id, publishStatus: "published", updatedAt: program.updatedAt, endDate: { lt: now } },
       data: { publishStatus: "archived" },
@@ -47,30 +51,30 @@ async function archiveProgram(program: ExpiredProgram, now: Date) {
       reason,
     }];
 
-    if (program.publishedProgram) {
+    if (publishedProgram) {
       await tx.publishedProgram.update({
-        where: { id: program.publishedProgram.id },
+        where: { id: publishedProgram.id },
         data: { publishStatus: "archived", editorNotes: reason },
       });
       audit.push({
         entityType: "published_program",
-        entityId: program.publishedProgram.id,
+        entityId: publishedProgram.id,
         changedField: "publish_status_change",
-        oldValue: program.publishedProgram.publishStatus,
+        oldValue: publishedProgram.publishStatus,
         newValue: "archived",
         changedBy: "system:expired-program-archiver",
         reason,
       });
-      if (program.publishedProgram.candidate.status !== "archived") {
+      if (publishedProgram.candidate.status !== "archived") {
         await tx.eventCandidate.update({
-          where: { id: program.publishedProgram.candidate.id },
+          where: { id: publishedProgram.candidate.id },
           data: { status: "archived", reviewedBy: "system:expired-program-archiver", reviewedAt: now, decisionNotes: reason },
         });
         audit.push({
           entityType: "event_candidate",
-          entityId: program.publishedProgram.candidate.id,
+          entityId: publishedProgram.candidate.id,
           changedField: "publish_status_change",
-          oldValue: program.publishedProgram.candidate.status,
+          oldValue: publishedProgram.candidate.status,
           newValue: "archived",
           changedBy: "system:expired-program-archiver",
           reason,

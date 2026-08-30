@@ -53,6 +53,13 @@ function hasPlaceholderOrScrapedMarkup(program: ProgramWithMedia): boolean {
   return PUBLIC_TEXT_FIELDS.some((field) => containsPlaceholderOrScrapedMarkup(program[field] as string | null | undefined));
 }
 
+function isCurrentOrFutureProgram(program: ProgramWithMedia, now = new Date()): boolean {
+  if (!program.endDate) return false;
+  const endDay = Date.UTC(program.endDate.getUTCFullYear(), program.endDate.getUTCMonth(), program.endDate.getUTCDate());
+  const today = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  return endDay >= today;
+}
+
 export function canPublish(program: ProgramWithMedia): { ok: boolean; missing: string[] } {
   const missing: string[] = [];
   if (!filled(program.title)) missing.push("title");
@@ -88,6 +95,7 @@ export function canPublishAutopilot(program: ProgramWithMedia): { ok: boolean; m
   if (!filled(program.discipline)) missing.push("discipline");
   if (!filled(program.region)) missing.push("region");
   if (!program.startDate || !program.endDate) missing.push("date_range");
+  else if (!isCurrentOrFutureProgram(program)) missing.push("event_not_current_or_future");
   if (!filled(program.levelRequired)) missing.push("level");
   if (!filled(program.riskLevel)) missing.push("risk");
   if (program.medicalLimitations === undefined || program.medicalLimitations === null) missing.push("medical");

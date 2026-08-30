@@ -24,6 +24,7 @@
     "smoke:ai-pilot-p1": "tsx scripts/smoke-ai-pilot-p1.ts",
     "audit:ingestion-trace": "tsx scripts/audit-ingestion-trace.ts",
     "backfill:legacy-source-runs": "tsx scripts/backfill-legacy-source-runs.ts",
+    "archive:expired-programs": "tsx scripts/archive-expired-programs.ts",
     "audit:pilot-readiness": "tsx scripts/audit-pilot-readiness.ts",
     "requeue:legacy-cancellations": "tsx scripts/requeue-legacy-cancellations.ts",
     "sprint3:email-e2e": "tsx scripts/sprint3_subscribe_notify_unsubscribe_e2e.ts"

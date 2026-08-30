@@ -24,6 +24,7 @@ import { rawItemsRoutes } from "./modules/raw-items/routes";
 import { eventCandidatesRoutes } from "./modules/event-candidates/routes";
 import { jobsRoutes } from "./modules/jobs/routes";
 import { startIngestionScheduler } from "./modules/ingestion/scheduler";
+import { startSourceProposalDigestScheduler } from "./modules/sources/sourceProposalDigestScheduler";
 import { startAnalyticsOpsScheduler } from "./modules/analytics/opsScheduler";
 import { internalAnalyticsRoutes } from "./modules/analytics/routes";
 import { publicSubscriptionsRoutes } from "./modules/subscriptions/routes";
@@ -131,4 +132,5 @@ app.listen(Number(PORT), "0.0.0.0", () => {
 });
 
 startIngestionScheduler(env);
+startSourceProposalDigestScheduler(env);
 startAnalyticsOpsScheduler(env);

@@ -64,6 +64,9 @@ export interface Env {
   INGESTION_AUTOPUBLISH_ENABLED: boolean;
   INGESTION_DAILY_SOURCE_LIMIT: number;
   INGESTION_DEFAULT_FALLBACK_IMAGE_URL?: string;
+  /** Отдельный ежедневный digest ручной очереди источников; не запускает ingestion. */
+  SOURCE_PROPOSAL_DIGEST_DAILY_ENABLED: boolean;
+  SOURCE_PROPOSAL_DIGEST_DAILY_HOUR_LOCAL: number;
   /** Включает запись server-side analytics + ingestion. В prod рекомендуется включать явно. */
   ANALYTICS_ENABLED: boolean;
   /** Секрет для `POST /internal/analytics/*` (не путать с admin JWT). */
@@ -173,6 +176,8 @@ export function loadEnv(): Env {
       MAX_INGESTION_DAILY_SOURCE_LIMIT,
     ),
     INGESTION_DEFAULT_FALLBACK_IMAGE_URL: optional("INGESTION_DEFAULT_FALLBACK_IMAGE_URL"),
+    SOURCE_PROPOSAL_DIGEST_DAILY_ENABLED: optionalBoolean("SOURCE_PROPOSAL_DIGEST_DAILY_ENABLED", false),
+    SOURCE_PROPOSAL_DIGEST_DAILY_HOUR_LOCAL: optionalNumber("SOURCE_PROPOSAL_DIGEST_DAILY_HOUR_LOCAL", 9),
     ANALYTICS_ENABLED: optionalBoolean("ANALYTICS_ENABLED", false),
     INTERNAL_ANALYTICS_TOKEN: optional("INTERNAL_ANALYTICS_TOKEN"),
     CAMP_API_TOKEN: optional("CAMP_API_TOKEN"),

@@ -14,10 +14,11 @@ export type DailyRunClaim = {
 export async function claimDailyRun(
   dayKey: string,
   now = new Date(),
+  jobKey = DAILY_SYNC_JOB_KEY,
 ): Promise<DailyRunClaim | null> {
   const leaseToken = randomUUID();
   const leaseExpiresAt = new Date(now.getTime() + LEASE_MS);
-  const claim = { jobKey: DAILY_SYNC_JOB_KEY, dayKey, leaseToken };
+  const claim = { jobKey, dayKey, leaseToken };
 
   try {
     await prisma.schedulerDailyRun.create({

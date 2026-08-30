@@ -107,6 +107,9 @@ model Organizer {
   billingStatus        String                          @default("not_connected") // not_connected | billing_connected | suspended
   privilegeStatus      String                          @default("limited") // limited | active | suspended
   commissionRateBps    Int                             @default(300) // Fair Success Fee default 3%
+  /// Permanent business approval: after the first verified/trusted decision, active sources may use autopublish.
+  autoPublishApprovedAt DateTime?
+  autoPublishApprovedBy String?
   createdAt            DateTime                        @default(now())
   updatedAt            DateTime                        @updatedAt
   programs             Program[]

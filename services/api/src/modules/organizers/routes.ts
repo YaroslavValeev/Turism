@@ -170,9 +170,14 @@ export function organizersRoutes(env: Env): Router {
       res.status(400).json({ error: "valid verificationStatus required", allowed: "listed,checked,verified,trusted_by_platform,paused,rejected" });
       return;
     }
+    const grantsAutoPublish = verificationStatus === "verified" || verificationStatus === "trusted_by_platform";
     const o = await prisma.organizer.update({
       where: { id: req.params.id },
-      data: { verificationStatus: verificationStatus as OrganizerVerificationStatus },
+      data: {
+        verificationStatus: verificationStatus as OrganizerVerificationStatus,
+        autoPublishApprovedAt: grantsAutoPublish ? (existing.autoPublishApprovedAt ?? new Date()) : undefined,
+        autoPublishApprovedBy: grantsAutoPublish ? (existing.autoPublishApprovedBy ?? req.adminUserId ?? "system:organizer-verification") : undefined,
+      },
     });
     await writeAuditLog({
       entityType: "organizer",

@@ -76,7 +76,7 @@ function textWellFormed(s: string | null | undefined): string | null {
 }
 
 type SourceWithOrganizer = Source & {
-  organizer: { id: string; displayName: string; verificationStatus?: string } | null;
+  organizer: { id: string; displayName: string; verificationStatus?: string; autoPublishApprovedAt?: Date | null } | null;
 };
 
 type RawItemWithSource = RawItem & {
@@ -532,21 +532,20 @@ function getSourceBooleanMeta(source: Source, key: string): boolean {
 }
 
 type AutoPublishSource = Pick<Source, "isActive" | "metaJson"> & {
-  organizer?: { verificationStatus?: string | null } | null;
+  organizer?: { autoPublishApprovedAt?: Date | null } | null;
 };
 
 /**
  * Autopublish is fail-closed:
  * - the global switch must be enabled;
- * - the source must be active and explicitly opted in;
- * - the linked organizer must already be verified by an operator/platform.
+ * - the source must be active and not explicitly opted out;
+ * - the linked organizer must have received a permanent operator/platform approval.
  */
 export function shouldRunAutoPublishForSource(source: AutoPublishSource, globalEnabled: boolean): boolean {
   if (!globalEnabled) return false;
   if (!source.isActive) return false;
-  if (getMetaObject(source.metaJson).autoPublish !== true) return false;
-  const organizerStatus = source.organizer?.verificationStatus;
-  return organizerStatus === "verified" || organizerStatus === "trusted_by_platform";
+  if (getMetaObject(source.metaJson).autoPublish === false) return false;
+  return source.organizer?.autoPublishApprovedAt != null;
 }
 
 function getSourceStringArrayMeta(source: Source, key: string): string[] {
@@ -2670,7 +2669,7 @@ function createDraftProgramPayload(candidate: CandidateWithRelations, organizerI
   const src = raw.source;
   const startDate = normalized.startDate ?? new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
   const endDate = normalized.endDate ?? normalized.startDate ?? startDate;
-  const organizerName = normalized.organizerName ?? src.name;
+  const organizerName = programCardText(normalized.organizerName, src.name);
   const extractedJson =
     typeof normalized.extractedJson === "object" && normalized.extractedJson && !Array.isArray(normalized.extractedJson)
       ? (normalized.extractedJson as Record<string, unknown>)
@@ -2687,7 +2686,7 @@ function createDraftProgramPayload(candidate: CandidateWithRelations, organizerI
     ingestedAt: now,
     reviewStatus: "auto_pending",
     autoPublished: true,
-    title: normalized.title ?? `${organizerName} — программа`,
+    title: programCardText(normalized.title, `${organizerName} — программа`),
     discipline: normalized.discipline ?? src.discipline ?? "Unknown",
     region: normalized.region ?? normalized.country ?? src.region ?? "Unknown",
     exactLocation: firstNonEmpty(normalized.city, normalized.venue),
@@ -2695,16 +2694,16 @@ function createDraftProgramPayload(candidate: CandidateWithRelations, organizerI
     endDate,
     durationDays: normalized.durationDays ?? computeDurationDays(startDate, endDate) ?? 1,
     formatType: normalized.eventType ?? "camp",
-    audienceFit: normalized.descriptionShort ?? normalized.descriptionFull ?? "Требует ручной нормализации оператором.",
+    audienceFit: programCardText(normalized.descriptionShort ?? normalized.descriptionFull, "Требует ручной нормализации оператором."),
     levelRequired: normalized.level ?? "all_levels",
     riskLevel: "medium",
     priceFromRub: normalized.currency === "RUB" ? normalized.priceFrom : null,
     currency: normalized.currency ?? "RUB",
-    inclusions: suggestedInclusions || "Базовая программа и сопровождение организатора. Детальный состав включенного оператор уточняет по источнику перед передачей заявки.",
+    inclusions: programCardText(suggestedInclusions, "Базовая программа и сопровождение организатора. Детальный состав включенного оператор уточняет по источнику перед передачей заявки."),
     exclusions: null,
     gearRequirements: "Требует ручного заполнения оператором.",
     medicalLimitations: "",
-    itineraryDayByDay: normalized.descriptionFull ?? "Требует ручного заполнения оператором.",
+    itineraryDayByDay: programCardText(normalized.descriptionFull, "Требует ручного заполнения оператором."),
     organizerName,
     cancellationRules: "Требует ручного заполнения оператором.",
     whatHappensAfterBooking: "После заявки оператор уточняет детали и переводит в следующий шаг.",
@@ -2836,6 +2835,15 @@ function stripHtmlToText(value: string): string {
       .replace(/<\/(p|div|li|section|article|h1|h2|h3|h4|h5|h6|tr|td)>/gi, "\n")
       .replace(/<[^>]+>/g, " "),
   );
+}
+
+/** Converts ordinary source markup into readable card text; unresolved CSS-like fragments still fail the publish gate. */
+function programCardText(value: string | null | undefined, fallback: string): string {
+  const text = stripHtmlToText(value ?? "")
+    .replace(/https?:\/\/[^\s"'<>)}\]]+/gi, " ")
+    .replace(/\b(?:background-)?image\s*:\s*url\([^)]*\)\s*;?/gi, " ")
+    .replace(/\b(?:src|href|class|style|role|aria-label|data-[\w-]+)\s*=\s*(?:"[^"]*"|'[^']*'|[^\s]+)/gi, " ");
+  return normalizeText(text) || fallback;
 }
 
 function isUtilityUrl(url: string): boolean {
@@ -4419,7 +4427,7 @@ export async function publishCandidateToDraft(
             include: {
               source: {
                 include: {
-                  organizer: { select: { id: true, displayName: true, verificationStatus: true } },
+                  organizer: { select: { id: true, displayName: true, verificationStatus: true, autoPublishApprovedAt: true } },
                 },
               },
             },
@@ -4491,7 +4499,7 @@ export async function publishCandidateToDraft(
         if (publishCheck) {
           gateResult = canPublishAutopilot(publishCheck);
           if (gateResult.ok) {
-            await tx.program.update({ where: { id: duplicateProgram.id }, data: { publishStatus: "published" } });
+            await tx.program.update({ where: { id: duplicateProgram.id }, data: { publishStatus: "published", reviewStatus: "ok" } });
             if (duplicateLink.publishStatus !== "published") {
               outLink = await tx.publishedProgram.update({
                 where: { id: duplicateLink.id },
@@ -4600,9 +4608,9 @@ export async function publishCandidateToDraft(
       if (publishCheck) {
         createGate = canPublishAutopilot(publishCheck);
         if (createGate.ok) {
-          await tx.program.update({
-            where: { id: program.id },
-            data: { publishStatus: "published" },
+            await tx.program.update({
+              where: { id: program.id },
+              data: { publishStatus: "published", reviewStatus: "ok" },
           });
           linkStatus = "published";
           console.log(
@@ -4910,7 +4918,7 @@ export async function autoPublishReadyCandidates(
             include: {
               source: {
                 include: {
-                  organizer: { select: { id: true, displayName: true, verificationStatus: true } },
+                  organizer: { select: { id: true, displayName: true, verificationStatus: true, autoPublishApprovedAt: true } },
                 },
               },
             },

@@ -10,6 +10,7 @@ import { Prisma, Source, EventCandidate, NormalizedItem, RawItem } from "@prisma
 import { prisma } from "../../lib/prisma";
 import { writeAuditLog } from "../../lib/audit";
 import { canPublishAutopilot, programIncludeForPublishGate } from "../programs/publishGate";
+import { archiveExpiredPublishedPrograms } from "../programs/expiration";
 import { buildProgramDedupKey, pickPreferredProgram, type ProgramDedupShape } from "../programs/dedup";
 import { cacheExternalProgramMediaForWeb } from "./mediaCache";
 import { fetchIngestionTextWithRetry } from "./sourceFetch";
@@ -5021,6 +5022,7 @@ export async function autoPublishReadyCandidates(
 }
 
 export async function runDailySyncJob(actorId: string | null, options?: DailySyncOptions) {
+  const archive = await archiveExpiredPublishedPrograms();
   const sources = await prisma.source.findMany({
     where: { isActive: true },
     orderBy: [{ priority: "asc" }, { updatedAt: "desc" }],
@@ -5049,6 +5051,7 @@ export async function runDailySyncJob(actorId: string | null, options?: DailySyn
       normalize: { scope: "sources:0", processed: 0, created: 0 },
       dedup: { scope: "sources:0", processed: 0, created: 0, updated: 0 },
       autoPublish: apZero,
+      archive,
     };
   }
 
@@ -5063,6 +5066,7 @@ export async function runDailySyncJob(actorId: string | null, options?: DailySyn
     normalize,
     dedup,
     autoPublish,
+    archive,
   };
 }
 

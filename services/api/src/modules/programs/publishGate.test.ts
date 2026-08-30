@@ -21,8 +21,8 @@ function programFixture(overrides: Partial<GateInput> = {}): GateInput {
     discipline: "wakesurf",
     region: "Сочи",
     exactLocation: null,
-    startDate: new Date("2026-07-01T00:00:00.000Z"),
-    endDate: new Date("2026-07-05T00:00:00.000Z"),
+    startDate: new Date("2030-07-01T00:00:00.000Z"),
+    endDate: new Date("2030-07-05T00:00:00.000Z"),
     durationDays: 5,
     formatType: null,
     audienceFit: "Новички",
@@ -88,6 +88,15 @@ describe("canPublishAutopilot", () => {
     );
     expect(r.ok).toBe(false);
     expect(r.missing).toContain("source_url_or_content_or_media");
+  });
+
+  it("не публикует прошедшее событие", () => {
+    const r = canPublishAutopilot(programFixture({
+      startDate: new Date("2020-07-01T00:00:00.000Z"),
+      endDate: new Date("2020-07-05T00:00:00.000Z"),
+    }));
+    expect(r.ok).toBe(false);
+    expect(r.missing).toContain("event_not_current_or_future");
   });
 
   it("блокирует synthetic по organizer.displayName", () => {

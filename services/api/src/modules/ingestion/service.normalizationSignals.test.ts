@@ -76,6 +76,15 @@ describe("ingestion semantic normalization signals", () => {
       });
     });
 
+    it("preserves a spoken shared-month range instead of treating its final day as a one-day event", () => {
+      expect(
+        extractDatesByPriority(["С 18 по 27 сентября 2026 года пройдёт фестиваль-соревнование «ПОТОК 2026»"], null),
+      ).toEqual({
+        startDate: midday(2026, 9, 18),
+        endDate: midday(2026, 9, 27),
+      });
+    });
+
     it("uses body dates when the title has no explicit date", () => {
       expect(extractDatesByPriority(["Большая эндуро гонка", "Старт 15 августа 2026"], null)).toEqual({
         startDate: midday(2026, 8, 15),

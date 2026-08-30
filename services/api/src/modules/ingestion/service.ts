@@ -788,6 +788,22 @@ export function matchesLocationKeyword(text: string, keyword: string): boolean {
 }
 
 function extractDates(text: string, fallbackDate: Date | null): { startDate: Date | null; endDate: Date | null } {
+  const sharedMonthSpokenRangePattern =
+    /(?:\bс\s*)?(\d{1,2})\s*(?:по|до)\s*(\d{1,2})\s+(января|янв|февраля|фев|марта|мар|апреля|апр|мая|июня|июн|июля|июл|августа|авг|сентября|сент|сен|октября|окт|ноября|ноя|декабря|дек|january|jan|february|feb|march|mar|april|apr|may|june|jun|july|jul|august|aug|september|sep|october|oct|november|nov|december|dec)\s*(\d{4})?/gi;
+  let sharedMonthSpokenRangeMatch: RegExpExecArray | null;
+  while ((sharedMonthSpokenRangeMatch = sharedMonthSpokenRangePattern.exec(text)) !== null) {
+    const startDay = Number(sharedMonthSpokenRangeMatch[1]);
+    const endDay = Number(sharedMonthSpokenRangeMatch[2]);
+    const month = MONTHS[sharedMonthSpokenRangeMatch[3].toLowerCase()];
+    const year = sharedMonthSpokenRangeMatch[4] ? Number(sharedMonthSpokenRangeMatch[4]) : new Date().getUTCFullYear();
+    if (!isValidCalendarDate(year, month, startDay) || !isValidCalendarDate(year, month, endDay)) continue;
+
+    return {
+      startDate: toMiddayDate(year, month, startDay),
+      endDate: toMiddayDate(year, month, endDay),
+    };
+  }
+
   const crossMonthPattern =
     /(\d{1,2})\s+(января|янв|февраля|фев|марта|мар|апреля|апр|мая|июня|июн|июля|июл|августа|авг|сентября|сент|сен|октября|окт|ноября|ноя|декабря|дек|january|jan|february|feb|march|mar|april|apr|may|june|jun|july|jul|august|aug|september|sep|october|oct|november|nov|december|dec)\s*(?:-|–|—)\s*(\d{1,2})\s+(января|янв|февраля|фев|марта|мар|апреля|апр|мая|июня|июн|июля|июл|августа|авг|сентября|сент|сен|октября|окт|ноября|ноя|декабря|дек|january|jan|february|feb|march|mar|april|apr|may|june|jun|july|jul|august|aug|september|sep|october|oct|november|nov|december|dec)\s*(\d{4})?/gi;
   let crossMonthMatch: RegExpExecArray | null;

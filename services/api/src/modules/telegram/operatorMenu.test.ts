@@ -67,6 +67,23 @@ describe("telegram operator menu contract", () => {
     expect(parseOperatorCallback("mw:ps:cmabc123:published")).toBeNull();
   });
 
+  it("shows Telegram and Instagram source examples without changing data", async () => {
+    await expect(handleTelegramOperatorCallback(env, {
+      id: "callback-source-help",
+      from: { id: 510686579 },
+      message: { chat: { id: -1003491522243 } },
+      data: "mw:source",
+    })).resolves.toBe(true);
+
+    const sendBody = mocks.callTelegramJson.mock.calls[1]?.[2] as { text: string };
+    expect(sendBody.text).toContain("https://t.me/example");
+    expect(sendBody.text).toContain("https://instagram.com/example");
+    expect(sendBody.text).toContain("не запускаются");
+    expect(mocks.runSourceCollection).not.toHaveBeenCalled();
+    expect(mocks.runNormalizationJob).not.toHaveBeenCalled();
+    expect(mocks.runDedupJob).not.toHaveBeenCalled();
+  });
+
   it("sends only editable programs with Telegram-safe labels", async () => {
     mocks.findManyPrograms.mockResolvedValue([
       {

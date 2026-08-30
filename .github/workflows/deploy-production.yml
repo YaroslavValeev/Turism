@@ -138,7 +138,7 @@ jobs:
           "${DC[@]}" ps
           PROD_HEALTHCHECK_EXPECTED_SHA="$EXPECTED_SHA" MYWAVE_ROOT="$DEPLOY_PATH" bash scripts/prod_healthcheck.sh
           if [ "$DEPLOY_MODE" = "full" ]; then
-            "${DC[@]}" exec -T api sh -lc 'cd /app && pnpm --filter api audit:ingestion-trace'
+            "${DC[@]}" exec -T api sh -lc 'cd /app && INGESTION_TRACE_AUDIT_STRICT=true pnpm --filter api audit:ingestion-trace'
             "${DC[@]}" exec -T api sh -lc 'cd /app && pnpm --filter api audit:pilot-readiness'
           fi
           echo "release_sha=$EXPECTED_SHA"

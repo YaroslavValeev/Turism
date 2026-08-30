@@ -7,6 +7,7 @@ const claimDailyRunMock = vi.hoisted(() =>
 );
 const completeDailyRunMock = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
 const failDailyRunMock = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
+const sendPendingSourceProposalDigestMock = vi.hoisted(() => vi.fn().mockResolvedValue({ status: "skipped" }));
 
 vi.mock("./service", () => ({ runDailySyncJob: runDailySyncJobMock }));
 vi.mock("./dailyRunLock", () => ({
@@ -14,6 +15,7 @@ vi.mock("./dailyRunLock", () => ({
   completeDailyRun: completeDailyRunMock,
   failDailyRun: failDailyRunMock,
 }));
+vi.mock("../sources/sourceProposalDigest", () => ({ sendPendingSourceProposalDigest: sendPendingSourceProposalDigestMock }));
 
 import { startIngestionScheduler } from "./scheduler";
 
@@ -41,6 +43,7 @@ describe("startIngestionScheduler", () => {
       sourceLimit: 5,
     });
     expect(completeDailyRunMock).toHaveBeenCalledOnce();
+    expect(sendPendingSourceProposalDigestMock).toHaveBeenCalledWith(env);
   });
 
   it("skips the pipeline when another process already owns the daily run", async () => {
@@ -58,5 +61,6 @@ describe("startIngestionScheduler", () => {
 
     expect(runDailySyncJobMock).not.toHaveBeenCalled();
     expect(completeDailyRunMock).not.toHaveBeenCalled();
+    expect(sendPendingSourceProposalDigestMock).not.toHaveBeenCalled();
   });
 });

@@ -1,6 +1,7 @@
 import type { Env } from "@mywave/config";
 import { claimDailyRun, completeDailyRun, failDailyRun } from "./dailyRunLock";
 import { runDailySyncJob } from "./service";
+import { sendPendingSourceProposalDigest } from "../sources/sourceProposalDigest";
 
 function dayKey(now: Date): string {
   return `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`;
@@ -27,8 +28,17 @@ export function startIngestionScheduler(env: Env) {
         fallbackImageUrl: env.INGESTION_DEFAULT_FALLBACK_IMAGE_URL,
         sourceLimit: env.INGESTION_DAILY_SOURCE_LIMIT,
       });
+      // Notification is useful operationally but must never turn a completed
+      // ingestion run into a failed one or trigger a duplicate retry.
+      const sourceProposalDigest = await sendPendingSourceProposalDigest(env).catch((error) => {
+        console.error(
+          "[ingestion-scheduler] source proposal digest failed",
+          error instanceof Error ? error.message : String(error),
+        );
+        return { status: "failed" as const };
+      });
       await completeDailyRun(claim);
-      console.log("[ingestion-scheduler] daily sync complete", summary);
+      console.log("[ingestion-scheduler] daily sync complete", { ...summary, sourceProposalDigest });
     } catch (error) {
       // A claim can fail before ownership is established; only an owned lease
       // is eligible for a durable failure transition.

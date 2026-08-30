@@ -94,24 +94,20 @@ describe("daily ingestion safety", () => {
   });
 
   it.each([
-    ["global disabled", false, true, true, "verified", false],
-    ["inactive source", true, false, true, "verified", false],
-    ["source opt-in absent", true, true, undefined, "verified", false],
-    ["source opt-in false", true, true, false, "verified", false],
-    ["organizer merely listed", true, true, true, "listed", false],
-    ["organizer checked", true, true, true, "checked", false],
-    ["organizer missing", true, true, true, null, false],
-    ["verified organizer", true, true, true, "verified", true],
-    ["platform-trusted organizer", true, true, true, "trusted_by_platform", true],
+    ["global disabled", false, true, undefined, true, false],
+    ["inactive source", true, false, undefined, true, false],
+    ["source explicit opt-out", true, true, false, true, false],
+    ["organizer missing", true, true, undefined, false, false],
+    ["historically approved organizer", true, true, undefined, true, true],
   ])(
     "uses an explicit source and organizer trust gate: %s",
-    (_case, globalEnabled, isActive, sourceOptIn, organizerStatus, expected) => {
+    (_case, globalEnabled, isActive, sourceOptIn, approved, expected) => {
       expect(
         shouldRunAutoPublishForSource(
           {
             isActive,
             metaJson: sourceOptIn === undefined ? {} : { autoPublish: sourceOptIn },
-            organizer: organizerStatus ? { verificationStatus: organizerStatus } : null,
+            organizer: approved ? { autoPublishApprovedAt: new Date("2026-08-30T00:00:00.000Z") } : null,
           },
           globalEnabled,
         ),

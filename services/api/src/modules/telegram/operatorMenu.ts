@@ -249,7 +249,15 @@ async function changeOrganizerStatus(env: Env, chatId: number, organizerId: stri
     await sendMessage(env, chatId, "Этот статус уже установлен.");
     return;
   }
-  const organizer = await prisma.organizer.update({ where: { id: organizerId }, data: { verificationStatus: status } });
+  const grantsAutoPublish = status === "verified" || status === "trusted_by_platform";
+  const organizer = await prisma.organizer.update({
+    where: { id: organizerId },
+    data: {
+      verificationStatus: status,
+      autoPublishApprovedAt: grantsAutoPublish ? (existing.autoPublishApprovedAt ?? new Date()) : undefined,
+      autoPublishApprovedBy: grantsAutoPublish ? (existing.autoPublishApprovedBy ?? actorId) : undefined,
+    },
+  });
   await writeAuditLog({
     entityType: "organizer",
     entityId: organizer.id,

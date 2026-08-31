@@ -20,24 +20,33 @@ export async function claimDailyRun(
   const leaseExpiresAt = new Date(now.getTime() + LEASE_MS);
   const claim = { jobKey, dayKey, leaseToken };
 
-  try {
-    await prisma.schedulerDailyRun.create({
-      data: {
-        ...claim,
-        status: "running",
-        leaseExpiresAt,
-      },
-    });
-    return claim;
-  } catch (error) {
-    if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== "P2002") {
-      throw error;
+  const existing = await prisma.schedulerDailyRun.findUnique({
+    where: { jobKey_dayKey: { jobKey, dayKey } },
+    select: { id: true },
+  });
+
+  if (!existing) {
+    try {
+      await prisma.schedulerDailyRun.create({
+        data: {
+          ...claim,
+          status: "running",
+          leaseExpiresAt,
+        },
+      });
+      return claim;
+    } catch (error) {
+      // A second process may claim between findUnique and create. Treat only
+      // the unique collision as an already-existing daily run.
+      if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== "P2002") {
+        throw error;
+      }
     }
   }
 
   const reclaimed = await prisma.schedulerDailyRun.updateMany({
     where: {
-      jobKey: DAILY_SYNC_JOB_KEY,
+      jobKey,
       dayKey,
       OR: [
         { status: "failed" },

@@ -327,10 +327,28 @@ export function programsRoutes(env: Env): Router {
         return;
       }
     }
-    const p = await prisma.program.update({
-      where: { id: req.params.id },
-      data: { publishStatus: publishStatus as ProgramPublishStatus },
-      include: { media: true },
+    const p = await prisma.$transaction(async (tx) => {
+      const updated = await tx.program.update({
+        where: { id: req.params.id },
+        data: {
+          publishStatus: publishStatus as ProgramPublishStatus,
+          // An admin publish is the explicit operator review required for
+          // ingestion-created programs to become publicly visible.
+          ...(publishStatus === "published" && existing.autoPublished
+            ? { reviewStatus: "ok" }
+            : {}),
+        },
+        include: { media: true },
+      });
+
+      if (publishStatus === "published") {
+        await tx.publishedProgram.updateMany({
+          where: { programId: updated.id },
+          data: { publishStatus: "published" },
+        });
+      }
+
+      return updated;
     });
     await writeAuditLog({
       entityType: "program",

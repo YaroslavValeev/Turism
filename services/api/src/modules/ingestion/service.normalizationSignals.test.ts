@@ -43,6 +43,17 @@ describe("ingestion semantic normalization signals", () => {
       expect(extractPrice("Взнос – 20 000 р.")).toEqual({ priceFrom: 20000, currency: "RUB" });
     });
 
+    it("does not treat an insurance coverage limit as the participation price", () => {
+      expect(extractPrice("Требования – мед. справка – страховка не менее 100 000 р.")).toEqual({
+        priceFrom: null,
+        currency: null,
+      });
+      expect(extractPrice("Взнос – 2 000 р. Страховка не менее 100 000 р.")).toEqual({
+        priceFrom: 2000,
+        currency: "RUB",
+      });
+    });
+
     it("does not treat a date as a price without a currency token", () => {
       expect(extractPrice("26-27 сентября 2026 – Эволюция")).toEqual({ priceFrom: null, currency: null });
     });

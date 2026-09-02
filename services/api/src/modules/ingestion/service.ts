@@ -744,13 +744,21 @@ function detectLevel(text: string): string | null {
 }
 
 export function extractPrice(text: string): { priceFrom: number | null; currency: string | null } {
-  const match = text.match(/(?:от|from)?\s*([\d\s]{2,})\s*(₽|р\.?|руб\.?|rub|eur|usd|\$|€)/i);
-  if (!match) return { priceFrom: null, currency: null };
-  const rawNumber = match[1].replace(/[^\d]/g, "");
-  const priceFrom = rawNumber ? Number(rawNumber) : null;
-  const currencyToken = match[2].toLowerCase();
-  const currency = currencyToken === "€" || currencyToken === "eur" ? "EUR" : currencyToken === "$" || currencyToken === "usd" ? "USD" : "RUB";
-  return { priceFrom, currency };
+  const pricePattern = /(?:от|from)?\s*([\d\s]{2,})\s*(₽|р\.?|руб\.?|rub|eur|usd|\$|€)/gi;
+  for (const match of text.matchAll(pricePattern)) {
+    const matchIndex = match.index ?? 0;
+    const contextBefore = text.slice(Math.max(0, matchIndex - 80), matchIndex).toLowerCase();
+    // Coverage limits are requirements, not the event participation price.
+    if (/(?:страхов(?:ка|ки|ку|ой|ание|очн)|страховая\s+сумма|страховое\s+покрытие)[^.!?\n]{0,60}$/.test(contextBefore)) {
+      continue;
+    }
+    const rawNumber = match[1].replace(/[^\d]/g, "");
+    const priceFrom = rawNumber ? Number(rawNumber) : null;
+    const currencyToken = match[2].toLowerCase();
+    const currency = currencyToken === "€" || currencyToken === "eur" ? "EUR" : currencyToken === "$" || currencyToken === "usd" ? "USD" : "RUB";
+    return { priceFrom, currency };
+  }
+  return { priceFrom: null, currency: null };
 }
 
 function hasExplicitDateSignal(text: string): boolean {

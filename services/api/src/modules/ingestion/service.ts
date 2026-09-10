@@ -2594,11 +2594,13 @@ function applyEnduroRaceOverrides(
   };
 }
 
-function buildNormalizedDraft(rawItem: RawItemWithSource): NormalizedDraft {
+export function buildNormalizedDraft(rawItem: RawItemWithSource): NormalizedDraft {
+  const payload = rawItem.rawPayloadJson as Record<string, unknown> | null;
+  const isXWatersCard = payload?.mode === "xwaters_event_card_v1" && isXWatersUrl(rawItem.sourceUrl ?? "");
   const rawTitle = normalizeText(decodeHtmlEntities(rawItem.rawTitle ?? ""));
   const rawText = normalizeText(decodeHtmlEntities(rawItem.rawText ?? ""));
   const imageUrl = extractImageUrl(rawItem.rawMediaJson, `${JSON.stringify(rawItem.rawMediaJson ?? [])} ${rawText}`);
-  const ocrText = extractOcrTextFromImage(rawItem.source, imageUrl, rawText);
+  const ocrText = isXWatersCard ? null : extractOcrTextFromImage(rawItem.source, imageUrl, rawText);
   const derivedTitle = looksLikeGenericRawTitle(rawTitle, rawItem.source) ? deriveTitleFromText(rawText) : null;
   const title = firstNonEmpty(derivedTitle, rawTitle, truncate(rawText, 120));
   const combined = normalizeText(`${rawTitle ?? ""}\n${rawText ?? ""}\n${ocrText ?? ""}`);
@@ -2665,8 +2667,31 @@ function buildNormalizedDraft(rawItem: RawItemWithSource): NormalizedDraft {
   const normalizedWithTalkToFish = applyTalkToFishOverrides(rawItem, normalizedWithTeamSergeev);
   const normalizedWithSokolov = applySokolovTravelOverrides(rawItem, normalizedWithTalkToFish);
   const normalizedWithKamchatka = applyKamchatkaFreerideCommunityOverrides(rawItem, normalizedWithSokolov);
-  const normalizedWithOverrides = applyEnduroRaceOverrides(rawItem, normalizedWithKamchatka);
+  let normalizedWithOverrides = applyEnduroRaceOverrides(rawItem, normalizedWithKamchatka);
+  if (isXWatersCard) {
+    // Grid cards are teasers: only their own date label is evidence of dates.
+    // Do not infer a year from the event title or geography from the source.
+    const dateLabel = typeof payload?.dateLabel === "string" ? payload.dateLabel : "";
+    const dates = /\b20\d{2}\b/.test(dateLabel)
+      ? extractDatesByPriority([dateLabel], null)
+      : { startDate: null, endDate: null };
+    normalizedWithOverrides = {
+      ...normalizedWithOverrides,
+      title: rawTitle,
+      startDate: dates.startDate,
+      endDate: dates.endDate,
+      durationDays: computeDurationDays(dates.startDate, dates.endDate),
+      country: payload?.regionCode === "russia" ? "Russia" : null,
+      region: null,
+      city: null,
+      priceFrom: null,
+      currency: null,
+      bookingUrl: rawItem.sourceUrl,
+      parseVersion: "v1_xwaters_event_card",
+    };
+  }
   const scores = scoreNormalizedItem(rawItem.source, normalizedWithOverrides);
+  if (isXWatersCard) scores.routedStatus = "needs_review";
   return {
     ...normalizedWithOverrides,
     confidenceScore: scores.confidenceScore,
@@ -3175,7 +3200,67 @@ function parseAllAboutKamchatkaProgramGridItems(source: Source, html: string, pa
   return items;
 }
 
-function parseHtmlDiscoveryItems(source: Source, html: string, pageUrl: string): CollectedItem[] {
+function isXWatersUrl(url: string): boolean {
+  try {
+    return normalizeHost(new URL(url).hostname) === "x-waters.com";
+  } catch {
+    return false;
+  }
+}
+
+/** Parse complete event anchors; never borrow context or images from neighbours. */
+export function parseXWatersEventCards(source: Source, html: string, pageUrl: string): CollectedItem[] {
+  const items: CollectedItem[] = [];
+  const seen = new Set<string>();
+  const attribute = (tag: string, name: string): string | null => {
+    const match = new RegExp(`\\b${name}\\s*=\\s*(["'])([\\s\\S]*?)\\1`, "i").exec(tag);
+    return match ? decodeHtmlEntities(match[2]) : null;
+  };
+  const field = (card: string, className: string): string => {
+    for (const match of card.matchAll(/<div\b([^>]*)>/gi)) {
+      if ((attribute(match[1], "class") ?? "").split(/\s+/).includes(className)) {
+        const start = match.index! + match[0].length;
+        const end = card.indexOf("</div>", start);
+        return end >= 0 ? stripHtmlToText(card.slice(start, end)) : "";
+      }
+    }
+    return "";
+  };
+  if (!isXWatersUrl(pageUrl)) return items;
+  for (const anchor of html.matchAll(/<a\b([^>]*)>([\s\S]*?)<\/a>/gi)) {
+    if (!(attribute(anchor[1], "class") ?? "").split(/\s+/).includes("js-event-block")) continue;
+    const href = attribute(anchor[1], "href");
+    const url = href ? resolveUrl(href, pageUrl) : null;
+    if (!url || !isXWatersUrl(url) || !/^\/events\/[^/]+\/?$/.test(new URL(url).pathname) || seen.has(url)) continue;
+    const card = anchor[2];
+    const title = field(card, "project_itm__title");
+    if (!title) continue;
+    const dateLabel = field(card, "project_itm__date");
+    const description = field(card, "project_itm__desc");
+    const category = field(card, "project_itm__category");
+    const imageTag = [...card.matchAll(/<div\b([^>]*)>/gi)].find((tag) =>
+      (attribute(tag[1], "class") ?? "").split(/\s+/).includes("project_itm__bg"),
+    );
+    const image = imageTag ? attribute(imageTag[1], "data-image") : null;
+    const imageUrl = image ? resolveUrl(image, pageUrl) : null;
+    const usableImage = imageUrl && /^https?:$/.test(new URL(imageUrl).protocol) && /\.(?:jpe?g|png|webp)$/i.test(new URL(imageUrl).pathname);
+    items.push({
+      externalItemId: url,
+      sourceUrl: url,
+      authorName: source.name,
+      rawTitle: title,
+      rawText: [title, dateLabel, category, description].filter(Boolean).join("\n"),
+      rawMedia: usableImage ? [{ url: imageUrl }] : [],
+      rawPayload: { mode: "xwaters_event_card_v1", discoveryUrl: pageUrl, dateLabel, regionCode: attribute(anchor[1], "data-region") },
+    });
+    seen.add(url);
+  }
+  return items;
+}
+
+export function parseHtmlDiscoveryItems(source: Source, html: string, pageUrl: string): CollectedItem[] {
+  // Fail closed if this site's card markup changes; generic link windows mix events.
+  if (isXWatersUrl(pageUrl)) return parseXWatersEventCards(source, html, pageUrl);
   const allAboutDetailItems = parseAllAboutKamchatkaProgramDetailItem(source, html, pageUrl);
   if (allAboutDetailItems.length > 0) return allAboutDetailItems;
 

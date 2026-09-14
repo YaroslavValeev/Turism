@@ -47,8 +47,13 @@ export function telegramUnifiedWebhookRoutes(env: Env): Router {
       return;
     }
 
-    const result = await dispatchTelegramWebhookUpdate(env, req.body as TelegramUpdate);
-    res.json({ ok: true, ...result });
+    // Telegram retries a webhook when the handler waits on database or Bot API
+    // work. Acknowledge the update immediately and process it in the current
+    // process after the response has been flushed.
+    res.json({ ok: true, accepted: true });
+    void dispatchTelegramWebhookUpdate(env, req.body as TelegramUpdate).catch((error) => {
+      safeError("[telegram-webhook] async dispatch failed", error);
+    });
   });
 
   return router;

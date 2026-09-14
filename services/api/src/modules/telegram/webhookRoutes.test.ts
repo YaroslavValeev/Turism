@@ -61,7 +61,7 @@ describe("Telegram unified webhook", () => {
 
     const accepted = await postWebhook(configured, "expected");
     expect(accepted.status).toBe(200);
-    await expect(accepted.json()).resolves.toEqual({ ok: true, contentOk: true, platformOk: true });
+    await expect(accepted.json()).resolves.toEqual({ ok: true, accepted: true });
   });
 
   it("dispatches an update to both existing handlers", async () => {

@@ -274,10 +274,15 @@ async function handleSourceProposalCommand(env: Env, msg: Message): Promise<{ ok
           : "Этот источник уже существует в каталоге.";
     await callTelegramJson(env, "sendMessage", { chat_id: String(msg.chat.id), text: textByKind });
     return { ok: true };
-  } catch {
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "";
+    const text =
+      message === "instagram_profile_required"
+        ? "Нужна ссылка на профиль Instagram, а не публикацию. Пример: /source https://www.instagram.com/wakehouse.ru/ Название"
+        : "Не удалось принять заявку. Используйте: /source https://example.org Название";
     await callTelegramJson(env, "sendMessage", {
       chat_id: String(msg.chat.id),
-      text: "Не удалось принять заявку. Используйте: /source https://example.org Название",
+      text,
     });
     return { ok: true };
   }

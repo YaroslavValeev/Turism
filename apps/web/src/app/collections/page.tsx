@@ -38,8 +38,9 @@ export default async function CollectionsIndexPage() {
         Подборки
       </h1>
       <p style={{ color: "var(--mw-muted)", maxWidth: "62ch", marginBottom: "2rem" }}>{COL_DESC}</p>
-      {err && <p style={{ color: "crimson" }}>Не удалось загрузить: {err}</p>}
+      {err && <p role="alert" style={{ color: "crimson" }}>Не удалось загрузить подборки. Попробуйте обновить страницу позже.</p>}
       {items.length === 0 && !err ? <p style={{ color: "var(--mw-muted)" }}>Пока нет опубликованных подборок.</p> : null}
+      {items.length === 0 && <p><Link href="/#programs" className="mw-btn mw-btn--primary">Найти выезд в каталоге</Link></p>}
       <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: "1.25rem" }}>
         {items.map((c) => (
           <li key={c.id}>

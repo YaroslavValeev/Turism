@@ -46,13 +46,12 @@ export default async function BlogIndexPage() {
         Блог MyWave
       </h1>
       <p style={{ color: "var(--mw-muted)", maxWidth: "62ch", marginBottom: "2rem" }}>
-        Материалы из контент-конвейера: новости федераций, кэмпы, подборки направлений. Далее — программы и заявка
-        организатору.
+        Истории о спортивных выездах, направлениях и подготовке к поездке.
       </p>
 
       {error ? (
         <p role="alert" style={{ color: "crimson" }}>
-          Не удалось загрузить публикации ({error}). Проверьте API и переменную API_INTERNAL_BASE_URL / NEXT_PUBLIC_API_URL.
+          Не удалось загрузить публикации. Попробуйте обновить страницу позже.
         </p>
       ) : items.length === 0 ? (
         <p style={{ color: "var(--mw-muted)" }}>Пока нет опубликованных записей. Загляните позже или откройте каталог программ на главной.</p>
@@ -111,6 +110,8 @@ export default async function BlogIndexPage() {
           ))}
         </ul>
       )}
+
+      {items.length === 0 && <p><Link href="/#programs" className="mw-btn mw-btn--primary">Смотреть спортивные выезды</Link></p>}
 
       <script
         type="application/ld+json"

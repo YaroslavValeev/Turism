@@ -17,7 +17,10 @@ export default function OrganizerProgramPage() {
       title="Подать программу"
       lead="Один шаг — и ваша программа в работе. После отправки оператор свяжется по email, уточнит детали карточки и подскажет следующий шаг до публикации."
     >
-      <ContractDownloadBlock page="program" />
+      <details className="mw-contract-details">
+        <summary>Условия сотрудничества и образец договора</summary>
+        <ContractDownloadBlock page="program" />
+      </details>
       <ProgramIntakeForm />
     </OrganizerPageShell>
   );

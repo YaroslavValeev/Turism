@@ -21,7 +21,7 @@ type TelegramCallback = {
 type OperatorAction =
   | { kind: "menu" }
   | { kind: "source_help" }
-  | { kind: "source_list" }
+  | { kind: "source_list"; page: number }
   | { kind: "source_confirm"; sourceId: string }
   | { kind: "source_run"; sourceId: string }
   | { kind: "organizer_list" }
@@ -108,7 +108,9 @@ export function parseOperatorCallback(data: string | undefined): OperatorAction 
   if (!data?.startsWith("mw:")) return null;
   if (data === "mw:menu") return { kind: "menu" };
   if (data === "mw:source") return { kind: "source_help" };
-  if (data === "mw:sources") return { kind: "source_list" };
+  if (data === "mw:sources") return { kind: "source_list", page: 0 };
+  const sourcePage = /^mw:sources:page:(\d+)$/i.exec(data);
+  if (sourcePage) return { kind: "source_list", page: Number(sourcePage[1]) };
   if (data === "mw:orgs") return { kind: "organizer_list" };
   if (data === "mw:programs") return { kind: "program_list" };
 
@@ -159,19 +161,35 @@ export async function sendTelegramOperatorMenu(env: Env, chatId: number): Promis
   });
 }
 
-async function sendSourceList(env: Env, chatId: number): Promise<void> {
+async function sendSourceList(env: Env, chatId: number, requestedPage = 0): Promise<void> {
+  const total = await prisma.source.count({ where: { isActive: true } });
+  const pageCount = Math.max(1, Math.ceil(total / MAX_MENU_ROWS));
+  const page = Math.min(Math.max(requestedPage, 0), pageCount - 1);
   const sources = await prisma.source.findMany({
     where: { isActive: true },
     select: { id: true, name: true, type: true },
     orderBy: { updatedAt: "desc" },
+    skip: page * MAX_MENU_ROWS,
     take: MAX_MENU_ROWS,
   });
-  await sendMessage(env, chatId, sources.length ? "Выберите активный источник для полного ручного цикла: сбор → нормализация → дедупликация. Автопубликация не запускается." : "Активных источников нет.", {
-    inline_keyboard: [
-      ...sources.map((source) => [{ text: `▶ ${truncate(source.name)} · ${source.type}`, callback_data: `mw:runconfirm:${source.id}` }]),
-      [{ text: "← Меню", callback_data: "mw:menu" }],
-    ],
-  });
+  const keyboard = sources.map((source) => [
+    { text: `▶ ${truncate(source.name)} · ${source.type}`, callback_data: `mw:runconfirm:${source.id}` },
+  ]);
+  if (page > 0 || page + 1 < pageCount) {
+    keyboard.push([
+      ...(page > 0 ? [{ text: "← Назад", callback_data: `mw:sources:page:${page - 1}` }] : []),
+      ...(page + 1 < pageCount ? [{ text: "Далее →", callback_data: `mw:sources:page:${page + 1}` }] : []),
+    ]);
+  }
+  keyboard.push([{ text: "← Меню", callback_data: "mw:menu" }]);
+  await sendMessage(
+    env,
+    chatId,
+    total
+      ? `Выберите активный источник для полного ручного цикла (страница ${page + 1}/${pageCount}): сбор → нормализация → дедупликация. Автопубликация не запускается.`
+      : "Активных источников нет.",
+    { inline_keyboard: keyboard },
+  );
 }
 
 async function sendSourceRunConfirmation(env: Env, chatId: number, sourceId: string): Promise<void> {
@@ -385,7 +403,7 @@ export async function handleTelegramOperatorCallback(env: Env, callback: Telegra
       ].join("\n"),
     );
   }
-  if (action.kind === "source_list") await sendSourceList(env, chatId);
+  if (action.kind === "source_list") await sendSourceList(env, chatId, action.page);
   if (action.kind === "source_confirm") await sendSourceRunConfirmation(env, chatId, action.sourceId);
   if (action.kind === "source_run") await runActiveSource(env, chatId, action.sourceId, actorId);
   if (action.kind === "organizer_list") await sendOrganizerList(env, chatId);

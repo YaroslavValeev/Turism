@@ -108,6 +108,32 @@ describe("telegram operator menu contract", () => {
     ]);
   });
 
+  it("edits the current source page when a pagination callback has a message id", async () => {
+    mocks.countSources.mockResolvedValue(9);
+    mocks.findManySources.mockResolvedValue([
+      { id: "wakehouse", name: "WakeHouse", type: "instagram" },
+    ]);
+
+    await expect(handleTelegramOperatorCallback(env, {
+      id: "callback-sources-page-edit",
+      from: { id: 510686579 },
+      message: { chat: { id: -1003491522243 }, message_id: 12345 },
+      data: "mw:sources:page:1",
+    })).resolves.toBe(true);
+
+    expect(mocks.callTelegramJson).toHaveBeenNthCalledWith(2, env, "editMessageText", expect.objectContaining({
+      chat_id: "-1003491522243",
+      message_id: 12345,
+      text: expect.stringContaining("страница 2/2"),
+      reply_markup: expect.objectContaining({
+        inline_keyboard: expect.arrayContaining([
+          [{ text: "▶ WakeHouse · instagram", callback_data: "mw:runconfirm:wakehouse" }],
+        ]),
+      }),
+    }));
+    expect(mocks.callTelegramJson).not.toHaveBeenCalledWith(env, "sendMessage", expect.anything());
+  });
+
   it("shows Telegram and Instagram source examples without changing data", async () => {
     await expect(handleTelegramOperatorCallback(env, {
       id: "callback-source-help",

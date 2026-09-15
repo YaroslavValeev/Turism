@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import "./ux.css";
 import { AnalyticsRoot } from "../components/AnalyticsRoot";
 import { PilotModeBanner } from "../components/PilotModeBanner";
 

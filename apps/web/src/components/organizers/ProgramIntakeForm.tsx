@@ -6,6 +6,7 @@ import { postOrganizerIntake } from "../../lib/publicApi";
 import { trackProductEvent } from "../../lib/analytics/client";
 
 const DISCIPLINES = [
+  { value: "Kite", label: "Кайтсёрфинг" },
   { value: "Wakesurf", label: "Wakesurf / вейксерф" },
   { value: "SUP", label: "SUP / сапбординг" },
   { value: "MTB", label: "MTB / маунтинбайк" },
@@ -83,7 +84,7 @@ export function ProgramIntakeForm() {
       });
       setSuccessId(id);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Не удалось отправить заявку.");
+      setError("Не удалось подтвердить отправку заявки. Проверьте заполненные поля и повторите попытку позже.");
     } finally {
       setSubmitting(false);
     }
@@ -235,7 +236,7 @@ export function ProgramIntakeForm() {
           />
         </div>
         <div className="mw-field">
-          <label htmlFor="pi-msg">Что важно для тебя в этом выезде</label>
+          <label htmlFor="pi-msg">Расскажите о программе, которую хотите опубликовать</label>
           <textarea
             id="pi-msg"
             className="mw-textarea"

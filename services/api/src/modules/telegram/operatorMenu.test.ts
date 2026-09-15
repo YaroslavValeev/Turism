@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   callTelegramJson: vi.fn(),
+  countSources: vi.fn(),
+  findManySources: vi.fn(),
   findManyPrograms: vi.fn(),
   findUniqueProgram: vi.fn(),
   updateProgram: vi.fn(),
@@ -13,6 +15,10 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("../../lib/prisma", () => ({
   prisma: {
+    source: {
+      count: mocks.countSources,
+      findMany: mocks.findManySources,
+    },
     program: {
       findMany: mocks.findManyPrograms,
       findUnique: mocks.findUniqueProgram,
@@ -65,6 +71,41 @@ describe("telegram operator menu contract", () => {
     });
     expect(parseOperatorCallback("mw:ps:cmabc123:z")).toBeNull();
     expect(parseOperatorCallback("mw:ps:cmabc123:published")).toBeNull();
+    expect(parseOperatorCallback("mw:sources:page:2")).toEqual({ kind: "source_list", page: 2 });
+    expect(parseOperatorCallback("mw:sources:page:not-a-number")).toBeNull();
+  });
+
+  it("paginates active sources so older sources remain runnable", async () => {
+    mocks.countSources.mockResolvedValue(9);
+    mocks.findManySources.mockResolvedValue([
+      { id: "wakehouse", name: "WakeHouse", type: "instagram" },
+    ]);
+
+    await expect(handleTelegramOperatorCallback(env, {
+      id: "callback-sources-page",
+      from: { id: 510686579 },
+      message: { chat: { id: -1003491522243 } },
+      data: "mw:sources:page:1",
+    })).resolves.toBe(true);
+
+    expect(mocks.findManySources).toHaveBeenCalledWith({
+      where: { isActive: true },
+      select: { id: true, name: true, type: true },
+      orderBy: { updatedAt: "desc" },
+      skip: 8,
+      take: 8,
+    });
+    const sendBody = mocks.callTelegramJson.mock.calls[1]?.[2] as {
+      text: string;
+      reply_markup: { inline_keyboard: Array<Array<{ text: string; callback_data: string }>> };
+    };
+    expect(sendBody.text).toContain("страница 2/2");
+    expect(sendBody.reply_markup.inline_keyboard[0]).toEqual([
+      { text: "▶ WakeHouse · instagram", callback_data: "mw:runconfirm:wakehouse" },
+    ]);
+    expect(sendBody.reply_markup.inline_keyboard.at(-2)).toEqual([
+      { text: "← Назад", callback_data: "mw:sources:page:0" },
+    ]);
   });
 
   it("shows Telegram and Instagram source examples without changing data", async () => {

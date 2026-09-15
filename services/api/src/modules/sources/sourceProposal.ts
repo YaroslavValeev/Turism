@@ -3,6 +3,7 @@ import { writeAuditLog } from "../../lib/audit";
 import { detectSourceType, normalizeSourceUrlOrHandle } from "./sourceRegistry";
 
 const PROPOSAL_TYPES = new Set(["instagram", "telegram", "rss", "site"]);
+const INSTAGRAM_NON_PROFILE_SEGMENTS = new Set(["p", "reel", "reels", "tv", "stories", "share"]);
 const MAX_NAME_LENGTH = 200;
 const MAX_NOTES_LENGTH = 2_000;
 
@@ -43,6 +44,12 @@ export function normalizeProposedSourceUrl(value: unknown): { normalizedUrl: str
   const hostname = parsed.hostname.toLowerCase();
   if (hostname === "localhost" || hostname.endsWith(".local") || /^127\.|^0\.0\.0\.0$|^::1$/.test(hostname)) {
     throw new Error("unsafe_source_url");
+  }
+  if (detectedType === "instagram") {
+    const firstPathSegment = parsed.pathname.split("/").filter(Boolean)[0]?.toLowerCase();
+    if (firstPathSegment && INSTAGRAM_NON_PROFILE_SEGMENTS.has(firstPathSegment)) {
+      throw new Error("instagram_profile_required");
+    }
   }
   return { normalizedUrl, detectedType };
 }

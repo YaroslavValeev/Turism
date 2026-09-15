@@ -56,6 +56,21 @@ describe("source proposal duplicate matching", () => {
       sourceUrlMatchesProposal("telegram", "https://t.me/s/AnotherKiteNews/460", "https://t.me/RusKiteNews"),
     ).toBe(false);
   });
+
+  it.each([
+    "https://www.instagram.com/p/ABC123/",
+    "https://www.instagram.com/reel/ABC123/",
+    "https://www.instagram.com/stories/wakehouse.ru/123/",
+  ])("rejects Instagram publication URL %s", (url) => {
+    expect(() => normalizeProposedSourceUrl(url)).toThrow("instagram_profile_required");
+  });
+
+  it("accepts an Instagram profile URL", () => {
+    expect(normalizeProposedSourceUrl("https://www.instagram.com/wakehouse.ru/?igsh=example")).toEqual({
+      normalizedUrl: "https://www.instagram.com/wakehouse.ru/",
+      detectedType: "instagram",
+    });
+  });
 });
 
 describe("source proposal approval", () => {

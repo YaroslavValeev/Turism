@@ -14,7 +14,7 @@ type TelegramChat = { id: number };
 type TelegramCallback = {
   id: string;
   from: { id: number };
-  message?: { chat: TelegramChat };
+  message?: { chat: TelegramChat; message_id?: number };
   data?: string;
 };
 
@@ -150,6 +150,16 @@ async function sendMessage(env: Env, chatId: number, text: string, keyboard?: un
   }
 }
 
+async function editMessage(env: Env, chatId: number, messageId: number, text: string, keyboard?: unknown): Promise<boolean> {
+  const response = await callTelegramJson(env, "editMessageText", {
+    chat_id: String(chatId),
+    message_id: messageId,
+    text,
+    ...(keyboard ? { reply_markup: keyboard } : {}),
+  });
+  return Boolean(response.ok);
+}
+
 export async function sendTelegramOperatorMenu(env: Env, chatId: number): Promise<void> {
   await sendMessage(env, chatId, "Панель оператора MyWaveTour. Все действия доступны только разрешённому оператору.", {
     inline_keyboard: [
@@ -161,7 +171,7 @@ export async function sendTelegramOperatorMenu(env: Env, chatId: number): Promis
   });
 }
 
-async function sendSourceList(env: Env, chatId: number, requestedPage = 0): Promise<void> {
+async function sendSourceList(env: Env, chatId: number, requestedPage = 0, messageId?: number): Promise<void> {
   const total = await prisma.source.count({ where: { isActive: true } });
   const pageCount = Math.max(1, Math.ceil(total / MAX_MENU_ROWS));
   const page = Math.min(Math.max(requestedPage, 0), pageCount - 1);
@@ -182,14 +192,14 @@ async function sendSourceList(env: Env, chatId: number, requestedPage = 0): Prom
     ]);
   }
   keyboard.push([{ text: "← Меню", callback_data: "mw:menu" }]);
-  await sendMessage(
-    env,
-    chatId,
-    total
-      ? `Выберите активный источник для полного ручного цикла (страница ${page + 1}/${pageCount}): сбор → нормализация → дедупликация. Автопубликация не запускается.`
-      : "Активных источников нет.",
-    { inline_keyboard: keyboard },
-  );
+  const text = total
+    ? `Выберите активный источник для полного ручного цикла (страница ${page + 1}/${pageCount}): сбор → нормализация → дедупликация. Автопубликация не запускается.`
+    : "Активных источников нет.";
+  const replyMarkup = { inline_keyboard: keyboard };
+  if (messageId != null && await editMessage(env, chatId, messageId, text, replyMarkup)) {
+    return;
+  }
+  await sendMessage(env, chatId, text, replyMarkup);
 }
 
 async function sendSourceRunConfirmation(env: Env, chatId: number, sourceId: string): Promise<void> {
@@ -403,7 +413,7 @@ export async function handleTelegramOperatorCallback(env: Env, callback: Telegra
       ].join("\n"),
     );
   }
-  if (action.kind === "source_list") await sendSourceList(env, chatId, action.page);
+  if (action.kind === "source_list") await sendSourceList(env, chatId, action.page, callback.message?.message_id);
   if (action.kind === "source_confirm") await sendSourceRunConfirmation(env, chatId, action.sourceId);
   if (action.kind === "source_run") await runActiveSource(env, chatId, action.sourceId, actorId);
   if (action.kind === "organizer_list") await sendOrganizerList(env, chatId);

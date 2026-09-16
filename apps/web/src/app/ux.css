@@ -1,4 +1,21 @@
 /* Shared accessibility and the single-catalogue discovery layout. */
+.mw-program-card__cover:has(.mw-program-card__cover-placeholder) {
+  aspect-ratio: auto;
+  min-height: 140px;
+}
+.mw-program-card__cover-placeholder {
+  min-height: 140px;
+  background: #eaf3ef;
+}
+.mw-program-card__cover-label {
+  color: #28524a;
+  text-shadow: none;
+  font-weight: 600;
+}
+.mw-program-card__title {
+  min-height: 0;
+  margin-bottom: 16px;
+}
 :focus-visible {
   outline: 3px solid #115e59;
   outline-offset: 4px;

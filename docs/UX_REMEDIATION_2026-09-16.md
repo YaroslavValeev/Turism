@@ -33,6 +33,23 @@ git diff --check
 
 `test:web:ux` is part of `test:unit`, so the existing committed-SHA quality workflow runs the regression tests.
 
+## Verified results
+
+Local verification on 2026-09-16 used an isolated API, PostgreSQL container and production-mode web preview on `localhost`. Production credentials were not used.
+
+- `pnpm --filter web exec tsc --noEmit` passed.
+- `pnpm run test:web:ux` passed: 12 tests.
+- `pnpm --filter api exec vitest run --maxWorkers=2` passed: 54 files, 290 tests.
+- `pnpm --filter web build` passed and generated 16 app routes.
+- `git diff --check` passed.
+- Docker verification image `turism-ux-web:verification` built successfully from a clean source-only context with the existing `apps/web/Dockerfile`.
+- Local API smoke with seeded fixtures passed: catalogue hides full and expired trips, booking returns a persisted ID, duplicate booking returns the same ID, consent validation rejects missing consent and full/expired trips cannot receive inquiries.
+- Browser smoke in the production preview confirmed a filtered kite/date URL renders one trip, preserves dates in card links and `returnTo`, returns from PDP to the same result URL, removes the duplicated discipline label, avoids horizontal overflow at 320 px and links blog/collection empty states back to the catalogue.
+- Organizer intake smoke confirmed the kite option, the corrected program-description label and collapsed contract details.
+- Explore topic smoke confirmed `Смотреть выезды` links to the catalogue with attribution instead of the organizer publication form.
+
+The browser screenshot for the mobile catalogue check is saved at `C:/Users/X230/.codex/visualizations/2026/09/15/01a0a6a4-83ab-7380-8704-dff15acb3a48/mywavetour-mobile-catalog-2026-09-16.png`.
+
 For a local production-mode preview, set `NEXT_PUBLIC_API_URL` and `API_INTERNAL_BASE_URL` in `apps/web/.env.local` to the isolated local API before building. The browser API origin must be present at build time for CSP. Never copy production credentials into the preview.
 
 For Docker, use the existing `apps/web/Dockerfile` with a clean source-only build context that excludes `.env*`, `node_modules` and `.next`. Run the existing image on an unused local port, without production tokens. Do not start the production Compose stack alongside services already using ports 80/443.

@@ -32,7 +32,7 @@ import {
   type CatalogProgram,
 } from "../lib/catalog";
 import { ruPluralNoun } from "../lib/ruPlural";
-import { isCatalogProgram } from "../lib/catalog";
+import { isCatalogProgram, validDate } from "../lib/catalog";
 import { trackProductEvent } from "../lib/analytics/client";
 
 const LEVELS: Record<string, string> = {
@@ -141,11 +141,18 @@ function HomePageInner() {
   }
   function submit(event: FormEvent) {
     event.preventDefault();
-    if (rangeError) {
+    const values = new FormData(event.currentTarget as HTMLFormElement);
+    const next = {
+      ...draft,
+      from: validDate(String(values.get("from") || "")),
+      to: validDate(String(values.get("to") || "")),
+    };
+    if (dateRangeError(next)) {
+      setDraft(next);
       document.getElementById("filter-to")?.focus();
       return;
     }
-    apply(draft);
+    apply(next);
     if (filterPanel.current) filterPanel.current.open = false;
     resultHeading.current?.focus();
   }
@@ -349,6 +356,7 @@ function HomePageInner() {
                   <label htmlFor="filter-from">Дата старта: с</label>
                   <input
                     id="filter-from"
+                    name="from"
                     className="mw-input"
                     type="date"
                     value={draft.from}
@@ -361,6 +369,7 @@ function HomePageInner() {
                   <label htmlFor="filter-to">Дата старта: по</label>
                   <input
                     id="filter-to"
+                    name="to"
                     className="mw-input"
                     type="date"
                     value={draft.to}

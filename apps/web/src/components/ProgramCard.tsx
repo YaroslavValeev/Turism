@@ -17,20 +17,38 @@ export type { ProgramCardProgram } from "../lib/programCardModel";
 type Props = {
   program: ProgramCardProgram;
   levelLabel: string;
-  catalogHrefBuilder?: (next: { discipline?: string; region?: string }) => string;
+  catalogHrefBuilder?: (next: {
+    discipline?: string;
+    region?: string;
+  }) => string;
   /** Query string без `?` — для UTM / collection_id */
   programHrefQuery?: string;
 };
 
-export function ProgramCard({ program, levelLabel, catalogHrefBuilder, programHrefQuery }: Props) {
-  const pq = programHrefQuery && programHrefQuery.length > 0 ? `?${programHrefQuery.replace(/^\?/, "")}` : "";
+export function ProgramCard({
+  program,
+  levelLabel,
+  catalogHrefBuilder,
+  programHrefQuery,
+}: Props) {
+  const pq =
+    programHrefQuery && programHrefQuery.length > 0
+      ? `?${programHrefQuery.replace(/^\?/, "")}`
+      : "";
   const pdp = `/program/${program.id}${pq}`;
   const coverUrl = pickBestProgramCoverImageUrl(
     program.media,
     [program.title, program.audienceFit].filter(Boolean).join(" "),
   );
-  const coverFit = programCardCoverFit(coverUrl, program.title, program.organizer?.displayName);
-  const placeholderMod = programCardCoverPlaceholderClass(program.title, program.id);
+  const coverFit = programCardCoverFit(
+    coverUrl,
+    program.title,
+    program.organizer?.displayName,
+  );
+  const placeholderMod = programCardCoverPlaceholderClass(
+    program.title,
+    program.id,
+  );
   const discipline = getDisciplineDisplay(program.discipline);
 
   return (
@@ -42,7 +60,9 @@ export function ProgramCard({ program, levelLabel, catalogHrefBuilder, programHr
       >
         <div className="mw-program-card__cover">
           {coverUrl ? (
-            <div className={`mw-program-card__cover-frame mw-program-card__cover-frame--${coverFit}`}>
+            <div
+              className={`mw-program-card__cover-frame mw-program-card__cover-frame--${coverFit}`}
+            >
               {/* eslint-disable-next-line @next/next/no-img-element -- внешние URL из API, домены не фиксированы */}
               <img
                 src={normalizeProgramCardCoverSrc(coverUrl)}
@@ -55,8 +75,14 @@ export function ProgramCard({ program, levelLabel, catalogHrefBuilder, programHr
               />
             </div>
           ) : (
-            <div className={`mw-program-card__cover-placeholder ${placeholderMod}`} aria-hidden>
-              <span className="mw-program-card__cover-label">{discipline.original}</span>
+            <div
+              className={`mw-program-card__cover-placeholder ${placeholderMod}`}
+              aria-hidden
+            >
+              <span className="mw-program-card__cover-label">
+                {discipline.translation || discipline.original} · фото
+                уточняется
+              </span>
             </div>
           )}
         </div>

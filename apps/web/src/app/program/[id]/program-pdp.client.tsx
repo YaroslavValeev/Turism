@@ -635,11 +635,11 @@ export function ProgramPdpClient({
       <div className="mw-container mw-pdp-layout">
         <div className="mw-pdp-main">
           <Link
-            href="/"
+            href={returnTo}
             className="mw-page-back"
             style={{ color: "var(--mw-accent)" }}
           >
-            ← К каталогу
+            ← К результатам поиска
           </Link>
 
           <header className="mw-program-hero">
@@ -688,10 +688,7 @@ export function ProgramPdpClient({
                 fontSize: "1.02rem",
               }}
             >
-              {discipline.translation
-                ? `${discipline.translation || discipline.original} / ${discipline.translation}`
-                : discipline.original}{" "}
-              · {program.region}
+              {discipline.translation || discipline.original} · {program.region}
               {program.exactLocation && ` · ${program.exactLocation}`}
             </p>
             <div

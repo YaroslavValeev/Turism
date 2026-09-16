@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { exploreNavLinkFromRaw } from "@mywave/explore-links";
 import { fetchPublicCollectionList } from "../../lib/collectionsApi";
 import { getPublicSiteUrl } from "../../lib/siteUrl";
 
@@ -21,6 +22,22 @@ function formatRuDate(iso: string | null) {
   }
 }
 
+function collectionCatalogHref(c: { discipline: string | null; region: string | null; season: string | null }): string {
+  const p = new URLSearchParams();
+  const discipline = exploreNavLinkFromRaw("discipline", c.discipline);
+  const region = exploreNavLinkFromRaw("region", c.region);
+  const season = exploreNavLinkFromRaw("season", c.season);
+  if (discipline) p.set("discipline", discipline.label);
+  if (region) p.set("region", region.label);
+  if (season) p.set("season", season.slug);
+  const q = p.toString();
+  return `/${q ? `?${q}` : ""}#programs`;
+}
+
+function collectionMeta(c: { discipline: string | null; region: string | null; season: string | null; tags: string[] }): string[] {
+  return [c.discipline, c.region, c.season, ...c.tags.slice(0, 2)].filter((v): v is string => Boolean(v?.trim()));
+}
+
 export default async function CollectionsIndexPage() {
   const siteUrl = getPublicSiteUrl();
   let list: Awaited<ReturnType<typeof fetchPublicCollectionList>> | null = null;
@@ -33,33 +50,116 @@ export default async function CollectionsIndexPage() {
   const items = list?.items ?? [];
 
   return (
-    <div className="mw-container">
-      <h1 className="mw-h1" style={{ marginTop: 0, fontSize: "clamp(1.75rem, 4vw, 2.25rem)" }}>
-        Подборки
-      </h1>
-      <p style={{ color: "var(--mw-muted)", maxWidth: "62ch", marginBottom: "2rem" }}>{COL_DESC}</p>
-      {err && <p role="alert" style={{ color: "crimson" }}>Не удалось загрузить подборки. Попробуйте обновить страницу позже.</p>}
-      {items.length === 0 && !err ? <p style={{ color: "var(--mw-muted)" }}>Пока нет опубликованных подборок.</p> : null}
-      {items.length === 0 && <p><Link href="/#programs" className="mw-btn mw-btn--primary">Найти выезд в каталоге</Link></p>}
-      <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: "1.25rem" }}>
+    <div className="mw-container" style={{ paddingBottom: "3rem" }}>
+      <nav aria-label="Хлебные крошки" style={{ fontSize: "0.95rem", color: "var(--mw-muted)", marginBottom: "1.25rem" }}>
+        <Link href="/" style={{ color: "var(--mw-accent)" }}>
+          Главная
+        </Link>
+        <span style={{ margin: "0 0.4rem", color: "var(--mw-muted2)" }}>/</span>
+        <span style={{ color: "var(--mw-text)" }}>Подборки</span>
+      </nav>
+      <section
+        style={{
+          padding: "clamp(1.25rem, 4vw, 2rem)",
+          borderRadius: "var(--mw-radius-lg)",
+          background: "linear-gradient(135deg, rgba(39, 196, 168, 0.12), rgba(255, 255, 255, 0.92))",
+          border: "1px solid var(--mw-border)",
+          boxShadow: "var(--mw-shadow)",
+          marginBottom: "2rem",
+        }}
+      >
+        <p style={{ margin: "0 0 0.55rem", color: "var(--mw-muted2)", fontWeight: 700 }}>
+          Маршруты выбора
+        </p>
+        <h1 className="mw-h1" style={{ marginTop: 0, marginBottom: "1rem", fontSize: "clamp(1.75rem, 4vw, 2.35rem)" }}>
+          Подборки MyWaveTour
+        </h1>
+        <p style={{ color: "var(--mw-muted)", maxWidth: "72ch", lineHeight: 1.65, margin: "0 0 1.25rem" }}>
+          {COL_DESC} Каждая подборка ведёт к связанным программам, статьям и организаторам, а кнопка каталога сразу применяет подходящие фильтры.
+        </p>
+        <p style={{ margin: 0, display: "flex", flexWrap: "wrap", gap: "0.75rem" }}>
+          <Link href="/#programs" className="mw-btn mw-btn--primary">
+            Смотреть все выезды
+          </Link>
+          <Link href="/explore" className="mw-btn mw-btn--ghost">
+            Темы и направления
+          </Link>
+        </p>
+      </section>
+      {err && (
+        <p role="alert" style={{ color: "crimson" }}>
+          Не удалось загрузить подборки. Попробуйте обновить страницу позже.
+        </p>
+      )}
+      {items.length === 0 && !err ? (
+        <div className="mw-empty-state">
+          <h2>Подборки скоро появятся</h2>
+          <p>Пока нет опубликованных подборок. Откройте каталог, чтобы выбрать актуальную программу по дисциплине, региону или дате.</p>
+          <Link href="/#programs" className="mw-btn mw-btn--primary">
+            Найти выезд в каталоге
+          </Link>
+        </div>
+      ) : null}
+      <ul
+        style={{
+          listStyle: "none",
+          padding: 0,
+          margin: 0,
+          display: "grid",
+          gap: "1.25rem",
+          gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 320px), 1fr))",
+        }}
+      >
         {items.map((c) => (
           <li key={c.id}>
             <article
               style={{
+                height: "100%",
                 padding: "1.25rem 1.35rem",
                 borderRadius: "var(--mw-radius)",
                 background: "var(--mw-surface)",
                 border: "1px solid var(--mw-border)",
                 boxShadow: "var(--mw-shadow)",
+                display: "grid",
+                gap: "0.9rem",
               }}
             >
-              <p style={{ fontSize: "0.9rem", color: "var(--mw-muted2)", margin: 0 }}>{formatRuDate(c.publishedAt)}</p>
-              <h2 style={{ margin: "0.35rem 0 0.5rem", fontSize: "1.2rem" }}>
-                <Link href={`/collections/${encodeURIComponent(c.slug)}`} style={{ color: "inherit", textDecoration: "none" }}>
-                  {c.resolved.seoTitle}
+              <div>
+                <p style={{ fontSize: "0.9rem", color: "var(--mw-muted2)", margin: 0 }}>{formatRuDate(c.publishedAt)}</p>
+                <h2 style={{ margin: "0.35rem 0 0.5rem", fontSize: "1.2rem", lineHeight: 1.3 }}>
+                  <Link href={`/collections/${encodeURIComponent(c.slug)}`} style={{ color: "inherit", textDecoration: "none" }}>
+                    {c.resolved.seoTitle}
+                  </Link>
+                </h2>
+                {c.description ? <p style={{ margin: 0, color: "var(--mw-muted)", lineHeight: 1.55 }}>{c.description}</p> : null}
+              </div>
+              {collectionMeta(c).length > 0 ? (
+                <p style={{ margin: 0, display: "flex", flexWrap: "wrap", gap: "0.45rem" }}>
+                  {collectionMeta(c).map((label) => (
+                    <span
+                      key={label}
+                      style={{
+                        fontSize: "0.8rem",
+                        padding: "4px 9px",
+                        borderRadius: 999,
+                        background: "var(--mw-accent-soft)",
+                        color: "var(--mw-accent-hover)",
+                        fontWeight: 700,
+                      }}
+                    >
+                      {label}
+                    </span>
+                  ))}
+                </p>
+              ) : null}
+              <p style={{ margin: 0, display: "flex", flexWrap: "wrap", gap: "0.55rem", alignSelf: "end" }}>
+                <Link href={`/collections/${encodeURIComponent(c.slug)}`} className="mw-btn mw-btn--primary" style={{ fontSize: "0.92rem" }}>
+                  Открыть подборку
                 </Link>
-              </h2>
-              {c.description ? <p style={{ margin: 0, color: "var(--mw-muted)" }}>{c.description}</p> : null}
+                <Link href={collectionCatalogHref(c)} className="mw-btn mw-btn--ghost" style={{ fontSize: "0.92rem" }}>
+                  В каталог
+                </Link>
+              </p>
             </article>
           </li>
         ))}

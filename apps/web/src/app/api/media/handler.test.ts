@@ -57,5 +57,7 @@ test("handler replaces upstream HTML with the generated image placeholder", asyn
   assert.equal(response.headers.get("content-type"), "image/svg+xml; charset=utf-8");
   assert.equal(response.headers.get("x-content-type-options"), "nosniff");
   assert.equal(response.headers.get("content-security-policy"), "default-src 'none'; sandbox");
-  assert.doesNotMatch(await response.text(), /active content/);
+  const body = await response.text();
+  assert.doesNotMatch(body, /active content/);
+  assert.doesNotMatch(body, /Источник:/);
 });

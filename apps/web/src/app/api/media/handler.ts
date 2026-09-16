@@ -4,41 +4,32 @@ type MediaRequest = {
   nextUrl: URL;
 };
 
-function escapeXml(value: string): string {
-  return value.replace(/[&<>"']/g, (character) => {
-    const entities: Record<string, string> = {
-      "&": "&amp;",
-      "<": "&lt;",
-      ">": "&gt;",
-      '"': "&quot;",
-      "'": "&apos;",
-    };
-    return entities[character];
-  });
-}
-
-function buildPlaceholderSvg(url: string): string {
-  const host = (() => {
-    try {
-      return new URL(url).hostname.replace(/^www\./, "");
-    } catch {
-      return "media";
-    }
-  })();
-
+function buildPlaceholderSvg(): string {
   return `
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="900" viewBox="0 0 1200 900" fill="none">
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="675" viewBox="0 0 1200 675" fill="none" role="img" aria-label="Фото программы уточняется">
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="900" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#E5F7F5"/>
-      <stop offset="1" stop-color="#F6F2E8"/>
+    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="675" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#EEF8F5"/>
+      <stop offset="1" stop-color="#DCECE6"/>
+    </linearGradient>
+    <linearGradient id="wave" x1="160" y1="0" x2="980" y2="0" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#8FD1C4"/>
+      <stop offset="1" stop-color="#5FB5A5"/>
     </linearGradient>
   </defs>
-  <rect width="1200" height="900" rx="48" fill="url(#bg)"/>
-  <rect x="72" y="72" width="1056" height="756" rx="36" fill="#F8FBFA" stroke="#BFE8E3" stroke-width="4"/>
-  <text x="108" y="184" fill="#147A78" font-family="Arial, sans-serif" font-size="36" font-weight="700">MyWaveTour</text>
-  <text x="108" y="248" fill="#22313F" font-family="Arial, sans-serif" font-size="60" font-weight="700">Фото программы обновляется</text>
-  <text x="108" y="326" fill="#5E6B73" font-family="Arial, sans-serif" font-size="32">Источник: ${escapeXml(host)}</text>
+  <rect width="1200" height="675" fill="url(#bg)"/>
+  <rect x="36" y="36" width="1128" height="603" rx="36" fill="rgba(255,255,255,0.35)" stroke="rgba(53,120,108,0.22)" stroke-width="2"/>
+  <g fill="none" stroke="url(#wave)" stroke-width="22" stroke-linecap="round" stroke-linejoin="round" opacity="0.96">
+    <path d="M180 430c90-38 150-92 238-148 90-56 155-68 240-16 86 52 156 128 282 138"/>
+    <path d="M190 495c112 18 170 0 248-40 76-40 124-86 210-80 90 6 156 82 282 102"/>
+  </g>
+  <g transform="translate(502 214)">
+    <rect x="-66" y="-66" width="132" height="132" rx="28" fill="rgba(255,255,255,0.7)" stroke="rgba(53,120,108,0.22)" stroke-width="3"/>
+    <path d="M-30 22l18-22 18 18 14-16 24 30" stroke="#4F9F91" stroke-width="9" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="-4" cy="-20" r="10" fill="#6AB5A7"/>
+  </g>
+  <text x="80" y="560" fill="#2C7F70" font-family="Arial, sans-serif" font-size="48" font-weight="700">MyWaveTour</text>
+  <text x="80" y="612" fill="#3F6D66" font-family="Arial, sans-serif" font-size="34" font-weight="500">Фото программы уточняется</text>
 </svg>`.trim();
 }
 
@@ -47,8 +38,8 @@ const SAFE_RESPONSE_HEADERS = {
   "x-content-type-options": "nosniff",
 };
 
-function placeholderResponse(url: string): Response {
-  return new Response(buildPlaceholderSvg(url), {
+function placeholderResponse(): Response {
+  return new Response(buildPlaceholderSvg(), {
     status: 200,
     headers: {
       ...SAFE_RESPONSE_HEADERS,
@@ -80,6 +71,6 @@ export async function handleMediaRequest(
       if (error.code === "INVALID_URL") return new Response("Invalid url", { status: 400 });
       if (error.code === "FORBIDDEN_TARGET") return new Response("Forbidden", { status: 403 });
     }
-    return placeholderResponse(remoteUrl);
+    return placeholderResponse();
   }
 }

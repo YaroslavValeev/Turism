@@ -22,9 +22,14 @@ function shouldLoadDirectlyInBrowser(url: string): boolean {
   try {
     const parsed = new URL(url);
     const host = parsed.hostname.toLowerCase();
-    // Подписанные CDN Instagram/Facebook часто режут server-to-server fetch из `/api/media`,
+    // Подписанные CDN Instagram/Facebook/Telegram часто режут server-to-server fetch из `/api/media`,
     // но в обычном <img> у пользователя открываются нормально.
-    return host.includes("cdninstagram.com") || host.includes("fbcdn.net");
+    return (
+      host.includes("cdninstagram.com") ||
+      host.includes("fbcdn.net") ||
+      host.includes("telesco.pe") ||
+      host.includes("telegram.org")
+    );
   } catch {
     return false;
   }

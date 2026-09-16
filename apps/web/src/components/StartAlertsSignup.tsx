@@ -58,7 +58,7 @@ export function StartAlertsSignup({ discipline, region }: Props) {
         setTelegramUsername("");
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Не удалось оформить подписку.");
+      setError("Не удалось оформить подписку. Проверьте контакт и повторите попытку позже.");
     } finally {
       setSubmitting(false);
     }
@@ -132,7 +132,7 @@ export function StartAlertsSignup({ discipline, region }: Props) {
       {success && <p id="alerts-signup-feedback" className="mw-alerts-signup__success" role="status" aria-live="polite">{success}</p>}
       {(tgOptInUrl || tgGroupInviteUrl) && (
         <p className="mw-alerts-signup__hint">
-          Telegram подключается через opt-in:{" "}
+          Чтобы получать обновления в Telegram, подтвердите подписку:{" "}
           {tgOptInUrl && (
             <>
               <a href={tgOptInUrl} target="_blank" rel="noreferrer">

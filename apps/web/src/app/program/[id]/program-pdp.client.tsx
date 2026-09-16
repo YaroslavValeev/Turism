@@ -1,18 +1,41 @@
 "use client";
 
-import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+  type FormEvent,
+  type ReactNode,
+} from "react";
 import Link from "next/link";
 import { exploreNavLinkFromRaw } from "@mywave/explore-links";
 import { getProgramLevelLabel, getSeverityLabel } from "@mywave/shared-types";
-import { getProgramFieldOverrides, mergeProgramField } from "../../../content/programPageOverrides";
+import {
+  getProgramFieldOverrides,
+  mergeProgramField,
+} from "../../../content/programPageOverrides";
 import { getDisciplineDisplay } from "../../../lib/disciplineLabels";
 import { buildInternalContentQuery } from "../../../lib/internalContentUtm";
 import { validExploreMainLinks } from "../../../lib/exploreNavWeb";
-import { orderProgramMediaForDisplay, presentProgramMediaUrl } from "../../../lib/programCardCover";
-import { extractLabeledFieldValue, resolveProgramField } from "../../../lib/recommendedProgramFields";
+import {
+  orderProgramMediaForDisplay,
+  presentProgramMediaUrl,
+} from "../../../lib/programCardCover";
+import {
+  extractLabeledFieldValue,
+  resolveProgramField,
+} from "../../../lib/recommendedProgramFields";
 import { trackProductEvent } from "../../../lib/analytics/client";
 
 import { getPublicApiBase } from "../../../lib/publicApiBase";
+import { contactError, bookingFeedback } from "../../../lib/bookingFeedback";
+import {
+  isFestival,
+  localDate,
+  participantLevel,
+  programFormatLabel,
+  safeCatalogReturn,
+} from "../../../lib/catalog";
 
 export type Program = {
   id: string;
@@ -48,7 +71,12 @@ export type Program = {
   ingestedAt?: string | null;
   updatedFromSourceAt?: string | null;
   organizer?: { id: string; displayName: string; verificationStatus: string };
-  media: { id: string; url: string; caption: string | null; mediaType: string }[];
+  media: {
+    id: string;
+    url: string;
+    caption: string | null;
+    mediaType: string;
+  }[];
 };
 
 function sourceTypeLabelRuPdp(t: string | null | undefined): string {
@@ -56,7 +84,7 @@ function sourceTypeLabelRuPdp(t: string | null | undefined): string {
   if (k === "instagram") return "Instagram";
   if (k === "telegram") return "Telegram";
   if (k === "rss") return "RSS";
-  if (k === "site" || k === "website") return "сайт организатора";
+  if (k === "site" || k === "website") return "сайт-источник";
   return t ? t : "источник";
 }
 
@@ -67,7 +95,10 @@ export type PublicReview = {
   createdAt: string;
 };
 
-function buildCatalogHref(next: { discipline?: string; region?: string }): string {
+function buildCatalogHref(next: {
+  discipline?: string;
+  region?: string;
+}): string {
   const params = new URLSearchParams();
   if (next.discipline?.trim()) params.set("discipline", next.discipline.trim());
   if (next.region?.trim()) params.set("region", next.region.trim());
@@ -75,7 +106,13 @@ function buildCatalogHref(next: { discipline?: string; region?: string }): strin
   return qs ? `/?${qs}#programs` : "/#programs";
 }
 
-function SectionBlock({ title, children }: { title: string; children: ReactNode }) {
+function SectionBlock({
+  title,
+  children,
+}: {
+  title: string;
+  children: ReactNode;
+}) {
   return (
     <section className="mw-content-section">
       <h2 className="mw-h2">{title}</h2>
@@ -90,8 +127,14 @@ function sanitizeScrapedProgramText(text: string): string {
   const cleaned = String(text ?? "")
     .replace(/&nbsp;/gi, " ")
     .replace(/\(\s*min-width:[^>]+type=["']text\/css["']>\s*/gi, " ")
-    .replace(/(?:https?:)?\/\/(?:static|thb)\.tildacdn\.com\/[^\s"'`<>]+/gi, " ")
-    .replace(/\b(?:src|href|role|type|style|class|data-[\w-]+)=["'][^"']*["']/gi, " ")
+    .replace(
+      /(?:https?:)?\/\/(?:static|thb)\.tildacdn\.com\/[^\s"'`<>]+/gi,
+      " ",
+    )
+    .replace(
+      /\b(?:src|href|role|type|style|class|data-[\w-]+)=["'][^"']*["']/gi,
+      " ",
+    )
     .replace(/<\/?(?:style|script|link|img|source)[^>]*>/gi, " ")
     .replace(/<\/?[^>]+>/g, " ");
 
@@ -131,7 +174,8 @@ function renderTextWithLinks(text: string): ReactNode[] {
         nodes.push(<span key={`txt-${lineIndex}-${partIndex}`}>{part}</span>);
       }
     });
-    if (lineIndex < lines.length - 1) nodes.push(<br key={`br-${lineIndex}`} />);
+    if (lineIndex < lines.length - 1)
+      nodes.push(<br key={`br-${lineIndex}`} />);
   });
 
   return nodes;
@@ -139,7 +183,14 @@ function renderTextWithLinks(text: string): ReactNode[] {
 
 function Prose({ text }: { text: string }) {
   return (
-    <p style={{ whiteSpace: "pre-wrap", margin: 0, color: "var(--mw-muted)", lineHeight: 1.65 }}>
+    <p
+      style={{
+        whiteSpace: "pre-wrap",
+        margin: 0,
+        color: "var(--mw-muted)",
+        lineHeight: 1.65,
+      }}
+    >
       {renderTextWithLinks(text)}
     </p>
   );
@@ -155,7 +206,15 @@ function ProgramInfoField({
   return (
     <div>
       <h3 className="mw-h3">{label}</h3>
-      <p className={value.mode === "recommended" ? "recommended-field" : ""} style={{ whiteSpace: "pre-wrap", margin: 0, color: "var(--mw-muted)", lineHeight: 1.65 }}>
+      <p
+        className={value.mode === "recommended" ? "recommended-field" : ""}
+        style={{
+          whiteSpace: "pre-wrap",
+          margin: 0,
+          color: "var(--mw-muted)",
+          lineHeight: 1.65,
+        }}
+      >
         {renderTextWithLinks(value.text)}
       </p>
     </div>
@@ -172,7 +231,14 @@ function linesToBullets(text: string): string[] {
 function BulletList({ items }: { items: string[] }) {
   if (items.length === 0) return null;
   return (
-    <ul style={{ margin: "8px 0 0", paddingLeft: "1.2rem", color: "var(--mw-muted)", lineHeight: 1.55 }}>
+    <ul
+      style={{
+        margin: "8px 0 0",
+        paddingLeft: "1.2rem",
+        color: "var(--mw-muted)",
+        lineHeight: 1.55,
+      }}
+    >
       {items.map((line) => (
         <li key={line}>{line}</li>
       ))}
@@ -180,12 +246,14 @@ function BulletList({ items }: { items: string[] }) {
   );
 }
 
-function organizerVerificationLabelRu(status: string | null | undefined): string {
+function organizerVerificationLabelRu(
+  status: string | null | undefined,
+): string {
   switch (status) {
     case "trusted_by_platform":
-      return "Профиль: данные проверены платформой (стадия trusted)";
+      return "Профиль: данные проверены платформой";
     case "verified":
-      return "Профиль: данные проверены платформой (стадия verified)";
+      return "Профиль: данные проверены платформой";
     case "checked":
       return "Профиль: данные проходят проверку";
     case "listed":
@@ -195,7 +263,7 @@ function organizerVerificationLabelRu(status: string | null | undefined): string
     case "rejected":
       return "Профиль: заявка отклонена";
     default:
-      return status ? `Статус публикации: ${status}` : "Статус публикации: не указан";
+      return "Статус проверки уточняется";
   }
 }
 
@@ -213,7 +281,12 @@ type PdpProps = {
   initialReviews: PublicReview[];
 };
 
-export function ProgramPdpClient({ id, validHubKeys, initialProgram, initialReviews }: PdpProps) {
+export function ProgramPdpClient({
+  id,
+  validHubKeys,
+  initialProgram,
+  initialReviews,
+}: PdpProps) {
   const [program, setProgram] = useState<Program | null>(initialProgram);
   const [reviews, setReviews] = useState<PublicReview[]>(initialReviews);
   const [loading, setLoading] = useState(false);
@@ -225,6 +298,11 @@ export function ProgramPdpClient({ id, validHubKeys, initialProgram, initialRevi
   const [submitSuccess, setSubmitSuccess] = useState("");
   const [consentTransfer, setConsentTransfer] = useState(false);
   const [consentPrivacy, setConsentPrivacy] = useState(false);
+  const [returnTo, setReturnTo] = useState("/#programs");
+  useEffect(() => {
+    if (submitError || submitSuccess)
+      document.getElementById("program-request-feedback")?.focus();
+  }, [submitError, submitSuccess]);
   const [entryTracking, setEntryTracking] = useState<{
     entryType?: string;
     entryId?: string;
@@ -237,6 +315,7 @@ export function ProgramPdpClient({ id, validHubKeys, initialProgram, initialRevi
   useEffect(() => {
     if (typeof window === "undefined") return;
     const q = new URLSearchParams(window.location.search);
+    setReturnTo(safeCatalogReturn(q.get("returnTo")));
     setEntryTracking({
       entryType: q.get("entry_type") ?? undefined,
       entryId: q.get("entry_id") ?? undefined,
@@ -274,7 +353,9 @@ export function ProgramPdpClient({ id, validHubKeys, initialProgram, initialRevi
         setLoadError("");
         const [progRes, revRes] = await Promise.all([
           fetch(`${getPublicApiBase()}/programs/${id}`),
-          fetch(`${getPublicApiBase()}/reviews/public?programId=${encodeURIComponent(id)}`),
+          fetch(
+            `${getPublicApiBase()}/reviews/public?programId=${encodeURIComponent(id)}`,
+          ),
         ]);
         if (cancelled) return;
         if (progRes.ok) {
@@ -309,7 +390,9 @@ export function ProgramPdpClient({ id, validHubKeys, initialProgram, initialRevi
         if (!cancelled) {
           setProgram(null);
           setReviews([]);
-          setLoadError("Сервис программ временно недоступен. Обновите страницу через несколько секунд.");
+          setLoadError(
+            "Сервис программ временно недоступен. Обновите страницу через несколько секунд.",
+          );
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -320,7 +403,10 @@ export function ProgramPdpClient({ id, validHubKeys, initialProgram, initialRevi
     };
   }, [id, initialProgram]);
 
-  const overrides = useMemo(() => (program ? getProgramFieldOverrides(program.title) : {}), [program]);
+  const overrides = useMemo(
+    () => (program ? getProgramFieldOverrides(program.title) : {}),
+    [program],
+  );
 
   const reviewStats = useMemo(() => {
     if (reviews.length === 0) return { avg: null as number | null, count: 0 };
@@ -346,20 +432,40 @@ export function ProgramPdpClient({ id, validHubKeys, initialProgram, initialRevi
   if (!program) {
     return (
       <main className="mw-container" style={{ padding: "3rem 0" }}>
-        <p role={loadError ? "alert" : undefined}>{loadError || "Программа не найдена."}</p>
-        <Link href="/" className="mw-page-back">
-          ← На главную
+        <p role={loadError ? "alert" : undefined}>
+          {loadError || "Программа не найдена."}
+        </p>
+        <Link href={returnTo} className="mw-page-back">
+          ← К результатам поиска
         </Link>
       </main>
     );
   }
 
-  const audienceFit = mergeProgramField(program.audienceFit, overrides.audienceFit);
-  const itinerary = mergeProgramField(program.itineraryDayByDay, overrides.itineraryDayByDay);
-  const trustReason = mergeProgramField(program.trustReason, overrides.trustReason);
-  const afterBooking = mergeProgramField(program.whatHappensAfterBooking, overrides.whatHappensAfterBooking);
-  const gear = mergeProgramField(program.gearRequirements, overrides.gearRequirements);
-  const medical = mergeProgramField(program.medicalLimitations, overrides.medicalLimitations);
+  const audienceFit = mergeProgramField(
+    program.audienceFit,
+    overrides.audienceFit,
+  );
+  const itinerary = mergeProgramField(
+    program.itineraryDayByDay,
+    overrides.itineraryDayByDay,
+  );
+  const trustReason = mergeProgramField(
+    program.trustReason,
+    overrides.trustReason,
+  );
+  const afterBooking = mergeProgramField(
+    program.whatHappensAfterBooking,
+    overrides.whatHappensAfterBooking,
+  );
+  const gear = mergeProgramField(
+    program.gearRequirements,
+    overrides.gearRequirements,
+  );
+  const medical = mergeProgramField(
+    program.medicalLimitations,
+    overrides.medicalLimitations,
+  );
   const sourceTextScope = [
     program.inclusions,
     program.exclusions,
@@ -367,13 +473,16 @@ export function ProgramPdpClient({ id, validHubKeys, initialProgram, initialRevi
     audienceFit,
     trustReason,
   ];
-  const isKidsProgram = /дет|kids|подрост/i.test(
-    `${program.title} ${program.formatType ?? ""} ${program.audienceFit ?? ""}`
-  );
+  const isKidsProgram =
+    !isFestival(program) &&
+    /детский|детская|детские|kids|подростковый/i.test(
+      `${program.title} ${program.formatType ?? ""}`,
+    );
+  const ended = program.endDate.slice(0, 10) < localDate();
   const isHighRiskProgram =
     /high|critical|extreme|высок/i.test(String(program.riskLevel ?? "")) ||
     /freeride|mountain|альп|фрирайд|горы/i.test(
-      `${program.discipline ?? ""} ${program.formatType ?? ""}`
+      `${program.discipline ?? ""} ${program.formatType ?? ""}`,
     );
   const equipmentField = resolveProgramField({
     field: "equipment",
@@ -387,7 +496,8 @@ export function ProgramPdpClient({ id, validHubKeys, initialProgram, initialRevi
     field: "accommodation",
     organizerValue:
       extractLabeledFieldValue("accommodation", sourceTextScope) ??
-      (program.accommodationDetails ?? null),
+      program.accommodationDetails ??
+      null,
     discipline: program.discipline,
     programFormat: program.formatType,
     isKids: isKidsProgram,
@@ -397,23 +507,41 @@ export function ProgramPdpClient({ id, validHubKeys, initialProgram, initialRevi
     field: "transfer",
     organizerValue:
       extractLabeledFieldValue("transfer", sourceTextScope) ??
-      (program.transferDetails ?? null),
+      program.transferDetails ??
+      null,
     discipline: program.discipline,
     programFormat: program.formatType,
     isKids: isKidsProgram,
     isHighRisk: isHighRiskProgram,
   });
   const discipline = getDisciplineDisplay(program.discipline);
-  const disciplineCatalogHref = buildCatalogHref({ discipline: discipline.original });
+  const disciplineCatalogHref = buildCatalogHref({
+    discipline: discipline.original,
+  });
   const regionCatalogHref = buildCatalogHref({
-    region: program.exactLocation?.trim() ? `${program.region} · ${program.exactLocation}` : program.region,
+    region: program.exactLocation?.trim()
+      ? `${program.region} · ${program.exactLocation}`
+      : program.region,
   });
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!guestContact.trim()) return;
+    if (submitting) return;
+    const invalidContact = contactError(guestContact);
+    if (invalidContact || ended) {
+      setSubmitSuccess("");
+      setSubmitError(
+        ended
+          ? "Этот выезд уже завершился. Выберите актуальные даты в каталоге."
+          : invalidContact!,
+      );
+      document.getElementById("guestContact")?.focus();
+      return;
+    }
     if (!consentTransfer || !consentPrivacy) {
-      setSubmitError("Нужно согласие на передачу контакта организатору и с политикой конфиденциальности.");
+      setSubmitError(
+        "Нужно согласие на передачу контакта организатору и с политикой конфиденциальности.",
+      );
       return;
     }
     setSubmitting(true);
@@ -422,6 +550,7 @@ export function ProgramPdpClient({ id, validHubKeys, initialProgram, initialRevi
     try {
       const res = await fetch(`${getPublicApiBase()}/bookings`, {
         method: "POST",
+        signal: AbortSignal.timeout(20000),
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           programId: program.id,
@@ -438,29 +567,37 @@ export function ProgramPdpClient({ id, validHubKeys, initialProgram, initialRevi
           exploreSlug: entryTracking.exploreSlug,
         }),
       });
-      if (!res.ok) {
-        const body = await res.json().catch(() => null);
-        throw new Error(body?.error ?? "Не удалось отправить заявку");
-      }
-      void trackProductEvent("program_submitted", {
-        page_type: "program_detail",
-        program_id: program.id,
-        organizer_id: program.organizer?.id,
-        discipline: program.discipline,
-        region: program.region,
-        traffic_source: "program_page_booking",
-        entry_type: entryTracking.entryType ?? null,
-        entry_id: entryTracking.entryId ?? null,
-        utm_source: entryTracking.utmSource ?? null,
-        utm_medium: entryTracking.utmMedium ?? null,
-        explore_type: entryTracking.exploreType ?? null,
-        explore_slug: entryTracking.exploreSlug ?? null,
-      });
+      const body = await res.json().catch(() => null);
+      const feedback = bookingFeedback(res.status, body);
+      if (feedback.error) throw new Error(feedback.error);
+      setSubmitSuccess(feedback.success!);
+      if (res.status === 201)
+        void trackProductEvent("program_submitted", {
+          page_type: "program_detail",
+          program_id: program.id,
+          organizer_id: program.organizer?.id,
+          discipline: program.discipline,
+          region: program.region,
+          traffic_source: "program_page_booking",
+          entry_type: entryTracking.entryType ?? null,
+          entry_id: entryTracking.entryId ?? null,
+          utm_source: entryTracking.utmSource ?? null,
+          utm_medium: entryTracking.utmMedium ?? null,
+          explore_type: entryTracking.exploreType ?? null,
+          explore_slug: entryTracking.exploreSlug ?? null,
+        });
       setGuestContact("");
       setNotes("");
-      setSubmitSuccess("Организатор получил твою заявку. Обычно отвечают в течение 24 часов.");
     } catch (error) {
-      setSubmitError(error instanceof Error ? error.message : "Не удалось отправить заявку");
+      setSubmitError(
+        error instanceof TypeError ||
+          (error instanceof Error &&
+            ["TimeoutError", "AbortError"].includes(error.name))
+          ? "Связь прервалась. Данные остались в форме. Повторите попытку позже."
+          : error instanceof Error
+            ? error.message
+            : "Не удалось отправить заявку",
+      );
     } finally {
       setSubmitting(false);
     }
@@ -476,8 +613,12 @@ export function ProgramPdpClient({ id, validHubKeys, initialProgram, initialRevi
           ? "Лето"
           : "Осень";
 
-  const inclusionLines = program.inclusions ? linesToBullets(program.inclusions) : [];
-  const exclusionLines = program.exclusions ? linesToBullets(program.exclusions) : [];
+  const inclusionLines = program.inclusions
+    ? linesToBullets(program.inclusions)
+    : [];
+  const exclusionLines = program.exclusions
+    ? linesToBullets(program.exclusions)
+    : [];
 
   const programEntryQuery = buildInternalContentQuery("program", program.id);
   const exploreHubLinks = validExploreMainLinks(
@@ -493,33 +634,85 @@ export function ProgramPdpClient({ id, validHubKeys, initialProgram, initialRevi
     <main className="mw-pdp-root">
       <div className="mw-container mw-pdp-layout">
         <div className="mw-pdp-main">
-          <Link href="/" className="mw-page-back" style={{ color: "var(--mw-accent)" }}>
-            ← К каталогу
+          <Link
+            href={returnTo}
+            className="mw-page-back"
+            style={{ color: "var(--mw-accent)" }}
+          >
+            ← К результатам поиска
           </Link>
 
           <header className="mw-program-hero">
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 14 }}>
-              <Link href={disciplineCatalogHref} className="mw-badge mw-badge--pilot mw-discipline-badge">
-                <span>{discipline.original}</span>
-                {discipline.translation && <span className="mw-discipline-badge__translation">{discipline.translation}</span>}
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: 8,
+                marginBottom: 14,
+              }}
+            >
+              <Link
+                href={disciplineCatalogHref}
+                className="mw-badge mw-badge--pilot mw-discipline-badge"
+              >
+                <span>{discipline.translation || discipline.original}</span>
               </Link>
-              <Link href={regionCatalogHref} className="mw-badge mw-badge--pilot">
+              <Link
+                href={regionCatalogHref}
+                className="mw-badge mw-badge--pilot"
+              >
                 {program.region}
               </Link>
-              {program.levelRequired && <span className="mw-badge mw-badge--soon">Уровень: {getProgramLevelLabel(program.levelRequired)}</span>}
-              {program.formatType && <span className="mw-badge mw-badge--soon">Формат: {program.formatType}</span>}
+              {program.levelRequired && (
+                <span className="mw-badge mw-badge--soon">
+                  Уровень:{" "}
+                  {participantLevel(
+                    program,
+                    getProgramLevelLabel(program.levelRequired),
+                  )}
+                </span>
+              )}
+              {program.formatType && (
+                <span className="mw-badge mw-badge--soon">
+                  Формат: {programFormatLabel(program.formatType)}
+                </span>
+              )}
             </div>
             <h1 className="mw-h1" style={{ maxWidth: "none" }}>
               {program.title}
             </h1>
-            <p style={{ color: "var(--mw-muted)", margin: "0 0 12px", fontSize: "1.02rem" }}>
-              {discipline.translation ? `${discipline.original} / ${discipline.translation}` : discipline.original} · {program.region}
+            <p
+              style={{
+                color: "var(--mw-muted)",
+                margin: "0 0 12px",
+                fontSize: "1.02rem",
+              }}
+            >
+              {discipline.translation || discipline.original} · {program.region}
               {program.exactLocation && ` · ${program.exactLocation}`}
             </p>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "12px 20px", alignItems: "baseline", marginBottom: 12 }}>
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: "12px 20px",
+                alignItems: "baseline",
+                marginBottom: 12,
+              }}
+            >
+              {program.priceFromRub == null && (
+                <p className="mw-price">Стоимость уточняется</p>
+              )}
               {program.priceFromRub != null && (
-                <span style={{ fontSize: "1.5rem", fontWeight: 700, letterSpacing: "-0.02em" }}>
-                  от {program.priceFromRub.toLocaleString("ru-RU")} {program.currency ?? "₽"}
+                <span
+                  style={{
+                    fontSize: "1.5rem",
+                    fontWeight: 700,
+                    letterSpacing: "-0.02em",
+                  }}
+                >
+                  от {program.priceFromRub.toLocaleString("ru-RU")}{" "}
+                  {program.currency ?? "₽"}
                 </span>
               )}
               <span style={{ color: "var(--mw-muted)", fontSize: "0.95rem" }}>
@@ -527,59 +720,51 @@ export function ProgramPdpClient({ id, validHubKeys, initialProgram, initialRevi
               </span>
             </div>
             {reviewStats.count > 0 && reviewStats.avg != null && (
-              <p style={{ margin: "0 0 12px", color: "var(--mw-muted)", fontSize: "0.95rem" }}>
-                Отзывы участников: {reviewStats.avg.toFixed(1)} ★ ({reviewStats.count}{" "}
-                {reviewStats.count === 1 ? "отзыв" : reviewStats.count < 5 ? "отзыва" : "отзывов"})
+              <p
+                style={{
+                  margin: "0 0 12px",
+                  color: "var(--mw-muted)",
+                  fontSize: "0.95rem",
+                }}
+              >
+                Отзывы участников: {reviewStats.avg.toFixed(1)} ★ (
+                {reviewStats.count}{" "}
+                {reviewStats.count === 1
+                  ? "отзыв"
+                  : reviewStats.count < 5
+                    ? "отзыва"
+                    : "отзывов"}
+                )
               </p>
             )}
             {reviewStats.count === 0 && (
-            <p style={{ margin: "0 0 12px", color: "var(--mw-muted)", fontSize: "0.95rem" }}>Пока нет отзывов по этой программе в MyWaveTour.</p>
+              <p
+                style={{
+                  margin: "0 0 12px",
+                  color: "var(--mw-muted)",
+                  fontSize: "0.95rem",
+                }}
+              >
+                Пока нет отзывов по этой программе в MyWaveTour.
+              </p>
             )}
             <a href="#request" className="mw-btn mw-btn--primary">
-              Оставить заявку
+              {ended ? "Выезд завершён" : "Оставить заявку"}
             </a>
-            <p style={{ margin: "10px 0 0", fontSize: "0.9rem", color: "var(--mw-muted)", lineHeight: 1.45 }}>
-              Остались вопросы? Напиши - подскажем
-            </p>
-            <p style={{ margin: "8px 0 0" }}>
-              <a href="#request" className="mw-btn mw-btn--ghost">Задать вопрос в заявке</a>
-            </p>
-            <p className="mw-pdp-cta-note" style={{ margin: "12px 0 0", fontSize: "0.92rem", color: "var(--mw-muted)", maxWidth: "52ch", lineHeight: 1.55 }}>
-              После отправки заявки организатор подтверждает наличие мест и связывается с участником. Данные программы предоставлены организатором.
+            <p
+              className="mw-pdp-cta-note"
+              style={{
+                margin: "12px 0 0",
+                fontSize: "0.92rem",
+                color: "var(--mw-muted)",
+                maxWidth: "52ch",
+                lineHeight: 1.55,
+              }}
+            >
+              После регистрации заявки необходимо отдельно подтвердить наличие
+              мест, стоимость и условия участия.
             </p>
           </header>
-
-          <div className="mw-card mw-pdp-disclaimer" style={{ marginBottom: 24, borderColor: "rgba(13,148,136,0.25)" }}>
-            <p style={{ margin: 0, lineHeight: 1.55, fontSize: "0.95rem", color: "var(--mw-muted)" }}>
-              Ты выбираешь программу, организатор подтверждает детали и места. MyWaveTour помогает вам быстрее перейти к живому диалогу.
-            </p>
-          </div>
-
-          {exploreHubLinks.length > 0 && (
-            <div className="mw-card" style={{ marginBottom: 24, borderColor: "var(--mw-border)" }}>
-              <h2 className="mw-h2" style={{ fontSize: "1.1rem", marginTop: 0, marginBottom: 12 }}>
-                Смотреть ещё по теме
-              </h2>
-              <p style={{ margin: "0 0 0.75rem", fontSize: "0.92rem", color: "var(--mw-muted)" }}>
-                Если этот формат не подходит - вот похожие варианты:
-              </p>
-              <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 8 }}>
-                {exploreHubLinks.map((l) => (
-                  <li key={`${l.type}-${l.slug}`}>
-                    <Link
-                      href={`${l.path}?${programEntryQuery}`}
-                      style={{ color: "var(--mw-accent)", fontWeight: 600 }}
-                    >
-                      {l.type === "discipline" && "Дисциплина: "}
-                      {l.type === "region" && "Регион: "}
-                      {l.type === "season" && "Сезон: "}
-                      {l.label}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
 
           {program.autoPublished && (
             <div
@@ -590,24 +775,51 @@ export function ProgramPdpClient({ id, validHubKeys, initialProgram, initialRevi
                 background: "var(--mw-bg-warm)",
               }}
             >
-              <p style={{ margin: 0, lineHeight: 1.55, fontSize: "0.95rem", color: "var(--mw-muted)" }}>
-                <span className="mw-badge mw-badge--soon" style={{ marginRight: 8 }}>
-                  Автокаталог
+              <p
+                style={{
+                  margin: 0,
+                  lineHeight: 1.55,
+                  fontSize: "0.95rem",
+                  color: "var(--mw-muted)",
+                }}
+              >
+                <span
+                  className="mw-badge mw-badge--soon"
+                  style={{ marginRight: 8 }}
+                >
+                  Из открытого источника
                 </span>
-                Карточка собрана из открытого источника ({sourceTypeLabelRuPdp(program.sourceType)}).
-                {program.reviewStatus === "auto_pending" && " Сейчас на лёгкой проверке редактором."}
+                Карточка собрана из открытого источника (
+                {sourceTypeLabelRuPdp(program.sourceType)}).
+                {program.reviewStatus === "auto_pending" &&
+                  " Сейчас на лёгкой проверке редактором."}
                 {program.sourceUrl && (
                   <>
                     {" "}
-                    <a href={program.sourceUrl} rel="nofollow noopener noreferrer" target="_blank" style={{ color: "var(--mw-accent)" }}>
+                    <a
+                      href={program.sourceUrl}
+                      rel="nofollow noopener noreferrer"
+                      target="_blank"
+                      style={{ color: "var(--mw-accent)" }}
+                    >
                       Перейти к источнику
                     </a>
                     .
                   </>
                 )}
                 {program.updatedFromSourceAt && (
-                  <span style={{ display: "block", marginTop: 6, fontSize: "0.88rem", color: "var(--mw-muted2)" }}>
-                    Обновлено с источника: {new Date(program.updatedFromSourceAt).toLocaleString("ru-RU")}
+                  <span
+                    style={{
+                      display: "block",
+                      marginTop: 6,
+                      fontSize: "0.88rem",
+                      color: "var(--mw-muted2)",
+                    }}
+                  >
+                    Обновлено с источника:{" "}
+                    {new Date(program.updatedFromSourceAt).toLocaleString(
+                      "ru-RU",
+                    )}
                   </span>
                 )}
               </p>
@@ -623,16 +835,24 @@ export function ProgramPdpClient({ id, validHubKeys, initialProgram, initialRevi
               <div>
                 <strong>Дисциплина</strong>
                 <div>
-                  <Link href={disciplineCatalogHref} style={{ color: "var(--mw-accent)" }}>
-                    {discipline.original}
+                  <Link
+                    href={disciplineCatalogHref}
+                    style={{ color: "var(--mw-accent)" }}
+                  >
+                    {discipline.translation || discipline.original}
                   </Link>
                 </div>
               </div>
               <div>
                 <strong>Регион</strong>
                 <div>
-                  <Link href={regionCatalogHref} style={{ color: "var(--mw-accent)" }}>
-                    {program.exactLocation?.trim() ? `${program.region} · ${program.exactLocation}` : program.region}
+                  <Link
+                    href={regionCatalogHref}
+                    style={{ color: "var(--mw-accent)" }}
+                  >
+                    {program.exactLocation?.trim()
+                      ? `${program.region} · ${program.exactLocation}`
+                      : program.region}
                   </Link>
                 </div>
               </div>
@@ -642,12 +862,17 @@ export function ProgramPdpClient({ id, validHubKeys, initialProgram, initialRevi
               </div>
               <div>
                 <strong>Уровень</strong>
-                <div>{getProgramLevelLabel(program.levelRequired)}</div>
+                <div>
+                  {participantLevel(
+                    program,
+                    getProgramLevelLabel(program.levelRequired),
+                  )}
+                </div>
               </div>
               {program.formatType && (
                 <div>
                   <strong>Тип программы</strong>
-                  <div>{program.formatType}</div>
+                  <div>{programFormatLabel(program.formatType)}</div>
                 </div>
               )}
               {program.riskLevel && (
@@ -662,16 +887,33 @@ export function ProgramPdpClient({ id, validHubKeys, initialProgram, initialRevi
           <section className="mw-content-section">
             <h2 className="mw-h2">Отзывы участников</h2>
             {reviews.length === 0 ? (
-              <p style={{ color: "var(--mw-muted)", margin: 0, lineHeight: 1.55 }}>
-                Пока нет одобренных отзывов для этой программы. Отзывы публикуются после завершённой поездки и модерации.
+              <p
+                style={{
+                  color: "var(--mw-muted)",
+                  margin: 0,
+                  lineHeight: 1.55,
+                }}
+              >
+                Пока нет одобренных отзывов для этой программы. Отзывы
+                публикуются после завершённой поездки и модерации.
               </p>
             ) : (
               <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
                 {reviews.map((r) => (
-                  <li key={r.id} className="mw-card" style={{ marginBottom: 12 }}>
+                  <li
+                    key={r.id}
+                    className="mw-card"
+                    style={{ marginBottom: 12 }}
+                  >
                     <p style={{ margin: "0 0 6px", fontWeight: 650 }}>
                       {"★".repeat(r.rating)}
-                      <span style={{ fontWeight: 500, color: "var(--mw-muted)", marginLeft: 8 }}>
+                      <span
+                        style={{
+                          fontWeight: 500,
+                          color: "var(--mw-muted)",
+                          marginLeft: 8,
+                        }}
+                      >
                         {new Date(r.createdAt).toLocaleDateString("ru-RU")}
                       </span>
                     </p>
@@ -698,7 +940,9 @@ export function ProgramPdpClient({ id, validHubKeys, initialProgram, initialRevi
                   ) : program.inclusions ? (
                     <Prose text={program.inclusions} />
                   ) : (
-                    <p style={{ color: "var(--mw-muted)", margin: 0 }}>Организатор не указал отдельным списком.</p>
+                    <p style={{ color: "var(--mw-muted)", margin: 0 }}>
+                      Организатор не указал отдельным списком.
+                    </p>
                   )}
                 </div>
                 <div>
@@ -708,7 +952,9 @@ export function ProgramPdpClient({ id, validHubKeys, initialProgram, initialRevi
                   ) : program.exclusions ? (
                     <Prose text={program.exclusions} />
                   ) : (
-                    <p style={{ color: "var(--mw-muted)", margin: 0 }}>Организатор не указал отдельным списком.</p>
+                    <p style={{ color: "var(--mw-muted)", margin: 0 }}>
+                      Организатор не указал отдельным списком.
+                    </p>
                   )}
                 </div>
               </div>
@@ -716,8 +962,24 @@ export function ProgramPdpClient({ id, validHubKeys, initialProgram, initialRevi
           )}
 
           {itinerary && (
-            <SectionBlock title="Программа по дням">
-              <Prose text={itinerary} />
+            <SectionBlock
+              title={
+                program.autoPublished
+                  ? "Описание из источника"
+                  : "Программа выезда"
+              }
+            >
+              {program.autoPublished && (
+                <p className="mw-source-note">
+                  Описание сохраняет сведения на дату публикации. Упомянутые
+                  скидки и сроки регистрации могут быть неактуальны — уточните
+                  их перед участием.
+                </p>
+              )}
+              <details className="mw-source-description">
+                <summary>Читать полное описание</summary>
+                <Prose text={itinerary} />
+              </details>
             </SectionBlock>
           )}
 
@@ -725,7 +987,10 @@ export function ProgramPdpClient({ id, validHubKeys, initialProgram, initialRevi
             <SectionBlock title="Риск, требования и ограничения">
               {program.riskLevel && (
                 <p style={{ margin: "0 0 10px", color: "var(--mw-muted)" }}>
-                  <strong style={{ color: "var(--mw-text)" }}>Оценка риска / интенсивности:</strong> {getSeverityLabel(program.riskLevel)}
+                  <strong style={{ color: "var(--mw-text)" }}>
+                    Оценка риска / интенсивности:
+                  </strong>{" "}
+                  {getSeverityLabel(program.riskLevel)}
                 </p>
               )}
               {medical && (
@@ -742,7 +1007,10 @@ export function ProgramPdpClient({ id, validHubKeys, initialProgram, initialRevi
           <SectionBlock title="Организационные условия">
             <div className="mw-pdp-two-col">
               <ProgramInfoField label="Экипировка" value={equipmentField} />
-              <ProgramInfoField label="Тип размещения" value={accommodationField} />
+              <ProgramInfoField
+                label="Тип размещения"
+                value={accommodationField}
+              />
             </div>
             <div style={{ marginTop: 16 }}>
               <ProgramInfoField label="Трансфер" value={transferField} />
@@ -750,17 +1018,46 @@ export function ProgramPdpClient({ id, validHubKeys, initialProgram, initialRevi
           </SectionBlock>
 
           {(program.organizerName || program.organizer) && (
-            <SectionBlock title="Об организаторе">
-              <p style={{ margin: 0, color: "var(--mw-muted)", lineHeight: 1.55, fontWeight: 650 }}>
+            <SectionBlock
+              title={
+                program.autoPublished ? "Источник сведений" : "Об организаторе"
+              }
+            >
+              <p
+                style={{
+                  margin: 0,
+                  color: "var(--mw-muted)",
+                  lineHeight: 1.55,
+                  fontWeight: 650,
+                }}
+              >
                 {program.organizerName ?? program.organizer?.displayName}
               </p>
-              {program.organizer?.verificationStatus && (
-                <p style={{ margin: "10px 0 0", color: "var(--mw-muted)", lineHeight: 1.55, fontSize: "0.95rem" }}>
-                  {organizerVerificationLabelRu(program.organizer.verificationStatus)}
-                </p>
-              )}
-              <p style={{ margin: "12px 0 0", fontSize: "0.92rem", color: "var(--mw-muted)" }}>
-                <Link href={disciplineCatalogHref}>Все программы с этой дисциплиной в каталоге</Link>
+              {!program.autoPublished &&
+                program.organizer?.verificationStatus && (
+                  <p
+                    style={{
+                      margin: "10px 0 0",
+                      color: "var(--mw-muted)",
+                      lineHeight: 1.55,
+                      fontSize: "0.95rem",
+                    }}
+                  >
+                    {organizerVerificationLabelRu(
+                      program.organizer.verificationStatus,
+                    )}
+                  </p>
+                )}
+              <p
+                style={{
+                  margin: "12px 0 0",
+                  fontSize: "0.92rem",
+                  color: "var(--mw-muted)",
+                }}
+              >
+                <Link href={disciplineCatalogHref}>
+                  Все программы с этой дисциплиной в каталоге
+                </Link>
               </p>
             </SectionBlock>
           )}
@@ -772,14 +1069,21 @@ export function ProgramPdpClient({ id, validHubKeys, initialProgram, initialRevi
           )}
 
           <SectionBlock title="Что произойдёт после заявки">
-            <ol style={{ margin: "8px 0 0", paddingLeft: "1.2rem", color: "var(--mw-muted)", lineHeight: 1.65 }}>
+            <ol
+              style={{
+                margin: "8px 0 0",
+                paddingLeft: "1.2rem",
+                color: "var(--mw-muted)",
+                lineHeight: 1.65,
+              }}
+            >
               {DEFAULT_AFTER_STEPS.map((step) => (
                 <li key={step}>{step}</li>
               ))}
             </ol>
             {afterBooking && (
               <div style={{ marginTop: 16 }}>
-                <h3 className="mw-h3">Комментарий организатора</h3>
+                <h3 className="mw-h3">Дополнительные сведения</h3>
                 <Prose text={afterBooking} />
               </div>
             )}
@@ -791,18 +1095,21 @@ export function ProgramPdpClient({ id, validHubKeys, initialProgram, initialRevi
             </SectionBlock>
           )}
 
-          {program.cta && (
-            <SectionBlock title="Следующий шаг">
-              <Prose text={program.cta} />
-            </SectionBlock>
-          )}
-
           {displayMedia.length > 0 && (
             <SectionBlock title="Медиа">
               {displayMedia.map((m) => (
                 <div key={m.id} style={{ marginBottom: 16 }}>
                   {m.mediaType === "image" ? (
-                    <img src={presentProgramMediaUrl(m.url) ?? m.url} alt={m.caption?.trim() || `${program.title} — фото программы`} style={{ maxWidth: "100%", height: "auto", borderRadius: 12 }} />
+                    <img
+                      src={presentProgramMediaUrl(m.url) ?? m.url}
+                      alt={`${program.title} — фото программы`}
+                      loading="lazy"
+                      style={{
+                        maxWidth: "100%",
+                        height: "auto",
+                        borderRadius: 12,
+                      }}
+                    />
                   ) : (
                     <a href={m.url} target="_blank" rel="noreferrer">
                       {m.caption ?? m.url}
@@ -814,112 +1121,291 @@ export function ProgramPdpClient({ id, validHubKeys, initialProgram, initialRevi
           )}
 
           <section id="request" className="mw-form-card">
-            <h2 className="mw-h2">Оставить заявку организатору</h2>
-            <p className="mw-form-hint">Ты выбираешь — организатор подтверждает — вы едете вместе.</p>
-            {submitError && <p id="program-request-feedback" role="alert" style={{ color: "#b00020", marginBottom: 12 }}>{submitError}</p>}
-            {submitSuccess && <p id="program-request-feedback" role="status" aria-live="polite" style={{ color: "#047857", marginBottom: 12, fontWeight: 600 }}>{submitSuccess}</p>}
-            <form onSubmit={handleSubmit}>
-              <div className="mw-field" style={{ marginBottom: 16 }}>
-                <label htmlFor="guestContact">Телефон, Telegram или email</label>
-                <input
-                  id="guestContact"
-                  className="mw-input"
-                  style={{ width: "100%", minWidth: 0 }}
-                  value={guestContact}
-                  onChange={(e) => setGuestContact(e.target.value)}
-                  placeholder="+7…, @telegram или почта"
-                  disabled={submitting}
-                  autoComplete="tel"
-                  aria-describedby={submitError || submitSuccess ? "program-request-feedback" : undefined}
-                  aria-invalid={Boolean(submitError)}
-                />
-              </div>
-              <div className="mw-field" style={{ marginBottom: 20 }}>
-                <label htmlFor="notes">Что важно для тебя в этом выезде</label>
-                <textarea
-                  id="notes"
-                  className="mw-textarea"
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Ваш уровень, желаемые даты, кто едет, что важно по поездке"
-                  rows={4}
-                  disabled={submitting}
-                />
-              </div>
-              <div className="mw-field" style={{ marginBottom: 14, fontSize: "0.9rem", lineHeight: 1.5 }}>
-                <label style={{ display: "flex", alignItems: "flex-start", gap: 8, cursor: "pointer" }}>
-                  <input
-                    type="checkbox"
-                    checked={consentTransfer}
-                    onChange={(e) => setConsentTransfer(e.target.checked)}
-                    disabled={submitting}
-                    style={{ marginTop: 3 }}
-                  />
-                  <span>
-                    Соглашаюсь на передачу контакта организатору этой программы для ответа по заявке.
-                  </span>
-                </label>
-              </div>
-              <div className="mw-field" style={{ marginBottom: 16, fontSize: "0.9rem", lineHeight: 1.5 }}>
-                <label style={{ display: "flex", alignItems: "flex-start", gap: 8, cursor: "pointer" }}>
-                  <input
-                    type="checkbox"
-                    checked={consentPrivacy}
-                    onChange={(e) => setConsentPrivacy(e.target.checked)}
-                    disabled={submitting}
-                    style={{ marginTop: 3 }}
-                  />
-                  <span>
-                    Ознакомился с{" "}
-                    <Link href="/privacy-and-consent" className="mw-link" prefetch={false}>
-                      политикой и согласием
-                    </Link>{" "}
-                    (в т.ч. обработка данных в рамках заявки).
-                  </span>
-                </label>
-              </div>
-              <button
-                type="submit"
-                disabled={submitting || !guestContact.trim() || !consentTransfer || !consentPrivacy}
-                className="mw-btn mw-btn--primary"
+            <h2 className="mw-h2">
+              {ended ? "Выезд завершён" : "Оставить заявку на участие"}
+            </h2>
+            {ended && (
+              <p role="status">
+                Эти даты уже прошли.{" "}
+                <Link href={returnTo}>
+                  Выберите актуальный выезд в каталоге
+                </Link>
+                .
+              </p>
+            )}
+            <p className="mw-form-hint">
+              Укажите контакт для ответа. Заявка не бронирует место и не требует
+              оплаты на сайте.
+            </p>
+            {submitError && (
+              <p
+                id="program-request-feedback"
+                tabIndex={-1}
+                role="alert"
+                style={{ color: "#b00020", marginBottom: 12 }}
               >
-                {submitting ? "Отправляем…" : "Оставить заявку"}
-              </button>
-              <p className="mw-form-note" style={{ marginTop: 12 }}>
-                Ответим в течение дня • без обязательств
+                {submitError}
               </p>
-              <p className="mw-form-note" style={{ marginTop: 8 }}>
-                Финальные условия подтвердит организатор.
-              </p>
-            </form>
+            )}
+            {submitSuccess && (
+              <div className="mw-success-panel">
+                <p
+                  id="program-request-feedback"
+                  tabIndex={-1}
+                  role="status"
+                  aria-live="polite"
+                >
+                  {submitSuccess}
+                </p>
+                <Link href={returnTo}>Вернуться к результатам поиска</Link>
+              </div>
+            )}
+            {!submitSuccess && (
+              <form onSubmit={handleSubmit} noValidate aria-busy={submitting}>
+                <div className="mw-field" style={{ marginBottom: 16 }}>
+                  <label htmlFor="guestContact">
+                    Телефон, Telegram или email
+                  </label>
+                  <input
+                    id="guestContact"
+                    className="mw-input"
+                    style={{ width: "100%", minWidth: 0 }}
+                    value={guestContact}
+                    onChange={(e) => setGuestContact(e.target.value)}
+                    placeholder="+7…, @telegram или почта"
+                    disabled={submitting}
+                    autoComplete="off"
+                    maxLength={254}
+                    required
+                    aria-describedby={
+                      submitError || submitSuccess
+                        ? "program-request-feedback"
+                        : undefined
+                    }
+                    aria-invalid={Boolean(
+                      submitError && contactError(guestContact),
+                    )}
+                  />
+                </div>
+                <div className="mw-field" style={{ marginBottom: 20 }}>
+                  <label htmlFor="notes">
+                    Что важно для тебя в этом выезде
+                  </label>
+                  <textarea
+                    id="notes"
+                    className="mw-textarea"
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder="Ваш уровень, желаемые даты, кто едет, что важно по поездке"
+                    rows={4}
+                    disabled={submitting}
+                  />
+                </div>
+                <div
+                  className="mw-field"
+                  style={{
+                    marginBottom: 14,
+                    fontSize: "0.9rem",
+                    lineHeight: 1.5,
+                  }}
+                >
+                  <label
+                    style={{
+                      display: "flex",
+                      alignItems: "flex-start",
+                      gap: 8,
+                      cursor: "pointer",
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={consentTransfer}
+                      onChange={(e) => setConsentTransfer(e.target.checked)}
+                      disabled={submitting}
+                      style={{ marginTop: 3 }}
+                    />
+                    <span>
+                      Соглашаюсь на передачу контакта организатору этой
+                      программы для ответа по заявке.
+                    </span>
+                  </label>
+                </div>
+                <div
+                  className="mw-field"
+                  style={{
+                    marginBottom: 16,
+                    fontSize: "0.9rem",
+                    lineHeight: 1.5,
+                  }}
+                >
+                  <label
+                    style={{
+                      display: "flex",
+                      alignItems: "flex-start",
+                      gap: 8,
+                      cursor: "pointer",
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={consentPrivacy}
+                      onChange={(e) => setConsentPrivacy(e.target.checked)}
+                      disabled={submitting}
+                      style={{ marginTop: 3 }}
+                    />
+                    <span>
+                      Ознакомился с{" "}
+                      <Link
+                        href="/privacy-and-consent"
+                        className="mw-link"
+                        prefetch={false}
+                      >
+                        политикой и согласием
+                      </Link>{" "}
+                      (в т.ч. обработка данных в рамках заявки).
+                    </span>
+                  </label>
+                </div>
+                <button
+                  type="submit"
+                  disabled={submitting || ended}
+                  className="mw-btn mw-btn--primary"
+                >
+                  {ended
+                    ? "Выезд завершён"
+                    : submitting
+                      ? "Отправляем…"
+                      : "Оставить заявку"}
+                </button>
+                <p className="mw-form-note" style={{ marginTop: 12 }}>
+                  Срок ответа зависит от организатора. Оплата на сайте не
+                  производится.
+                </p>
+                <p className="mw-form-note" style={{ marginTop: 8 }}>
+                  Финальные условия подтвердит организатор.
+                </p>
+              </form>
+            )}
           </section>
+          {exploreHubLinks.length > 0 && (
+            <div
+              className="mw-card"
+              style={{ marginBottom: 24, borderColor: "var(--mw-border)" }}
+            >
+              <h2
+                className="mw-h2"
+                style={{ fontSize: "1.1rem", marginTop: 0, marginBottom: 12 }}
+              >
+                Смотреть ещё по теме
+              </h2>
+              <p
+                style={{
+                  margin: "0 0 0.75rem",
+                  fontSize: "0.92rem",
+                  color: "var(--mw-muted)",
+                }}
+              >
+                Если этот формат не подходит - вот похожие варианты:
+              </p>
+              <ul
+                style={{
+                  listStyle: "none",
+                  padding: 0,
+                  margin: 0,
+                  display: "grid",
+                  gap: 8,
+                }}
+              >
+                {exploreHubLinks.map((l) => (
+                  <li key={`${l.type}-${l.slug}`}>
+                    <Link
+                      href={`${l.path}?${programEntryQuery}`}
+                      style={{ color: "var(--mw-accent)", fontWeight: 600 }}
+                    >
+                      {l.type === "discipline" && "Дисциплина: "}
+                      {l.type === "region" && "Регион: "}
+                      {l.type === "season" && "Сезон: "}
+                      {l.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
 
         <aside className="mw-pdp-sticky" aria-label="Заявка на программу">
           <div className="mw-card mw-pdp-sticky-card">
+            {program.priceFromRub == null && (
+              <p className="mw-price">Стоимость уточняется</p>
+            )}
             {program.priceFromRub != null && (
-              <p style={{ margin: "0 0 6px", fontSize: "1.35rem", fontWeight: 700 }}>
-                от {program.priceFromRub.toLocaleString("ru-RU")} {program.currency ?? "₽"}
+              <p
+                style={{
+                  margin: "0 0 6px",
+                  fontSize: "1.35rem",
+                  fontWeight: 700,
+                }}
+              >
+                от {program.priceFromRub.toLocaleString("ru-RU")}{" "}
+                {program.currency ?? "₽"}
               </p>
             )}
-            <p style={{ margin: "0 0 12px", color: "var(--mw-muted)", fontSize: "0.92rem" }}>Ближайшие даты: {datesLine}</p>
-            <a href="#request" className="mw-btn mw-btn--primary" style={{ width: "100%", textAlign: "center" }}>
-              Оставить заявку
+            <p
+              style={{
+                margin: "0 0 12px",
+                color: "var(--mw-muted)",
+                fontSize: "0.92rem",
+              }}
+            >
+              Даты выезда: {datesLine}
+            </p>
+            <a
+              href="#request"
+              className="mw-btn mw-btn--primary"
+              style={{ width: "100%", textAlign: "center" }}
+            >
+              {ended ? "Выезд завершён" : "Оставить заявку"}
             </a>
-            <p style={{ margin: "10px 0 0", fontSize: "0.82rem", color: "var(--mw-muted)", lineHeight: 1.45 }}>
+            <p
+              style={{
+                margin: "10px 0 0",
+                fontSize: "0.82rem",
+                color: "var(--mw-muted)",
+                lineHeight: 1.45,
+              }}
+            >
               Ответ организатора после подтверждения наличия мест.
             </p>
           </div>
         </aside>
       </div>
 
-      <div className="mw-pdp-mobile-cta" role="region" aria-label="Быстрая заявка">
+      <div
+        className="mw-pdp-mobile-cta"
+        role="region"
+        aria-label="Быстрая заявка"
+      >
         <div className="mw-pdp-mobile-cta__inner">
           <div>
-            {program.priceFromRub != null && (
-              <span style={{ fontWeight: 700 }}>от {program.priceFromRub.toLocaleString("ru-RU")} {program.currency ?? "₽"}</span>
+            {program.priceFromRub == null && (
+              <p className="mw-price">Стоимость уточняется</p>
             )}
-            <span style={{ display: "block", fontSize: "0.8rem", color: "var(--mw-muted)" }}>{datesLine}</span>
+            {program.priceFromRub != null && (
+              <span style={{ fontWeight: 700 }}>
+                от {program.priceFromRub.toLocaleString("ru-RU")}{" "}
+                {program.currency ?? "₽"}
+              </span>
+            )}
+            <span
+              style={{
+                display: "block",
+                fontSize: "0.8rem",
+                color: "var(--mw-muted)",
+              }}
+            >
+              {datesLine}
+            </span>
           </div>
           <a href="#request" className="mw-btn mw-btn--primary">
             Оставить заявку
@@ -930,7 +1416,9 @@ export function ProgramPdpClient({ id, validHubKeys, initialProgram, initialRevi
   );
 }
 
-function seasonOfProgramStart(program: Program): "winter" | "spring" | "summer" | "autumn" {
+function seasonOfProgramStart(
+  program: Program,
+): "winter" | "spring" | "summer" | "autumn" {
   const m = new Date(program.startDate).getMonth() + 1;
   if (m === 12 || m <= 2) return "winter";
   if (m <= 5) return "spring";

@@ -134,7 +134,7 @@ jobs:
           set -euo pipefail
           cat >/tmp/camp-api-delivery/deploy-camp-api-remote.sh <<'REMOTE'
           #!/usr/bin/env bash
-          set -euo pipefail
+          set -Eeuo pipefail
 
           : "${DEPLOY_PATH:?DEPLOY_PATH is required}"
           : "${ROTATE_CAMP_TOKEN:?ROTATE_CAMP_TOKEN is required}"
@@ -147,16 +147,135 @@ jobs:
           echo ">>> deploy path: $(pwd)"
           test -f docker-compose.production.yml
 
+          CAMP_API_CURL_CONFIG=""
+          cleanup_camp_api_auth() {
+            if [ -n "$CAMP_API_CURL_CONFIG" ]; then
+              rm -f "$CAMP_API_CURL_CONFIG"
+            fi
+          }
+          trap cleanup_camp_api_auth EXIT
+
+          prepare_camp_api_auth() {
+            local camp_api_token="$1"
+            cleanup_camp_api_auth
+            CAMP_API_CURL_CONFIG="$(mktemp /tmp/camp-api-curl.XXXXXX)"
+            chmod 600 "$CAMP_API_CURL_CONFIG"
+            printf 'header = "Authorization: Bearer %s"\n' "$camp_api_token" > "$CAMP_API_CURL_CONFIG"
+          }
+
+          assert_single_api_dns() {
+            local api_container proxy_container canonical_api_ip dns_api_ips
+            api_container="$($DC ps -q api)"
+            proxy_container="$($DC ps -q reverse-proxy)"
+            test -n "$api_container"
+            test -n "$proxy_container"
+
+            canonical_api_ip="$(docker inspect "$api_container" --format '{{range .NetworkSettings.Networks}}{{println .IPAddress}}{{end}}' | head -n1)"
+            dns_api_ips="$(
+              docker exec "$proxy_container" sh -lc '
+                i=0
+                while [ "$i" -lt 20 ]; do
+                  getent hosts api
+                  i=$((i + 1))
+                done
+              ' | awk '{print $1}' | sort -u
+            )"
+
+            if [ "$dns_api_ips" != "$canonical_api_ip" ]; then
+              echo ">>> ERROR: Docker DNS alias api is ambiguous"
+              echo ">>> canonical api IP: $canonical_api_ip"
+              echo ">>> resolved api IPs:"
+              printf '%s\n' "$dns_api_ips"
+              return 1
+            fi
+            echo ">>> Docker DNS api: $canonical_api_ip (single canonical endpoint)"
+          }
+
+          assert_camp_api_contract() {
+            local query='status=published&sports=wakesurf,wakeboard&audience=ru&offset=0'
+            local camp_id detail_status
+
+            test -s "$CAMP_API_CURL_CONFIG"
+
+            curl -kfsS --resolve api.mywavetour.ru:443:127.0.0.1 \
+              --config "$CAMP_API_CURL_CONFIG" \
+              "https://api.mywavetour.ru/api/v1/camps?${query}&limit=5&smoke=$(date +%s%N)" \
+              -o /tmp/camp-api-smoke-limit5.json
+            curl -kfsS --resolve api.mywavetour.ru:443:127.0.0.1 \
+              --config "$CAMP_API_CURL_CONFIG" \
+              "https://api.mywavetour.ru/api/v1/camps?${query}&limit=100&smoke=$(date +%s%N)" \
+              -o /tmp/camp-api-smoke-limit100.json
+            curl -kfsS --resolve api.mywavetour.ru:443:127.0.0.1 \
+              --config "$CAMP_API_CURL_CONFIG" \
+              "https://api.mywavetour.ru/api/v1/camps?${query}&smoke=$(date +%s%N)" \
+              -o /tmp/camp-api-smoke-default.json
+
+            python3 - <<'PY'
+          import json
+
+          five = json.load(open("/tmp/camp-api-smoke-limit5.json", encoding="utf-8"))
+          hundred = json.load(open("/tmp/camp-api-smoke-limit100.json", encoding="utf-8"))
+          default = json.load(open("/tmp/camp-api-smoke-default.json", encoding="utf-8"))
+          five_items = five.get("items") or []
+          hundred_items = hundred.get("items") or []
+          default_items = default.get("items") or []
+          ids = [item.get("id") for item in hundred_items]
+
+          assert hundred_items, hundred
+          assert [item.get("id") for item in default_items] == ids, {
+              "default": len(default_items),
+              "limit100": len(hundred_items),
+          }
+          assert len(five_items) == min(5, len(hundred_items)), {
+              "limit5": len(five_items),
+              "limit100": len(hundred_items),
+          }
+          assert [item.get("id") for item in five_items] == ids[:5]
+          assert all(isinstance(camp_id, str) and camp_id for camp_id in ids), ids
+          assert len(ids) == len(set(ids)), ids
+
+          with open("/tmp/camp-api-smoke.ids", "w", encoding="utf-8") as target:
+              target.write("\n".join(ids) + "\n")
+          print("camp_list_consistency: ok")
+          print("records_returned:", len(hundred_items))
+          PY
+
+            while IFS= read -r camp_id; do
+              detail_status="$(
+                curl -ksS --resolve api.mywavetour.ru:443:127.0.0.1 \
+                  --config "$CAMP_API_CURL_CONFIG" \
+                  -o /tmp/camp-api-smoke-detail.json \
+                  -w '%{http_code}' \
+                  "https://api.mywavetour.ru/api/v1/camps/${camp_id}?smoke=$(date +%s%N)"
+              )"
+              test "$detail_status" = "200"
+              CAMP_ID="$camp_id" python3 - <<'PY'
+          import json
+          import os
+
+          expected = os.environ["CAMP_ID"]
+          payload = json.load(open("/tmp/camp-api-smoke-detail.json", encoding="utf-8"))
+          assert payload.get("id") == expected, {"expected": expected, "payload": payload}
+          PY
+            done < /tmp/camp-api-smoke.ids
+            echo ">>> Camp API list/detail consistency: ok"
+          }
+
+          assert_single_api_dns
+
           if [ "$OPERATION" = "restart_proxy_only" ]; then
             echo ">>> restart only reverse-proxy"
             $DC restart reverse-proxy
             $DC ps api postgres reverse-proxy
 
+            assert_single_api_dns
+
             echo ">>> verify published Camp API fixture through local nginx"
             CAMP_API_TOKEN="$(grep '^CAMP_API_TOKEN=' services/api/.env.production | tail -n1 | cut -d= -f2- | tr -d '\"')"
             test -n "$CAMP_API_TOKEN"
+            prepare_camp_api_auth "$CAMP_API_TOKEN"
             curl -kfsS --resolve api.mywavetour.ru:443:127.0.0.1 \
-              -H "Authorization: Bearer ${CAMP_API_TOKEN}" \
+              --config "$CAMP_API_CURL_CONFIG" \
               "https://api.mywavetour.ru/api/v1/camps?status=published&sports=wakesurf,wakeboard&audience=ru&limit=100&offset=0&restart_probe=$(date +%s)" \
               -o /tmp/camp-api-restart-proxy-smoke.json
 
@@ -174,10 +293,17 @@ jobs:
           print("records_returned:", len(items))
           print("camp_id:", camp_id)
           PY
+            assert_camp_api_contract
             exit 0
           fi
 
-          BACKUP_PATH="/tmp/camp-api-selected-backup-$(date +%Y%m%d%H%M%S).tgz"
+          DEPLOY_STAMP="$(date +%Y%m%d%H%M%S)"
+          BACKUP_PATH="/tmp/camp-api-selected-backup-${DEPLOY_STAMP}.tgz"
+          ENV_BACKUP_PATH="/tmp/camp-api-env-backup-${DEPLOY_STAMP}"
+          TOKEN_BACKUP_PATH="/tmp/camp-api-token-backup-${DEPLOY_STAMP}"
+          ROLLBACK_IMAGE_TAG="mywave-camp-api-rollback:${DEPLOY_STAMP}"
+          ROLLBACK_TOKEN_EXISTED=0
+
           tar -czf "$BACKUP_PATH" --ignore-failed-read \
             .env.example \
             packages/config/src/env.ts \
@@ -185,7 +311,19 @@ jobs:
             services/api/Dockerfile \
             services/api/src/index.ts \
             services/api/src/modules/camp-feed
+          cp -a services/api/.env.production "$ENV_BACKUP_PATH"
+          if [ -f /root/CAMP_API_TOKEN.current ]; then
+            cp -a /root/CAMP_API_TOKEN.current "$TOKEN_BACKUP_PATH"
+            ROLLBACK_TOKEN_EXISTED=1
+          fi
+
+          PREVIOUS_API_CONTAINER="$($DC ps -q api)"
+          test -n "$PREVIOUS_API_CONTAINER"
+          PREVIOUS_API_IMAGE_ID="$(docker inspect "$PREVIOUS_API_CONTAINER" --format '{{.Image}}')"
+          PREVIOUS_API_IMAGE_NAME="$(docker inspect "$PREVIOUS_API_CONTAINER" --format '{{.Config.Image}}')"
+          docker tag "$PREVIOUS_API_IMAGE_ID" "$ROLLBACK_IMAGE_TAG"
           echo ">>> selected source backup: $BACKUP_PATH"
+          echo ">>> rollback image: $ROLLBACK_IMAGE_TAG"
 
           echo ">>> verify selected Camp/API/config artifact"
           VERIFY_DIR="/tmp/camp-api-release-verify"
@@ -193,6 +331,28 @@ jobs:
           mkdir -p "$VERIFY_DIR"
           tar -xzf /tmp/camp-api-release.tgz -C "$VERIFY_DIR"
           (cd "$VERIFY_DIR" && sha256sum -c SHA256SUMS)
+
+          rollback_camp_api_deploy() {
+            local original_rc="$1"
+            trap - ERR
+            set +e
+            echo ">>> deployment failed; restoring Camp API snapshot"
+            rm -rf services/api/src/modules/camp-feed
+            tar -xzf "$BACKUP_PATH" -C "$DEPLOY_PATH"
+            cp -a "$ENV_BACKUP_PATH" services/api/.env.production
+            if [ "$ROLLBACK_TOKEN_EXISTED" = "1" ]; then
+              cp -a "$TOKEN_BACKUP_PATH" /root/CAMP_API_TOKEN.current
+            else
+              rm -f /root/CAMP_API_TOKEN.current
+            fi
+            docker tag "$ROLLBACK_IMAGE_TAG" "$PREVIOUS_API_IMAGE_NAME"
+            $DC up -d --no-deps --no-build --force-recreate api
+            $DC restart reverse-proxy
+            $DC ps api postgres reverse-proxy
+            echo ">>> rollback completed; original exit code: $original_rc"
+            exit "$original_rc"
+          }
+          trap 'rollback_camp_api_deploy $?' ERR
 
           echo ">>> extract selected Camp/API/config files"
           tar -xzf /tmp/camp-api-release.tgz -C "$DEPLOY_PATH" --exclude=SHA256SUMS
@@ -236,17 +396,21 @@ jobs:
             docker compose --progress=plain --env-file .env.production -f docker-compose.production.yml build api
           fi
 
-          echo ">>> restart only api and reverse-proxy"
-          $DC up -d --no-deps api reverse-proxy
+          echo ">>> restart API, then refresh reverse-proxy workers"
+          $DC up -d --no-deps api
+          $DC restart reverse-proxy
           $DC ps
 
           echo ">>> verify Camp API code inside api container"
           $DC exec -T api sh -lc 'grep -R "api/v1/camps\|camps-feed.json\|campFeedRoutes" -n /app/services/api/dist /app/services/api/src 2>/tmp/camp-api-grep.err >/tmp/camp-api-grep.out; cat /tmp/camp-api-grep.out | head -80; test -s /tmp/camp-api-grep.out'
 
+          assert_single_api_dns
+
           echo ">>> smoke local nginx without exposing token"
           CAMP_API_TOKEN="$(cat /root/CAMP_API_TOKEN.current)"
+          prepare_camp_api_auth "$CAMP_API_TOKEN"
           curl -kfsS --resolve api.mywavetour.ru:443:127.0.0.1 \
-            -H "Authorization: Bearer ${CAMP_API_TOKEN}" \
+            --config "$CAMP_API_CURL_CONFIG" \
             "https://api.mywavetour.ru/api/v1/camps?status=published&sports=wakesurf,wakeboard&audience=ru&limit=1&offset=0" \
             -o /tmp/camp-api-smoke.json
 
@@ -261,11 +425,12 @@ jobs:
           print("smoke_items:", len(d.get("items") or []))
           print("smoke_next_offset:", d.get("next_offset"))
           PY
+          assert_camp_api_contract
 
           echo ">>> write Site sample on VPS"
           CAMP_API_TOKEN="$(cat /root/CAMP_API_TOKEN.current)"
           curl -kfsS --resolve api.mywavetour.ru:443:127.0.0.1 \
-            -H "Authorization: Bearer ${CAMP_API_TOKEN}" \
+            --config "$CAMP_API_CURL_CONFIG" \
             "https://api.mywavetour.ru/api/v1/camps?status=published&sports=wakesurf,wakeboard&audience=ru&limit=5&offset=0" \
             -o /tmp/mywave-camps-sample.json
 
@@ -284,6 +449,9 @@ jobs:
           print("without_price:", sum(1 for x in items if empty(x.get("price_from"))))
           print("without_booking_url:", sum(1 for x in items if empty(x.get("booking_url"))))
           PY
+          trap - ERR
+          docker image rm "$ROLLBACK_IMAGE_TAG" >/dev/null 2>&1 || true
+          echo ">>> Camp API deployment completed; rollback trap disarmed"
           REMOTE
           chmod +x /tmp/camp-api-delivery/deploy-camp-api-remote.sh
 

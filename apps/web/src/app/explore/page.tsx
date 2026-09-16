@@ -10,6 +10,26 @@ export const metadata: Metadata = {
   alternates: { canonical: "/explore" },
 };
 
+const hubHeroStyle = {
+  padding: "clamp(1.25rem, 4vw, 2rem)",
+  borderRadius: "var(--mw-radius-lg)",
+  background: "linear-gradient(135deg, rgba(210, 250, 243, 0.98), rgba(255, 255, 255, 0.98))",
+  border: "1px solid rgba(13, 105, 94, 0.22)",
+  boxShadow: "0 18px 40px rgba(16, 44, 40, 0.1)",
+  marginBottom: "2rem",
+} as const;
+
+const hubCardStyle = {
+  height: "100%",
+  padding: "1.1rem 1.15rem",
+  borderRadius: "var(--mw-radius)",
+  background: "#fff",
+  border: "1px solid rgba(13, 105, 94, 0.18)",
+  boxShadow: "0 12px 30px rgba(16, 44, 40, 0.08)",
+  display: "grid",
+  gap: "0.85rem",
+} as const;
+
 function typeLabelRu(t: ExploreHubType): string {
   switch (t) {
     case "discipline":
@@ -71,22 +91,15 @@ export default async function ExploreIndexPage() {
         <span style={{ color: "var(--mw-text)" }}>Темы</span>
       </nav>
       <section
-        style={{
-          padding: "clamp(1.25rem, 4vw, 2rem)",
-          borderRadius: "var(--mw-radius-lg)",
-          background: "linear-gradient(135deg, rgba(39, 196, 168, 0.14), rgba(255, 255, 255, 0.9))",
-          border: "1px solid var(--mw-border)",
-          boxShadow: "var(--mw-shadow)",
-          marginBottom: "2rem",
-        }}
+        style={hubHeroStyle}
       >
-        <p style={{ margin: "0 0 0.55rem", color: "var(--mw-muted2)", fontWeight: 700 }}>
+        <p style={{ margin: "0 0 0.55rem", color: "#3f625e", fontWeight: 800 }}>
           Навигация по каталогу
         </p>
         <h1 className="mw-h1" style={{ marginTop: 0, marginBottom: "1rem", fontSize: "clamp(1.65rem, 4vw, 2.35rem)" }}>
           Темы и направления
         </h1>
-        <p style={{ color: "var(--mw-muted)", maxWidth: "72ch", lineHeight: 1.65, margin: "0 0 1.25rem" }}>
+        <p style={{ color: "#385a56", maxWidth: "72ch", lineHeight: 1.65, margin: "0 0 1.25rem" }}>
           Выберите дисциплину, регион или сезон — внутри будут только связанные программы, подборки и статьи. Если нужна поездка без чтения материалов, переходите сразу в каталог.
         </p>
         <p style={{ margin: 0, display: "flex", flexWrap: "wrap", gap: "0.75rem" }}>
@@ -117,7 +130,7 @@ export default async function ExploreIndexPage() {
                 <h2 className="mw-h2" style={{ fontSize: "1.25rem", margin: "0 0 0.35rem" }}>
                   {typeLabelRu(t)}
                 </h2>
-                <p style={{ margin: 0, color: "var(--mw-muted)", lineHeight: 1.55 }}>{typeHintRu(t)}</p>
+                <p style={{ margin: 0, color: "#4a625f", lineHeight: 1.55 }}>{typeHintRu(t)}</p>
               </div>
               <ul
                 style={{
@@ -131,18 +144,7 @@ export default async function ExploreIndexPage() {
               >
                 {list.map((it) => (
                   <li key={`${it.type}-${it.slug}`}>
-                    <article
-                      style={{
-                        height: "100%",
-                        padding: "1.1rem 1.15rem",
-                        borderRadius: "var(--mw-radius)",
-                        background: "var(--mw-surface)",
-                        border: "1px solid var(--mw-border)",
-                        boxShadow: "var(--mw-shadow)",
-                        display: "grid",
-                        gap: "0.85rem",
-                      }}
-                    >
+                    <article style={hubCardStyle}>
                       <div>
                         <h3 style={{ margin: "0 0 0.35rem", fontSize: "1.08rem", lineHeight: 1.3 }}>
                           <Link
@@ -152,7 +154,7 @@ export default async function ExploreIndexPage() {
                             {it.label}
                           </Link>
                         </h3>
-                        <p style={{ margin: 0, color: "var(--mw-muted2)", fontSize: "0.92rem" }}>
+                        <p style={{ margin: 0, color: "#58706d", fontSize: "0.92rem" }}>
                           {it.counts.total} {materialWord(it.counts.total)}
                         </p>
                       </div>
@@ -162,19 +164,19 @@ export default async function ExploreIndexPage() {
                           display: "grid",
                           gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
                           gap: "0.5rem",
-                          color: "var(--mw-muted)",
+                          color: "#58706d",
                         }}
                       >
                         <div>
-                          <dt style={{ fontSize: "0.75rem", color: "var(--mw-muted2)" }}>Программы</dt>
+                          <dt style={{ fontSize: "0.75rem", color: "#58706d" }}>Программы</dt>
                           <dd style={{ margin: 0, fontWeight: 700, color: "var(--mw-text)" }}>{it.counts.programs}</dd>
                         </div>
                         <div>
-                          <dt style={{ fontSize: "0.75rem", color: "var(--mw-muted2)" }}>Подборки</dt>
+                          <dt style={{ fontSize: "0.75rem", color: "#58706d" }}>Подборки</dt>
                           <dd style={{ margin: 0, fontWeight: 700, color: "var(--mw-text)" }}>{it.counts.collections}</dd>
                         </div>
                         <div>
-                          <dt style={{ fontSize: "0.75rem", color: "var(--mw-muted2)" }}>Статьи</dt>
+                          <dt style={{ fontSize: "0.75rem", color: "#58706d" }}>Статьи</dt>
                           <dd style={{ margin: 0, fontWeight: 700, color: "var(--mw-text)" }}>{it.counts.blogPosts}</dd>
                         </div>
                       </dl>

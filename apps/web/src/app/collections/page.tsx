@@ -13,6 +13,26 @@ export const metadata: Metadata = {
   alternates: { canonical: "/collections" },
 };
 
+const hubHeroStyle = {
+  padding: "clamp(1.25rem, 4vw, 2rem)",
+  borderRadius: "var(--mw-radius-lg)",
+  background: "linear-gradient(135deg, rgba(210, 250, 243, 0.98), rgba(255, 255, 255, 0.98))",
+  border: "1px solid rgba(13, 105, 94, 0.22)",
+  boxShadow: "0 18px 40px rgba(16, 44, 40, 0.1)",
+  marginBottom: "2rem",
+} as const;
+
+const collectionCardStyle = {
+  height: "100%",
+  padding: "1.25rem 1.35rem",
+  borderRadius: "var(--mw-radius)",
+  background: "#fff",
+  border: "1px solid rgba(13, 105, 94, 0.18)",
+  boxShadow: "0 12px 30px rgba(16, 44, 40, 0.08)",
+  display: "grid",
+  gap: "0.9rem",
+} as const;
+
 function formatRuDate(iso: string | null) {
   if (!iso) return "—";
   try {
@@ -59,22 +79,15 @@ export default async function CollectionsIndexPage() {
         <span style={{ color: "var(--mw-text)" }}>Подборки</span>
       </nav>
       <section
-        style={{
-          padding: "clamp(1.25rem, 4vw, 2rem)",
-          borderRadius: "var(--mw-radius-lg)",
-          background: "linear-gradient(135deg, rgba(39, 196, 168, 0.12), rgba(255, 255, 255, 0.92))",
-          border: "1px solid var(--mw-border)",
-          boxShadow: "var(--mw-shadow)",
-          marginBottom: "2rem",
-        }}
+        style={hubHeroStyle}
       >
-        <p style={{ margin: "0 0 0.55rem", color: "var(--mw-muted2)", fontWeight: 700 }}>
+        <p style={{ margin: "0 0 0.55rem", color: "#3f625e", fontWeight: 800 }}>
           Маршруты выбора
         </p>
         <h1 className="mw-h1" style={{ marginTop: 0, marginBottom: "1rem", fontSize: "clamp(1.75rem, 4vw, 2.35rem)" }}>
           Подборки MyWaveTour
         </h1>
-        <p style={{ color: "var(--mw-muted)", maxWidth: "72ch", lineHeight: 1.65, margin: "0 0 1.25rem" }}>
+        <p style={{ color: "#385a56", maxWidth: "72ch", lineHeight: 1.65, margin: "0 0 1.25rem" }}>
           {COL_DESC} Каждая подборка ведёт к связанным программам, статьям и организаторам, а кнопка каталога сразу применяет подходящие фильтры.
         </p>
         <p style={{ margin: 0, display: "flex", flexWrap: "wrap", gap: "0.75rem" }}>
@@ -113,25 +126,16 @@ export default async function CollectionsIndexPage() {
         {items.map((c) => (
           <li key={c.id}>
             <article
-              style={{
-                height: "100%",
-                padding: "1.25rem 1.35rem",
-                borderRadius: "var(--mw-radius)",
-                background: "var(--mw-surface)",
-                border: "1px solid var(--mw-border)",
-                boxShadow: "var(--mw-shadow)",
-                display: "grid",
-                gap: "0.9rem",
-              }}
+              style={collectionCardStyle}
             >
               <div>
-                <p style={{ fontSize: "0.9rem", color: "var(--mw-muted2)", margin: 0 }}>{formatRuDate(c.publishedAt)}</p>
+                <p style={{ fontSize: "0.9rem", color: "#58706d", margin: 0 }}>{formatRuDate(c.publishedAt)}</p>
                 <h2 style={{ margin: "0.35rem 0 0.5rem", fontSize: "1.2rem", lineHeight: 1.3 }}>
                   <Link href={`/collections/${encodeURIComponent(c.slug)}`} style={{ color: "inherit", textDecoration: "none" }}>
                     {c.resolved.seoTitle}
                   </Link>
                 </h2>
-                {c.description ? <p style={{ margin: 0, color: "var(--mw-muted)", lineHeight: 1.55 }}>{c.description}</p> : null}
+                {c.description ? <p style={{ margin: 0, color: "#4a625f", lineHeight: 1.55 }}>{c.description}</p> : null}
               </div>
               {collectionMeta(c).length > 0 ? (
                 <p style={{ margin: 0, display: "flex", flexWrap: "wrap", gap: "0.45rem" }}>

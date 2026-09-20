@@ -37,6 +37,12 @@ export function telegramUnifiedWebhookRoutes(env: Env): Router {
   const router = Router();
 
   router.post("/webhook", async (req: Request, res: Response) => {
+    if (env.TELEGRAM_LONG_POLLING_ENABLED) {
+      // During cutover, refuse webhook deliveries until Telegram's webhook is
+      // removed. Telegram keeps and retries them; polling must be the sole consumer.
+      res.status(503).json({ ok: false, error: "polling_transport_enabled" });
+      return;
+    }
     const expected = env.TELEGRAM_WEBHOOK_SECRET?.trim();
     if (!expected) {
       res.status(503).json({ ok: false, error: "webhook_not_configured" });

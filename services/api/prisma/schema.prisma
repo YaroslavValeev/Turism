@@ -1172,6 +1172,32 @@ model ProcessedTelegramCallback {
   @@map("processed_telegram_callbacks")
 }
 
+/// A single database lease prevents multiple API replicas from consuming getUpdates concurrently.
+model TelegramPollingState {
+  id             String    @id
+  nextOffset     BigInt    @default(0)
+  leaseOwner     String?
+  leaseExpiresAt DateTime?
+  lastReceivedAt DateTime?
+  updatedAt      DateTime  @updatedAt
+
+  @@map("telegram_polling_state")
+}
+
+/// Pending updates survive a process restart. Payload is cleared after dispatch.
+model TelegramPollingUpdate {
+  updateId    BigInt    @id
+  payload     Json?
+  status      String    @default("pending")
+  contentOk   Boolean?
+  platformOk  Boolean?
+  receivedAt  DateTime  @default(now())
+  processedAt DateTime?
+
+  @@index([status, updateId])
+  @@map("telegram_polling_updates")
+}
+
 // --- Telegram platform (leadgen / assisted booking) — docs/telegram/REPO_AUDIT_AND_IMPLEMENTATION_PLAN.md ---
 
 model TelegramUser {

@@ -41,6 +41,7 @@ async function postWebhook(testEnv: Env, secret?: string) {
 
 describe("Telegram unified webhook", () => {
   beforeEach(() => {
+    vi.clearAllMocks();
     vi.mocked(handleTelegramContentPipelineUpdate).mockResolvedValue({ ok: true });
     vi.mocked(handleTelegramPlatformUpdate).mockResolvedValue({ ok: true });
   });
@@ -62,6 +63,15 @@ describe("Telegram unified webhook", () => {
     const accepted = await postWebhook(configured, "expected");
     expect(accepted.status).toBe(200);
     await expect(accepted.json()).resolves.toEqual({ ok: true, accepted: true });
+  });
+
+  it("refuses webhook delivery during polling cutover so Telegram can retry it", async () => {
+    const pollingEnv = { ...env, TELEGRAM_LONG_POLLING_ENABLED: true, TELEGRAM_WEBHOOK_SECRET: "expected" };
+    const response = await postWebhook(pollingEnv, "expected");
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toEqual({ ok: false, error: "polling_transport_enabled" });
+    expect(handleTelegramContentPipelineUpdate).not.toHaveBeenCalled();
+    expect(handleTelegramPlatformUpdate).not.toHaveBeenCalled();
   });
 
   it("dispatches an update to both existing handlers", async () => {

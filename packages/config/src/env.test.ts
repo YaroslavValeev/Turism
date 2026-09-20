@@ -22,6 +22,7 @@ describe("ingestion env safety defaults", () => {
 
     expect(env.INGESTION_AUTOPUBLISH_ENABLED).toBe(false);
     expect(env.INGESTION_DAILY_SOURCE_LIMIT).toBe(5);
+    expect(env.TELEGRAM_LONG_POLLING_ENABLED).toBe(false);
   });
 
   it.each(["0", "101", "1.5", "invalid"])("rejects invalid daily source limit %s", (value) => {

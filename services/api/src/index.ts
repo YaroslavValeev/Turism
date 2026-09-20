@@ -33,6 +33,7 @@ import { publicCollectionsRoutes } from "./modules/public-collections/routes";
 import { publicExploreRoutes } from "./modules/public-explore/routes";
 import { telegramContentPipelineRoutes } from "./modules/telegram/telegramContentRoutes";
 import { telegramUnifiedWebhookRoutes } from "./modules/telegram/webhookRoutes";
+import { startTelegramLongPolling } from "./modules/telegram/telegramLongPolling";
 import { contentPipelineRoutes } from "./modules/content-pipeline/routes";
 import { internalContentPipelineRoutes } from "./modules/content-pipeline/internalMarketing.routes";
 import { organizerOutreachRoutes } from "./modules/organizer-outreach/routes";
@@ -134,3 +135,4 @@ app.listen(Number(PORT), "0.0.0.0", () => {
 startIngestionScheduler(env);
 startSourceProposalDigestScheduler(env);
 startAnalyticsOpsScheduler(env);
+startTelegramLongPolling(env);

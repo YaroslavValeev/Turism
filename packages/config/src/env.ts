@@ -99,6 +99,8 @@ export interface Env {
   OPENAI_HTTP_PROXY?: string;
   /** Optional proxy URL for Telegram Bot API and t.me ingestion when direct Telegram egress is unavailable. */
   TELEGRAM_BOT_HTTP_PROXY?: string;
+  /** Opt-in inbound transport. Worker waits for webhook removal before polling. */
+  TELEGRAM_LONG_POLLING_ENABLED: boolean;
   /** Публичная ссылка-приглашение в TG группу/канал с обновлениями */
   TELEGRAM_UPDATES_INVITE_LINK?: string;
   /** Username бота для deep-link opt-in (без @), опционально */
@@ -194,6 +196,7 @@ export function loadEnv(): Env {
     OPENAI_API_KEY: optional("OPENAI_API_KEY"),
     OPENAI_HTTP_PROXY: optional("OPENAI_HTTP_PROXY"),
     TELEGRAM_BOT_HTTP_PROXY: optional("TELEGRAM_BOT_HTTP_PROXY"),
+    TELEGRAM_LONG_POLLING_ENABLED: optionalBoolean("TELEGRAM_LONG_POLLING_ENABLED", false),
     TELEGRAM_UPDATES_INVITE_LINK: optional("TELEGRAM_UPDATES_INVITE_LINK"),
     TELEGRAM_UPDATES_BOT_USERNAME: optional("TELEGRAM_UPDATES_BOT_USERNAME"),
     TELEGRAM_UPDATES_CHANNEL_CHAT_ID: optional("TELEGRAM_UPDATES_CHANNEL_CHAT_ID"),

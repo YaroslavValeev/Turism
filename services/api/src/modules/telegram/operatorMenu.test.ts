@@ -4,6 +4,9 @@ const mocks = vi.hoisted(() => ({
   callTelegramJson: vi.fn(),
   countSources: vi.fn(),
   findManySources: vi.fn(),
+  countOrganizers: vi.fn(),
+  findManyOrganizers: vi.fn(),
+  countPrograms: vi.fn(),
   findManyPrograms: vi.fn(),
   findUniqueProgram: vi.fn(),
   updateProgram: vi.fn(),
@@ -19,7 +22,12 @@ vi.mock("../../lib/prisma", () => ({
       count: mocks.countSources,
       findMany: mocks.findManySources,
     },
+    organizer: {
+      count: mocks.countOrganizers,
+      findMany: mocks.findManyOrganizers,
+    },
     program: {
+      count: mocks.countPrograms,
       findMany: mocks.findManyPrograms,
       findUnique: mocks.findUniqueProgram,
       update: mocks.updateProgram,
@@ -49,6 +57,8 @@ describe("telegram operator menu contract", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.callTelegramJson.mockResolvedValue({ ok: true });
+    mocks.countOrganizers.mockResolvedValue(0);
+    mocks.countPrograms.mockResolvedValue(0);
   });
 
   it("accepts only an allowlisted user in the configured owner chat", () => {
@@ -73,6 +83,18 @@ describe("telegram operator menu contract", () => {
     expect(parseOperatorCallback("mw:ps:cmabc123:published")).toBeNull();
     expect(parseOperatorCallback("mw:sources:page:2")).toEqual({ kind: "source_list", page: 2 });
     expect(parseOperatorCallback("mw:sources:page:not-a-number")).toBeNull();
+    expect(parseOperatorCallback("mw:orgs:page:2")).toEqual({ kind: "organizer_list", page: 2 });
+    expect(parseOperatorCallback("mw:programs:page:3")).toEqual({ kind: "program_list", page: 3 });
+    expect(parseOperatorCallback("mw:org:cmabc123:page:2")).toEqual({
+      kind: "organizer_show",
+      organizerId: "cmabc123",
+      page: 2,
+    });
+    expect(parseOperatorCallback("mw:program:cmabc123:page:3")).toEqual({
+      kind: "program_show",
+      programId: "cmabc123",
+      page: 3,
+    });
   });
 
   it("paginates active sources so older sources remain runnable", async () => {
@@ -152,6 +174,7 @@ describe("telegram operator menu contract", () => {
   });
 
   it("sends only editable programs with Telegram-safe labels", async () => {
+    mocks.countPrograms.mockResolvedValue(1);
     mocks.findManyPrograms.mockResolvedValue([
       {
         id: "cmprogram123",
@@ -171,6 +194,7 @@ describe("telegram operator menu contract", () => {
       where: { publishStatus: { not: "published" } },
       select: { id: true, title: true, publishStatus: true },
       orderBy: { updatedAt: "desc" },
+      skip: 0,
       take: 8,
     });
     expect(mocks.callTelegramJson).toHaveBeenNthCalledWith(1, env, "answerCallbackQuery", {
@@ -187,7 +211,7 @@ describe("telegram operator menu contract", () => {
     const programButton = sendBody.reply_markup.inline_keyboard[0][0];
     expect(sendBody.chat_id).toBe("-1003491522243");
     expect(sendBody.text).toContain("Выберите программу");
-    expect(programButton.callback_data).toBe("mw:program:cmprogram123");
+    expect(programButton.callback_data).toBe("mw:program:cmprogram123:page:0");
     expect(programButton.text).toContain("В архиве");
     expect(programButton.text).not.toMatch(/[\r\n\u0000-\u001f\u007f-\u009f]/);
     expect(Array.from(programButton.text).length).toBeLessThanOrEqual(56);
@@ -227,8 +251,64 @@ describe("telegram operator menu contract", () => {
     };
     expect(sendBody.text).toBe("Тестовая программа\nТекущий статус: Доработать");
     expect(sendBody.reply_markup.inline_keyboard.flat().map((button) => button.text)).not.toContain("Доработать");
+    expect(sendBody.reply_markup.inline_keyboard.at(-1)).toEqual([
+      { text: "← К программам", callback_data: "mw:programs:page:0" },
+    ]);
     expect(mocks.updateProgram).not.toHaveBeenCalled();
     expect(mocks.writeAuditLog).not.toHaveBeenCalled();
+  });
+
+  it("paginates organizers and preserves the page in organizer callbacks", async () => {
+    mocks.countOrganizers.mockResolvedValue(10);
+    mocks.findManyOrganizers.mockResolvedValue([
+      { id: "org9", displayName: "Девятый", verificationStatus: "checked" },
+      { id: "org10", displayName: "Десятый", verificationStatus: "listed" },
+    ]);
+
+    await handleTelegramOperatorCallback(env, {
+      id: "callback-organizers-page",
+      from: { id: 510686579 },
+      message: { chat: { id: -1003491522243 }, message_id: 500 },
+      data: "mw:orgs:page:1",
+    });
+
+    expect(mocks.findManyOrganizers).toHaveBeenCalledWith(expect.objectContaining({ skip: 8, take: 8 }));
+    expect(mocks.callTelegramJson).toHaveBeenNthCalledWith(2, env, "editMessageText", expect.objectContaining({
+      message_id: 500,
+      text: expect.stringContaining("страница 2/2"),
+      reply_markup: expect.objectContaining({
+        inline_keyboard: expect.arrayContaining([
+          [{ text: "Девятый · Проверен", callback_data: "mw:org:org9:page:1" }],
+          [{ text: "← Назад", callback_data: "mw:orgs:page:0" }],
+        ]),
+      }),
+    }));
+  });
+
+  it("paginates editable programs", async () => {
+    mocks.countPrograms.mockResolvedValue(9);
+    mocks.findManyPrograms.mockResolvedValue([
+      { id: "program9", title: "Девятая", publishStatus: "draft" },
+    ]);
+
+    await handleTelegramOperatorCallback(env, {
+      id: "callback-programs-page",
+      from: { id: 510686579 },
+      message: { chat: { id: -1003491522243 }, message_id: 600 },
+      data: "mw:programs:page:1",
+    });
+
+    expect(mocks.findManyPrograms).toHaveBeenCalledWith(expect.objectContaining({ skip: 8, take: 8 }));
+    expect(mocks.callTelegramJson).toHaveBeenNthCalledWith(2, env, "editMessageText", expect.objectContaining({
+      message_id: 600,
+      text: expect.stringContaining("страница 2/2"),
+      reply_markup: expect.objectContaining({
+        inline_keyboard: expect.arrayContaining([
+          [{ text: "Девятая · Черновик", callback_data: "mw:program:program9:page:1" }],
+          [{ text: "← Назад", callback_data: "mw:programs:page:0" }],
+        ]),
+      }),
+    }));
   });
 
   it("surfaces Telegram sendMessage errors instead of hiding them", async () => {

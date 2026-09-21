@@ -24,11 +24,11 @@ type OperatorAction =
   | { kind: "source_list"; page: number }
   | { kind: "source_confirm"; sourceId: string }
   | { kind: "source_run"; sourceId: string }
-  | { kind: "organizer_list" }
-  | { kind: "organizer_show"; organizerId: string }
+  | { kind: "organizer_list"; page: number }
+  | { kind: "organizer_show"; organizerId: string; page: number }
   | { kind: "organizer_status"; organizerId: string; status: OrganizerVerificationStatus }
-  | { kind: "program_list" }
-  | { kind: "program_show"; programId: string }
+  | { kind: "program_list"; page: number }
+  | { kind: "program_show"; programId: string; page: number }
   | { kind: "program_status"; programId: string; status: Exclude<ProgramPublishStatus, "published"> };
 
 const MAX_MENU_ROWS = 8;
@@ -111,8 +111,12 @@ export function parseOperatorCallback(data: string | undefined): OperatorAction 
   if (data === "mw:sources") return { kind: "source_list", page: 0 };
   const sourcePage = /^mw:sources:page:(\d+)$/i.exec(data);
   if (sourcePage) return { kind: "source_list", page: Number(sourcePage[1]) };
-  if (data === "mw:orgs") return { kind: "organizer_list" };
-  if (data === "mw:programs") return { kind: "program_list" };
+  if (data === "mw:orgs") return { kind: "organizer_list", page: 0 };
+  if (data === "mw:programs") return { kind: "program_list", page: 0 };
+  const organizerPage = /^mw:orgs:page:(\d+)$/i.exec(data);
+  if (organizerPage) return { kind: "organizer_list", page: Number(organizerPage[1]) };
+  const programPage = /^mw:programs:page:(\d+)$/i.exec(data);
+  if (programPage) return { kind: "program_list", page: Number(programPage[1]) };
 
   const sourceRun = /^mw:run:([a-z0-9]+)$/i.exec(data);
   if (sourceRun) return { kind: "source_run", sourceId: sourceRun[1] };
@@ -120,16 +124,16 @@ export function parseOperatorCallback(data: string | undefined): OperatorAction 
   const sourceConfirm = /^mw:runconfirm:([a-z0-9]+)$/i.exec(data);
   if (sourceConfirm) return { kind: "source_confirm", sourceId: sourceConfirm[1] };
 
-  const organizerShow = /^mw:org:([a-z0-9]+)$/i.exec(data);
-  if (organizerShow) return { kind: "organizer_show", organizerId: organizerShow[1] };
+  const organizerShow = /^mw:org:([a-z0-9]+)(?::page:(\d+))?$/i.exec(data);
+  if (organizerShow) return { kind: "organizer_show", organizerId: organizerShow[1], page: Number(organizerShow[2] ?? 0) };
 
   const organizerStatus = /^mw:os:([a-z0-9]+):([lcvtpr])$/i.exec(data);
   if (organizerStatus && organizerStatusCodes[organizerStatus[2]]) {
     return { kind: "organizer_status", organizerId: organizerStatus[1], status: organizerStatusCodes[organizerStatus[2]] };
   }
 
-  const programShow = /^mw:program:([a-z0-9]+)$/i.exec(data);
-  if (programShow) return { kind: "program_show", programId: programShow[1] };
+  const programShow = /^mw:program:([a-z0-9]+)(?::page:(\d+))?$/i.exec(data);
+  if (programShow) return { kind: "program_show", programId: programShow[1], page: Number(programShow[2] ?? 0) };
 
   const programStatus = /^mw:ps:([a-z0-9]+):([difapx])$/i.exec(data);
   if (programStatus && programStatusCodes[programStatus[2]]) {
@@ -237,21 +241,36 @@ async function runActiveSource(env: Env, chatId: number, sourceId: string, actor
   }
 }
 
-async function sendOrganizerList(env: Env, chatId: number): Promise<void> {
+async function sendOrganizerList(env: Env, chatId: number, requestedPage = 0, messageId?: number): Promise<void> {
+  const total = await prisma.organizer.count();
+  const pageCount = Math.max(1, Math.ceil(total / MAX_MENU_ROWS));
+  const page = Math.min(Math.max(requestedPage, 0), pageCount - 1);
   const organizers = await prisma.organizer.findMany({
     select: { id: true, displayName: true, verificationStatus: true },
     orderBy: { updatedAt: "desc" },
+    skip: page * MAX_MENU_ROWS,
     take: MAX_MENU_ROWS,
   });
-  await sendMessage(env, chatId, organizers.length ? "Выберите организатора для изменения статуса верификации." : "Организаторов нет.", {
-    inline_keyboard: [
-      ...organizers.map((organizer) => [{ text: `${truncate(organizer.displayName)} · ${organizerStatusLabel(organizer.verificationStatus)}`, callback_data: `mw:org:${organizer.id}` }]),
-      [{ text: "← Меню", callback_data: "mw:menu" }],
-    ],
-  });
+  const keyboard = organizers.map((organizer) => [{
+    text: `${truncate(organizer.displayName)} · ${organizerStatusLabel(organizer.verificationStatus)}`,
+    callback_data: `mw:org:${organizer.id}:page:${page}`,
+  }]);
+  if (page > 0 || page + 1 < pageCount) {
+    keyboard.push([
+      ...(page > 0 ? [{ text: "← Назад", callback_data: `mw:orgs:page:${page - 1}` }] : []),
+      ...(page + 1 < pageCount ? [{ text: "Далее →", callback_data: `mw:orgs:page:${page + 1}` }] : []),
+    ]);
+  }
+  keyboard.push([{ text: "← Меню", callback_data: "mw:menu" }]);
+  const text = total
+    ? `Выберите организатора для изменения статуса верификации (страница ${page + 1}/${pageCount}).`
+    : "Организаторов нет.";
+  const replyMarkup = { inline_keyboard: keyboard };
+  if (messageId != null && await editMessage(env, chatId, messageId, text, replyMarkup)) return;
+  await sendMessage(env, chatId, text, replyMarkup);
 }
 
-async function sendOrganizerStatusMenu(env: Env, chatId: number, organizerId: string): Promise<void> {
+async function sendOrganizerStatusMenu(env: Env, chatId: number, organizerId: string, page: number): Promise<void> {
   const organizer = await prisma.organizer.findUnique({ where: { id: organizerId }, select: { id: true, displayName: true, verificationStatus: true } });
   if (!organizer) {
     await sendMessage(env, chatId, "Организатор не найден.");
@@ -262,7 +281,7 @@ async function sendOrganizerStatusMenu(env: Env, chatId: number, organizerId: st
   await sendMessage(env, chatId, `${organizer.displayName}\nТекущий статус: ${organizerStatusLabel(organizer.verificationStatus)}`, {
     inline_keyboard: [
       ...entries.map(([code, status]) => [{ text: organizerStatusLabels[status], callback_data: `mw:os:${organizer.id}:${code}` }]),
-      [{ text: "← К организаторам", callback_data: "mw:orgs" }],
+      [{ text: "← К организаторам", callback_data: `mw:orgs:page:${page}` }],
     ],
   });
 }
@@ -322,25 +341,37 @@ async function changeOrganizerStatus(env: Env, chatId: number, organizerId: stri
   await sendMessage(env, chatId, `${organizer.displayName}: ${organizerStatusLabel(organizer.verificationStatus)}.`);
 }
 
-async function sendProgramList(env: Env, chatId: number): Promise<void> {
+async function sendProgramList(env: Env, chatId: number, requestedPage = 0, messageId?: number): Promise<void> {
+  const total = await prisma.program.count({ where: { publishStatus: { not: "published" } } });
+  const pageCount = Math.max(1, Math.ceil(total / MAX_MENU_ROWS));
+  const page = Math.min(Math.max(requestedPage, 0), pageCount - 1);
   const programs = await prisma.program.findMany({
     where: { publishStatus: { not: "published" } },
     select: { id: true, title: true, publishStatus: true },
     orderBy: { updatedAt: "desc" },
+    skip: page * MAX_MENU_ROWS,
     take: MAX_MENU_ROWS,
   });
-  await sendMessage(env, chatId, programs.length ? "Выберите программу для изменения статуса. Публикация через Telegram недоступна." : "Нет программ, статус которых разрешено менять через Telegram. Опубликованные программы доступны только в Admin.", {
-    inline_keyboard: [
-      ...programs.map((program) => [{
-        text: `${buttonLabel(program.title)} · ${programStatusLabel(program.publishStatus)}`,
-        callback_data: `mw:program:${program.id}`,
-      }]),
-      [{ text: "← Меню", callback_data: "mw:menu" }],
-    ],
-  });
+  const keyboard = programs.map((program) => [{
+    text: `${buttonLabel(program.title)} · ${programStatusLabel(program.publishStatus)}`,
+    callback_data: `mw:program:${program.id}:page:${page}`,
+  }]);
+  if (page > 0 || page + 1 < pageCount) {
+    keyboard.push([
+      ...(page > 0 ? [{ text: "← Назад", callback_data: `mw:programs:page:${page - 1}` }] : []),
+      ...(page + 1 < pageCount ? [{ text: "Далее →", callback_data: `mw:programs:page:${page + 1}` }] : []),
+    ]);
+  }
+  keyboard.push([{ text: "← Меню", callback_data: "mw:menu" }]);
+  const text = total
+    ? `Выберите программу для изменения статуса (страница ${page + 1}/${pageCount}). Публикация через Telegram недоступна.`
+    : "Нет программ, статус которых разрешено менять через Telegram. Опубликованные программы доступны только в Admin.";
+  const replyMarkup = { inline_keyboard: keyboard };
+  if (messageId != null && await editMessage(env, chatId, messageId, text, replyMarkup)) return;
+  await sendMessage(env, chatId, text, replyMarkup);
 }
 
-async function sendProgramStatusMenu(env: Env, chatId: number, programId: string): Promise<void> {
+async function sendProgramStatusMenu(env: Env, chatId: number, programId: string, page: number): Promise<void> {
   const program = await prisma.program.findUnique({ where: { id: programId }, select: { id: true, title: true, publishStatus: true } });
   if (!program) {
     await sendMessage(env, chatId, "Программа не найдена.");
@@ -355,7 +386,7 @@ async function sendProgramStatusMenu(env: Env, chatId: number, programId: string
   await sendMessage(env, chatId, `${program.title}\nТекущий статус: ${programStatusLabel(program.publishStatus)}`, {
     inline_keyboard: [
       ...entries.map(([code, status]) => [{ text: programStatusLabels[status], callback_data: `mw:ps:${program.id}:${code}` }]),
-      [{ text: "← К программам", callback_data: "mw:programs" }],
+      [{ text: "← К программам", callback_data: `mw:programs:page:${page}` }],
     ],
   });
 }
@@ -416,11 +447,11 @@ export async function handleTelegramOperatorCallback(env: Env, callback: Telegra
   if (action.kind === "source_list") await sendSourceList(env, chatId, action.page, callback.message?.message_id);
   if (action.kind === "source_confirm") await sendSourceRunConfirmation(env, chatId, action.sourceId);
   if (action.kind === "source_run") await runActiveSource(env, chatId, action.sourceId, actorId);
-  if (action.kind === "organizer_list") await sendOrganizerList(env, chatId);
-  if (action.kind === "organizer_show") await sendOrganizerStatusMenu(env, chatId, action.organizerId);
+  if (action.kind === "organizer_list") await sendOrganizerList(env, chatId, action.page, callback.message?.message_id);
+  if (action.kind === "organizer_show") await sendOrganizerStatusMenu(env, chatId, action.organizerId, action.page);
   if (action.kind === "organizer_status") await changeOrganizerStatus(env, chatId, action.organizerId, action.status, actorId);
-  if (action.kind === "program_list") await sendProgramList(env, chatId);
-  if (action.kind === "program_show") await sendProgramStatusMenu(env, chatId, action.programId);
+  if (action.kind === "program_list") await sendProgramList(env, chatId, action.page, callback.message?.message_id);
+  if (action.kind === "program_show") await sendProgramStatusMenu(env, chatId, action.programId, action.page);
   if (action.kind === "program_status") await changeProgramStatus(env, chatId, action.programId, action.status, actorId);
   return true;
 }

@@ -8,15 +8,6 @@ const OFFSET_RESET_AFTER_MS = 6 * 24 * 60 * 60 * 1000;
 
 export async function acquireTelegramPollingLease(owner: string, now = new Date()): Promise<boolean> {
   const leaseExpiresAt = new Date(now.getTime() + LEASE_MS);
-  try {
-    await prisma.telegramPollingState.create({
-      data: { id: STATE_ID, leaseOwner: owner, leaseExpiresAt },
-    });
-    return true;
-  } catch (error) {
-    if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== "P2002") throw error;
-  }
-
   const claimed = await prisma.telegramPollingState.updateMany({
     where: {
       id: STATE_ID,
@@ -24,7 +15,17 @@ export async function acquireTelegramPollingLease(owner: string, now = new Date(
     },
     data: { leaseOwner: owner, leaseExpiresAt },
   });
-  return claimed.count === 1;
+  if (claimed.count === 1) return true;
+
+  try {
+    await prisma.telegramPollingState.create({
+      data: { id: STATE_ID, leaseOwner: owner, leaseExpiresAt },
+    });
+    return true;
+  } catch (error) {
+    if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== "P2002") throw error;
+    return false;
+  }
 }
 
 export async function renewTelegramPollingLease(owner: string, now = new Date()): Promise<boolean> {

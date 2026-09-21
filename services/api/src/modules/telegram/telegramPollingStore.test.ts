@@ -47,6 +47,7 @@ describe("Telegram polling durable store", () => {
   });
 
   it("claims a new singleton lease", async () => {
+    mocks.stateUpdateMany.mockResolvedValue({ count: 0 });
     mocks.stateCreate.mockResolvedValue({ id: "main-bot" });
     expect(await acquireTelegramPollingLease("worker", new Date("2026-09-20T00:00:00Z"))).toBe(true);
     expect(mocks.stateCreate).toHaveBeenCalledWith({
@@ -56,6 +57,12 @@ describe("Telegram polling durable store", () => {
         leaseExpiresAt: new Date("2026-09-20T00:01:30Z"),
       },
     });
+  });
+
+  it("claims an expired singleton lease without an expected unique-key error", async () => {
+    mocks.stateUpdateMany.mockResolvedValue({ count: 1 });
+    expect(await acquireTelegramPollingLease("worker", new Date("2026-09-20T00:00:00Z"))).toBe(true);
+    expect(mocks.stateCreate).not.toHaveBeenCalled();
   });
 
   it("does not claim a lease held by another worker", async () => {

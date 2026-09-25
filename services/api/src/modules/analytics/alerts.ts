@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import type { Env } from "@mywave/config";
 import { prisma } from "../../lib/prisma";
+import { proxyAwareFetch } from "../../lib/proxyFetch";
 import { getApiEnv } from "./runtimeEnv";
 import { computeDqMetrics } from "./dqMetrics";
 
@@ -11,11 +12,15 @@ async function sendTelegramMessage(env: Env, text: string): Promise<boolean> {
   const chatId = env.TELEGRAM_ALERT_CHAT_ID?.trim();
   if (!base || !chatId) return false;
   const url = `${base.replace(/\/+$/, "")}/sendMessage`;
-  const resp = await fetch(url, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ chat_id: chatId, text, disable_web_page_preview: true }),
-  });
+  const resp = await proxyAwareFetch(
+    url,
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ chat_id: chatId, text, disable_web_page_preview: true }),
+    },
+    env.TELEGRAM_BOT_HTTP_PROXY,
+  );
   return resp.ok;
 }
 

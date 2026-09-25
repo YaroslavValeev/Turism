@@ -210,27 +210,35 @@ async function sendTelegramChannelUpdate(
   try {
     const baseUrl = base.replace(/\/+$/, "");
     if (options?.mediaUrl && isPublicHttpUrl(options.mediaUrl)) {
-      await fetch(`${baseUrl}/sendPhoto`, {
+      await proxyAwareFetch(
+        `${baseUrl}/sendPhoto`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            chat_id: chatId,
+            photo: options.mediaUrl,
+            disable_notification: true,
+          }),
+        },
+        env.TELEGRAM_BOT_HTTP_PROXY,
+      ).catch(() => undefined);
+    }
+    const resp = await proxyAwareFetch(
+      `${baseUrl}/sendMessage`,
+      {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           chat_id: chatId,
-          photo: options.mediaUrl,
-          disable_notification: true,
+          text,
+          disable_web_page_preview: false,
+          ...(options?.parseMode ? { parse_mode: options.parseMode } : {}),
+          ...(replyMarkup ? { reply_markup: replyMarkup } : {}),
         }),
-      }).catch(() => undefined);
-    }
-    const resp = await fetch(`${base.replace(/\/+$/, "")}/sendMessage`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        chat_id: chatId,
-        text,
-        disable_web_page_preview: false,
-        ...(options?.parseMode ? { parse_mode: options.parseMode } : {}),
-        ...(replyMarkup ? { reply_markup: replyMarkup } : {}),
-      }),
-    });
+      },
+      env.TELEGRAM_BOT_HTTP_PROXY,
+    );
     if (!resp.ok) {
       console.error("[subscriptions] telegram publish failed", resp.status);
     }

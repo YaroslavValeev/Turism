@@ -11,6 +11,8 @@ on:
       - "pnpm-workspace.yaml"
       - "packages/**"
       - "services/api/**"
+      - "scripts/camp-api/**"
+      - "docs/deployment/CAMP_API_ARTIFACT_RUNBOOK.md"
   workflow_dispatch:
 
 concurrency:
@@ -89,15 +91,22 @@ jobs:
             test -f services/api/src/modules/camp-feed/routes.ts
             test -f services/api/src/modules/camp-feed/mapper.ts
             test -f services/api/src/modules/camp-feed/auth.ts
+            test -f scripts/camp-api/deploy-selected-artifact.sh
+            test -f scripts/camp-api/rollback-selected-artifact.sh
           )
           mkdir -p /tmp/camp-api-delivery
           bash tmp-workflow-runs/create_remote_deploy_script.sh
           bash -n /tmp/camp-api-delivery/deploy-camp-api-remote.sh
+          bash -n scripts/camp-api/build-selected-artifact.sh
+          bash -n scripts/camp-api/docker-preflight.sh
+          bash -n scripts/camp-api/deploy-selected-artifact.sh
+          bash -n scripts/camp-api/rollback-selected-artifact.sh
 
       - name: Validate Camp API contract files
         run: |
           set -euo pipefail
           grep -R 'router.get("/api/v1/camps"' -n services/api/src/modules/camp-feed/routes.ts
+          grep -R 'router.get("/api/v1/camps/health"' -n services/api/src/modules/camp-feed/routes.ts
           grep -R 'router.get("/api/v1/camps/:id"' -n services/api/src/modules/camp-feed/routes.ts
           grep -R 'router.get("/camps-feed.json"' -n services/api/src/modules/camp-feed/routes.ts
           grep -R 'campFeedRoutes' -n services/api/src/index.ts

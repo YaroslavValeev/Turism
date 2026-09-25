@@ -108,7 +108,7 @@ export default function PaymentsPage() {
               description={statusFilter ? "По выбранному статусу платежей нет." : "В системе пока нет зафиксированных оплат."}
             />
           ) : (
-            <div style={{ overflowX: "auto" }}>
+            <div className="mw-admin-table-outer">
               <table className="mw-admin-table">
                 <thead>
                   <tr>

@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type MouseEvent } from "react";
+import Link from "next/link";
 import { adminJson, getAdminToken } from "../../lib/admin";
 import { AdminEmptyState } from "../../components/admin/AdminEmptyState";
 import { AdminFilterField, AdminFiltersBar } from "../../components/admin/AdminFiltersBar";
@@ -10,9 +11,14 @@ import { AdminPageHeader } from "../../components/admin/AdminPageHeader";
 import { AdminStatCard, AdminStatGrid } from "../../components/admin/AdminStatCard";
 import { AdminStatusBadge } from "../../components/admin/AdminStatusBadge";
 
-type SourceOption = {
+type SourceOption = { id: string; name: string };
+
+type SourceRef = {
   id: string;
   name: string;
+  type: string;
+  trustScore: number;
+  urlOrHandle?: string | null;
 };
 
 type EventCandidateListItem = {
@@ -34,34 +40,23 @@ type EventCandidateListItem = {
     startDate: string | null;
     endDate: string | null;
     organizerName: string | null;
+    bookingUrl?: string | null;
+    imageUrl?: string | null;
     rawItem: {
-      source: {
-        id: string;
-        name: string;
-        type: string;
-        trustScore: number;
-      };
+      id?: string;
+      sourceUrl?: string | null;
+      source: SourceRef;
     };
   };
-  dedupGroup: {
-    id: string;
-    groupKey: string;
-    mergeStatus: string;
-  } | null;
   publishedProgram: {
     id: string;
     publishStatus: string;
-    program: {
-      id: string;
-      title: string;
-      publishStatus: string;
-    };
+    program: { id: string; title: string; publishStatus: string };
   } | null;
 };
 
 type CandidateDetail = EventCandidateListItem & {
   decisionNotes: string | null;
-  reviewedBy: string | null;
   reviewedAt: string | null;
   normalizedItem: EventCandidateListItem["normalizedItem"] & {
     eventType: string | null;
@@ -75,39 +70,60 @@ type CandidateDetail = EventCandidateListItem & {
     bookingUrl: string | null;
     imageUrl: string | null;
     confidenceScore: number;
-    rawItem: {
-      id: string;
-      rawTitle: string | null;
-      rawText: string | null;
-      source: {
-        id: string;
-        name: string;
-        type: string;
-        trustScore: number;
-      };
+    rawItem: EventCandidateListItem["normalizedItem"]["rawItem"] & {
+      rawMediaJson?: unknown;
     };
   };
-  dedupGroup: {
-    id: string;
-    groupKey: string;
-    mergeStatus: string;
-    candidates: Array<{
-      id: string;
-      status: string;
-      finalScore: number;
-      normalizedItem: {
-        title: string | null;
-        organizerName: string | null;
-        rawItem: {
-          source: {
-            name: string;
-            type: string;
-          };
-        };
-      };
-    }>;
-  } | null;
 };
+
+function collectPreviewMediaUrls(detail: CandidateDetail): string[] {
+  const urls: string[] = [];
+  const push = (value: string | null | undefined) => {
+    const url = String(value ?? "").trim();
+    if (!url || /telegram\.org\/img\/emoji\//i.test(url)) return;
+    const normalized = url.startsWith("//") ? `https:${url}` : url;
+    if (!/^https?:\/\//i.test(normalized) && !normalized.startsWith("/")) return;
+    if (urls.includes(normalized)) return;
+    urls.push(normalized);
+  };
+  push(detail.normalizedItem.imageUrl);
+  const raw = detail.normalizedItem.rawItem.rawMediaJson;
+  if (Array.isArray(raw)) {
+    for (const item of raw) {
+      if (typeof item === "string") push(item);
+      else if (item && typeof item === "object") push((item as { url?: string }).url);
+    }
+  }
+  return urls.slice(0, 12);
+}
+
+/** Браузер не тянет telesco.pe — через API SOCKS-прокси. */
+function presentAdminMediaUrl(url: string): string {
+  if (url.startsWith("/ingestion-media/")) {
+    const siteBase = (process.env.NEXT_PUBLIC_WEB_URL || process.env.NEXT_PUBLIC_SITE_URL || "https://mywavetour.ru").replace(
+      /\/+$/,
+      "",
+    );
+    return `${siteBase}${url}`;
+  }
+  if (url.startsWith("/")) return url;
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    const needsProxy =
+      host.includes("telesco.pe") ||
+      host.includes("telegram.org") ||
+      host.includes("cdn-telegram.org") ||
+      host === "t.me" ||
+      host.endsWith(".t.me");
+    if (!needsProxy) return url;
+  } catch {
+    return url;
+  }
+  const apiBase = (process.env.NEXT_PUBLIC_API_URL ?? "https://api.mywavetour.ru").replace(/\/+$/, "");
+  return `${apiBase}/public/media?url=${encodeURIComponent(url)}`;
+}
+
+const DEFAULT_STATUS = "needs_review";
 
 function formatDate(value: string | null) {
   if (!value) return "—";
@@ -125,11 +141,47 @@ function statusLabelRu(status: string): string {
   return status;
 }
 
+function candidateStatusTone(s: string): "ok" | "warn" | "danger" | "muted" {
+  if (s === "approved" || s === "published") return "ok";
+  if (s === "rejected" || s === "archived") return "danger";
+  if (s === "needs_review" || s === "new") return "warn";
+  return "muted";
+}
+
+/** Ссылка для перепроверки источника (пост / профиль / сайт). */
+function resolveSourceHref(item: {
+  normalizedItem: {
+    bookingUrl?: string | null;
+    rawItem: { sourceUrl?: string | null; source: SourceRef };
+  };
+}): string | null {
+  const raw = String(item.normalizedItem.rawItem.sourceUrl ?? "").trim();
+  const booking = String(item.normalizedItem.bookingUrl ?? "").trim();
+  const handle = String(item.normalizedItem.rawItem.source.urlOrHandle ?? "").trim();
+  const type = item.normalizedItem.rawItem.source.type;
+
+  const asHttp = (v: string) => (/^https?:\/\//i.test(v) ? v : null);
+  if (asHttp(raw)) return raw;
+  if (asHttp(booking)) return booking;
+  if (asHttp(handle)) return handle;
+
+  if (type === "instagram" && handle) {
+    const user = handle.replace(/^@/, "").replace(/^https?:\/\/(www\.)?instagram\.com\//i, "").replace(/\/$/, "");
+    if (user) return `https://www.instagram.com/${user}/`;
+  }
+  if (type === "telegram" && handle) {
+    const user = handle.replace(/^@/, "").replace(/^https?:\/\/t\.me\//i, "").replace(/\/$/, "");
+    if (user) return `https://t.me/${user}`;
+  }
+  if (handle.startsWith("www.")) return `https://${handle}`;
+  return null;
+}
+
 export default function EventCandidatesPage() {
   const [sources, setSources] = useState<SourceOption[]>([]);
   const [items, setItems] = useState<EventCandidateListItem[]>([]);
   const [selected, setSelected] = useState<CandidateDetail | null>(null);
-  const [status, setStatus] = useState("");
+  const [status, setStatus] = useState(DEFAULT_STATUS);
   const [sourceId, setSourceId] = useState("");
   const [loading, setLoading] = useState(true);
   const [busyAction, setBusyAction] = useState("");
@@ -146,24 +198,14 @@ export default function EventCandidatesPage() {
 
   const stats = useMemo(() => {
     const counts: Record<string, number> = {};
-    for (const it of items) {
-      counts[it.status] = (counts[it.status] ?? 0) + 1;
-    }
+    for (const it of items) counts[it.status] = (counts[it.status] ?? 0) + 1;
     return {
       total: items.length,
-      counts,
       needsReview: counts.needs_review ?? 0,
       approved: counts.approved ?? 0,
       published: counts.published ?? 0,
     };
   }, [items]);
-
-  function candidateStatusTone(s: string): "ok" | "warn" | "danger" | "muted" {
-    if (s === "approved" || s === "published") return "ok";
-    if (s === "rejected" || s === "archived") return "danger";
-    if (s === "needs_review" || s === "new") return "warn";
-    return "muted";
-  }
 
   async function loadList() {
     setLoading(true);
@@ -190,10 +232,14 @@ export default function EventCandidatesPage() {
     void loadList();
   }, [query]);
 
-  async function openDetail(id: string) {
+  async function selectCandidate(id: string) {
+    setError("");
     try {
       const detail = await adminJson<CandidateDetail>(`/event-candidates/${id}`);
       setSelected(detail);
+      window.requestAnimationFrame(() => {
+        document.getElementById("candidate-detail-panel")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      });
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }
@@ -204,14 +250,26 @@ export default function EventCandidatesPage() {
     setMessage("");
     setError("");
     try {
-      await adminJson(path, {
+      const result = await adminJson<Record<string, unknown>>(path, {
         method: "POST",
         body: JSON.stringify(body ?? {}),
       });
-      setMessage(`Действие выполнено: ${label}`);
-      if (selected) {
-        await openDetail(selected.id);
+      if (label === "approve-and-publish") {
+        const programId = typeof result.programId === "string" ? result.programId : "";
+        setMessage(
+          programId
+            ? `Готово: программа на сайте (published). ID ${programId}. Проверьте витрину и Telegram-канал.`
+            : "Готово: одобрено и опубликовано.",
+        );
+      } else if (label === "archive-past") {
+        const c = typeof result.candidatesArchived === "number" ? result.candidatesArchived : 0;
+        const p = typeof result.programsArchived === "number" ? result.programsArchived : 0;
+        setMessage(`В архив: кандидатов ${c}, программ ${p}. Прошедшие даты убраны из очереди.`);
+        setSelected(null);
+      } else {
+        setMessage(`Действие выполнено: ${label}`);
       }
+      if (selected) await selectCandidate(selected.id);
       await loadList();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -220,56 +278,65 @@ export default function EventCandidatesPage() {
     }
   }
 
-  async function handleApprove() {
+  async function handleApproveAndPublish() {
     if (!selected) return;
-    const notes = window.prompt("Комментарий к одобрению", "");
-    await runAction("approve", `/event-candidates/${selected.id}/approve`, { notes });
+    const ok = window.confirm(
+      `Одобрить и сразу опубликовать на сайте + в Telegram?\n\n${selected.normalizedItem.title || "Без названия"}`,
+    );
+    if (!ok) return;
+    await runAction("approve-and-publish", `/event-candidates/${selected.id}/approve-and-publish`);
   }
 
   async function handleReject() {
     if (!selected) return;
-    const notes = window.prompt("Причина отклонения", "");
+    const notes = window.prompt("Причина отклонения (можно пусто)", "") ?? "";
     await runAction("reject", `/event-candidates/${selected.id}/reject`, { notes });
   }
 
-  async function handleMerge() {
-    if (!selected?.dedupGroup) return;
-    const options = selected.dedupGroup.candidates.filter((candidate) => candidate.id !== selected.id);
-    const suggested = options[0]?.id ?? "";
-    const canonicalCandidateId = window.prompt("ID канонического кандидата", suggested);
-    if (!canonicalCandidateId) return;
-    const notes = window.prompt("Комментарий к объединению", "") ?? null;
-    await runAction("merge", `/event-candidates/${selected.id}/merge`, { canonicalCandidateId, notes });
-  }
-
-  async function handlePublish() {
-    if (!selected) return;
-    const editorNotes = window.prompt("Комментарий редактора для черновика", "");
-    await runAction("publish", `/event-candidates/${selected.id}/publish`, { editorNotes });
+  function onCardClick(item: EventCandidateListItem, e: MouseEvent) {
+    const target = e.target as HTMLElement;
+    if (target.closest("a,button")) return;
+    void selectCandidate(item.id);
   }
 
   return (
-    <main className="mw-admin-page">
+    <main className="mw-admin-page mw-admin-page--wide">
       <AdminPageHeader
         title="Кандидаты на публикацию"
-        description="Нормализованные анонсы после оценки и дедупликации. Автопубликация отключена: решение принимается вручную."
+        description="Первичную проверку уже сделал скоринг: в «Требуют проверки» попадают только прошедшие пороги (итог ≥ 0.42, будущее ≥ 0.2, likelihood ≥ 0.3). Вам — финальная сверка источника и публикация одной кнопкой."
       />
       {error ? <AdminMessage type="error">{error}</AdminMessage> : null}
       {message ? <AdminMessage type="success">{message}</AdminMessage> : null}
 
       {loading ? (
-        <AdminLoadingState />
+        <AdminLoadingState label="Загружаем кандидатов…" />
       ) : (
         <>
           <AdminStatGrid>
-            <AdminStatCard label="В выборке" value={stats.total} hint="С учётом фильтров ниже" />
+            <AdminStatCard label="В выборке" value={stats.total} />
             <AdminStatCard label="Требуют проверки" value={stats.needsReview} />
             <AdminStatCard label="Одобрены" value={stats.approved} />
             <AdminStatCard label="Опубликованы" value={stats.published} />
           </AdminStatGrid>
 
           <AdminFiltersBar title="Фильтры">
-            <AdminFilterField label="Статус кандидата">
+            <AdminFilterField label="Быстрый фильтр">
+              <div className="mw-admin-inline-form" style={{ flexWrap: "wrap", gap: 8 }}>
+                <button type="button" className="mw-admin-btn mw-admin-btn--ghost" disabled={status === "needs_review"} onClick={() => setStatus("needs_review")}>
+                  Требуют проверки
+                </button>
+                <button type="button" className="mw-admin-btn mw-admin-btn--ghost" disabled={status === "new"} onClick={() => setStatus("new")}>
+                  Новые
+                </button>
+                <button type="button" className="mw-admin-btn mw-admin-btn--ghost" disabled={status === ""} onClick={() => setStatus("")}>
+                  Все
+                </button>
+                <button type="button" className="mw-admin-btn mw-admin-btn--ghost" disabled={status === "published"} onClick={() => setStatus("published")}>
+                  Уже опубликованы
+                </button>
+              </div>
+            </AdminFilterField>
+            <AdminFilterField label="Статус">
               <select className="mw-admin-input" value={status} onChange={(e) => setStatus(e.target.value)} style={{ minWidth: 200 }}>
                 <option value="">Все статусы</option>
                 <option value="new">новый</option>
@@ -294,156 +361,211 @@ export default function EventCandidatesPage() {
             <button type="button" className="mw-admin-btn mw-admin-btn--ghost" onClick={() => void loadList()}>
               Обновить
             </button>
+            <button
+              type="button"
+              className="mw-admin-btn"
+              disabled={busyAction !== ""}
+              onClick={() => void runAction("archive-past", "/event-candidates/archive-past")}
+              title="Кандидаты и программы с датой окончания (или старта) в прошлом → статус archived"
+            >
+              {busyAction === "archive-past" ? "Архивируем…" : "Убрать прошедшие в архив"}
+            </button>
           </AdminFiltersBar>
 
-          <div className="mw-admin-split">
+          <div className="mw-admin-candidates-layout">
             <section>
               {items.length === 0 ? (
                 <AdminEmptyState
-                  title="Нет кандидатов"
-                  description="По текущим фильтрам список пуст. Измените статус или источник либо дождитесь нового ingestion-run."
+                  title="Нет кандидатов в этом фильтре"
+                  description="Выберите «Требуют проверки» или «Все». Если пусто — прогоните загрузку на странице Задач."
                 />
               ) : (
-                <div className="mw-admin-table-outer mw-admin-table-outer--always-scroll">
-                  <table className="mw-admin-table">
-                    <thead>
-                      <tr>
-                        <th>Кандидат</th>
-                        <th>Источник</th>
-                        <th>Оценки</th>
-                        <th>Действия</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {items.map((item) => (
-                        <tr key={item.id}>
-                          <td style={{ minWidth: 260 }}>
-                            <strong>{item.normalizedItem.title || "Без названия"}</strong>
-                            <div className="mw-admin-muted" style={{ fontSize: "0.82rem", marginTop: 4 }}>
-                              {item.normalizedItem.discipline || "—"} · {item.normalizedItem.region || item.normalizedItem.country || "—"} · {formatDate(item.normalizedItem.startDate)}
-                            </div>
-                            <div className="mw-admin-muted" style={{ fontSize: "0.82rem", marginTop: 4 }}>
-                              {item.normalizedItem.organizerName || "—"}
-                            </div>
-                            <div style={{ marginTop: 8 }}>
-                              <AdminStatusBadge tone={candidateStatusTone(item.status)}>{statusLabelRu(item.status)}</AdminStatusBadge>
-                              {item.publishedProgram ? (
-                                <span className="mw-admin-muted" style={{ marginLeft: 8, fontSize: "0.82rem" }}>
-                                  · черновик: <a href="/programs">{item.publishedProgram.program.title}</a>
-                                </span>
-                              ) : null}
-                            </div>
-                          </td>
-                          <td style={{ minWidth: 160 }}>
-                            <strong>{item.normalizedItem.rawItem.source.name}</strong>
-                            <div className="mw-admin-muted" style={{ fontSize: "0.82rem", marginTop: 4 }}>
-                              {item.normalizedItem.rawItem.source.type} · доверие {item.normalizedItem.rawItem.source.trustScore.toFixed(2)}
-                            </div>
-                            {item.dedupGroup ? (
-                              <div className="mw-admin-muted" style={{ fontSize: "0.78rem", marginTop: 4 }}>
-                                группа: {item.dedupGroup.mergeStatus}
-                              </div>
+                <div className="mw-admin-candidates-list">
+                  {items.map((item) => {
+                    const active = selected?.id === item.id;
+                    const href = resolveSourceHref(item);
+                    return (
+                      <article
+                        key={item.id}
+                        role="button"
+                        tabIndex={0}
+                        className={"mw-admin-candidate-card" + (active ? " mw-admin-candidate-card--active" : "")}
+                        onClick={(e) => onCardClick(item, e)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            void selectCandidate(item.id);
+                          }
+                        }}
+                      >
+                        <div className="mw-admin-candidate-card__body">
+                          <div style={{ marginBottom: 8 }}>
+                            <AdminStatusBadge tone={candidateStatusTone(item.status)}>
+                              {statusLabelRu(item.status)}
+                            </AdminStatusBadge>
+                            {active ? (
+                              <span className="mw-admin-caption" style={{ marginLeft: 8, color: "#0f766e" }}>
+                                выбрано
+                              </span>
                             ) : null}
-                          </td>
-                          <td className="mw-admin-muted" style={{ minWidth: 120, fontSize: "0.86rem", whiteSpace: "nowrap" }}>
-                            итог {item.finalScore.toFixed(2)}
-                            <br />
-                            будущее {item.futureEventScore.toFixed(2)}
-                            <br />
-                            релевантность {item.fitScore.toFixed(2)}
-                            <br />
-                            доверие {item.trustScore.toFixed(2)}
-                          </td>
-                          <td>
-                            <button type="button" className="mw-admin-btn mw-admin-btn--ghost" onClick={() => void openDetail(item.id)} style={{ fontSize: "0.82rem", padding: "6px 12px" }}>
-                              Открыть
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                          </div>
+                          <strong>{item.normalizedItem.title || "Без названия"}</strong>
+                          <div className="mw-admin-caption" style={{ marginTop: 6 }}>
+                            {item.normalizedItem.discipline || "—"} ·{" "}
+                            {item.normalizedItem.region || item.normalizedItem.country || "—"} ·{" "}
+                            {formatDate(item.normalizedItem.startDate)}
+                          </div>
+                          <div className="mw-admin-caption">
+                            {item.normalizedItem.organizerName || "—"} · {item.normalizedItem.rawItem.source.name} (
+                            {item.normalizedItem.rawItem.source.type})
+                          </div>
+                          <div className="mw-admin-candidate-scores" aria-label="Автооценка">
+                            <span title="Итоговый score (порог в очередь ≥ 0.42)">
+                              итог {item.finalScore.toFixed(2)}
+                            </span>
+                            <span title="Будущее событие (порог ≥ 0.20)">
+                              будущее {item.futureEventScore.toFixed(2)}
+                            </span>
+                            <span title="Релевантность / fit">
+                              fit {item.fitScore.toFixed(2)}
+                            </span>
+                            <span title="Доверие источника">
+                              доверие {item.trustScore.toFixed(2)}
+                            </span>
+                          </div>
+                          <div style={{ marginTop: 8 }}>
+                            {href ? (
+                              <a
+                                className="mw-admin-external-link"
+                                href={href}
+                                target="_blank"
+                                rel="noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                Открыть источник для перепроверки ↗
+                              </a>
+                            ) : (
+                              <span className="mw-admin-caption">Ссылка источника недоступна</span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="mw-admin-candidate-card__actions">
+                          <button type="button" className="mw-admin-btn mw-admin-btn--ghost" onClick={() => void selectCandidate(item.id)}>
+                            {active ? "Выбрано" : "Выбрать"}
+                          </button>
+                        </div>
+                      </article>
+                    );
+                  })}
                 </div>
               )}
             </section>
 
-            <aside className="mw-admin-aside-panel">
-          <h2 style={{ marginTop: 0 }}>Детали кандидата</h2>
-          {!selected ? (
-            <AdminEmptyState title="Ничего не выбрано" description="Выберите строку слева и нажмите «Открыть», чтобы увидеть полный контекст и действия." />
-          ) : (
-            <>
-              <p><strong>{selected.normalizedItem.title || "Без названия"}</strong></p>
-              <p style={{ fontSize: 13, color: "#666" }}>
-                {selected.normalizedItem.eventType || "—"} · {selected.normalizedItem.discipline || "—"} · уверенность {selected.normalizedItem.confidenceScore.toFixed(2)}
-              </p>
-              <p>
-                <strong>Локация:</strong> {selected.normalizedItem.country || "—"} / {selected.normalizedItem.region || "—"} / {selected.normalizedItem.city || "—"} / {selected.normalizedItem.venue || "—"}
-              </p>
-              <p>
-                <strong>Даты:</strong> {formatDate(selected.normalizedItem.startDate)} → {formatDate(selected.normalizedItem.endDate)} · {selected.normalizedItem.durationDays ?? "—"} дней
-              </p>
-              <p>
-                <strong>Уровень:</strong> {selected.normalizedItem.level || "—"} · <strong>Цена:</strong> {selected.normalizedItem.priceFrom ?? "—"} {selected.normalizedItem.currency || ""}
-              </p>
-              <p>
-                <strong>Организатор:</strong> {selected.normalizedItem.organizerName || "—"}
-              </p>
-              <p style={{ whiteSpace: "pre-wrap" }}>{selected.normalizedItem.descriptionShort || selected.normalizedItem.descriptionFull || "—"}</p>
-              <p>
-                <strong>Ссылка бронирования:</strong><br />
-                {selected.normalizedItem.bookingUrl || "—"}
-              </p>
-              <p>
-                <strong>Изображение:</strong><br />
-                {selected.normalizedItem.imageUrl || "—"}
-              </p>
-              <p>
-                <strong>Комментарий решения:</strong> {selected.decisionNotes || "—"}
-                <br />
-                <strong>Проверено:</strong> {formatDate(selected.reviewedAt)}
-              </p>
-
-              {selected.dedupGroup && (
+            <aside id="candidate-detail-panel" className="mw-admin-aside-panel mw-admin-aside-panel--sticky">
+              <h2 style={{ marginTop: 0, marginBottom: 8 }}>Публикация</h2>
+              {!selected ? (
+                <p className="mw-admin-caption" style={{ margin: 0 }}>
+                  Кликните карточку слева — она выделится. Здесь появится кнопка одной публикации.
+                </p>
+              ) : (
                 <>
-                  <p><strong>Группа дедупликации</strong>: {selected.dedupGroup.groupKey}</p>
-                  <ul>
-                    {selected.dedupGroup.candidates.map((candidate) => (
-                      <li key={candidate.id}>
-                        {candidate.id} · {statusLabelRu(candidate.status)} · {candidate.finalScore.toFixed(2)} · {candidate.normalizedItem.title || "Без названия"} · {candidate.normalizedItem.rawItem.source.name}
-                      </li>
-                    ))}
-                  </ul>
+                  <div className="mw-admin-candidate-actions-bar">
+                    <button
+                      type="button"
+                      className="mw-admin-btn"
+                      onClick={() => void handleApproveAndPublish()}
+                      disabled={busyAction !== "" || selected.status === "published"}
+                    >
+                      {busyAction === "approve-and-publish"
+                        ? "Публикуем…"
+                        : selected.status === "published"
+                          ? "Уже опубликовано"
+                          : "Одобрить и опубликовать на сайте"}
+                    </button>
+                    <button type="button" className="mw-admin-btn mw-admin-btn--ghost" onClick={() => void handleReject()} disabled={busyAction !== ""}>
+                      {busyAction === "reject" ? "Отклоняем…" : "Отклонить"}
+                    </button>
+                  </div>
+                  <p className="mw-admin-caption">
+                    Одна кнопка = одобрение кандидата + программа + статус <strong>published</strong> (сайт и Telegram при
+                    первом переходе). Перед этим откройте ссылку источника.
+                  </p>
+
+                  {(() => {
+                    const href = resolveSourceHref(selected);
+                    return href ? (
+                      <p>
+                        <a className="mw-admin-external-link" href={href} target="_blank" rel="noreferrer">
+                          Источник для перепроверки ↗
+                        </a>
+                      </p>
+                    ) : null;
+                  })()}
+
+                  <p>
+                    <strong>{selected.normalizedItem.title || "Без названия"}</strong>
+                  </p>
+                  <p className="mw-admin-caption">
+                    {selected.normalizedItem.discipline || "—"} ·{" "}
+                    {selected.normalizedItem.region || selected.normalizedItem.country || "—"}
+                  </p>
+                  <p>
+                    <strong>Даты:</strong> {formatDate(selected.normalizedItem.startDate)} →{" "}
+                    {formatDate(selected.normalizedItem.endDate)}
+                  </p>
+                  <p>
+                    <strong>Организатор:</strong> {selected.normalizedItem.organizerName || "—"}
+                  </p>
+                  {(() => {
+                    const mediaUrls = collectPreviewMediaUrls(selected);
+                    if (mediaUrls.length === 0) {
+                      return <p className="mw-admin-caption">Медиа в источнике не найдено (или ещё не загружено).</p>;
+                    }
+                    return (
+                      <div style={{ marginBottom: 12 }}>
+                        <strong>Медиа источника ({mediaUrls.length})</strong>
+                        <div
+                          style={{
+                            display: "grid",
+                            gridTemplateColumns: "repeat(auto-fill, minmax(96px, 1fr))",
+                            gap: 8,
+                            marginTop: 8,
+                          }}
+                        >
+                          {mediaUrls.map((url) => {
+                            const isVideo = /\.(mp4|webm|mov)(\?|#|$)/i.test(url);
+                            const displayUrl = presentAdminMediaUrl(url);
+                            return isVideo ? (
+                              <a key={url} href={displayUrl} target="_blank" rel="noreferrer" className="mw-admin-caption">
+                                Видео ↗
+                              </a>
+                            ) : (
+                              <a key={url} href={displayUrl} target="_blank" rel="noreferrer">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                  src={displayUrl}
+                                  alt=""
+                                  style={{ width: "100%", height: 88, objectFit: "cover", borderRadius: 8 }}
+                                />
+                              </a>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })()}
+                  <p style={{ whiteSpace: "pre-wrap" }}>
+                    {selected.normalizedItem.descriptionShort || selected.normalizedItem.descriptionFull || "—"}
+                  </p>
+                  {selected.publishedProgram ? (
+                    <p>
+                      Программа:{" "}
+                      <Link href="/programs">{selected.publishedProgram.program.title}</Link> ·{" "}
+                      {selected.publishedProgram.program.publishStatus}
+                    </p>
+                  ) : null}
                 </>
               )}
-
-              {selected.publishedProgram && (
-                <p>
-                  <strong>Связанный черновик:</strong> {selected.publishedProgram.program.title} · {selected.publishedProgram.publishStatus}
-                </p>
-              )}
-
-              <div style={{ display: "grid", gap: 10, marginTop: 16 }}>
-                <button type="button" className="mw-admin-btn" onClick={() => void handleApprove()} disabled={busyAction !== ""}>
-                  {busyAction === "approve" ? "Одобряем…" : "Одобрить"}
-                </button>
-                <button type="button" className="mw-admin-btn mw-admin-btn--ghost" onClick={() => void handleReject()} disabled={busyAction !== ""}>
-                  {busyAction === "reject" ? "Отклоняем…" : "Отклонить"}
-                </button>
-                <button
-                  type="button"
-                  className="mw-admin-btn mw-admin-btn--ghost"
-                  onClick={() => void handleMerge()}
-                  disabled={busyAction !== "" || !selected.dedupGroup}
-                >
-                  {busyAction === "merge" ? "Объединяем…" : "Объединить в канон"}
-                </button>
-                <button type="button" className="mw-admin-btn" onClick={() => void handlePublish()} disabled={busyAction !== ""}>
-                  {busyAction === "publish" ? "Создаём…" : "Создать черновик"}
-                </button>
-              </div>
-            </>
-          )}
             </aside>
           </div>
         </>

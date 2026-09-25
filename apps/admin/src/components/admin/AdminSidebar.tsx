@@ -125,7 +125,11 @@ export function AdminSidebar({ mobileOpen, onCloseMobile }: Props) {
                 <button
                   type="button"
                   className="mw-admin-nav-group__title"
-                  onClick={() => toggleGroup(group.id)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    toggleGroup(group.id);
+                  }}
                   aria-expanded={isOpen}
                 >
                   <span>{group.label}</span>

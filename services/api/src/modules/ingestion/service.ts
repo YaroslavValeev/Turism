@@ -8,6 +8,7 @@ import {
 } from "@mywave/config";
 import { Prisma, Source, EventCandidate, NormalizedItem, RawItem } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
+import { proxyAwareFetch } from "../../lib/proxyFetch";
 import { writeAuditLog } from "../../lib/audit";
 import { canPublishAutopilot, programIncludeForPublishGate } from "../programs/publishGate";
 import { archiveExpiredPublishedPrograms } from "../programs/expiration";
@@ -20,6 +21,7 @@ import {
   isExplicitCancellationNotice,
   routeCandidateStatus,
 } from "./candidateRouting";
+import { extractTelegramMediaUrls, isTelegramCdnMediaUrl } from "./telegramMedia";
 import {
   EVENT_CANDIDATE_STATUSES,
   SOURCE_PRIORITY_RANK,
@@ -417,9 +419,17 @@ function looksLikeGenericRawTitle(rawTitle: string | null, source: SourceWithOrg
 }
 
 function deriveTitleFromText(rawText: string | null): string | null {
-  const text = normalizeText(decodeHtmlEntities(rawText));
+  const text = normalizeText(
+    decodeHtmlEntities(rawText)
+      .replace(/<[^>]+>/g, " ")
+      .replace(/\s+/g, " "),
+  );
   if (!text) return null;
-  const cleaned = text.replace(/^[^\p{L}\p{N}]+/u, "").trim();
+  // Обрезки атрибутов HTML вида as"> / class="foo">
+  const cleaned = text
+    .replace(/^[a-z0-9_-]{1,12}"\s*>\s*/i, "")
+    .replace(/^[^\p{L}\p{N}]+/u, "")
+    .trim();
   if (!cleaned) return null;
   const firstSentence =
     /(.{8,140}?(?:[.!?](?:\s|$)|\s[•·]\s|$))/u.exec(cleaned)?.[1] ??
@@ -562,12 +572,20 @@ function getPrimarySourceDiscipline(source: SourceWithOrganizer): string | null 
   return normalizeText(fromMeta);
 }
 
-type DueSource = Pick<Source, "id" | "isActive" | "lastCheckedAt" | "fetchIntervalMinutes" | "priority">;
+type DueSource = Pick<Source, "id" | "isActive" | "lastCheckedAt" | "lastSuccessAt" | "fetchIntervalMinutes" | "priority">;
 
-function isSourceDueForCollection(source: DueSource, now = new Date()): boolean {
+/** После неудачного сбора не ждём полный интервал (часто сутки) — сетевые сбои обычно временные. */
+const FAILED_SOURCE_RETRY_MINUTES = 180;
+
+export function isSourceDueForCollection(
+  source: Pick<Source, "isActive" | "lastCheckedAt" | "lastSuccessAt" | "fetchIntervalMinutes">,
+  now = new Date(),
+): boolean {
   if (!source.isActive) return false;
   if (!source.lastCheckedAt) return true;
-  const intervalMinutes = Math.max(source.fetchIntervalMinutes, 15);
+  let intervalMinutes = Math.max(source.fetchIntervalMinutes, 15);
+  const lastCheckFailed = !source.lastSuccessAt || source.lastSuccessAt.getTime() < source.lastCheckedAt.getTime();
+  if (lastCheckFailed) intervalMinutes = Math.min(intervalMinutes, FAILED_SOURCE_RETRY_MINUTES);
   return now.getTime() - source.lastCheckedAt.getTime() >= intervalMinutes * 60 * 1000;
 }
 
@@ -678,14 +696,19 @@ function extractImageUrl(rawMedia: unknown, text: string): string | null {
   if (Array.isArray(rawMedia)) {
     for (const item of rawMedia) {
       if (typeof item === "string" && item.trim() && !/\/\/telegram\.org\/img\/emoji\//i.test(item)) {
+        if (/\.(mp4|webm|mov)(\?|#|$)/i.test(item)) continue;
         fromArray.push(item.trim());
       } else if (item && typeof item === "object") {
-        const url = (item as { url?: string }).url;
-        if (url?.trim() && !/\/\/telegram\.org\/img\/emoji\//i.test(url)) fromArray.push(url.trim());
+        const row = item as { url?: string; mediaType?: string };
+        if (row.mediaType === "video") continue;
+        const url = row.url;
+        if (url?.trim() && !/\/\/telegram\.org\/img\/emoji\//i.test(url) && !/\.(mp4|webm|mov)(\?|#|$)/i.test(url)) {
+          fromArray.push(url.trim());
+        }
       }
     }
   }
-  const unique = [...new Set(fromArray)];
+  const unique = [...new Set(fromArray)].map((url) => (url.startsWith("//") ? `https:${url}` : url));
   const ranked = orderMediaUrlsForCoverPreference(unique, text);
   if (ranked.length > 0) return ranked[0] ?? null;
   const imageMatches = [...text.matchAll(/https?:\/\/[^\s"']+\.(?:jpg|jpeg|png|webp)/gi)];
@@ -697,6 +720,61 @@ function normalizeRemoteAssetUrl(value: string | null | undefined): string | nul
   if (!normalized) return null;
   if (normalized.startsWith("//")) return `https:${normalized}`;
   return normalized;
+}
+
+function inferMediaTypeFromUrl(url: string, hinted?: string | null): "image" | "video" {
+  if (hinted === "video" || hinted === "image") return hinted;
+  if (/\.(mp4|webm|mov)(\?|#|$)/i.test(url)) return "video";
+  return "image";
+}
+
+/** Все медиа кандидата для ProgramMedia: обложка + альбом из rawMediaJson. */
+function collectCandidateMediaForPublish(candidate: {
+  id: string;
+  normalizedItem: {
+    imageUrl: string | null;
+    rawItem: { rawMediaJson: unknown; source: { name: string } };
+  };
+}): Array<{ url: string; mediaType: "image" | "video" }> {
+  const out: Array<{ url: string; mediaType: "image" | "video" }> = [];
+  const push = (rawUrl: string | null | undefined, hinted?: string | null) => {
+    const url = normalizeRemoteAssetUrl(rawUrl);
+    if (!url || /telegram\.org\/img\/emoji\//i.test(url)) return;
+    if (out.some((item) => item.url === url)) return;
+    out.push({ url, mediaType: inferMediaTypeFromUrl(url, hinted) });
+  };
+
+  push(candidate.normalizedItem.imageUrl, "image");
+  const raw = candidate.normalizedItem.rawItem.rawMediaJson;
+  if (Array.isArray(raw)) {
+    for (const item of raw) {
+      if (typeof item === "string") {
+        push(item);
+      } else if (item && typeof item === "object") {
+        const row = item as { url?: string; mediaType?: string };
+        push(row.url, row.mediaType);
+      }
+    }
+  }
+  return out;
+}
+
+async function resolveCachedProgramMediaEntries(
+  entries: Array<{ url: string; mediaType: "image" | "video" }>,
+  cacheKeyPrefix: string,
+): Promise<Array<{ url: string; mediaType: "image" | "video" }>> {
+  const resolved: Array<{ url: string; mediaType: "image" | "video" }> = [];
+  for (let index = 0; index < entries.length; index += 1) {
+    const entry = entries[index]!;
+    const cached =
+      (await cacheExternalProgramMediaForWeb(entry.url, `${cacheKeyPrefix}-${index}-${entry.mediaType}`)) ?? entry.url;
+    if (resolved.some((item) => item.url === cached)) continue;
+    resolved.push({
+      url: cached,
+      mediaType: inferMediaTypeFromUrl(cached, entry.mediaType),
+    });
+  }
+  return resolved;
 }
 
 function extractOcrTextFromImage(source: SourceWithOrganizer, imageUrl: string | null, rawText: string): string | null {
@@ -2546,12 +2624,18 @@ function scoreNormalizedItem(source: SourceWithOrganizer, normalized: Omit<Norma
   const confidenceScore = clampScore((completenessScore + eventLikelihoodScore + futureEventScore) / 3);
   const explicitCancellationNotice = getExtractedJsonFlag(normalized.extractedJson, "explicitCancellationNotice");
   const reviewPriority = explicitCancellationNotice ? 100 : Math.round(finalScore * 100);
-  const routedStatus = routeCandidateStatus({
-    finalScore,
-    futureEventScore,
-    eventLikelihoodScore,
-    explicitCancellationNotice,
-  });
+  // Прошедшие даты не ставим в очередь ручной проверки — только архив.
+  const pastByDates =
+    (normalized.endDate != null && daysFromToday(normalized.endDate)! < 0) ||
+    (normalized.endDate == null && normalized.startDate != null && daysFromToday(normalized.startDate)! < 0);
+  const routedStatus: EventCandidateStatus = pastByDates
+    ? "archived"
+    : routeCandidateStatus({
+        finalScore,
+        futureEventScore,
+        eventLikelihoodScore,
+        explicitCancellationNotice,
+      });
 
   return {
     confidenceScore,
@@ -3435,19 +3519,25 @@ function getSourceUrlCandidates(source: Source): string[] {
     ...getSourceSpecificFetchUrls(source),
   ];
   const normalized = urls
-    .map((value, index) => {
-      const trimmed = value.trim();
-      // The primary URL remains unchanged so an invalid source configuration is
-      // still reported. Auxiliary Instagram values may contain display handles
-      // such as "@profile", which must not reach fetch() as bare URLs.
-      if (source.type === "instagram" && index > 0) {
-        return normalizeInstagramSourceUrlCandidate(trimmed);
-      }
-      return trimmed;
-    })
-    .filter((value): value is string => Boolean(value))
-    .filter((value) => /^https?:\/\//i.test(value) || source.type === "telegram" || source.type === "instagram");
+    .map((value) => toAbsoluteSourceUrl(source, value))
+    .filter((value): value is string => Boolean(value));
   return [...new Set(normalized)];
+}
+
+/** metaJson часто содержит «wakehouse.ru» или «@handle» без схемы — дальше парсеры ждут абсолютный URL. */
+export function toAbsoluteSourceUrl(source: Pick<Source, "type" | "urlOrHandle">, raw: string): string | null {
+  const value = raw.trim();
+  if (!value) return null;
+  if (/^https?:\/\//i.test(value)) return value;
+  if (value.startsWith("//")) return `https:${value}`;
+  if (source.type === "telegram") return normalizeSourceUrl({ ...source, urlOrHandle: value } as Source);
+  if (source.type === "instagram" && /^@?[A-Za-z0-9_](?:[A-Za-z0-9_.]{0,28}[A-Za-z0-9_])?$/.test(value)) {
+    const handle = value.replace(/^@/, "");
+    const looksLikeDomain = !value.startsWith("@") && /\.[a-z]{2,}$/i.test(handle);
+    if (!looksLikeDomain) return `https://www.instagram.com/${handle}/`;
+  }
+  if (/^[a-z0-9-]+(\.[a-z0-9-]+)+(?:[/?#]|$)/i.test(value)) return `https://${value}`;
+  return null;
 }
 
 function getSourceSpecificFetchUrls(source: Source): string[] {
@@ -3730,18 +3820,6 @@ function parseRssOrAtom(source: Source, payload: string): CollectedItem[] {
   return items.filter((item) => item.externalItemId || item.rawTitle || item.rawText);
 }
 
-function extractTelegramMediaUrls(block: string): string[] {
-  const urls = [
-    ...block.matchAll(/tgme_widget_message_photo_wrap[\s\S]*?background-image:url\('([^']+)'\)/gi),
-    ...block.matchAll(/tgme_widget_message_video_thumb" style="background-image:url\('([^']+)'\)/gi),
-    ...block.matchAll(/tgme_widget_message_photo link_preview_media" style="background-image:url\('([^']+)'\)/gi),
-  ]
-    .map((match) => match[1]?.trim())
-    .filter((value): value is string => Boolean(value) && !/\/\/telegram\.org\/img\/emoji\//i.test(value));
-
-  return [...new Set(urls)];
-}
-
 function parseTelegramHtml(source: Source, html: string): CollectedItem[] {
   const items: CollectedItem[] = [];
   const blocks = html.match(/<div class="tgme_widget_message\b[\s\S]*?(?=<div class="tgme_widget_message\b|<\/section>|$)/gi) ?? [];
@@ -3749,17 +3827,29 @@ function parseTelegramHtml(source: Source, html: string): CollectedItem[] {
     const post = parseAttr(block, "data-post");
     const time = /<time[^>]*datetime="([^"]+)"/i.exec(block)?.[1] ?? null;
     const textBlock = /<div class="tgme_widget_message_text[^"]*"[^>]*>([\s\S]*?)<\/div>/i.exec(block)?.[1] ?? "";
-    const mediaUrls = extractTelegramMediaUrls(block);
-    const title = /<div class="tgme_widget_message_author[^"]*"[^>]*>[\s\S]*?<span[^>]*>([\s\S]*?)<\/span>/i.exec(block)?.[1] ?? source.name;
+    const media = extractTelegramMediaUrls(block);
+    const authorHtml =
+      /<div class="tgme_widget_message_author[^"]*"[^>]*>[\s\S]*?<span[^>]*>([\s\S]*?)<\/span>/i.exec(block)?.[1] ?? "";
+    const authorTitle = normalizeText(
+      decodeHtmlEntities(authorHtml)
+        .replace(/<[^>]+>/g, " ")
+        .replace(/\s+/g, " "),
+    );
+    const fromText = deriveTitleFromText(textBlock);
+    const title =
+      (fromText && fromText.length >= 8 ? fromText : null) ||
+      (authorTitle && !looksLikeGenericRawTitle(authorTitle, source as SourceWithOrganizer) ? authorTitle : null) ||
+      fromText ||
+      source.name;
     const link = post ? `https://t.me/${post}` : normalizeSourceUrl(source);
     items.push({
       externalItemId: post ?? link,
       sourceUrl: link,
       authorName: source.name,
       publishedAt: toDateIfValid(time),
-      rawTitle: normalizeText(title),
+      rawTitle: normalizeText(title).replace(/^[a-z0-9_-]{1,12}"\s*>\s*/i, ""),
       rawText: normalizeText(textBlock),
-      rawMedia: mediaUrls.map((url) => ({ url })),
+      rawMedia: media.map((item) => ({ url: item.url, mediaType: item.mediaType })),
       rawPayload: { block },
     });
   }
@@ -3871,6 +3961,29 @@ async function finalizeSourceRun(
   });
 }
 
+/** Подписанные ссылки telesco.pe истекают — при повторном сборе поста подставляем свежие. */
+async function refreshExistingTelegramRawMedia(existing: RawItem, freshMedia: unknown): Promise<void> {
+  if (!Array.isArray(freshMedia) || freshMedia.length === 0) return;
+  if (JSON.stringify(existing.rawMediaJson ?? []) === JSON.stringify(freshMedia)) return;
+  try {
+    await prisma.rawItem.update({
+      where: { id: existing.id },
+      data: { rawMediaJson: freshMedia as Prisma.InputJsonValue },
+    });
+    const normalized = await prisma.normalizedItem.findUnique({
+      where: { rawItemId: existing.id },
+      select: { id: true, imageUrl: true },
+    });
+    if (!normalized?.imageUrl || !isTelegramCdnMediaUrl(normalized.imageUrl)) return;
+    const nextImage = extractImageUrl(freshMedia, "");
+    if (nextImage && nextImage !== normalized.imageUrl) {
+      await prisma.normalizedItem.update({ where: { id: normalized.id }, data: { imageUrl: nextImage } });
+    }
+  } catch (error) {
+    console.warn("[ingestion] telegram media refresh failed", existing.id, error instanceof Error ? error.message : error);
+  }
+}
+
 async function persistCollectedItems(source: Source, sourceRunId: string, items: CollectedItem[], actorId: string | null): Promise<number> {
   let created = 0;
   for (const item of items) {
@@ -3878,7 +3991,10 @@ async function persistCollectedItems(source: Source, sourceRunId: string, items:
     const existing = await prisma.rawItem.findFirst({
       where: buildRawItemContentIdentityWhere(source.id, contentHash),
     });
-    if (existing) continue;
+    if (existing) {
+      if (source.type === "telegram") await refreshExistingTelegramRawMedia(existing, item.rawMedia);
+      continue;
+    }
     const raw = await prisma.$transaction(async (tx) => {
       const r = await tx.rawItem.create({
         data: {
@@ -4556,14 +4672,10 @@ export async function publishCandidateToDraft(
   }
 
   const source = candidate.normalizedItem.rawItem.source;
-  const originalImageUrl =
-    candidate.normalizedItem.imageUrl ??
-    getSourceStringMeta(source, "fallbackImageUrl") ??
-    options?.fallbackImageUrl ??
-    null;
-  const resolvedImageUrl =
-    (await cacheExternalProgramMediaForWeb(originalImageUrl, `${source.name}-${candidate.id}`)) ??
-    originalImageUrl;
+  const mediaEntries = await resolveCachedProgramMediaEntries(
+    collectCandidateMediaForPublish(candidate),
+    `${source.name}-${candidate.id}`,
+  );
 
   const published: PublishCandidateResult = await prisma.$transaction(async (tx): Promise<PublishCandidateResult> => {
     /** Только при явном вызове (sync job / autoPublishReady), не при ручном publish без options */
@@ -4588,13 +4700,14 @@ export async function publishCandidateToDraft(
           ingestedAt: duplicateProgram.ingestedAt,
         }),
       });
-      if (resolvedImageUrl && !duplicateProgram.media.some((media) => media.url === resolvedImageUrl)) {
+      for (const media of mediaEntries) {
+        if (duplicateProgram.media.some((existing) => existing.url === media.url)) continue;
         await tx.programMedia.create({
           data: {
             programId: duplicateProgram.id,
-            mediaType: "image",
-            url: resolvedImageUrl,
-            caption: "Добавлено из duplicate ingestion candidate",
+            mediaType: media.mediaType,
+            url: media.url,
+            caption: media.mediaType === "video" ? "Видео из источника" : "Добавлено из duplicate ingestion candidate",
           },
         });
       }
@@ -4697,15 +4810,33 @@ export async function publishCandidateToDraft(
     const program = await tx.program.create({
       data: programPayload,
     });
-    if (resolvedImageUrl) {
+    for (const media of mediaEntries) {
       await tx.programMedia.create({
         data: {
           programId: program.id,
-          mediaType: "image",
-          url: resolvedImageUrl,
-          caption: "Создано из ingestion candidate",
+          mediaType: media.mediaType,
+          url: media.url,
+          caption: media.mediaType === "video" ? "Видео из источника" : "Создано из ingestion candidate",
         },
       });
+    }
+    // Fallback обложка, если из поста медиа не извлеклось
+    if (mediaEntries.length === 0) {
+      const fallback =
+        getSourceStringMeta(source, "fallbackImageUrl") ?? options?.fallbackImageUrl ?? null;
+      const cachedFallback = fallback
+        ? (await cacheExternalProgramMediaForWeb(fallback, `${source.name}-${candidate.id}-fallback`)) ?? fallback
+        : null;
+      if (cachedFallback) {
+        await tx.programMedia.create({
+          data: {
+            programId: program.id,
+            mediaType: "image",
+            url: cachedFallback,
+            caption: "Fallback image",
+          },
+        });
+      }
     }
     let linkStatus = "draft_created";
     let createGate: { ok: boolean; missing: string[] } | null = null;
@@ -5180,14 +5311,15 @@ export async function runDailySyncJob(actorId: string | null, options?: DailySyn
 }
 
 export async function getJobDashboard() {
-  const [lastRuns, counters] = await Promise.all([
+  const [lastRuns, runningCount, counters] = await Promise.all([
     prisma.sourceRun.findMany({
-      take: 20,
+      take: 80,
       orderBy: { startedAt: "desc" },
       include: {
         source: { select: { id: true, name: true, type: true } },
       },
     }),
+    prisma.sourceRun.count({ where: { status: "running" } }),
     Promise.all([
       prisma.source.count({ where: { isActive: true } }),
       prisma.rawItem.count(),
@@ -5246,6 +5378,7 @@ export async function getJobDashboard() {
       candidates: counters[5],
       published: counters[6],
       contentDrafts: counters[7],
+      runningSourceRuns: runningCount,
     },
     recentRuns: lastRuns,
     availableJobs: [

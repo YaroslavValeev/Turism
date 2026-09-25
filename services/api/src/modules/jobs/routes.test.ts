@@ -31,6 +31,7 @@ vi.mock("../organizer-outreach/service", () => ({
   sendOutreachEmailForCampaign: vi.fn(),
 }));
 vi.mock("../content-pipeline/pipeline.runner", () => ({ runContentPipeline: vi.fn() }));
+vi.mock("../ingestion/archivePast.service", () => ({ archivePastByDates: vi.fn(async () => ({ archived: 0 })) }));
 
 import { jobsRoutes } from "./routes";
 
@@ -64,6 +65,6 @@ describe("jobsRoutes daily sync safety", () => {
       fallbackImageUrl: undefined,
       sourceLimit: 1,
     });
-    expect(res.json).toHaveBeenCalledWith({ scope: "sources:1" });
+    expect(res.json).toHaveBeenCalledWith({ scope: "sources:1", archivePast: { archived: 0 } });
   });
 });

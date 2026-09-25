@@ -123,6 +123,16 @@ function SectionBlock({
 
 const URL_PATTERN = /(https?:\/\/[^\s]+)/gi;
 
+function linkLabelForUrl(url: string): string {
+  try {
+    const parsed = new URL(url);
+    const host = parsed.hostname.replace(/^www\./i, "");
+    return `Открыть источник (${host})`;
+  } catch {
+    return "Открыть источник";
+  }
+}
+
 function sanitizeScrapedProgramText(text: string): string {
   const cleaned = String(text ?? "")
     .replace(/&nbsp;/gi, " ")
@@ -165,9 +175,10 @@ function renderTextWithLinks(text: string): ReactNode[] {
             href={part}
             target="_blank"
             rel="nofollow noopener noreferrer"
-            style={{ color: "var(--mw-accent)", textDecoration: "underline" }}
+            title={part}
+            style={{ color: "var(--mw-accent)", textDecoration: "underline", overflowWrap: "anywhere", wordBreak: "break-word" }}
           >
-            {part}
+            {linkLabelForUrl(part)}
           </a>,
         );
       } else {
@@ -183,14 +194,7 @@ function renderTextWithLinks(text: string): ReactNode[] {
 
 function Prose({ text }: { text: string }) {
   return (
-    <p
-      style={{
-        whiteSpace: "pre-wrap",
-        margin: 0,
-        color: "var(--mw-muted)",
-        lineHeight: 1.65,
-      }}
-    >
+    <p style={{ whiteSpace: "pre-wrap", margin: 0, color: "var(--mw-muted)", lineHeight: 1.65, overflowWrap: "anywhere", wordBreak: "break-word" }}>
       {renderTextWithLinks(text)}
     </p>
   );
@@ -208,12 +212,7 @@ function ProgramInfoField({
       <h3 className="mw-h3">{label}</h3>
       <p
         className={value.mode === "recommended" ? "recommended-field" : ""}
-        style={{
-          whiteSpace: "pre-wrap",
-          margin: 0,
-          color: "var(--mw-muted)",
-          lineHeight: 1.65,
-        }}
+        style={{ whiteSpace: "pre-wrap", margin: 0, color: "var(--mw-muted)", lineHeight: 1.65, overflowWrap: "anywhere", wordBreak: "break-word" }}
       >
         {renderTextWithLinks(value.text)}
       </p>
@@ -1097,26 +1096,40 @@ export function ProgramPdpClient({
 
           {displayMedia.length > 0 && (
             <SectionBlock title="Медиа">
-              {displayMedia.map((m) => (
-                <div key={m.id} style={{ marginBottom: 16 }}>
-                  {m.mediaType === "image" ? (
-                    <img
-                      src={presentProgramMediaUrl(m.url) ?? m.url}
-                      alt={`${program.title} — фото программы`}
-                      loading="lazy"
-                      style={{
-                        maxWidth: "100%",
-                        height: "auto",
-                        borderRadius: 12,
-                      }}
-                    />
-                  ) : (
-                    <a href={m.url} target="_blank" rel="noreferrer">
-                      {m.caption ?? m.url}
-                    </a>
-                  )}
-                </div>
-              ))}
+              <div className="mw-program-media-gallery">
+                {displayMedia.map((m) => {
+                  const src = presentProgramMediaUrl(m.url) ?? m.url;
+                  return (
+                    <div key={m.id} className="mw-program-media-item">
+                      {m.mediaType === "video" || /\.(mp4|webm|mov)(\?|#|$)/i.test(m.url) ? (
+                        <video
+                          src={src}
+                          controls
+                          playsInline
+                          preload="metadata"
+                          style={{ width: "100%", maxHeight: 520, borderRadius: 12, background: "#0f172a" }}
+                        >
+                          <a href={src} target="_blank" rel="noreferrer">
+                            {m.caption?.trim() || "Открыть видео"}
+                          </a>
+                        </video>
+                      ) : (
+                        <img
+                          src={src}
+                          loading="lazy"
+                          alt={m.caption?.trim() || `${program.title} — фото программы`}
+                          style={{ maxWidth: "100%", height: "auto", borderRadius: 12 }}
+                        />
+                      )}
+                      {m.caption?.trim() ? (
+                        <p className="mw-muted" style={{ marginTop: 8, fontSize: 14 }}>
+                          {m.caption}
+                        </p>
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </div>
             </SectionBlock>
           )}
 

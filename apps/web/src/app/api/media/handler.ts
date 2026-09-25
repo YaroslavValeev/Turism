@@ -50,12 +50,55 @@ function placeholderResponse(): Response {
   });
 }
 
+function isTelegramCdnHost(hostname: string): boolean {
+  const host = hostname.toLowerCase();
+  return (
+    host === "telesco.pe" ||
+    host.endsWith(".telesco.pe") ||
+    host.endsWith(".telegram.org") ||
+    host.endsWith(".cdn-telegram.org") ||
+    host === "t.me" ||
+    host.endsWith(".t.me")
+  );
+}
+
+/** Telegram CDN с RU-хостинга недоступен напрямую — API тянет файл через SOCKS. */
+async function fetchTelegramMediaViaApi(remoteUrl: URL): Promise<Response> {
+  const apiBase = (process.env.PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_URL || "https://api.mywavetour.ru").replace(
+    /\/+$/,
+    "",
+  );
+  try {
+    const viaApi = await fetch(`${apiBase}/public/media?url=${encodeURIComponent(remoteUrl.toString())}`, {
+      cache: "no-store",
+    });
+    const contentType = viaApi.headers.get("content-type") ?? "";
+    if (!viaApi.ok || !contentType.startsWith("image/") || contentType.includes("svg")) return placeholderResponse();
+    return new Response(await viaApi.arrayBuffer(), {
+      status: 200,
+      headers: { ...SAFE_RESPONSE_HEADERS, "content-type": contentType },
+    });
+  } catch {
+    return placeholderResponse();
+  }
+}
+
 export async function handleMediaRequest(
   request: MediaRequest,
   options: SafeImageFetchOptions = {},
 ): Promise<Response> {
   const remoteUrl = request.nextUrl.searchParams.get("url");
   if (!remoteUrl) return new Response("Missing url", { status: 400 });
+
+  let parsedRemote: URL | null = null;
+  try {
+    parsedRemote = new URL(remoteUrl);
+  } catch {
+    parsedRemote = null;
+  }
+  if (parsedRemote && parsedRemote.protocol === "https:" && isTelegramCdnHost(parsedRemote.hostname)) {
+    return fetchTelegramMediaViaApi(parsedRemote);
+  }
 
   try {
     const image = await fetchSafeImage(remoteUrl, options);

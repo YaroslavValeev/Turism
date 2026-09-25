@@ -7,7 +7,23 @@ export const metadata: Metadata = {
   title: "Темы и направления — программы, подборки, статьи | MyWave",
   description:
     "Тематические страницы MyWaveTour: дисциплины, регионы, сезоны — актуальные программы, материалы и подборки.",
-  alternates: { canonical: "/explore" },
+  alternates: {
+    canonical: "/explore",
+  },
+  openGraph: {
+    type: "website",
+    title: "Темы и направления — программы, подборки, статьи | MyWaveTour",
+    description:
+      "Тематические страницы MyWaveTour: дисциплины, регионы, сезоны — актуальные программы, материалы и подборки.",
+    url: "/explore",
+    siteName: "MyWaveTour",
+  },
+  twitter: {
+    card: "summary",
+    title: "Темы и направления — программы, подборки, статьи | MyWaveTour",
+    description:
+      "Тематические страницы MyWaveTour: дисциплины, регионы, сезоны — актуальные программы, материалы и подборки.",
+  },
 };
 
 const hubHeroStyle = {

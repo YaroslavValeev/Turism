@@ -114,7 +114,7 @@ export default function CommissionsQueuePage() {
           {commissions.length === 0 ? (
             <AdminEmptyState title="Нет записей комиссий" description="По текущему фильтру или в целом очередь комиссий пуста." />
           ) : (
-            <div style={{ overflowX: "auto" }}>
+            <div className="mw-admin-table-outer">
               <table className="mw-admin-table">
                 <thead>
                   <tr>

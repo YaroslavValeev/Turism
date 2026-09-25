@@ -1,16 +1,39 @@
-# Camp API artifact manual-console runbook
+# MyWaveTour Camp API artifact runbook
 
-Production HOLD: use this runbook only when the approved `camp-api-release.tgz`
-GitHub Actions artifact has already been copied to the Tour VPS manually.
+Production HOLD: until Tour VPS egress is restored and Owner gives explicit GO,
+do not rotate `CAMP_API_TOKEN`, do not build, do not restart, do not change IP,
+and do not run deploy.
 
-This path does not require outbound connectivity from the VPS and does not
-rotate `CAMP_API_TOKEN`.
+## Contract
 
-## Artifact contract
+- `GET /api/v1/camps`
+- `GET /api/v1/camps/{id}`
+- `GET /api/v1/camps/health`
+- `GET /camps-feed.json`
+- Auth: `Authorization: Bearer <CAMP_API_TOKEN>`
+- Invalid/missing token: `401`
+- List envelope: `{ "items": [], "next_offset": null }`
+- Filters: `status`, `sports`, `audience`, `updated_since`, `limit`, `offset`
+- Publication statuses: `published`, `hidden`, `archived`
+- Availability statuses: `available`, `few_spots`, `sold_out`, `unknown`
+- Content rights: `partner_allowed`, `unknown`, `restricted`
 
-The artifact is a gzip tarball named `camp-api-release.tgz`.
+Camp item includes both compatibility aliases and canonical Site handoff fields:
+`id`, `title`, `sport`, `level`, `region`, `location`, `start_date`,
+`end_date`, `duration`, `price`, `currency`, `inclusions`, `exclusions`,
+`organizer`, `audience`, `itinerary`, `cover`, `gallery`, `video`,
+`source_url`, `updated_at`, `content_rights_status`.
 
-It contains only selected Camp/API/config files plus `SHA256SUMS`:
+Removed/deleted policy: Site must not silently delete imported records. Tour
+signals lifecycle changes via `publication_status` (`hidden`, `archived`) and
+`availability_status` (`sold_out`). A future hard-delete callback needs a
+separate contract.
+
+## Artifact
+
+Name: `camp-api-release.tgz`
+
+Selected files:
 
 - `.env.example`
 - `packages/config/src/env.ts`
@@ -18,170 +41,175 @@ It contains only selected Camp/API/config files plus `SHA256SUMS`:
 - `services/api/Dockerfile`
 - `services/api/src/index.ts`
 - `services/api/src/modules/camp-feed/**`
+- `scripts/camp-api/**`
 - `SHA256SUMS`
 
-## Local download after GitHub Actions run
+Local build:
 
-Run from an operator machine with GitHub access:
+```bash
+pnpm run camp-api:scripts-check
+pnpm run camp-api:artifact
+tar -tzf artifacts/camp-api-release/camp-api-release.tgz
+sha256sum -c artifacts/camp-api-release/stage/SHA256SUMS
+```
+
+GitHub Actions artifact:
 
 ```powershell
+gh workflow run deploy-camp-api.yml --repo YaroslavValeev/Turism -f deploy_to_vps=false -f rotate_camp_token=false
 gh run download <RUN_ID> --repo YaroslavValeev/Turism -n camp-api-release.tgz -D .\artifacts\camp-api-release
 tar -tzf .\artifacts\camp-api-release\camp-api-release.tgz
 ```
 
-Copy `artifacts/camp-api-release/camp-api-release.tgz` to the VPS as:
+Copy artifact to the Tour VPS as `/tmp/camp-api-release.tgz` by Timeweb
+web-console or another approved private transfer path. Do not paste tokens in
+chat, CI logs, or issue comments.
 
-```text
-/tmp/camp-api-release.tgz
+## T1. While VPS egress is blocked
+
+Repository-side only:
+
+```bash
+pnpm --filter @mywave/shared-types build
+pnpm --filter @mywave/explore-links build
+pnpm --filter @mywave/config build
+pnpm --filter api db:generate
+pnpm --filter api build
+pnpm --filter api test -- camp-feed telegram-admin
+pnpm run camp-api:scripts-check
+pnpm run camp-api:artifact
 ```
 
-Use the provider console or another approved private transfer path. Do not paste
-tokens in chat or CI logs.
+Docker preflight is prepared but must not be run until the VPS network blocker
+is cleared:
 
-## VPS preflight
+```bash
+bash scripts/camp-api/docker-preflight.sh
+```
 
-Run in the Tour VPS console as `root`:
+## T2. After egress is restored and Owner GO is explicit
+
+Project: MyWaveTour
+Server: Tour VPS
+Hostname: `msk-1-vm-9j6k`
+IP: `5.129.249.113`
+Terminal: Timeweb web-console or SSH
+Working directory: `/opt/mywave/toutism`
+Allowed services: `api`, `reverse-proxy`
+Forbidden services: `web`, `admin`, Telegram bot/admin services, ParserNews,
+TGbotAdmin MyWave, YClients
+
+Preflight:
 
 ```bash
 set -euo pipefail
-
-[ "$(hostname)" = "msk-1-vm-9j6k" ] || { echo "WRONG SERVER: $(hostname)"; exit 1; }
-
-DEPLOY_PATH=/opt/mywave/toutism
-ARTIFACT=/tmp/camp-api-release.tgz
-
-cd "$DEPLOY_PATH"
-test -f docker-compose.production.yml
-test -s "$ARTIFACT"
-tar -tzf "$ARTIFACT"
+cd /opt/mywave/toutism
+EXPECTED_HOSTNAME=msk-1-vm-9j6k DEPLOY_PATH=/opt/mywave/toutism bash scripts/camp-api/docker-preflight.sh
 ```
 
-## Verify artifact manifest
+Verify copied artifact:
 
 ```bash
 set -euo pipefail
-
 VERIFY_DIR=/tmp/camp-api-release-verify
 rm -rf "$VERIFY_DIR"
 mkdir -p "$VERIFY_DIR"
 tar -xzf /tmp/camp-api-release.tgz -C "$VERIFY_DIR"
-
-(
-  cd "$VERIFY_DIR"
-  test -f SHA256SUMS
-  sha256sum -c SHA256SUMS
-  test -f .env.example
-  test -f packages/config/src/env.ts
-  test -f services/api/.env.example
-  test -f services/api/Dockerfile
-  test -f services/api/src/index.ts
-  test -f services/api/src/modules/camp-feed/routes.ts
-  test -f services/api/src/modules/camp-feed/mapper.ts
-  test -f services/api/src/modules/camp-feed/auth.ts
-)
+(cd "$VERIFY_DIR" && sha256sum -c SHA256SUMS)
 ```
 
-## Backup selected production files
+Deploy selected files, optionally rotating token without printing it:
 
 ```bash
 set -euo pipefail
-
 cd /opt/mywave/toutism
-
-BACKUP_PATH="/tmp/camp-api-selected-backup-$(date +%Y%m%d%H%M%S).tgz"
-tar -czf "$BACKUP_PATH" --ignore-failed-read \
-  .env.example \
-  packages/config/src/env.ts \
-  services/api/.env.example \
-  services/api/Dockerfile \
-  services/api/src/index.ts \
-  services/api/src/modules/camp-feed
-
-printf '%s\n' "$BACKUP_PATH" > /tmp/camp-api-selected-backup.latest
-echo "backup: $BACKUP_PATH"
+OWNER_GO=1 \
+EXPECTED_HOSTNAME=msk-1-vm-9j6k \
+DEPLOY_PATH=/opt/mywave/toutism \
+ARTIFACT=/tmp/camp-api-release.tgz \
+ROTATE_CAMP_TOKEN=true \
+BUILD_MODE=incremental \
+bash scripts/camp-api/deploy-selected-artifact.sh
 ```
 
-## Extract selected files
+Expected result:
 
-This extracts only the selected artifact files and leaves `SHA256SUMS` in the
-temporary verification directory, not in the production tree.
+- selected files verified by `SHA256SUMS`
+- backup path written to `/tmp/camp-api-selected-backup.latest`
+- `api` image built
+- only `api` and `reverse-proxy` restarted
+- authorized smoke writes `/tmp/mywave-camps-sample.json`
+- unauthorized smoke returns `401`
+- private health writes `/tmp/camp-api-health.json`
+
+## Smoke commands
+
+Do not echo token:
 
 ```bash
 set -euo pipefail
-
 cd /opt/mywave/toutism
-tar -xzf /tmp/camp-api-release.tgz -C /opt/mywave/toutism --exclude=SHA256SUMS
-
-grep -R 'pnpm --filter @mywave/shared-types build' -n services/api/Dockerfile
-grep -R 'pnpm --filter @mywave/explore-links build' -n services/api/Dockerfile
-grep -R 'router.get("/api/v1/camps"' -n services/api/src/modules/camp-feed/routes.ts
-grep -R 'router.get("/api/v1/camps/:id"' -n services/api/src/modules/camp-feed/routes.ts
-grep -R 'router.get("/camps-feed.json"' -n services/api/src/modules/camp-feed/routes.ts
-grep -R 'campFeedRoutes' -n services/api/src/index.ts
-grep -R 'CAMP_API_TOKEN' -n packages/config/src/env.ts
-grep -R 'next_offset' -n services/api/src/modules/camp-feed/routes.ts
-```
-
-## Build and restart only API
-
-```bash
-set -euo pipefail
-
-cd /opt/mywave/toutism
-
-docker compose --progress=plain --env-file .env.production -f docker-compose.production.yml build api
-docker compose --env-file .env.production -f docker-compose.production.yml up -d --no-deps api reverse-proxy
-docker compose --env-file .env.production -f docker-compose.production.yml ps api reverse-proxy
-```
-
-## Smoke without token rotation
-
-This reads the existing `CAMP_API_TOKEN` from `services/api/.env.production`.
-It does not create `/root/CAMP_API_TOKEN.current`.
-
-```bash
-set -euo pipefail
-
-cd /opt/mywave/toutism
-
-CAMP_API_TOKEN="$(grep '^CAMP_API_TOKEN=' services/api/.env.production | tail -n1 | cut -d= -f2- | tr -d '"')"
-test -n "$CAMP_API_TOKEN"
+CAMP_API_TOKEN="$(cat /root/CAMP_API_TOKEN.current)"
 
 curl -kfsS --resolve api.mywavetour.ru:443:127.0.0.1 \
   -H "Authorization: Bearer ${CAMP_API_TOKEN}" \
   "https://api.mywavetour.ru/api/v1/camps?status=published&sports=wakesurf,wakeboard&audience=ru&limit=5&offset=0" \
   -o /tmp/mywave-camps-sample.json
 
+curl -ksS --resolve api.mywavetour.ru:443:127.0.0.1 \
+  -o /tmp/camp-api-unauthorized.out \
+  -w '%{http_code}' \
+  "https://api.mywavetour.ru/api/v1/camps" | grep -qx '401'
+
+curl -kfsS --resolve api.mywavetour.ru:443:127.0.0.1 \
+  -H "Authorization: Bearer ${CAMP_API_TOKEN}" \
+  "https://api.mywavetour.ru/api/v1/camps/health" \
+  -o /tmp/camp-api-health.json
+
+unset CAMP_API_TOKEN
+```
+
+Sample validation:
+
+```bash
 python3 - <<'PY'
 import json
 p="/tmp/mywave-camps-sample.json"
 d=json.load(open(p, encoding="utf-8"))
-items=d.get("items") or []
-empty=lambda v: v is None or v=="" or v==[]
+assert isinstance(d.get("items"), list)
+assert "next_offset" in d
+required = {"id","title","sport","region","location","start_date","end_date","duration","price","currency","inclusions","exclusions","organizer","audience","itinerary","cover","gallery","video","source_url","updated_at","content_rights_status"}
+for item in d["items"]:
+    missing = sorted(required - set(item))
+    assert not missing, (item.get("id"), missing)
 print("sample_file:", p)
-print("total_items:", len(items))
-print("next_offset:", d.get("next_offset"))
-print("without_photo:", sum(1 for x in items if empty(x.get("cover_image_url"))))
-print("without_price:", sum(1 for x in items if empty(x.get("price_from"))))
-print("without_booking_url:", sum(1 for x in items if empty(x.get("booking_url"))))
-print("content_rights_unknown:", sum(1 for x in items if x.get("content_rights_status")=="unknown"))
+print("items:", len(d["items"]))
+print("next_offset:", d["next_offset"])
 PY
-
-unset CAMP_API_TOKEN
 ```
+
+## Private token handoff
+
+The token value must never be printed in chat or CI logs.
+
+1. Operator rotates token on VPS with `ROTATE_CAMP_TOKEN=true`, or reads the
+   existing token from `/root/CAMP_API_TOKEN.current`.
+2. Operator shares the token to the Site owner through the approved secret
+   manager or direct secure channel.
+3. Site stores it as a private server-side env var, not `NEXT_PUBLIC_*`.
+4. Site performs authorized and unauthorized smoke.
+5. Operator deletes any temporary local note containing the token.
 
 ## Rollback
 
 ```bash
 set -euo pipefail
-
 cd /opt/mywave/toutism
-
-BACKUP_PATH="$(cat /tmp/camp-api-selected-backup.latest)"
-test -s "$BACKUP_PATH"
-
-tar -xzf "$BACKUP_PATH" -C /opt/mywave/toutism
-docker compose --progress=plain --env-file .env.production -f docker-compose.production.yml build api
-docker compose --env-file .env.production -f docker-compose.production.yml up -d --no-deps api reverse-proxy
-docker compose --env-file .env.production -f docker-compose.production.yml ps api reverse-proxy
+OWNER_GO=1 \
+EXPECTED_HOSTNAME=msk-1-vm-9j6k \
+DEPLOY_PATH=/opt/mywave/toutism \
+bash scripts/camp-api/rollback-selected-artifact.sh
 ```
+
+Rollback restores the selected backup, rebuilds only `api`, restarts only
+`api reverse-proxy`, and checks local `/health`.

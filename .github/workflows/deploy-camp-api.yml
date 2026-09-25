@@ -62,11 +62,16 @@ jobs:
           test -f services/api/src/modules/camp-feed/mapper.ts
           test -f services/api/src/modules/camp-feed/auth.ts
           grep -R 'router.get("/api/v1/camps"' -n services/api/src/modules/camp-feed/routes.ts
+          grep -R 'router.get("/api/v1/camps/health"' -n services/api/src/modules/camp-feed/routes.ts
           grep -R 'router.get("/api/v1/camps/:id"' -n services/api/src/modules/camp-feed/routes.ts
           grep -R 'router.get("/camps-feed.json"' -n services/api/src/modules/camp-feed/routes.ts
           grep -R 'campFeedRoutes' -n services/api/src/index.ts
           grep -R 'CAMP_API_TOKEN' -n packages/config/src/env.ts
           grep -R 'next_offset' -n services/api/src/modules/camp-feed/routes.ts
+          bash -n scripts/camp-api/build-selected-artifact.sh
+          bash -n scripts/camp-api/docker-preflight.sh
+          bash -n scripts/camp-api/deploy-selected-artifact.sh
+          bash -n scripts/camp-api/rollback-selected-artifact.sh
 
       - name: Create selected-files release artifact
         env:
@@ -89,8 +94,9 @@ jobs:
           copy_file services/api/.env.example
           copy_file services/api/Dockerfile
           copy_file services/api/src/index.ts
-          mkdir -p "$STAGE/services/api/src/modules"
+          mkdir -p "$STAGE/services/api/src/modules" "$STAGE/scripts"
           cp -a services/api/src/modules/camp-feed "$STAGE/services/api/src/modules/camp-feed"
+          cp -a scripts/camp-api "$STAGE/scripts/camp-api"
 
           (
             cd "$STAGE"
@@ -184,7 +190,8 @@ jobs:
             services/api/.env.example \
             services/api/Dockerfile \
             services/api/src/index.ts \
-            services/api/src/modules/camp-feed
+            services/api/src/modules/camp-feed \
+            scripts/camp-api
           echo ">>> selected source backup: $BACKUP_PATH"
 
           echo ">>> verify selected Camp/API/config artifact"
@@ -203,6 +210,7 @@ jobs:
           grep -R 'pnpm --filter @mywave/explore-links build' -n services/api/Dockerfile
           test -f services/api/src/modules/camp-feed/routes.ts
           grep -R 'router.get("/api/v1/camps"' -n services/api/src/modules/camp-feed/routes.ts
+          grep -R 'router.get("/api/v1/camps/health"' -n services/api/src/modules/camp-feed/routes.ts
           grep -R 'router.get("/api/v1/camps/:id"' -n services/api/src/modules/camp-feed/routes.ts
           grep -R 'router.get("/camps-feed.json"' -n services/api/src/modules/camp-feed/routes.ts
           grep -R 'campFeedRoutes' -n services/api/src/index.ts

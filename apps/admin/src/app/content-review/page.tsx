@@ -68,7 +68,8 @@ export default function ContentReviewPage() {
       {error && <p style={{ color: "red" }}>{error}</p>}
 
       <h2>Pending Owner Review</h2>
-      <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: 24 }}>
+      <div className="mw-admin-table-outer" style={{ marginBottom: 24 }}>
+      <table className="mw-admin-table">
         <thead>
           <tr>
             <th align="left">Content Item</th>
@@ -101,9 +102,11 @@ export default function ContentReviewPage() {
           })}
         </tbody>
       </table>
+      </div>
 
       <h2>История решений</h2>
-      <table style={{ width: "100%", borderCollapse: "collapse" }}>
+      <div className="mw-admin-table-outer">
+      <table className="mw-admin-table">
         <thead>
           <tr>
             <th align="left">Когда</th>
@@ -125,6 +128,7 @@ export default function ContentReviewPage() {
           ))}
         </tbody>
       </table>
+      </div>
     </main>
   );
 }

@@ -34,6 +34,7 @@ import { publicExploreRoutes } from "./modules/public-explore/routes";
 import { telegramContentPipelineRoutes } from "./modules/telegram/telegramContentRoutes";
 import { telegramUnifiedWebhookRoutes } from "./modules/telegram/webhookRoutes";
 import { startTelegramLongPolling } from "./modules/telegram/telegramLongPolling";
+import { publicMediaRoutes } from "./modules/media/publicMedia.routes";
 import { contentPipelineRoutes } from "./modules/content-pipeline/routes";
 import { internalContentPipelineRoutes } from "./modules/content-pipeline/internalMarketing.routes";
 import { organizerOutreachRoutes } from "./modules/organizer-outreach/routes";
@@ -120,6 +121,7 @@ app.use("/public", publicExploreRoutes(env));
 app.use("/public", publicBlogRoutes(env));
 app.use("/public/telegram", telegramUnifiedWebhookRoutes(env));
 app.use("/public/telegram", telegramContentPipelineRoutes(env));
+app.use("/public", publicMediaRoutes());
 
 // Minimal observability: log unhandled errors (no PII in logs)
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {

@@ -54,7 +54,7 @@ export default function ScoreActionsPage() {
             {data.weakOrganizers.length === 0 ? (
               <p className="mw-admin-prose">Нет слабых организаторов в текущих снимках.</p>
             ) : (
-              <div style={{ overflowX: "auto" }}>
+              <div className="mw-admin-table-outer">
                 <table className="mw-admin-table" style={{ margin: 0, minWidth: 720 }}>
                   <thead>
                     <tr>
@@ -84,7 +84,7 @@ export default function ScoreActionsPage() {
             {data.weakPrograms.length === 0 ? (
               <p className="mw-admin-prose">Нет слабых программ в текущих снимках.</p>
             ) : (
-              <div style={{ overflowX: "auto" }}>
+              <div className="mw-admin-table-outer">
                 <table className="mw-admin-table" style={{ margin: 0, minWidth: 720 }}>
                   <thead>
                     <tr>

@@ -23,11 +23,21 @@ import {
   type SpotlightDraft,
 } from "../../components/admin/programs/programModel";
 
+/** Очередь к проверке/публикации (не сайт и не архив). */
+const MODERATION_QUEUE_FILTER = "draft,internal_review,needs_fix,approved";
+
+function filterHint(filter: string): string {
+  if (!filter) return "Все статусы публикации";
+  if (filter === MODERATION_QUEUE_FILTER) return "Очередь: черновик / проверка / доработка / одобрена";
+  if (filter.includes(",")) return `Фильтр: ${filter}`;
+  return `Фильтр: ${getProgramPublishStatusLabel(filter)}`;
+}
+
 export default function AdminProgramsPage() {
   const [programs, setPrograms] = useState<Program[]>([]);
   const [organizers, setOrganizers] = useState<OrganizerOption[]>([]);
   const [programScores, setProgramScores] = useState<Record<string, ProgramScoreSnap>>({});
-  const [filter, setFilter] = useState<string>("");
+  const [filter, setFilter] = useState<string>(MODERATION_QUEUE_FILTER);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -62,7 +72,12 @@ export default function AdminProgramsPage() {
     }
     setLoading(true);
     setError("");
-    const q = "?all=1" + (filter ? `&publish_status=${encodeURIComponent(filter)}` : "");
+    const q =
+      "?all=1"
+      + (filter ? `&publish_status=${encodeURIComponent(filter)}` : "")
+      + (filter === MODERATION_QUEUE_FILTER || filter === "approved" || filter === "draft" || filter === "internal_review" || filter === "needs_fix"
+        ? "&future_only=1"
+        : "");
     try {
       const list = await adminJson<Program[]>(`/programs${q}`);
       setPrograms(list);
@@ -187,15 +202,27 @@ export default function AdminProgramsPage() {
 
   const handleSaveStatus = async (programId: string) => {
     if (!getAdminToken()) return;
+    const program = programs.find((p) => p.id === programId);
+    const nextStatus = statusDrafts[programId];
+    if (!nextStatus) return;
     setSavingStatusId(programId);
     setError("");
     setMessage("");
     try {
       await adminJson(`/programs/${programId}/publish-status`, {
         method: "PATCH",
-        body: JSON.stringify({ publishStatus: statusDrafts[programId] }),
+        body: JSON.stringify({ publishStatus: nextStatus }),
       });
-      setMessage("Статус публикации обновлён.");
+      const fromLabel = getProgramPublishStatusLabel(program?.publishStatus);
+      const toLabel = getProgramPublishStatusLabel(nextStatus);
+      const title = program?.title ? `«${program.title}»` : "Программа";
+      const siteNote =
+        nextStatus === "published"
+          ? " Сейчас на сайте и при первом переходе — уведомление в Telegram-канал."
+          : nextStatus === "approved"
+            ? " Одобрена, но на сайт и в Telegram ещё не опубликована — нужен статус «Опубликована»."
+            : "";
+      setMessage(`${title}: ${fromLabel} → ${toLabel}.${siteNote}`);
       await loadPrograms();
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : "Не удалось сменить статус публикации");
@@ -299,9 +326,11 @@ export default function AdminProgramsPage() {
   const programStats = useMemo(() => {
     const total = programs.length;
     const published = programs.filter((p) => p.publishStatus === "published").length;
+    const approved = programs.filter((p) => p.publishStatus === "approved").length;
     const draft = programs.filter((p) => p.publishStatus === "draft").length;
+    const needsFix = programs.filter((p) => p.publishStatus === "needs_fix").length;
     const starred = programs.filter((p) => p.isStarred).length;
-    return { total, published, draft, starred };
+    return { total, published, approved, draft, needsFix, starred };
   }, [programs]);
 
   return (
@@ -320,13 +349,9 @@ export default function AdminProgramsPage() {
 
       {!loading && (
         <AdminStatGrid>
-          <AdminStatCard
-            label="В списке"
-            value={programStats.total}
-            hint={filter ? `Фильтр: ${getProgramPublishStatusLabel(filter)}` : "Все статусы публикации"}
-          />
-          <AdminStatCard label="Опубликовано" value={programStats.published} />
-          <AdminStatCard label="Черновики" value={programStats.draft} />
+          <AdminStatCard label="В списке" value={programStats.total} hint={filterHint(filter)} />
+          <AdminStatCard label="Одобрены (ещё не на сайте)" value={programStats.approved} />
+          <AdminStatCard label="Черновики / доработка" value={programStats.draft + programStats.needsFix} />
           <AdminStatCard label="Витрина (⭐)" value={programStats.starred} />
         </AdminStatGrid>
       )}
@@ -340,8 +365,53 @@ export default function AdminProgramsPage() {
       />
 
       <AdminFiltersBar title="Каталог">
+        <AdminFilterField label="Быстрый фильтр">
+          <div className="mw-admin-inline-form" style={{ flexWrap: "wrap", gap: 8 }}>
+            <button
+              type="button"
+              className="mw-admin-btn mw-admin-btn--ghost"
+              onClick={() => setFilter(MODERATION_QUEUE_FILTER)}
+              disabled={filter === MODERATION_QUEUE_FILTER}
+            >
+              Очередь к публикации
+            </button>
+            <button
+              type="button"
+              className="mw-admin-btn mw-admin-btn--ghost"
+              onClick={() => setFilter("approved")}
+              disabled={filter === "approved"}
+            >
+              Только одобренные
+            </button>
+            <button
+              type="button"
+              className="mw-admin-btn mw-admin-btn--ghost"
+              onClick={() => setFilter("published")}
+              disabled={filter === "published"}
+            >
+              На сайте
+            </button>
+            <button
+              type="button"
+              className="mw-admin-btn mw-admin-btn--ghost"
+              onClick={() => setFilter("archived")}
+              disabled={filter === "archived"}
+            >
+              Архив
+            </button>
+            <button
+              type="button"
+              className="mw-admin-btn mw-admin-btn--ghost"
+              onClick={() => setFilter("")}
+              disabled={filter === ""}
+            >
+              Все
+            </button>
+          </div>
+        </AdminFilterField>
         <AdminFilterField label="Статус публикации">
           <select className="mw-admin-input mw-admin-minw-260" value={filter} onChange={(e) => setFilter(e.target.value)}>
+            <option value={MODERATION_QUEUE_FILTER}>Очередь к публикации</option>
             <option value="">Все</option>
             {PROGRAM_PUBLISH_STATUSES.map((status) => (
               <option key={status} value={status}>
@@ -356,8 +426,8 @@ export default function AdminProgramsPage() {
         <AdminLoadingState label="Загружаем программы…" />
       ) : programs.length === 0 ? (
         <AdminEmptyState
-          title="Нет программ"
-          description="По выбранному фильтру или в целом в каталоге пока нет записей. Создайте черновик выше или смените фильтр."
+          title="В очереди пусто"
+          description="Нет программ в статусах черновик / проверка / доработка / одобрена. Откройте «На сайте» или «Архив», либо создайте черновик выше."
         />
       ) : (
         <div className="mw-admin-table-outer">

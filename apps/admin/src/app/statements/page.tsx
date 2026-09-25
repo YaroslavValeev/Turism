@@ -105,7 +105,7 @@ export default function StatementsPage() {
               description={statusFilter ? "По выбранному статусу отчётов нет." : "Statements пока не сформированы."}
             />
           ) : (
-            <div style={{ overflowX: "auto" }}>
+            <div className="mw-admin-table-outer">
               <table className="mw-admin-table">
                 <thead>
                   <tr>

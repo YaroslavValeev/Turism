@@ -79,7 +79,8 @@ export default function PublicationsPage() {
         </select>
         <button type="button" onClick={() => void load()}>Применить</button>
       </div>
-      <table style={{ width: "100%", borderCollapse: "collapse" }}>
+      <div className="mw-admin-table-outer">
+      <table className="mw-admin-table">
         <thead>
           <tr>
             <th align="left">Канал</th>
@@ -107,6 +108,7 @@ export default function PublicationsPage() {
           ))}
         </tbody>
       </table>
+      </div>
     </main>
   );
 }

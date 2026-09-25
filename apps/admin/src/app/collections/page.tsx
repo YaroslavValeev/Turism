@@ -42,7 +42,8 @@ export default function CollectionsListPage() {
         <Link href="/collections/new">+ Создать подборку</Link>
       </p>
       {error && <p style={{ color: "red" }}>{error}</p>}
-      <table style={{ width: "100%", borderCollapse: "collapse", marginTop: 16 }}>
+      <div className="mw-admin-table-outer" style={{ marginTop: 16 }}>
+      <table className="mw-admin-table">
         <thead>
           <tr>
             <th align="left">Title</th>
@@ -76,6 +77,7 @@ export default function CollectionsListPage() {
           ))}
         </tbody>
       </table>
+      </div>
     </main>
   );
 }

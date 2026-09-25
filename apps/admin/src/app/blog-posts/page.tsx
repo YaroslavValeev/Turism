@@ -43,7 +43,8 @@ export default function BlogPostsListPage() {
         <code>/blog/…</code> на сайте.
       </p>
       {error && <p style={{ color: "red" }}>{error}</p>}
-      <table style={{ width: "100%", borderCollapse: "collapse", marginTop: 16 }}>
+      <div className="mw-admin-table-outer" style={{ marginTop: 16 }}>
+      <table className="mw-admin-table">
         <thead>
           <tr>
             <th align="left">Заголовок</th>
@@ -71,6 +72,7 @@ export default function BlogPostsListPage() {
             ))}
         </tbody>
       </table>
+      </div>
     </main>
   );
 }

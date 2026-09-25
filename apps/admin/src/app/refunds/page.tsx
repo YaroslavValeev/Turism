@@ -101,7 +101,7 @@ export default function RefundsPage() {
               description={statusFilter ? "По выбранному статусу возвратов нет." : "В системе пока нет возвратов."}
             />
           ) : (
-            <div style={{ overflowX: "auto" }}>
+            <div className="mw-admin-table-outer">
               <table className="mw-admin-table">
                 <thead>
                   <tr>

@@ -113,7 +113,7 @@ export default function BookingDetailPage() {
       {error && <div className="mw-admin-alert mw-admin-alert--error">{error}</div>}
 
       <AdminSectionCard title="Данные заявки" style={{ marginBottom: 0 }}>
-        <div style={{ overflowX: "auto" }}>
+        <div className="mw-admin-table-outer">
           <table className="mw-admin-table" style={{ margin: 0, maxWidth: 720 }}>
             <thead>
               <tr>

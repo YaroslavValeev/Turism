@@ -1,4 +1,4 @@
-# Telegram MyWaveTour — канонические идентификаторы
+# MyWaveTour — канонические идентификаторы
 
 Операционная справка: куда подставлять ID в переменных окружения API (`services/api/.env`, прод-секреты).
 
@@ -11,6 +11,15 @@
 
 - Публикация новых программ в канал обновлений: **`TELEGRAM_UPDATES_CHANNEL_CHAT_ID=-1003491522243`** (или тот же ID в формате, который ожидает Bot API для вашего канала).
 - Алерты / owner: **`TELEGRAM_ALERT_CHAT_ID`** / **`TELEGRAM_CONTENT_OWNER_CHAT_ID`** — по политике деплоя (не обязательно совпадают с каналом выше).
+
+## Owner vs канал
+
+| Контур | Куда | Что делает |
+|--------|------|------------|
+| Operator (owner-chat) | `TELEGRAM_CONTENT_OWNER_CHAT_ID` / `TELEGRAM_ALERT_CHAT_ID` | `/check_publish` — проверка gate и перевод Program в `published` |
+| Канал обновлений | `TELEGRAM_UPDATES_CHANNEL_CHAT_ID` | Карточка программы после перехода в `published` (через notify) |
+
+Политика статусов: [PROGRAM_PUBLISH_POLICY.md](../PROGRAM_PUBLISH_POLICY.md).
 
 ## Важно
 

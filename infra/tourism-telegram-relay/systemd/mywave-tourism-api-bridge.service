@@ -1,0 +1,35 @@
+[Unit]
+Description=MyWave Tourism API bridge to dynamic Docker container IP
+After=network-online.target wg-quick@wg0.service docker.service
+Wants=network-online.target wg-quick@wg0.service docker.service
+
+[Service]
+Type=simple
+User=root
+Group=root
+EnvironmentFile=/etc/mywave-tourism/tourism.env
+ExecStart=/usr/bin/python3 /usr/local/libexec/mywave-tourism/tourism/webhook_ingress.py --bind-host=${API_BRIDGE_BIND_HOST} --bind-port=${API_BRIDGE_BIND_PORT} --docker-container=${API_CONTAINER_NAME} --docker-network=${API_DOCKER_NETWORK} --target-port=${API_CONTAINER_PORT} --max-request-body=${API_MAX_BODY_BYTES} --max-response-body=${API_MAX_RESPONSE_BYTES} --max-concurrent-requests=${API_MAX_CONNECTIONS} --docker-bin=/usr/bin/docker --inspect-timeout=${DOCKER_INSPECT_TIMEOUT} --cache-ttl=${DOCKER_IP_CACHE_TTL} --connect-timeout=${BRIDGE_CONNECT_TIMEOUT} --read-timeout=${BRIDGE_IO_TIMEOUT}
+Restart=on-failure
+RestartSec=3s
+TimeoutStopSec=20s
+NoNewPrivileges=true
+PrivateDevices=true
+PrivateTmp=true
+ProtectControlGroups=true
+ProtectHome=true
+ProtectHostname=true
+ProtectKernelLogs=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+ProtectSystem=strict
+CapabilityBoundingSet=
+LockPersonality=true
+MemoryDenyWriteExecute=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictRealtime=true
+RestrictSUIDSGID=true
+SystemCallArchitectures=native
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

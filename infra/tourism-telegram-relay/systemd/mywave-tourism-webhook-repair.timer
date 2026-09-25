@@ -1,0 +1,13 @@
+[Unit]
+Description=Periodically repair MyWave Tourism Telegram webhook
+
+[Timer]
+OnBootSec=60s
+OnUnitActiveSec=120s
+RandomizedDelaySec=15s
+AccuracySec=5s
+Persistent=true
+Unit=mywave-tourism-webhook-repair.service
+
+[Install]
+WantedBy=timers.target

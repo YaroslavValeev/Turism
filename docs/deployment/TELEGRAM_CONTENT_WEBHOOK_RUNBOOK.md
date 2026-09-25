@@ -47,6 +47,25 @@ curl "https://api.telegram.org/bot<token>/getWebhookInfo"
    - новая запись в `content_approvals`
    - запись `processed_telegram_callbacks`.
 
+### Program publish (тот же webhook)
+
+На том же endpoint multiplex’ятся callbacks:
+
+| Prefix | Контур |
+|--------|--------|
+| `P\|…` / `W\|…` / `X\|…` / `K\|…` | content-pipeline draft decisions (`Publish` → **approved**, не Program) |
+| `O\|…` | organizer outreach |
+| `MTA1\|P\|…` | Program: preview / publish / needs_fix (`/check_publish`) |
+| `MTA1\|C\|…` | Camp Admin (контракт; handler пока отвечает «не подключён») |
+
+Операторский smoke:
+
+1. В owner-chat: `/check_publish`
+2. «Проверить» → gate preview
+3. «Опубликовать на сайте и в Telegram» → `Program.publishStatus=published` + канал (если env)
+
+Подробнее: [PROGRAM_PUBLISH_POLICY.md](../PROGRAM_PUBLISH_POLICY.md), [MYWAVETOUR_TELEGRAM_ADMIN_RUNBOOK.md](./MYWAVETOUR_TELEGRAM_ADMIN_RUNBOOK.md).
+
 ### One-command smoke script
 
 ```bash

@@ -1,0 +1,36 @@
+[Unit]
+Description=MyWave Tourism current quick-tunnel status
+After=network-online.target wg-quick@wg0.service mywave-tourism-cloudflared.service
+Wants=network-online.target wg-quick@wg0.service mywave-tourism-cloudflared.service
+
+[Service]
+Type=simple
+User=mywave-relay
+Group=mywave-relay
+SupplementaryGroups=systemd-journal
+EnvironmentFile=/etc/mywave-tourism/eu.env
+ExecStart=/usr/bin/python3 /usr/local/libexec/mywave-tourism/eu/relay_status.py --bind-host=${STATUS_BIND_HOST} --bind-port=${STATUS_BIND_PORT} --cloudflared-unit=${STATUS_CLOUDFLARED_UNIT} --command-timeout=${STATUS_COMMAND_TIMEOUT} --client-timeout=${STATUS_CLIENT_TIMEOUT}
+Restart=on-failure
+RestartSec=3s
+TimeoutStopSec=20s
+NoNewPrivileges=true
+PrivateDevices=true
+PrivateTmp=true
+ProtectControlGroups=true
+ProtectHome=true
+ProtectHostname=true
+ProtectKernelLogs=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+ProtectSystem=strict
+CapabilityBoundingSet=
+LockPersonality=true
+MemoryDenyWriteExecute=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictRealtime=true
+RestrictSUIDSGID=true
+SystemCallArchitectures=native
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

@@ -7,6 +7,7 @@ import { mapProgramToCamp, resolveProgramIdFromCampId, type CampContract, type C
 
 const DEFAULT_LIMIT = 100;
 const MAX_LIMIT = 100;
+const CAMP_SCAN_BATCH_SIZE = 100;
 
 const campProgramInclude = {
   media: true,
@@ -149,23 +150,54 @@ export function buildCampListResponse(itemsPlusOne: CampContract[], query: Pick<
   };
 }
 
-async function listCamps(query: CampListQuery, env: Env): Promise<CampListResponse> {
-  if (query.limit === 0) {
-    return buildCampListResponse([], query);
+export async function collectCampListPage<T>(
+  query: Pick<CampListQuery, "limit" | "offset">,
+  loadBatch: (skip: number, take: number) => Promise<T[]>,
+  mapRow: (row: T) => CampContract | null,
+  batchSize = CAMP_SCAN_BATCH_SIZE,
+): Promise<CampListResponse> {
+  if (query.limit === 0) return buildCampListResponse([], query);
+
+  const itemsPlusOne: CampContract[] = [];
+  let rawOffset = 0;
+  let mappedBeforePage = 0;
+  const targetSize = query.limit + 1;
+
+  while (itemsPlusOne.length < targetSize) {
+    const rows = await loadBatch(rawOffset, batchSize);
+    if (rows.length === 0) break;
+    rawOffset += rows.length;
+
+    for (const row of rows) {
+      const camp = mapRow(row);
+      if (!camp) continue;
+      if (mappedBeforePage < query.offset) {
+        mappedBeforePage += 1;
+        continue;
+      }
+      itemsPlusOne.push(camp);
+      if (itemsPlusOne.length === targetSize) break;
+    }
+
+    if (rows.length < batchSize) break;
   }
 
-  const rows = await prisma.program.findMany({
-    where: buildCampWhere(query),
-    include: campProgramInclude,
-    orderBy: [{ updatedFromSourceAt: "asc" }, { updatedAt: "asc" }, { id: "asc" }],
-    take: query.limit + 1,
-    skip: query.offset,
-  });
+  return buildCampListResponse(itemsPlusOne, query);
+}
 
-  const camps = rows
-    .map((row) => mapProgramToCamp(row, env))
-    .filter((camp): camp is CampContract => Boolean(camp));
-  return buildCampListResponse(camps, query);
+async function listCamps(query: CampListQuery, env: Env): Promise<CampListResponse> {
+  const where = buildCampWhere(query);
+  return collectCampListPage(
+    query,
+    (skip, take) => prisma.program.findMany({
+      where,
+      include: campProgramInclude,
+      orderBy: [{ updatedFromSourceAt: "asc" }, { updatedAt: "asc" }, { id: "asc" }],
+      take,
+      skip,
+    }),
+    (row) => mapProgramToCamp(row, env),
+  );
 }
 
 function sendCampListError(parsed: { ok: false; error: string }, res: Response): void {

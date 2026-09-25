@@ -641,6 +641,94 @@ h2 {
   }
 }
 
+.mw-admin-candidates-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
+  gap: 20px;
+  align-items: start;
+}
+
+@media (max-width: 1100px) {
+  .mw-admin-candidates-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.mw-admin-candidates-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-x: visible;
+  max-width: 100%;
+}
+
+.mw-admin-candidate-scores {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  margin-top: 8px;
+  font-size: 12px;
+  color: #57534e;
+}
+
+.mw-admin-candidate-scores span {
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: rgba(15, 118, 110, 0.08);
+  white-space: nowrap;
+}
+
+.mw-admin-candidate-card {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border: 1px solid rgba(20, 20, 20, 0.1);
+  border-radius: var(--mw-radius);
+  background: #fff;
+  box-shadow: var(--mw-shadow);
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.mw-admin-candidate-card:hover {
+  border-color: rgba(15, 118, 110, 0.35);
+}
+
+.mw-admin-candidate-card--active {
+  border-color: rgba(15, 118, 110, 0.7);
+  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.22);
+  background: #f0fdfa;
+}
+
+.mw-admin-candidate-card__body {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+.mw-admin-candidate-card__actions {
+  flex: 0 0 auto;
+}
+
+.mw-admin-aside-panel--sticky {
+  position: sticky;
+  top: 12px;
+  max-height: calc(100vh - 24px);
+  overflow: auto;
+}
+
+.mw-admin-candidate-actions-bar {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(20, 20, 20, 0.08);
+}
+
 .mw-admin-aside-panel {
   border: 1px solid rgba(20, 20, 20, 0.08);
   border-radius: var(--mw-radius);

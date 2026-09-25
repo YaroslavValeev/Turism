@@ -2,6 +2,7 @@ import { Router, Request, Response } from "express";
 import type { Env } from "@mywave/config";
 import { requireAdmin } from "../../middleware/auth";
 import { getJobDashboard, runDailySyncJob, runDedupJob, runIngestionJob, runNormalizationJob } from "../ingestion/service";
+import { archivePastByDates } from "../ingestion/archivePast.service";
 import { runContentDraftGenerationJob } from "../content-pipeline/draft.service";
 import { sendDraftToOwner } from "../content-pipeline/approval.service";
 import { processReviewRequestQueue } from "../reviews/reviewRequests";
@@ -37,9 +38,20 @@ export function jobsRoutes(env: Env): Router {
         autoPublishEnabled: env.INGESTION_AUTOPUBLISH_ENABLED,
         fallbackImageUrl: env.INGESTION_DEFAULT_FALLBACK_IMAGE_URL,
       });
-      res.json(result);
+      const archivePast = await archivePastByDates(req.adminUserId ?? null);
+      res.json({ ...result, archivePast });
     } catch (error) {
       safeError("jobs.run-daily-sync failed", error);
+      res.status(400).json({ error: "Job failed" });
+    }
+  });
+
+  router.post("/archive-past", admin, async (req: Request, res: Response) => {
+    try {
+      const result = await archivePastByDates(req.adminUserId ?? null);
+      res.json(result);
+    } catch (error) {
+      safeError("jobs.archive-past failed", error);
       res.status(400).json({ error: "Job failed" });
     }
   });

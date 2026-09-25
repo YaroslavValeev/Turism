@@ -71,6 +71,10 @@ services:
       network: host
       args:
         NPM_CONFIG_REGISTRY: ${NPM_CONFIG_REGISTRY:-https://registry.npmjs.org/}
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://api.mywavetour.ru}
+        NEXT_PUBLIC_WEB_URL: ${NEXT_PUBLIC_WEB_URL:-https://mywavetour.ru}
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-https://mywavetour.ru}
+        NEXT_PUBLIC_PILOT_MODE: ${NEXT_PUBLIC_PILOT_MODE:-}
     restart: unless-stopped
     env_file:
       - .env.production

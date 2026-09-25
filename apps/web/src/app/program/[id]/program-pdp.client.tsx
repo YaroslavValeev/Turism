@@ -86,6 +86,16 @@ function SectionBlock({ title, children }: { title: string; children: ReactNode 
 
 const URL_PATTERN = /(https?:\/\/[^\s]+)/gi;
 
+function linkLabelForUrl(url: string): string {
+  try {
+    const parsed = new URL(url);
+    const host = parsed.hostname.replace(/^www\./i, "");
+    return `Открыть источник (${host})`;
+  } catch {
+    return "Открыть источник";
+  }
+}
+
 function sanitizeScrapedProgramText(text: string): string {
   const cleaned = String(text ?? "")
     .replace(/&nbsp;/gi, " ")
@@ -122,9 +132,10 @@ function renderTextWithLinks(text: string): ReactNode[] {
             href={part}
             target="_blank"
             rel="nofollow noopener noreferrer"
-            style={{ color: "var(--mw-accent)", textDecoration: "underline" }}
+            title={part}
+            style={{ color: "var(--mw-accent)", textDecoration: "underline", overflowWrap: "anywhere", wordBreak: "break-word" }}
           >
-            {part}
+            {linkLabelForUrl(part)}
           </a>,
         );
       } else {
@@ -139,7 +150,7 @@ function renderTextWithLinks(text: string): ReactNode[] {
 
 function Prose({ text }: { text: string }) {
   return (
-    <p style={{ whiteSpace: "pre-wrap", margin: 0, color: "var(--mw-muted)", lineHeight: 1.65 }}>
+    <p style={{ whiteSpace: "pre-wrap", margin: 0, color: "var(--mw-muted)", lineHeight: 1.65, overflowWrap: "anywhere", wordBreak: "break-word" }}>
       {renderTextWithLinks(text)}
     </p>
   );
@@ -155,7 +166,10 @@ function ProgramInfoField({
   return (
     <div>
       <h3 className="mw-h3">{label}</h3>
-      <p className={value.mode === "recommended" ? "recommended-field" : ""} style={{ whiteSpace: "pre-wrap", margin: 0, color: "var(--mw-muted)", lineHeight: 1.65 }}>
+      <p
+        className={value.mode === "recommended" ? "recommended-field" : ""}
+        style={{ whiteSpace: "pre-wrap", margin: 0, color: "var(--mw-muted)", lineHeight: 1.65, overflowWrap: "anywhere", wordBreak: "break-word" }}
+      >
         {renderTextWithLinks(value.text)}
       </p>
     </div>
@@ -322,7 +336,7 @@ export function ProgramPdpClient({ id, validHubKeys }: PdpProps) {
   if (!program) {
     return (
       <main className="mw-container" style={{ padding: "3rem 0" }}>
-        <p>{loadError || "Программа не найдена."}</p>
+        <p role={loadError ? "alert" : undefined}>{loadError || "Программа не найдена."}</p>
         <Link href="/" className="mw-page-back">
           ← На главную
         </Link>
@@ -512,7 +526,7 @@ export function ProgramPdpClient({ id, validHubKeys }: PdpProps) {
             <p style={{ margin: "0 0 12px", color: "var(--mw-muted)", fontSize: "0.95rem" }}>Пока нет отзывов по этой программе в MyWaveTour.</p>
             )}
             <a href="#request" className="mw-btn mw-btn--primary">
-              Забронировать место
+              Оставить заявку
             </a>
             <p style={{ margin: "10px 0 0", fontSize: "0.9rem", color: "var(--mw-muted)", lineHeight: 1.45 }}>
               Остались вопросы? Напиши - подскажем
@@ -777,25 +791,60 @@ export function ProgramPdpClient({ id, validHubKeys }: PdpProps) {
 
           {displayMedia.length > 0 && (
             <SectionBlock title="Медиа">
-              {displayMedia.map((m) => (
-                <div key={m.id} style={{ marginBottom: 16 }}>
-                  {m.mediaType === "image" ? (
-                    <img src={presentProgramMediaUrl(m.url) ?? m.url} alt={m.caption ?? ""} style={{ maxWidth: "100%", height: "auto", borderRadius: 12 }} />
-                  ) : (
-                    <a href={m.url} target="_blank" rel="noreferrer">
-                      {m.caption ?? m.url}
-                    </a>
-                  )}
-                </div>
-              ))}
+              <div className="mw-program-media-gallery">
+                {displayMedia.map((m) => {
+                  const src = presentProgramMediaUrl(m.url) ?? m.url;
+                  return (
+                    <div key={m.id} className="mw-program-media-item">
+                      {m.mediaType === "video" || /\.(mp4|webm|mov)(\?|#|$)/i.test(m.url) ? (
+                        <video
+                          src={src}
+                          controls
+                          playsInline
+                          preload="metadata"
+                          style={{ width: "100%", maxHeight: 520, borderRadius: 12, background: "#0f172a" }}
+                        >
+                          <a href={src} target="_blank" rel="noreferrer">
+                            {m.caption?.trim() || "Открыть видео"}
+                          </a>
+                        </video>
+                      ) : (
+                        <img
+                          src={src}
+                          alt={m.caption?.trim() || `${program.title} — фото программы`}
+                          style={{ maxWidth: "100%", height: "auto", borderRadius: 12 }}
+                        />
+                      )}
+                      {m.caption?.trim() ? (
+                        <p className="mw-muted" style={{ marginTop: 8, fontSize: 14 }}>
+                          {m.caption}
+                        </p>
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </div>
             </SectionBlock>
           )}
 
           <section id="request" className="mw-form-card">
-            <h2 className="mw-h2">Записаться на кэмп</h2>
+            <h2 className="mw-h2">Оставить заявку на участие</h2>
             <p className="mw-form-hint">Ты выбираешь — организатор подтверждает — вы едете вместе.</p>
-            {submitError && <p style={{ color: "#b00020", marginBottom: 12 }}>{submitError}</p>}
-            {submitSuccess && <p style={{ color: "#047857", marginBottom: 12, fontWeight: 600 }}>{submitSuccess}</p>}
+            {submitError && (
+              <p id="program-request-feedback" role="alert" style={{ color: "#b00020", marginBottom: 12 }}>
+                {submitError}
+              </p>
+            )}
+            {submitSuccess && (
+              <p
+                id="program-request-feedback"
+                role="status"
+                aria-live="polite"
+                style={{ color: "#047857", marginBottom: 12, fontWeight: 600 }}
+              >
+                {submitSuccess}
+              </p>
+            )}
             <form onSubmit={handleSubmit}>
               <div className="mw-field" style={{ marginBottom: 16 }}>
                 <label htmlFor="guestContact">Телефон, Telegram или email</label>
@@ -808,6 +857,8 @@ export function ProgramPdpClient({ id, validHubKeys }: PdpProps) {
                   placeholder="+7…, @telegram или почта"
                   disabled={submitting}
                   autoComplete="tel"
+                  aria-describedby={submitError || submitSuccess ? "program-request-feedback" : undefined}
+                  aria-invalid={Boolean(submitError)}
                 />
               </div>
               <div className="mw-field" style={{ marginBottom: 20 }}>
@@ -859,7 +910,7 @@ export function ProgramPdpClient({ id, validHubKeys }: PdpProps) {
                 disabled={submitting || !guestContact.trim() || !consentTransfer || !consentPrivacy}
                 className="mw-btn mw-btn--primary"
               >
-                {submitting ? "Отправляем…" : "Забронировать место"}
+                {submitting ? "Отправляем…" : "Оставить заявку"}
               </button>
               <p className="mw-form-note" style={{ marginTop: 12 }}>
                 Ответим в течение дня • без обязательств
@@ -880,7 +931,7 @@ export function ProgramPdpClient({ id, validHubKeys }: PdpProps) {
             )}
             <p style={{ margin: "0 0 12px", color: "var(--mw-muted)", fontSize: "0.92rem" }}>Ближайшие даты: {datesLine}</p>
             <a href="#request" className="mw-btn mw-btn--primary" style={{ width: "100%", textAlign: "center" }}>
-              Забронировать место
+              Оставить заявку
             </a>
             <p style={{ margin: "10px 0 0", fontSize: "0.82rem", color: "var(--mw-muted)", lineHeight: 1.45 }}>
               Ответ организатора после подтверждения наличия мест.
@@ -898,7 +949,7 @@ export function ProgramPdpClient({ id, validHubKeys }: PdpProps) {
             <span style={{ display: "block", fontSize: "0.8rem", color: "var(--mw-muted)" }}>{datesLine}</span>
           </div>
           <a href="#request" className="mw-btn mw-btn--primary">
-            Забронировать
+            Оставить заявку
           </a>
         </div>
       </div>

@@ -55,22 +55,7 @@ export function AnalyticsRoot() {
 
       {showBanner ? (
         <div
-          style={{
-            position: "fixed",
-            right: 14,
-            bottom: 14,
-            padding: 10,
-            borderRadius: 12,
-            background: "rgba(240, 247, 246, 0.92)",
-            backdropFilter: "blur(4px)",
-            border: "1px solid rgba(22, 73, 67, 0.16)",
-            color: "#163c38",
-            zIndex: 9999,
-            boxShadow: "0 6px 18px rgba(16, 44, 40, 0.14)",
-            fontSize: 13,
-            lineHeight: 1.35,
-            maxWidth: 520,
-          }}
+          className="mw-consent-banner"
         >
           <div style={{ marginBottom: 8 }}>
             Мы используем cookies и обезличенную аналитику, чтобы сайт работал стабильнее и показывал более полезный контент.
@@ -84,33 +69,18 @@ export function AnalyticsRoot() {
             </a>
             .
           </div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <div className="mw-consent-banner__actions">
             <button
               type="button"
               onClick={() => setAnalyticsConsent("accepted")}
-              style={{
-                padding: "6px 10px",
-                borderRadius: 9,
-                border: "none",
-                cursor: "pointer",
-                background: "#27c4a8",
-                color: "#041b19",
-                fontWeight: 600,
-              }}
+              className="mw-consent-banner__btn mw-consent-banner__btn--accept"
             >
               Принять и продолжить
             </button>
             <button
               type="button"
               onClick={() => setAnalyticsConsent("rejected")}
-              style={{
-                padding: "6px 10px",
-                borderRadius: 9,
-                border: "1px solid rgba(22, 73, 67, 0.35)",
-                background: "transparent",
-                color: "#163c38",
-                cursor: "pointer",
-              }}
+              className="mw-consent-banner__btn mw-consent-banner__btn--minimal"
             >
               Только необходимые
             </button>

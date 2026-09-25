@@ -141,17 +141,25 @@ export function buildCampWhere(query: CampListQuery): Prisma.ProgramWhereInput {
   return { AND: and };
 }
 
-export function buildCampListResponse(itemsPlusOne: CampContract[], query: Pick<CampListQuery, "limit" | "offset">): CampListResponse {
-  const items = query.limit > 0 ? itemsPlusOne.slice(0, query.limit) : [];
+/**
+ * offset/next_offset считаются по строкам БД, а не по кемпам после маппинга:
+ * часть программ отсеивается mapProgramToCamp, и иначе клиент прекращал листать раньше времени.
+ */
+export function buildCampListResponse(
+  pageCamps: CampContract[],
+  hasMoreRows: boolean,
+  query: Pick<CampListQuery, "limit" | "offset">,
+): CampListResponse {
+  if (query.limit <= 0) return { items: [], next_offset: null };
   return {
-    items,
-    next_offset: query.limit > 0 && itemsPlusOne.length > query.limit ? query.offset + items.length : null,
+    items: pageCamps.slice(0, query.limit),
+    next_offset: hasMoreRows ? query.offset + query.limit : null,
   };
 }
 
 async function listCamps(query: CampListQuery, env: Env): Promise<CampListResponse> {
   if (query.limit === 0) {
-    const empty = buildCampListResponse([], query);
+    const empty = buildCampListResponse([], false, query);
     recordCampApiFeedSuccess(empty.items.length, empty.next_offset);
     return empty;
   }
@@ -165,9 +173,10 @@ async function listCamps(query: CampListQuery, env: Env): Promise<CampListRespon
   });
 
   const camps = rows
+    .slice(0, query.limit)
     .map((row) => mapProgramToCamp(row, env))
     .filter((camp): camp is CampContract => Boolean(camp));
-  const payload = buildCampListResponse(camps, query);
+  const payload = buildCampListResponse(camps, rows.length > query.limit, query);
   recordCampApiFeedSuccess(payload.items.length, payload.next_offset);
   return payload;
 }

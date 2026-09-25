@@ -61,17 +61,23 @@ describe("camp feed routes helpers", () => {
     const two = { id: "tour_2" };
     const three = { id: "tour_3" };
 
-    expect(buildCampListResponse([one, two] as never, { limit: 2, offset: 0 })).toEqual({
+    expect(buildCampListResponse([one, two] as never, false, { limit: 2, offset: 0 })).toEqual({
       items: [one, two],
       next_offset: null,
     });
 
-    expect(buildCampListResponse([one, two, three] as never, { limit: 2, offset: 10 })).toEqual({
+    expect(buildCampListResponse([one, two, three] as never, true, { limit: 2, offset: 10 })).toEqual({
       items: [one, two],
       next_offset: 12,
     });
 
-    expect(buildCampListResponse([one] as never, { limit: 0, offset: 10 })).toEqual({
+    // Часть строк страницы отсеяна маппером, но в БД есть ещё строки — листаем дальше.
+    expect(buildCampListResponse([one] as never, true, { limit: 5, offset: 0 })).toEqual({
+      items: [one],
+      next_offset: 5,
+    });
+
+    expect(buildCampListResponse([one] as never, true, { limit: 0, offset: 10 })).toEqual({
       items: [],
       next_offset: null,
     });

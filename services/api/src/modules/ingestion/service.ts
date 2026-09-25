@@ -3179,9 +3179,25 @@ function getSourceUrlCandidates(source: Source): string[] {
     ...getSourceSpecificFetchUrls(source),
   ];
   const normalized = urls
-    .map((value) => value.trim())
-    .filter((value) => /^https?:\/\//i.test(value) || source.type === "telegram" || source.type === "instagram");
+    .map((value) => toAbsoluteSourceUrl(source, value))
+    .filter((value): value is string => Boolean(value));
   return [...new Set(normalized)];
+}
+
+/** metaJson часто содержит «wakehouse.ru» или «@handle» без схемы — дальше парсеры ждут абсолютный URL. */
+export function toAbsoluteSourceUrl(source: Pick<Source, "type" | "urlOrHandle">, raw: string): string | null {
+  const value = raw.trim();
+  if (!value) return null;
+  if (/^https?:\/\//i.test(value)) return value;
+  if (value.startsWith("//")) return `https:${value}`;
+  if (source.type === "telegram") return normalizeSourceUrl({ ...source, urlOrHandle: value } as Source);
+  if (source.type === "instagram" && /^@?[A-Za-z0-9_](?:[A-Za-z0-9_.]{0,28}[A-Za-z0-9_])?$/.test(value)) {
+    const handle = value.replace(/^@/, "");
+    const looksLikeDomain = !value.startsWith("@") && /\.[a-z]{2,}$/i.test(handle);
+    if (!looksLikeDomain) return `https://www.instagram.com/${handle}/`;
+  }
+  if (/^[a-z0-9-]+(\.[a-z0-9-]+)+(?:[/?#]|$)/i.test(value)) return `https://${value}`;
+  return null;
 }
 
 function getSourceSpecificFetchUrls(source: Source): string[] {

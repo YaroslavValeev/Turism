@@ -2,7 +2,26 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("../../lib/prisma", () => ({ prisma: {} }));
 
-import { isSourceDueForCollection } from "./service";
+import { isSourceDueForCollection, toAbsoluteSourceUrl } from "./service";
+
+describe("toAbsoluteSourceUrl", () => {
+  const ig = { type: "instagram", urlOrHandle: "https://www.instagram.com/wakehouse.ru/" };
+  const tg = { type: "telegram", urlOrHandle: "https://t.me/raceenduro" };
+
+  it("keeps absolute urls and fixes scheme-less ones", () => {
+    expect(toAbsoluteSourceUrl(ig, "https://example.com/a")).toBe("https://example.com/a");
+    expect(toAbsoluteSourceUrl(ig, "//example.com/a")).toBe("https://example.com/a");
+    expect(toAbsoluteSourceUrl(ig, "wakehouse.ru")).toBe("https://wakehouse.ru");
+    expect(toAbsoluteSourceUrl(ig, "kajt-shkola.ru/camps")).toBe("https://kajt-shkola.ru/camps");
+  });
+
+  it("maps handles per source type and drops garbage", () => {
+    expect(toAbsoluteSourceUrl(ig, "@wakehouse.ru")).toBe("https://www.instagram.com/wakehouse.ru/");
+    expect(toAbsoluteSourceUrl(ig, "kaif_camp")).toBe("https://www.instagram.com/kaif_camp/");
+    expect(toAbsoluteSourceUrl(tg, "@raceenduro")).toBe("https://t.me/s/raceenduro");
+    expect(toAbsoluteSourceUrl(ig, "см. профиль")).toBeNull();
+  });
+});
 
 const now = new Date("2026-09-25T12:00:00Z");
 const hoursAgo = (h: number) => new Date(now.getTime() - h * 60 * 60 * 1000);

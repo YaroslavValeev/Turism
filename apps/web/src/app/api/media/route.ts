@@ -55,6 +55,44 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    const isTelegramCdn =
+      parsed.hostname.includes("telesco.pe") ||
+      parsed.hostname.includes("telegram.org") ||
+      parsed.hostname.includes("cdn-telegram.org") ||
+      parsed.hostname === "t.me" ||
+      parsed.hostname.endsWith(".t.me");
+
+    // Telegram CDN с RU/web-контейнера часто недоступен — тянем через API (SOCKS).
+    if (isTelegramCdn) {
+      const apiBase = (
+        process.env.PUBLIC_API_BASE_URL ||
+        process.env.NEXT_PUBLIC_API_URL ||
+        "https://api.mywavetour.ru"
+      ).replace(/\/+$/, "");
+      const viaApi = await fetch(`${apiBase}/public/media?url=${encodeURIComponent(parsed.toString())}`, {
+        cache: "no-store",
+      });
+      if (viaApi.ok) {
+        const contentType = viaApi.headers.get("content-type") ?? "image/jpeg";
+        const body = await viaApi.arrayBuffer();
+        return new Response(body, {
+          status: 200,
+          headers: {
+            "content-type": contentType,
+            "cache-control": "public, max-age=3600",
+          },
+        });
+      }
+      const body = buildPlaceholderSvg(parsed.toString());
+      return new Response(body, {
+        status: 200,
+        headers: {
+          "content-type": "image/svg+xml; charset=utf-8",
+          "cache-control": "public, max-age=900",
+        },
+      });
+    }
+
     const isUnsplash =
       parsed.hostname === "images.unsplash.com" || parsed.hostname.endsWith(".unsplash.com");
     const referer = isUnsplash
@@ -63,16 +101,14 @@ export async function GET(request: NextRequest) {
           parsed.hostname.includes("cdninstagram.com") ||
           parsed.hostname.includes("fbcdn.net")
         ? "https://www.instagram.com/"
-        : parsed.hostname.includes("telesco.pe") || parsed.hostname.includes("telegram.org")
-          ? "https://t.me/"
-          : `${parsed.protocol}//${parsed.hostname}/`;
+        : `${parsed.protocol}//${parsed.hostname}/`;
 
     // Unsplash отдаёт AVIF, если в Accept первым стоит avif — часть WebView/браузеров плохо рендерит AVIF в <img>.
     // WebP в приоритете: совместимость лучше при том же проксировании.
     const response = await fetch(parsed.toString(), {
       headers: {
         "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135 Safari/537.36",
-        accept: "image/webp,image/avif,image/apng,image/svg+xml,image/*,*/*;q=0.8",
+        accept: "image/webp,image/avif,image/apng,image/svg+xml,image/*,video/webm,video/mp4,video/*,*/*;q=0.8",
         referer,
       },
       cache: "no-store",

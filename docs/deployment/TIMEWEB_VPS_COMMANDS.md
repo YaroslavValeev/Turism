@@ -452,6 +452,53 @@ bash scripts/smoke_media.sh
 
 ---
 
+## 12a. Фото программ из Telegram пропали («Фото программы обновляется»)
+
+**Почему бывает.** Ссылки Telegram CDN (`cdn*.telesco.pe`) подписаны и через время отдают **404**. С московского VPS CDN напрямую недоступен (таймаут) — API ходит туда только через SOCKS (`TELEGRAM_BOT_HTTP_PROXY`). Поэтому на витрине фото должны лежать у нас: `/ingestion-media/*` (named volume `ingestion_media`, общий для `api` и `web`).
+
+**Как устроено (код):**
+
+- при публикации кандидата API сохраняет медиа в `/ingestion-media/` — `services/api/src/modules/ingestion/mediaCache.ts`;
+- при повторном сборе известного Telegram-поста обновляются ссылки в `raw_items.rawMediaJson` — `refreshExistingTelegramRawMedia` в `services/api/src/modules/ingestion/service.ts`;
+- ремонт уже опубликованных программ — `services/api/src/modules/ingestion/telegramMedia.ts` + скрипт `services/api/scripts/refresh-telegram-media.ts`;
+- файлы, появившиеся после старта `web`, отдаёт маршрут `apps/web/src/app/ingestion-media/[...path]/route.ts` (`next start` сам видит в `public/` только файлы, существовавшие при запуске).
+
+**1. Сколько программ ещё ссылаются на Telegram CDN** (норма — `0`):
+
+```bash
+docker compose --env-file .env.production -f docker-compose.production.yml exec -T postgres sh -lc 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc "SELECT count(*) FROM program_media WHERE url LIKE '\''%telesco.pe%'\'';"'
+```
+
+**2. Ремонт** — заново открывает исходный пост `t.me/<канал>/<id>` через SOCKS, скачивает медиа в `/ingestion-media/`, подменяет строки `program_media`. Повторный запуск безопасен (трогает только программы с оставшимися ссылками telesco):
+
+```bash
+docker compose --env-file .env.production -f docker-compose.production.yml exec -T api sh -c 'cd /app/services/api && pnpm exec tsx scripts/refresh-telegram-media.ts'
+```
+
+Пробный прогон без записи в БД — добавить `--dry-run`; ограничить число программ — `--limit N`.
+
+Ожидаемый вывод: `dry_run=false checked=N updated=N cached_files=M failed=0`. Строки `FAIL`:
+
+| Причина | Что делать |
+|---------|------------|
+| `no t.me post url` | программа не из Telegram — загрузить фото вручную в админке |
+| `t.me responded 404` / `no media in …` | пост удалён или без медиа |
+| `download via SOCKS failed` | лёг SOCKS-мост; см. [TOURISM_TELEGRAM_RELAY_RUNBOOK.md](TOURISM_TELEGRAM_RELAY_RUNBOOK.md) |
+
+**3. Сайт отдаёт файл** (ожидаемо `200 image/...`; подставить путь из `program_media.url`):
+
+```bash
+curl -sS -o /dev/null -w '%{http_code} %{content_type}\n' https://mywavetour.ru/ingestion-media/ИМЯ_ФАЙЛА.jpg
+```
+
+`404` при существующем файле → проверить, что в образе `web` есть маршрут `ingestion-media/[...path]`; быстрый обход — `docker compose --env-file .env.production -f docker-compose.production.yml restart web`.
+
+**Ограничение.** Кандидаты в админке («Медиа источника») показывают живые ссылки Telegram через `/public/media` API; у давно не собиравшегося источника они могут протухнуть — лечится запуском сбора источника. На опубликованные программы не влияет.
+
+**Консоль Timeweb** склеивает вставленные подряд команды — вставлять **по одной строке**.
+
+---
+
 ## 12b. Source runs triage + stale running
 
 Скрипт: `scripts/triage_source_runs.sh`

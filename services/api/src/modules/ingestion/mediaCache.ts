@@ -7,8 +7,8 @@ import fs from "fs/promises";
 import path from "path";
 import { proxyAwareFetch } from "../../lib/proxyFetch";
 
-const INGESTION_MEDIA_DIR = path.resolve(__dirname, "../../../../../apps/web/public/ingestion-media");
-const INGESTION_MEDIA_PREFIX = "/ingestion-media";
+export const INGESTION_MEDIA_DIR = path.resolve(__dirname, "../../../../../apps/web/public/ingestion-media");
+export const INGESTION_MEDIA_PREFIX = "/ingestion-media";
 
 function normalizeText(value: string | null | undefined): string {
   return String(value ?? "").trim();

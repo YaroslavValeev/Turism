@@ -25,7 +25,9 @@ export async function proxyAwareFetch(
   }
   const agent = new SocksProxyAgent(proxy);
   const method = (init?.method ?? "GET").toUpperCase();
-  const body = init?.body == null ? undefined : String(init.body);
+  const rawBody = init?.body;
+  const body: string | Uint8Array | undefined =
+    rawBody == null ? undefined : rawBody instanceof Uint8Array ? rawBody : String(rawBody);
   const headers = (init?.headers ?? {}) as http.OutgoingHttpHeaders;
   return new Promise((resolve, reject) => {
     const lib = url.startsWith("http://") ? http : https;

@@ -1,4 +1,5 @@
 import type { Env } from "@mywave/config";
+import { proxyAwareFetch } from "../../lib/proxyFetch";
 import { prisma } from "../../lib/prisma";
 import { sendEmailIfConfigured } from "./mailer";
 import { safeLog } from "../../lib/safeLogger";
@@ -121,26 +122,34 @@ async function sendTelegramDirectIfPossible(
   try {
     const baseUrl = base.replace(/\/+$/, "");
     if (options?.mediaUrl && isPublicHttpUrl(options.mediaUrl)) {
-      await fetch(`${baseUrl}/sendPhoto`, {
+      await proxyAwareFetch(
+        `${baseUrl}/sendPhoto`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            chat_id: `@${username.replace(/^@/, "")}`,
+            photo: options.mediaUrl,
+            disable_notification: true,
+          }),
+        },
+        env.TELEGRAM_BOT_HTTP_PROXY,
+      ).catch(() => undefined);
+    }
+    const resp = await proxyAwareFetch(
+      `${base.replace(/\/+$/, "")}/sendMessage`,
+      {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           chat_id: `@${username.replace(/^@/, "")}`,
-          photo: options.mediaUrl,
-          disable_notification: true,
+          text,
+          disable_web_page_preview: true,
+          ...(options?.parseMode ? { parse_mode: options.parseMode } : {}),
         }),
-      }).catch(() => undefined);
-    }
-    const resp = await fetch(`${base.replace(/\/+$/, "")}/sendMessage`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        chat_id: `@${username.replace(/^@/, "")}`,
-        text,
-        disable_web_page_preview: true,
-        ...(options?.parseMode ? { parse_mode: options.parseMode } : {}),
-      }),
-    });
+      },
+      env.TELEGRAM_BOT_HTTP_PROXY,
+    );
     return resp.ok;
   } catch {
     return false;

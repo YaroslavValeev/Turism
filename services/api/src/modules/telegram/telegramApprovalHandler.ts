@@ -1,5 +1,6 @@
 import type { Env } from "@mywave/config";
 import { prisma } from "../../lib/prisma";
+import { proxyAwareFetch } from "../../lib/proxyFetch";
 import { callTelegramJson, resolveContentOwnerChatId } from "./telegramApi";
 import {
   applyRewrite,
@@ -15,6 +16,17 @@ import {
   skipOutreachCampaign,
   declineOutreachCampaign,
 } from "../organizer-outreach/service";
+import {
+  handleProgramAdminCallback,
+  isProgramPublishCommand,
+  sendProgramPublishQueue,
+} from "../telegram-admin/handler";
+import { parseCampAdminCallback, parseMenuAdminCallback } from "../telegram-admin/contracts";
+import {
+  handleOperatorCommand,
+  handleOperatorMenuAction,
+  parseOperatorCommand,
+} from "../telegram-admin/operatorMenu";
 
 type TgUser = { id: number; username?: string; first_name?: string };
 type CallbackQuery = {
@@ -54,8 +66,10 @@ export async function downloadTelegramFile(env: Env, fileId: string): Promise<{ 
   if (!base) return null;
   const token = base.split("/").pop();
   if (!token) return null;
-  const u = `https://api.telegram.org/file/bot${token}/${g.result.file_path}`;
-  const r = await fetch(u);
+  // TELEGRAM_BOT_API_BASE_URL = https://api.telegram.org/botTOKEN
+  const fileBase = base.replace(/\/bot[^/]+\/?$/, "") || "https://api.telegram.org";
+  const fileUrl = `${fileBase}/file/bot${token}/${g.result.file_path}`;
+  const r = await proxyAwareFetch(fileUrl, undefined, env.TELEGRAM_BOT_HTTP_PROXY);
   if (!r.ok) return null;
   const ab = await r.arrayBuffer();
   return { buf: Buffer.from(ab), mime: g.result.file_path.endsWith("oga") || g.result.file_path.endsWith("ogg") ? "audio/ogg" : "audio/mpeg" };
@@ -119,6 +133,31 @@ async function handleCallbackQuery(
   if (out) {
     return handleOutreachCallback(env, cb, out);
   }
+  const menu = parseMenuAdminCallback(cb.data);
+  if (menu) {
+    const chatId = cb.message?.chat.id;
+    if (chatId == null) {
+      await answerEmpty(env, cb.id);
+      return { ok: false, error: "no chat" };
+    }
+    const result = await handleOperatorMenuAction(env, {
+      action: menu.action,
+      chatId,
+      messageId: cb.message?.message_id,
+      actorId: `tg:${cb.from.id}`,
+    });
+    if (result.toast) await answerText(env, cb.id, result.toast);
+    else await answerEmpty(env, cb.id);
+    return { ok: true };
+  }
+  const programAdmin = await handleProgramAdminCallback(env, cb);
+  if (programAdmin) {
+    return programAdmin;
+  }
+  if (parseCampAdminCallback(cb.data)) {
+    await answerText(env, cb.id, "Camp Admin action пока не подключён. Используйте /check_publish для программ.");
+    return { ok: false, error: "camp admin not implemented" };
+  }
   const parsed = parseCallbackData(cb.data);
   if (!parsed) {
     await answerEmpty(env, cb.id);
@@ -167,10 +206,42 @@ async function handleOwnerMessage(
   msg: Message,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   if (!isOwnerChat(env, msg.chat.id)) {
+    // Раньше было тихое "unauthorized" — в личке казалось, что бот мёртв.
+    if (msg.text?.startsWith("/")) {
+      console.warn(
+        JSON.stringify({
+          event: "telegram_owner_command_rejected",
+          chatId: String(msg.chat.id),
+          expectedOwner: resolveContentOwnerChatId(env),
+          text: msg.text.slice(0, 64),
+        }),
+      );
+      try {
+        await callTelegramJson(env, "sendMessage", {
+          chat_id: String(msg.chat.id),
+          text:
+            "Команда принята, но этот чат не является owner-chat.\n" +
+            `Ваш chat_id: <code>${msg.chat.id}</code>\n` +
+            "Сверьте с TELEGRAM_CONTENT_OWNER_CHAT_ID на сервере.",
+          parse_mode: "HTML",
+        });
+      } catch {
+        // ignore send failures (token/proxy)
+      }
+    }
     return { ok: false, error: "unauthorized" };
   }
 
   if (msg.text?.startsWith("/")) {
+    if (isProgramPublishCommand(msg.text)) {
+      await sendProgramPublishQueue(env, msg.chat.id);
+      return { ok: true };
+    }
+    const operatorCommand = parseOperatorCommand(msg.text);
+    if (operatorCommand) {
+      await handleOperatorCommand(env, msg.chat.id, operatorCommand);
+      return { ok: true };
+    }
     return { ok: true };
   }
 

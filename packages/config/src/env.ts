@@ -48,22 +48,33 @@ export interface Env {
   SENTRY_DSN?: string;
   INGESTION_DAILY_ENABLED: boolean;
   INGESTION_DAILY_HOUR_LOCAL: number;
+  /** Лимит источников за один daily-сбор (0 = без лимита). */
+  INGESTION_DAILY_SOURCE_LIMIT: number;
   INGESTION_AUTOPUBLISH_ENABLED: boolean;
   INGESTION_DEFAULT_FALLBACK_IMAGE_URL?: string;
   /** Включает запись server-side analytics + ingestion. В prod рекомендуется включать явно. */
   ANALYTICS_ENABLED: boolean;
   /** Секрет для `POST /internal/analytics/*` (не путать с admin JWT). */
   INTERNAL_ANALYTICS_TOKEN?: string;
-  /** Bearer token для private Camp API: GET /api/v1/camps, /api/v1/camps/:id, /camps-feed.json. */
+  /** Bearer token для private Camp API: GET /api/v1/camps, /api/v1/camps/:id, /api/v1/camps/health, /camps-feed.json. */
   CAMP_API_TOKEN?: string;
   /** Опционально: Telegram Bot API для алертов (`https://api.telegram.org/bot<token>/sendMessage`). */
   TELEGRAM_BOT_API_BASE_URL?: string;
+  /** SOCKS/HTTP proxy для исходящих Bot API вызовов (Tourism → EU relay), напр. socks5://172.18.0.1:1088 */
+  TELEGRAM_BOT_HTTP_PROXY?: string;
   /** chat_id получателя алертов */
   TELEGRAM_ALERT_CHAT_ID?: string;
   /** chat_id owner для согласования контент-конвейера; иначе используется TELEGRAM_ALERT_CHAT_ID. */
   TELEGRAM_CONTENT_OWNER_CHAT_ID?: string;
   /** Секрет в path: `POST /public/telegram/content-pipeline/:token` */
   CONTENT_PIPELINE_TELEGRAM_WEBHOOK_TOKEN?: string;
+  /**
+   * Secret header for relay webhook: `POST /public/telegram/webhook`
+   * (`X-Telegram-Bot-Api-Secret-Token`, setWebhook secret_token).
+   */
+  TELEGRAM_WEBHOOK_SECRET?: string;
+  /** Long-polling вместо webhook (dev/fallback). */
+  TELEGRAM_LONG_POLLING_ENABLED: boolean;
   /** Опционально: OpenAI для расшифровки voice (rewrite). */
   OPENAI_API_KEY?: string;
   /** Публичная ссылка-приглашение в TG группу/канал с обновлениями */
@@ -135,15 +146,19 @@ export function loadEnv(): Env {
     SENTRY_DSN: optional("SENTRY_DSN"),
     INGESTION_DAILY_ENABLED: optionalBoolean("INGESTION_DAILY_ENABLED", false),
     INGESTION_DAILY_HOUR_LOCAL: optionalNumber("INGESTION_DAILY_HOUR_LOCAL", 8),
+    INGESTION_DAILY_SOURCE_LIMIT: optionalNumber("INGESTION_DAILY_SOURCE_LIMIT", 0),
     INGESTION_AUTOPUBLISH_ENABLED: optionalBoolean("INGESTION_AUTOPUBLISH_ENABLED", true),
     INGESTION_DEFAULT_FALLBACK_IMAGE_URL: optional("INGESTION_DEFAULT_FALLBACK_IMAGE_URL"),
     ANALYTICS_ENABLED: optionalBoolean("ANALYTICS_ENABLED", false),
     INTERNAL_ANALYTICS_TOKEN: optional("INTERNAL_ANALYTICS_TOKEN"),
     CAMP_API_TOKEN: optional("CAMP_API_TOKEN"),
     TELEGRAM_BOT_API_BASE_URL: optional("TELEGRAM_BOT_API_BASE_URL"),
+    TELEGRAM_BOT_HTTP_PROXY: optional("TELEGRAM_BOT_HTTP_PROXY"),
     TELEGRAM_ALERT_CHAT_ID: optional("TELEGRAM_ALERT_CHAT_ID"),
     TELEGRAM_CONTENT_OWNER_CHAT_ID: optional("TELEGRAM_CONTENT_OWNER_CHAT_ID"),
     CONTENT_PIPELINE_TELEGRAM_WEBHOOK_TOKEN: optional("CONTENT_PIPELINE_TELEGRAM_WEBHOOK_TOKEN"),
+    TELEGRAM_WEBHOOK_SECRET: optional("TELEGRAM_WEBHOOK_SECRET"),
+    TELEGRAM_LONG_POLLING_ENABLED: optionalBoolean("TELEGRAM_LONG_POLLING_ENABLED", false),
     OPENAI_API_KEY: optional("OPENAI_API_KEY"),
     TELEGRAM_UPDATES_INVITE_LINK: optional("TELEGRAM_UPDATES_INVITE_LINK"),
     TELEGRAM_UPDATES_BOT_USERNAME: optional("TELEGRAM_UPDATES_BOT_USERNAME"),

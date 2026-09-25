@@ -3,34 +3,58 @@ import type { Env } from "@mywave/config";
 import { handleTelegramContentPipelineUpdate, type TelegramUpdate } from "./telegramApprovalHandler";
 
 /**
- * `POST /public/telegram/content-pipeline/:token` — вебхук Bot API
- * (установить: `setWebhook?url=...&secret_token=...` при необходимости).
+ * Вебхуки Bot API:
+ * - `POST /public/telegram/webhook` — production relay (secret header, Cloudflare tunnel)
+ * - `POST /public/telegram/content-pipeline/:token` — legacy path-token
  */
 export function telegramContentPipelineRoutes(env: Env): Router {
   const router = Router();
-  const expect = (env as Env & { CONTENT_PIPELINE_TELEGRAM_WEBHOOK_TOKEN?: string }).CONTENT_PIPELINE_TELEGRAM_WEBHOOK_TOKEN?.trim();
+  const pathToken = env.CONTENT_PIPELINE_TELEGRAM_WEBHOOK_TOKEN?.trim();
+  const headerSecret = (
+    env.TELEGRAM_WEBHOOK_SECRET ??
+    process.env.TELEGRAM_WEBHOOK_SECRET ??
+    ""
+  ).trim();
 
-  router.post("/content-pipeline/:token", (req: Request, res: Response) => {
-    if (!expect) {
-      res.status(503).json({ error: "CONTENT_PIPELINE_TELEGRAM_WEBHOOK_TOKEN not set" });
-      return;
-    }
-    if (String(req.params.token) !== expect) {
-      res.status(404).end();
-      return;
-    }
+  function acceptUpdate(req: Request, res: Response, logTag: string): void {
     const body = req.body as TelegramUpdate;
     void handleTelegramContentPipelineUpdate(env, body)
       .then((out) => {
         if (!out.ok) {
-          console.warn("[content-pipeline-telegram]", out.error);
+          console.warn(`[${logTag}]`, out.error);
         }
         res.json({ ok: true });
       })
       .catch((e) => {
-        console.error("[content-pipeline-telegram]", e);
+        console.error(`[${logTag}]`, e);
         res.status(500).json({ ok: false });
       });
+  }
+
+  /** EU Cloudflare → api-bridge → этот путь (см. tourism-telegram-relay webhook_repair). */
+  router.post("/webhook", (req: Request, res: Response) => {
+    if (!headerSecret) {
+      res.status(503).json({ error: "TELEGRAM_WEBHOOK_SECRET not set" });
+      return;
+    }
+    const got = String(req.header("X-Telegram-Bot-Api-Secret-Token") ?? "");
+    if (got !== headerSecret) {
+      res.status(404).end();
+      return;
+    }
+    acceptUpdate(req, res, "telegram-webhook");
+  });
+
+  router.post("/content-pipeline/:token", (req: Request, res: Response) => {
+    if (!pathToken) {
+      res.status(503).json({ error: "CONTENT_PIPELINE_TELEGRAM_WEBHOOK_TOKEN not set" });
+      return;
+    }
+    if (String(req.params.token) !== pathToken) {
+      res.status(404).end();
+      return;
+    }
+    acceptUpdate(req, res, "content-pipeline-telegram");
   });
 
   return router;

@@ -12,12 +12,11 @@ import {
 import { prisma } from "../../lib/prisma";
 import { writeAuditLog } from "../../lib/audit";
 import { requireAdmin } from "../../middleware/auth";
-import { canPublish, programIncludeForPublishGate } from "./publishGate";
 import type { Env } from "@mywave/config";
 import type { AdminPayload } from "../../middleware/auth";
 import { isProgramPubliclyVisible } from "./publicVisibility";
 import { dedupeProgramsByEventKey } from "./dedup";
-import { notifySubscribersOnProgramPublished } from "../subscriptions/notifier";
+import { setProgramPublishStatus } from "./publishStatus.service";
 
 function isAdminRequest(req: Request, env: Env): boolean {
   const token = req.headers.authorization?.replace(/^Bearer\s+/, "");
@@ -95,7 +94,18 @@ export function programsRoutes(env: Env): Router {
     if (!allowAll) {
       where.publishStatus = "published";
     }
-    else if (publish_status && isProgramPublishStatus(publish_status)) where.publishStatus = publish_status;
+    else if (publish_status) {
+      const parts = publish_status
+        .split(",")
+        .map((s) => s.trim())
+        .filter((s): s is ProgramPublishStatus => isProgramPublishStatus(s));
+      if (parts.length === 1) where.publishStatus = parts[0];
+      else if (parts.length > 1) where.publishStatus = { in: parts };
+    }
+    // Очередь к публикации: только будущие/текущие (endDate не в прошлом).
+    if (allowAll && String(req.query.future_only ?? "") === "1") {
+      where.endDate = { gte: new Date() };
+    }
     if (discipline) where.discipline = discipline;
     if (region) where.region = region;
     if (level) where.levelRequired = level;
@@ -103,7 +113,7 @@ export function programsRoutes(env: Env): Router {
     const list = await prisma.program.findMany({
       where,
       include: { media: true, organizer: { select: { id: true, displayName: true, verificationStatus: true } } },
-      orderBy: { startDate: "asc" },
+      orderBy: allowAll ? [{ updatedAt: "desc" }, { startDate: "asc" }] : { startDate: "asc" },
     });
     if (allowAll) {
       res.json(list);
@@ -299,56 +309,33 @@ export function programsRoutes(env: Env): Router {
   });
 
   router.patch("/:id/publish-status", admin, async (req: Request, res: Response) => {
-    const existing = await prisma.program.findUnique({
-      where: { id: req.params.id },
-      include: programIncludeForPublishGate,
-    });
-    if (!existing) {
-      res.status(404).json({ error: "Not found" });
-      return;
-    }
     const { publishStatus } = req.body as { publishStatus?: string };
-    if (!publishStatus || !isProgramPublishStatus(publishStatus)) {
+    if (!publishStatus) {
       res.status(400).json({
         error: "valid publishStatus required",
         allowed: "draft,internal_review,needs_fix,approved,published,paused,archived",
       });
       return;
     }
-    if (publishStatus === "published") {
-      const gate = canPublish(existing);
-      if (!gate.ok) {
-        res.status(400).json({
-          error: "Publish gate not passed",
-          missing: gate.missing,
-        });
-        return;
-      }
-    }
-    const p = await prisma.program.update({
-      where: { id: req.params.id },
-      data: { publishStatus: publishStatus as ProgramPublishStatus },
-      include: { media: true },
-    });
-    await writeAuditLog({
-      entityType: "program",
-      entityId: p.id,
-      changedField: "publish_status_change",
-      oldValue: existing.publishStatus,
-      newValue: p.publishStatus,
-      changedBy: req.adminUserId ?? null,
+    const result = await setProgramPublishStatus(env, {
+      programId: req.params.id,
+      publishStatus,
+      actorId: req.adminUserId ?? null,
       reason: "publish workflow",
     });
-    if (existing.publishStatus !== "published" && p.publishStatus === "published") {
-      void notifySubscribersOnProgramPublished(env, {
-        id: p.id,
-        title: p.title,
-        discipline: p.discipline,
-        region: p.region,
-        startDate: p.startDate,
-      });
+    if (!result.ok) {
+      if (result.error === "not_found") {
+        res.status(404).json({ error: "Not found" });
+        return;
+      }
+      if (result.error === "invalid_status") {
+        res.status(400).json({ error: "valid publishStatus required", allowed: result.allowed });
+        return;
+      }
+      res.status(400).json({ error: "Publish gate not passed", missing: result.missing });
+      return;
     }
-    res.json(p);
+    res.json(result.program);
   });
 
   router.post("/:id/media", admin, async (req: Request, res: Response) => {

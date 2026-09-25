@@ -3,6 +3,7 @@ import type { NextFunction, Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import type { Env } from "@mywave/config";
 import type { AdminPayload } from "../../middleware/auth";
+import { recordCampApiAuthFailure } from "./monitoring";
 
 function bearerToken(req: Request): string | null {
   const auth = req.headers.authorization;
@@ -40,6 +41,7 @@ export function requireCampApiAuth(env: Env) {
       next();
       return;
     }
+    recordCampApiAuthFailure(req.path);
     res.status(401).json({
       error: "Unauthorized",
       code: env.CAMP_API_TOKEN ? "INVALID_CAMP_API_TOKEN" : "INVALID_ADMIN_TOKEN",

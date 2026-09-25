@@ -4,6 +4,7 @@ import type { Env } from "@mywave/config";
 import { prisma } from "../../lib/prisma";
 import { requireCampApiAuth } from "./auth";
 import { mapProgramToCamp, resolveProgramIdFromCampId, type CampContract, type CampPublicationStatus, type CampSport } from "./mapper";
+import { getCampApiRuntimeStatus, recordCampApiFeedError, recordCampApiFeedSuccess } from "./monitoring";
 
 const DEFAULT_LIMIT = 100;
 const MAX_LIMIT = 100;
@@ -25,7 +26,6 @@ const STATUS_TO_PROGRAM_STATUSES: Record<CampPublicationStatus, string[]> = {
   published: ["published"],
   hidden: ["draft", "internal_review", "needs_fix", "approved", "paused"],
   archived: ["archived"],
-  cancelled: [],
 };
 
 export interface CampListQuery {
@@ -60,7 +60,7 @@ export function parseCampListQuery(req: Request): { ok: true; query: CampListQue
   const raw = req.query as Record<string, string | undefined>;
   const status = (raw.status ?? "published") as CampPublicationStatus;
   if (!Object.prototype.hasOwnProperty.call(STATUS_TO_PROGRAM_STATUSES, status)) {
-    return { ok: false, error: "status must be one of: published, hidden, archived, cancelled" };
+    return { ok: false, error: "status must be one of: published, hidden, archived" };
   }
 
   const sports = parseCsv(raw.sports ?? "wakesurf,wakeboard");
@@ -151,7 +151,9 @@ export function buildCampListResponse(itemsPlusOne: CampContract[], query: Pick<
 
 async function listCamps(query: CampListQuery, env: Env): Promise<CampListResponse> {
   if (query.limit === 0) {
-    return buildCampListResponse([], query);
+    const empty = buildCampListResponse([], query);
+    recordCampApiFeedSuccess(empty.items.length, empty.next_offset);
+    return empty;
   }
 
   const rows = await prisma.program.findMany({
@@ -165,7 +167,9 @@ async function listCamps(query: CampListQuery, env: Env): Promise<CampListRespon
   const camps = rows
     .map((row) => mapProgramToCamp(row, env))
     .filter((camp): camp is CampContract => Boolean(camp));
-  return buildCampListResponse(camps, query);
+  const payload = buildCampListResponse(camps, query);
+  recordCampApiFeedSuccess(payload.items.length, payload.next_offset);
+  return payload;
 }
 
 function sendCampListError(parsed: { ok: false; error: string }, res: Response): void {
@@ -183,9 +187,14 @@ export function campFeedRoutes(env: Env): Router {
       return;
     }
 
-    const payload = await listCamps(parsed.query, env);
-    res.set("Cache-Control", "private, max-age=60");
-    res.json(payload);
+    try {
+      const payload = await listCamps(parsed.query, env);
+      res.set("Cache-Control", "private, max-age=60");
+      res.json(payload);
+    } catch (error) {
+      recordCampApiFeedError(error);
+      res.status(500).json({ error: "Internal server error" });
+    }
   }
 
   async function handleDetail(req: Request, res: Response): Promise<void> {
@@ -203,22 +212,39 @@ export function campFeedRoutes(env: Env): Router {
     res.json(camp);
   }
 
+  function handleHealth(_req: Request, res: Response): void {
+    res.set("Cache-Control", "private, no-store");
+    res.json({
+      service: "camp-api",
+      token_configured: Boolean(env.CAMP_API_TOKEN),
+      telegram_alerts_configured: Boolean(env.TELEGRAM_BOT_API_BASE_URL && env.TELEGRAM_ALERT_CHAT_ID),
+      ...getCampApiRuntimeStatus(),
+    });
+  }
+
   router.get("/api/v1/camps", auth, handleList);
+  router.get("/api/v1/camps/health", auth, handleHealth);
   router.get("/api/v1/camps/:id", auth, handleDetail);
   // Production nginx strips `/api` on mywavetour.ru/api/* before proxying to Express.
   router.get("/v1/camps", auth, handleList);
+  router.get("/v1/camps/health", auth, handleHealth);
   router.get("/v1/camps/:id", auth, handleDetail);
 
   router.get("/camps-feed.json", auth, async (_req, res) => {
-    const payload = await listCamps({
-      status: "published",
-      sports: ["wakesurf", "wakeboard"],
-      audience: "ru",
-      limit: MAX_LIMIT,
-      offset: 0,
-    }, env);
-    res.set("Cache-Control", "private, max-age=300");
-    res.json(payload);
+    try {
+      const payload = await listCamps({
+        status: "published",
+        sports: ["wakesurf", "wakeboard"],
+        audience: "ru",
+        limit: MAX_LIMIT,
+        offset: 0,
+      }, env);
+      res.set("Cache-Control", "private, max-age=300");
+      res.json(payload);
+    } catch (error) {
+      recordCampApiFeedError(error);
+      res.status(500).json({ error: "Internal server error" });
+    }
   });
 
   return router;

@@ -30,6 +30,7 @@ describe("camp feed routes helpers", () => {
   it("rejects unsupported audience and sports", () => {
     expect(parseCampListQuery(req({ audience: "en" })).ok).toBe(false);
     expect(parseCampListQuery(req({ sports: "skiing" })).ok).toBe(false);
+    expect(parseCampListQuery(req({ status: "cancelled" })).ok).toBe(false);
   });
 
   it("builds Program filters for published wake camps updated since date", () => {
@@ -68,6 +69,11 @@ describe("camp feed routes helpers", () => {
     expect(buildCampListResponse([one, two, three] as never, { limit: 2, offset: 10 })).toEqual({
       items: [one, two],
       next_offset: 12,
+    });
+
+    expect(buildCampListResponse([one] as never, { limit: 0, offset: 10 })).toEqual({
+      items: [],
+      next_offset: null,
     });
   });
 });

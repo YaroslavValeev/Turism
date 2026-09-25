@@ -53,8 +53,8 @@ type Props = {
 
 function publishStatusTone(s: string): "ok" | "warn" | "danger" | "muted" {
   if (s === "published") return "ok";
-  if (s === "draft" || s === "ready_for_review") return "warn";
-  if (s === "archived" || s === "rejected") return "danger";
+  if (s === "approved" || s === "internal_review" || s === "needs_fix" || s === "draft") return "warn";
+  if (s === "archived" || s === "paused") return "danger";
   return "muted";
 }
 
@@ -107,7 +107,7 @@ export function ProgramCatalogTable({
           <th>Даты</th>
           <th>Медиа</th>
           <th>Приоритет модерации</th>
-          <th>Действия</th>
+          <th>Медиа / сайт</th>
         </tr>
       </thead>
       <tbody>

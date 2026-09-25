@@ -84,6 +84,21 @@ describe("camp mapper", () => {
       content_rights_status: "unknown",
       source_url: "https://partner.example/camp",
       updated_at: "2026-07-07T10:30:00.000Z",
+      location: "Wake spot name",
+      duration: 8,
+      price: 1200,
+      inclusions: ["coaching", "boat sets"],
+      exclusions: ["flight"],
+      organizer: {
+        id: "org_1",
+        name: "Organizer Name",
+        type: "external",
+        verification_status: "verified",
+      },
+      audience: ["ru"],
+      itinerary: "Full camp description",
+      cover: "https://mywavetour.ru/ingestion-media/camp.jpg",
+      video: "https://cdn.example/video.mp4",
     });
     expect(camp?.cover_image_url).toBe("https://mywavetour.ru/ingestion-media/camp.jpg");
     expect(camp?.video_url).toBe("https://cdn.example/video.mp4");

@@ -84,33 +84,18 @@ export function AnalyticsRoot() {
             </a>
             .
           </div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <div className="mw-consent-banner__actions">
             <button
               type="button"
               onClick={() => setAnalyticsConsent("accepted")}
-              style={{
-                padding: "6px 10px",
-                borderRadius: 9,
-                border: "none",
-                cursor: "pointer",
-                background: "#27c4a8",
-                color: "#041b19",
-                fontWeight: 600,
-              }}
+              className="mw-consent-banner__btn mw-consent-banner__btn--accept"
             >
               Принять и продолжить
             </button>
             <button
               type="button"
               onClick={() => setAnalyticsConsent("rejected")}
-              style={{
-                padding: "6px 10px",
-                borderRadius: 9,
-                border: "1px solid rgba(22, 73, 67, 0.35)",
-                background: "transparent",
-                color: "#163c38",
-                cursor: "pointer",
-              }}
+              className="mw-consent-banner__btn mw-consent-banner__btn--minimal"
             >
               Только необходимые
             </button>

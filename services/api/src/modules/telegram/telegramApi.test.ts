@@ -1,15 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { proxyFetch } from "../../lib/proxyFetch";
+import { proxyAwareFetch } from "../../lib/proxyFetch";
 import { callTelegramJson } from "./telegramApi";
 
 vi.mock("../../lib/proxyFetch", () => ({
-  proxyFetch: vi.fn(),
+  proxyAwareFetch: vi.fn(),
 }));
 
 describe("callTelegramJson", () => {
   beforeEach(() => {
-    vi.mocked(proxyFetch).mockReset();
-    vi.mocked(proxyFetch).mockResolvedValue(
+    vi.mocked(proxyAwareFetch).mockReset();
+    vi.mocked(proxyAwareFetch).mockResolvedValue(
       new Response(JSON.stringify({ ok: true, result: { username: "test_bot" } }), {
         status: 200,
         headers: { "content-type": "application/json" },
@@ -29,7 +29,7 @@ describe("callTelegramJson", () => {
     );
 
     expect(result.ok).toBe(true);
-    expect(proxyFetch).toHaveBeenCalledWith(
+    expect(proxyAwareFetch).toHaveBeenCalledWith(
       "https://api.telegram.org/botsecret-token/getMe",
       expect.objectContaining({ method: "POST" }),
       "socks5://127.0.0.1:1088",
@@ -43,7 +43,7 @@ describe("callTelegramJson", () => {
       {},
     );
 
-    expect(proxyFetch).toHaveBeenCalledWith(
+    expect(proxyAwareFetch).toHaveBeenCalledWith(
       "https://api.telegram.org/botlegacy-token/getWebhookInfo",
       expect.any(Object),
       undefined,
@@ -54,6 +54,6 @@ describe("callTelegramJson", () => {
     const result = await callTelegramJson({} as never, "getMe", {});
 
     expect(result).toEqual({ ok: false, description: "Telegram Bot API is not configured" });
-    expect(proxyFetch).not.toHaveBeenCalled();
+    expect(proxyAwareFetch).not.toHaveBeenCalled();
   });
 });

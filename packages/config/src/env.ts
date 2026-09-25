@@ -71,7 +71,7 @@ export interface Env {
   ANALYTICS_ENABLED: boolean;
   /** Секрет для `POST /internal/analytics/*` (не путать с admin JWT). */
   INTERNAL_ANALYTICS_TOKEN?: string;
-  /** Bearer token для private Camp API: GET /api/v1/camps, /api/v1/camps/:id, /camps-feed.json. */
+  /** Bearer token для private Camp API: GET /api/v1/camps, /api/v1/camps/:id, /api/v1/camps/health, /camps-feed.json. */
   CAMP_API_TOKEN?: string;
   /** Канонический origin Telegram Bot API без токена и path. */
   TELEGRAM_API_BASE_URL?: string;

@@ -67,7 +67,7 @@ export default function BillingAnalyticsPage() {
 
       {!loading && !error && rows.length > 0 && (
         <AdminSectionCard title="Таблица" style={{ marginBottom: 0 }}>
-          <div style={{ overflowX: "auto" }}>
+          <div className="mw-admin-table-outer">
             <table className="mw-admin-table" style={{ minWidth: 1200, margin: 0 }}>
               <thead>
                 <tr>

@@ -47,6 +47,21 @@ export interface CampContract {
   content_rights_status: CampContentRightsStatus;
   source_url: string | null;
   updated_at: string;
+  location: string | null;
+  duration: number;
+  price: number | null;
+  inclusions: string[];
+  exclusions: string[];
+  organizer: {
+    id: string;
+    name: string;
+    type: "external";
+    verification_status: string;
+  };
+  audience: string[];
+  itinerary: string | null;
+  cover: string | null;
+  video: string | null;
 }
 
 const SUPPORTED_PUBLICATION_STATUSES = new Set(["published", "paused", "archived", "draft", "internal_review", "needs_fix", "approved"]);
@@ -211,6 +226,13 @@ export function mapProgramToCamp(row: CampProgramRow, env: Env): CampContract | 
   const sourceUrl = firstHttpUrl(row.sourceUrl, row.source?.urlOrHandle);
   const programUrl = buildProgramUrl(row.id, env);
   const updatedAt = row.updatedFromSourceAt ?? row.updatedAt;
+  const location = normalizeText(row.exactLocation) || resolveRegion(row);
+  const duration = durationDays(row.startDate, row.endDate, row.durationDays);
+  const inclusions = splitList(row.inclusions);
+  const exclusions = splitList(row.exclusions);
+  const itinerary = normalizeText(row.itineraryDayByDay) || null;
+  const cover = images[0] ?? null;
+  const video = absoluteUrl(videoUrl, env);
 
   return {
     id: resolveCampId(row.id),
@@ -226,20 +248,20 @@ export function mapProgramToCamp(row: CampProgramRow, env: Env): CampContract | 
     lng: null,
     start_date: isoDate(row.startDate),
     end_date: isoDate(row.endDate),
-    duration_days: durationDays(row.startDate, row.endDate, row.durationDays),
+    duration_days: duration,
     price_from: row.priceFromRub ?? null,
     price_to: null,
     currency: normalizeText(row.currency) || null,
     price_note: null,
-    included: splitList(row.inclusions),
-    not_included: splitList(row.exclusions),
+    included: inclusions,
+    not_included: exclusions,
     organizer_name: organizerName,
     organizer_type: "external",
     short_description: firstSentence(row.audienceFit ?? row.itineraryDayByDay ?? row.inclusions),
     description: buildDescription(row),
-    cover_image_url: images[0] ?? null,
+    cover_image_url: cover,
     gallery: images,
-    video_url: absoluteUrl(videoUrl, env),
+    video_url: video,
     booking_url: firstHttpUrl(row.sourceUrl) ?? programUrl,
     availability_status: normalizeAvailabilityStatus(row),
     publication_status: publicationStatus,
@@ -247,5 +269,20 @@ export function mapProgramToCamp(row: CampProgramRow, env: Env): CampContract | 
     content_rights_status: resolveContentRightsStatus(row),
     source_url: sourceUrl,
     updated_at: isoDateTime(updatedAt),
+    location,
+    duration,
+    price: row.priceFromRub ?? null,
+    inclusions,
+    exclusions,
+    organizer: {
+      id: row.organizer.id,
+      name: organizerName,
+      type: "external",
+      verification_status: row.organizer.verificationStatus,
+    },
+    audience: ["ru"],
+    itinerary,
+    cover,
+    video,
   };
 }

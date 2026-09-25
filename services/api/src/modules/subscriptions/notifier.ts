@@ -4,6 +4,12 @@ import { sendEmailIfConfigured } from "./mailer";
 import { safeLog } from "../../lib/safeLogger";
 import { callTelegramJson, isTelegramBotApiConfigured } from "../telegram/telegramApi";
 import {
+  resolveLocalIngestionMedia,
+  sendTelegramPhoto,
+  TELEGRAM_CAPTION_LIMIT,
+  visibleCaptionLength,
+} from "../telegram/telegramPhoto";
+import {
   buildEmailProgramNotifyHtml,
   buildEmailProgramNotifyText,
   buildTelegramProgramNotifyHtml,
@@ -54,15 +60,12 @@ function evaluateTelegramTitleQuality(title: string): { ok: boolean; reasons: st
   return { ok: reasons.length === 0, reasons };
 }
 
-function normalizeTelegramMediaUrl(rawUrl: string | null | undefined, apiBase: string): string | null {
+/** Локальный `/ingestion-media/...` оставляем как есть — sendTelegramPhoto загрузит файл. */
+function normalizeTelegramMediaRef(rawUrl: string | null | undefined): string | null {
   const v = String(rawUrl ?? "").trim();
   if (!v) return null;
   if (/^https?:\/\//i.test(v)) return isPublicHttpUrl(v) ? v : null;
-  if (v.startsWith("/")) {
-    const full = `${apiBase}${v}`;
-    return isPublicHttpUrl(full) ? full : null;
-  }
-  return null;
+  return resolveLocalIngestionMedia(v) ? v : null;
 }
 
 function addUtm(url: string, source: "email" | "telegram_channel" | "telegram_dm"): string {
@@ -102,13 +105,18 @@ async function loadProgramNotifySource(program: PublishedProgramPayload): Promis
   };
 }
 
-async function loadProgramPrimaryMediaUrl(programId: string, apiBase: string): Promise<string | null> {
-  const media = await prisma.programMedia.findFirst({
+async function loadProgramPrimaryMediaUrl(programId: string): Promise<string | null> {
+  const media = await prisma.programMedia.findMany({
     where: { programId, mediaType: "image" },
     orderBy: { id: "asc" },
     select: { url: true },
+    take: 10,
   });
-  return normalizeTelegramMediaUrl(media?.url, apiBase);
+  for (const item of media) {
+    const ref = normalizeTelegramMediaRef(item.url);
+    if (ref) return ref;
+  }
+  return null;
 }
 
 async function sendTelegramDirectIfPossible(
@@ -119,12 +127,13 @@ async function sendTelegramDirectIfPossible(
 ): Promise<boolean> {
   if (!isTelegramBotApiConfigured(env)) return false;
   try {
-    if (options?.mediaUrl && isPublicHttpUrl(options.mediaUrl)) {
-      await callTelegramJson(env, "sendPhoto", {
-        chat_id: `@${username.replace(/^@/, "")}`,
+    if (options?.mediaUrl) {
+      const photo = await sendTelegramPhoto(env, {
+        chatId: `@${username.replace(/^@/, "")}`,
         photo: options.mediaUrl,
-        disable_notification: true,
-      }).catch(() => undefined);
+        disableNotification: true,
+      });
+      if (!photo.ok) console.error("[subscriptions] telegram DM photo failed", photo.description ?? "unknown");
     }
     const resp = await callTelegramJson(env, "sendMessage", {
       chat_id: `@${username.replace(/^@/, "")}`,
@@ -189,12 +198,17 @@ async function sendTelegramChannelUpdate(
   const chatId = env.TELEGRAM_UPDATES_CHANNEL_CHAT_ID?.trim();
   if (!chatId || !isTelegramBotApiConfigured(env)) return false;
   try {
-    if (options?.mediaUrl && isPublicHttpUrl(options.mediaUrl)) {
-      await callTelegramJson(env, "sendPhoto", {
-        chat_id: chatId,
+    if (options?.mediaUrl) {
+      const fitsCaption = visibleCaptionLength(text) <= TELEGRAM_CAPTION_LIMIT;
+      const photo = await sendTelegramPhoto(env, {
+        chatId,
         photo: options.mediaUrl,
-        disable_notification: true,
-      }).catch(() => undefined);
+        ...(fitsCaption ? { caption: text, parseMode: options.parseMode, replyMarkup } : { disableNotification: true }),
+      });
+      if (photo.ok && fitsCaption) return true;
+      if (!photo.ok) {
+        console.error("[subscriptions] telegram channel photo failed", photo.description ?? "unknown");
+      }
     }
     const resp = await callTelegramJson(env, "sendMessage", {
       chat_id: chatId,
@@ -243,7 +257,7 @@ export async function notifySubscribersOnProgramPublished(env: Env, program: Pub
 
   const webBase = env.PUBLIC_WEB_BASE_URL.replace(/\/+$/, "");
   const apiBase = env.PUBLIC_API_BASE_URL.replace(/\/+$/, "");
-  const mediaUrl = await loadProgramPrimaryMediaUrl(program.id, apiBase);
+  const mediaUrl = await loadProgramPrimaryMediaUrl(program.id);
   const baseProgramUrl = `${webBase}/program/${program.id}`;
   const programUrlEmail = addUtm(baseProgramUrl, "email");
   const programUrlTelegramChannel = addUtm(baseProgramUrl, "telegram_channel");

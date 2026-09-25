@@ -132,7 +132,7 @@ export default function AdminBookingsPage() {
               }
             />
           ) : (
-            <div style={{ overflowX: "auto" }}>
+            <div className="mw-admin-table-outer">
               <table className="mw-admin-table">
                 <thead>
                   <tr>

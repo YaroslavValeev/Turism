@@ -10,6 +10,11 @@ import {
   rejectCandidate,
 } from "../ingestion/service";
 import { archiveProgramFromCancellationCandidate, ReconciliationError } from "./reconciliation";
+import { setProgramPublishStatus } from "../programs/publishStatus.service";
+import { archivePastByDates, isPastByDates } from "../ingestion/archivePast.service";
+import { candidateNeedsTelegramMediaRefresh, refreshTelegramCandidateMedia } from "../ingestion/telegramMedia";
+
+const MEDIA_REFRESH_TIMEOUT_MS = 20_000;
 
 export function eventCandidatesRoutes(env: Env): Router {
   const router = Router();
@@ -53,6 +58,7 @@ export function eventCandidatesRoutes(env: Env): Router {
                     name: true,
                     type: true,
                     trustScore: true,
+                    urlOrHandle: true,
                   },
                 },
               },
@@ -65,6 +71,15 @@ export function eventCandidatesRoutes(env: Env): Router {
     });
 
     res.json(candidates);
+  });
+
+  router.post("/archive-past", admin, async (req: Request, res: Response) => {
+    try {
+      const result = await archivePastByDates(req.adminUserId ?? null);
+      res.json(result);
+    } catch (error) {
+      res.status(400).json({ error: error instanceof Error ? error.message : "Archive past failed" });
+    }
   });
 
   router.get("/:id", admin, async (req: Request, res: Response) => {
@@ -109,6 +124,26 @@ export function eventCandidatesRoutes(env: Env): Router {
     if (!candidate) {
       res.status(404).json({ error: "Not found" });
       return;
+    }
+
+    const mediaInput = {
+      normalizedItemId: candidate.normalizedItem.id,
+      imageUrl: candidate.normalizedItem.imageUrl,
+      rawItem: candidate.normalizedItem.rawItem,
+    };
+    if (candidateNeedsTelegramMediaRefresh(mediaInput)) {
+      try {
+        const refreshed = await Promise.race([
+          refreshTelegramCandidateMedia(mediaInput),
+          new Promise<null>((resolve) => setTimeout(() => resolve(null), MEDIA_REFRESH_TIMEOUT_MS)),
+        ]);
+        if (refreshed) {
+          candidate.normalizedItem.imageUrl = refreshed.imageUrl;
+          candidate.normalizedItem.rawItem.rawMediaJson = refreshed.rawMediaJson;
+        }
+      } catch (error) {
+        console.warn("[event-candidates] telegram media refresh failed", error instanceof Error ? error.message : String(error));
+      }
     }
 
     res.json(candidate);
@@ -192,6 +227,64 @@ export function eventCandidatesRoutes(env: Env): Router {
       res.status(status).json({
         error: error instanceof Error ? error.message : "Cancellation reconciliation failed",
       });
+    }
+  });
+
+  /** Одно действие: одобрить → создать программу → published (сайт + Telegram notify). */
+  router.post("/:id/approve-and-publish", admin, async (req: Request, res: Response) => {
+    try {
+      const actorId = req.adminUserId ?? null;
+      const existing = await prisma.eventCandidate.findUnique({
+        where: { id: req.params.id },
+        include: { normalizedItem: { select: { startDate: true, endDate: true, title: true } } },
+      });
+      if (!existing) {
+        res.status(404).json({ error: "Not found" });
+        return;
+      }
+      if (isPastByDates(existing.normalizedItem.startDate, existing.normalizedItem.endDate)) {
+        await prisma.eventCandidate.update({
+          where: { id: existing.id },
+          data: {
+            status: "archived",
+            reviewedBy: actorId ?? undefined,
+            reviewedAt: new Date(),
+            decisionNotes: "past dates → archived (approve-and-publish blocked)",
+          },
+        });
+        res.status(400).json({
+          error: "Даты в прошлом — кандидат переведён в архив, публикация запрещена",
+          archived: true,
+        });
+        return;
+      }
+      await approveCandidate(req.params.id, actorId, "one-click approve-and-publish");
+      const link = await publishCandidateToDraft(req.params.id, actorId, "one-click approve-and-publish");
+      const programId = link.programId;
+      const publish = await setProgramPublishStatus(env, {
+        programId,
+        publishStatus: "published",
+        actorId,
+        reason: "candidate approve-and-publish",
+      });
+      if (!publish.ok) {
+        res.status(400).json({
+          error: publish.error === "gate" ? "Publish gate not passed" : publish.error,
+          missing: publish.error === "gate" ? publish.missing : undefined,
+          programId,
+          candidatePublished: true,
+        });
+        return;
+      }
+      res.json({
+        ok: true,
+        programId,
+        publishStatus: publish.program.publishStatus,
+        notified: publish.notified,
+        alreadyPublished: publish.alreadyPublished,
+      });
+    } catch (error) {
+      res.status(400).json({ error: error instanceof Error ? error.message : "Approve-and-publish failed" });
     }
   });
 

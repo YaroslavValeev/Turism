@@ -43,6 +43,8 @@
     "test:unit": "pnpm run build:deps && pnpm db:generate && pnpm --filter @mywave/config test && pnpm --filter @mywave/explore-links test && pnpm --filter api test && pnpm run test:web:ux",
     "build:quality": "pnpm run build:deps && pnpm --filter api build && pnpm --filter web build && pnpm --filter admin build",
     "check:quality": "pnpm run test:unit && pnpm run build:quality",
+    "camp-api:artifact": "node scripts/camp-api/run-bash.mjs scripts/camp-api/build-selected-artifact.sh",
+    "camp-api:scripts-check": "node scripts/camp-api/run-bash.mjs -n scripts/camp-api/build-selected-artifact.sh && node scripts/camp-api/run-bash.mjs -n scripts/camp-api/docker-preflight.sh && node scripts/camp-api/run-bash.mjs -n scripts/camp-api/deploy-selected-artifact.sh && node scripts/camp-api/run-bash.mjs -n scripts/camp-api/rollback-selected-artifact.sh",
     "agent:analytics:run": "pnpm --filter @mywave/analytics-agent run",
     "agent:analytics:cron": "pnpm --filter @mywave/analytics-agent cron",
     "sync:web-analytics-env": "pnpm --filter @mywave/config build && node scripts/sync-web-analytics-env.mjs",

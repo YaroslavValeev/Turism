@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import type { Env } from "@mywave/config";
 import { prisma } from "../../lib/prisma";
+import { proxyAwareFetch } from "../../lib/proxyFetch";
 import { getApiEnv } from "./runtimeEnv";
 import { computeDqMetrics } from "./dqMetrics";
 import { callTelegramJson, isTelegramBotApiConfigured } from "../telegram/telegramApi";

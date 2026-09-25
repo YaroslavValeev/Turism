@@ -19,8 +19,15 @@ RUN npm config set registry "$NPM_CONFIG_REGISTRY" \
   && pnpm install --frozen-lockfile
 
 FROM deps AS build
-ARG NEXT_PUBLIC_API_URL
-ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+# NEXT_PUBLIC_* вшиваются в клиентский бандл на этапе build
+ARG NEXT_PUBLIC_API_URL=https://api.mywavetour.ru
+ARG NEXT_PUBLIC_WEB_URL=https://mywavetour.ru
+ARG NEXT_PUBLIC_SITE_URL=https://mywavetour.ru
+ARG NEXT_PUBLIC_PILOT_MODE=
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL \
+    NEXT_PUBLIC_WEB_URL=$NEXT_PUBLIC_WEB_URL \
+    NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL \
+    NEXT_PUBLIC_PILOT_MODE=$NEXT_PUBLIC_PILOT_MODE
 RUN pnpm --filter @mywave/shared-types build
 RUN pnpm --filter admin build
 

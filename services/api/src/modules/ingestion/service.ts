@@ -454,10 +454,18 @@ function getPrimarySourceDiscipline(source: SourceWithOrganizer): string | null 
   return normalizeText(fromMeta);
 }
 
-function isSourceDueForCollection(source: Source, now = new Date()): boolean {
+/** После неудачного сбора не ждём полный интервал (часто сутки) — сетевые сбои обычно временные. */
+const FAILED_SOURCE_RETRY_MINUTES = 180;
+
+export function isSourceDueForCollection(
+  source: Pick<Source, "isActive" | "lastCheckedAt" | "lastSuccessAt" | "fetchIntervalMinutes">,
+  now = new Date(),
+): boolean {
   if (!source.isActive) return false;
   if (!source.lastCheckedAt) return true;
-  const intervalMinutes = Math.max(source.fetchIntervalMinutes, 15);
+  let intervalMinutes = Math.max(source.fetchIntervalMinutes, 15);
+  const lastCheckFailed = !source.lastSuccessAt || source.lastSuccessAt.getTime() < source.lastCheckedAt.getTime();
+  if (lastCheckFailed) intervalMinutes = Math.min(intervalMinutes, FAILED_SOURCE_RETRY_MINUTES);
   return now.getTime() - source.lastCheckedAt.getTime() >= intervalMinutes * 60 * 1000;
 }
 

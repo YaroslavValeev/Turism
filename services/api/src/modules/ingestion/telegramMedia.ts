@@ -96,6 +96,71 @@ async function fetchTelegramPostMedia(ref: { channel: string; postId: string }):
   return extractTelegramMediaUrls(await response.text());
 }
 
+export type CandidateMediaInput = {
+  normalizedItemId: string;
+  imageUrl: string | null;
+  rawItem: { id: string; sourceUrl: string | null; rawMediaJson: unknown };
+};
+
+function collectRawMediaUrls(rawMediaJson: unknown): string[] {
+  if (!Array.isArray(rawMediaJson)) return [];
+  const urls: string[] = [];
+  for (const item of rawMediaJson) {
+    if (typeof item === "string") urls.push(item);
+    else if (item && typeof item === "object" && typeof (item as { url?: unknown }).url === "string") {
+      urls.push((item as { url: string }).url);
+    }
+  }
+  return urls;
+}
+
+export function candidateNeedsTelegramMediaRefresh(input: CandidateMediaInput): boolean {
+  if (!parseTelegramPostRef(input.rawItem.sourceUrl)) return false;
+  return [input.imageUrl, ...collectRawMediaUrls(input.rawItem.rawMediaJson)].some((url) => isTelegramCdnMediaUrl(url));
+}
+
+/**
+ * Для кандидата из Telegram с протухшими ссылками CDN: заново читает пост,
+ * сохраняет файлы в /ingestion-media и записывает локальные пути в rawItem/normalizedItem.
+ * Возвращает null, если обновлять нечего или пост не отдал медиа.
+ */
+export async function refreshTelegramCandidateMedia(
+  input: CandidateMediaInput,
+): Promise<{ imageUrl: string | null; rawMediaJson: TelegramMediaEntry[] } | null> {
+  if (!candidateNeedsTelegramMediaRefresh(input)) return null;
+  const ref = parseTelegramPostRef(input.rawItem.sourceUrl)!;
+
+  const fresh = await fetchTelegramPostMedia(ref);
+  if (!fresh.length) return null;
+
+  const entries: TelegramMediaEntry[] = [];
+  for (let index = 0; index < fresh.length; index += 1) {
+    const entry = fresh[index]!;
+    const local = await cacheExternalProgramMediaForWeb(
+      entry.url,
+      `tg-${ref.channel}-${ref.postId}-${index}-${entry.mediaType}`,
+    );
+    const url = local?.startsWith("/ingestion-media/") ? local : entry.url;
+    if (!entries.some((item) => item.url === url)) entries.push({ url, mediaType: entry.mediaType });
+  }
+
+  const cover = entries.find((item) => item.mediaType === "image")?.url ?? null;
+  const imageUrl = isTelegramCdnMediaUrl(input.imageUrl) || !input.imageUrl ? cover : input.imageUrl;
+
+  await prisma.$transaction([
+    prisma.rawItem.update({
+      where: { id: input.rawItem.id },
+      data: { rawMediaJson: entries as unknown as Prisma.InputJsonValue },
+    }),
+    prisma.normalizedItem.update({
+      where: { id: input.normalizedItemId },
+      data: { imageUrl },
+    }),
+  ]);
+
+  return { imageUrl, rawMediaJson: entries };
+}
+
 export type TelegramMediaRefreshResult = {
   programsChecked: number;
   programsUpdated: number;

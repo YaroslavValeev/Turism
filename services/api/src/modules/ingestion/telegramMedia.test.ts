@@ -2,9 +2,44 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("../../lib/prisma", () => ({ prisma: {} }));
 
-import { extractTelegramMediaUrls, isTelegramCdnMediaUrl, parseTelegramPostRef } from "./telegramMedia";
+import {
+  candidateNeedsTelegramMediaRefresh,
+  extractTelegramMediaUrls,
+  isTelegramCdnMediaUrl,
+  parseTelegramPostRef,
+} from "./telegramMedia";
 
 describe("telegramMedia helpers", () => {
+  it("flags only Telegram candidates that still point at the CDN", () => {
+    const base = { normalizedItemId: "n1", imageUrl: null };
+    const post = "https://t.me/raceenduro/2881";
+    expect(
+      candidateNeedsTelegramMediaRefresh({
+        ...base,
+        rawItem: { id: "r1", sourceUrl: post, rawMediaJson: [{ url: "https://cdn4.telesco.pe/file/a.jpg" }] },
+      }),
+    ).toBe(true);
+    expect(
+      candidateNeedsTelegramMediaRefresh({
+        ...base,
+        imageUrl: "https://cdn4.telesco.pe/file/a.jpg",
+        rawItem: { id: "r1", sourceUrl: post, rawMediaJson: [] },
+      }),
+    ).toBe(true);
+    expect(
+      candidateNeedsTelegramMediaRefresh({
+        ...base,
+        rawItem: { id: "r1", sourceUrl: post, rawMediaJson: [{ url: "/ingestion-media/tg-a.jpg" }] },
+      }),
+    ).toBe(false);
+    expect(
+      candidateNeedsTelegramMediaRefresh({
+        ...base,
+        rawItem: { id: "r1", sourceUrl: "https://example.com/x", rawMediaJson: ["https://cdn4.telesco.pe/file/a.jpg"] },
+      }),
+    ).toBe(false);
+  });
+
   it("parses t.me post urls incl. /s/ feed form", () => {
     expect(parseTelegramPostRef("https://t.me/project18adv/10070")).toEqual({ channel: "project18adv", postId: "10070" });
     expect(parseTelegramPostRef("https://t.me/s/raceenduro/2862")).toEqual({ channel: "raceenduro", postId: "2862" });

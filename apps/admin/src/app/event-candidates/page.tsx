@@ -99,6 +99,13 @@ function collectPreviewMediaUrls(detail: CandidateDetail): string[] {
 
 /** Браузер не тянет telesco.pe — через API SOCKS-прокси. */
 function presentAdminMediaUrl(url: string): string {
+  if (url.startsWith("/ingestion-media/")) {
+    const siteBase = (process.env.NEXT_PUBLIC_WEB_URL || process.env.NEXT_PUBLIC_SITE_URL || "https://mywavetour.ru").replace(
+      /\/+$/,
+      "",
+    );
+    return `${siteBase}${url}`;
+  }
   if (url.startsWith("/")) return url;
   try {
     const host = new URL(url).hostname.toLowerCase();

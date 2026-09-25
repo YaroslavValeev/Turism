@@ -11,6 +11,9 @@ import {
 } from "../ingestion/service";
 import { setProgramPublishStatus } from "../programs/publishStatus.service";
 import { archivePastByDates, isPastByDates } from "../ingestion/archivePast.service";
+import { candidateNeedsTelegramMediaRefresh, refreshTelegramCandidateMedia } from "../ingestion/telegramMedia";
+
+const MEDIA_REFRESH_TIMEOUT_MS = 20_000;
 
 export function eventCandidatesRoutes(env: Env): Router {
   const router = Router();
@@ -120,6 +123,26 @@ export function eventCandidatesRoutes(env: Env): Router {
     if (!candidate) {
       res.status(404).json({ error: "Not found" });
       return;
+    }
+
+    const mediaInput = {
+      normalizedItemId: candidate.normalizedItem.id,
+      imageUrl: candidate.normalizedItem.imageUrl,
+      rawItem: candidate.normalizedItem.rawItem,
+    };
+    if (candidateNeedsTelegramMediaRefresh(mediaInput)) {
+      try {
+        const refreshed = await Promise.race([
+          refreshTelegramCandidateMedia(mediaInput),
+          new Promise<null>((resolve) => setTimeout(() => resolve(null), MEDIA_REFRESH_TIMEOUT_MS)),
+        ]);
+        if (refreshed) {
+          candidate.normalizedItem.imageUrl = refreshed.imageUrl;
+          candidate.normalizedItem.rawItem.rawMediaJson = refreshed.rawMediaJson;
+        }
+      } catch (error) {
+        console.warn("[event-candidates] telegram media refresh failed", error instanceof Error ? error.message : String(error));
+      }
     }
 
     res.json(candidate);

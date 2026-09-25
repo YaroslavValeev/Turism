@@ -4,6 +4,7 @@ import path from "path";
 import { spawnSync } from "child_process";
 import { Prisma, Source, EventCandidate, NormalizedItem, RawItem } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
+import { proxyAwareFetch } from "../../lib/proxyFetch";
 import { writeAuditLog } from "../../lib/audit";
 import { canPublishAutopilot, programIncludeForPublishGate } from "../programs/publishGate";
 import { buildProgramDedupKey, pickPreferredProgram, type ProgramDedupShape } from "../programs/dedup";
@@ -3234,11 +3235,38 @@ async function fetchJsonWithRetry(url: string, headers?: Record<string, string>)
   throw lastError ?? new Error("Unable to fetch JSON source");
 }
 
+/** t.me с российского VPS нестабилен напрямую — как и Bot API, ходим через SOCKS, если он настроен. */
+function telegramWebProxyFor(url: string): string | null {
+  const proxy = process.env.TELEGRAM_BOT_HTTP_PROXY?.trim();
+  if (!proxy) return null;
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    return host === "t.me" || host === "telegram.me" || host.endsWith(".t.me") ? proxy : null;
+  } catch {
+    return null;
+  }
+}
+
 async function fetchTextWithRetry(url: string): Promise<string> {
   if (!fetchFn) throw new Error("Fetch API is not available in this runtime");
   let lastError: Error | null = null;
+  const telegramProxy = telegramWebProxyFor(url);
   for (let attempt = 1; attempt <= 3; attempt += 1) {
     try {
+      if (telegramProxy) {
+        const response = await proxyAwareFetch(
+          url,
+          {
+            headers: {
+              "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135 Safari/537.36",
+              accept: "text/html,*/*",
+            },
+          },
+          telegramProxy,
+        );
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return await response.text();
+      }
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 15000);
       const response = (await fetchFn(url, {

@@ -74,7 +74,7 @@ describe("Telegram unified webhook", () => {
     expect(handleTelegramPlatformUpdate).not.toHaveBeenCalled();
   });
 
-  it("dispatches an update to both existing handlers", async () => {
+  it("keeps the bot owner-only by default: public handler is not called", async () => {
     const update = {
       update_id: 1,
       message: { message_id: 1, chat: { id: 123456789 }, text: "/start" },
@@ -85,14 +85,29 @@ describe("Telegram unified webhook", () => {
       platformOk: true,
     });
     expect(handleTelegramContentPipelineUpdate).toHaveBeenCalledWith(env, update);
-    expect(handleTelegramPlatformUpdate).toHaveBeenCalledWith(env, update);
+    expect(handleTelegramPlatformUpdate).not.toHaveBeenCalled();
+  });
+
+  it("dispatches an update to both handlers when the public bot is enabled", async () => {
+    const publicEnv = { ...env, TELEGRAM_PUBLIC_BOT_ENABLED: true };
+    const update = {
+      update_id: 1,
+      message: { message_id: 1, chat: { id: 123456789 }, text: "/start" },
+    };
+
+    await expect(dispatchTelegramWebhookUpdate(publicEnv, update)).resolves.toEqual({
+      contentOk: true,
+      platformOk: true,
+    });
+    expect(handleTelegramContentPipelineUpdate).toHaveBeenCalledWith(publicEnv, update);
+    expect(handleTelegramPlatformUpdate).toHaveBeenCalledWith(publicEnv, update);
   });
 
   it("isolates a failing handler so Telegram still receives HTTP 200", async () => {
     vi.mocked(handleTelegramContentPipelineUpdate).mockRejectedValue(new Error("content failure"));
 
     await expect(
-      dispatchTelegramWebhookUpdate(env, {
+      dispatchTelegramWebhookUpdate({ ...env, TELEGRAM_PUBLIC_BOT_ENABLED: true }, {
         update_id: 2,
         message: { message_id: 2, chat: { id: 123456789 }, text: "/start" },
       }),

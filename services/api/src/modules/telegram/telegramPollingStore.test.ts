@@ -15,7 +15,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("../../lib/prisma", () => ({
   prisma: {
     telegramPollingState: {
-      create: mocks.stateCreate,
+      createMany: mocks.stateCreate,
       updateMany: mocks.stateUpdateMany,
       findUniqueOrThrow: mocks.stateFind,
     },
@@ -48,14 +48,15 @@ describe("Telegram polling durable store", () => {
 
   it("claims a new singleton lease", async () => {
     mocks.stateUpdateMany.mockResolvedValue({ count: 0 });
-    mocks.stateCreate.mockResolvedValue({ id: "main-bot" });
+    mocks.stateCreate.mockResolvedValue({ count: 1 });
     expect(await acquireTelegramPollingLease("worker", new Date("2026-09-20T00:00:00Z"))).toBe(true);
     expect(mocks.stateCreate).toHaveBeenCalledWith({
-      data: {
+      data: [{
         id: "main-bot",
         leaseOwner: "worker",
         leaseExpiresAt: new Date("2026-09-20T00:01:30Z"),
-      },
+      }],
+      skipDuplicates: true,
     });
   });
 
@@ -66,10 +67,7 @@ describe("Telegram polling durable store", () => {
   });
 
   it("does not claim a lease held by another worker", async () => {
-    mocks.stateCreate.mockRejectedValue(new Prisma.PrismaClientKnownRequestError("unique", {
-      code: "P2002",
-      clientVersion: "5.22.0",
-    }));
+    mocks.stateCreate.mockResolvedValue({ count: 0 });
     mocks.stateUpdateMany.mockResolvedValue({ count: 0 });
     expect(await acquireTelegramPollingLease("second")).toBe(false);
   });

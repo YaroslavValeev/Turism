@@ -206,7 +206,7 @@ async function handleOwnerMessage(
   msg: Message,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   if (!isOwnerChat(env, msg.chat.id)) {
-    // Раньше было тихое "unauthorized" — в личке казалось, что бот мёртв.
+    // Рабочий бот закрыт для всех, кроме владельца: чужим чатам не отвечаем, только логируем.
     if (msg.text?.startsWith("/")) {
       console.warn(
         JSON.stringify({
@@ -216,18 +216,6 @@ async function handleOwnerMessage(
           text: msg.text.slice(0, 64),
         }),
       );
-      try {
-        await callTelegramJson(env, "sendMessage", {
-          chat_id: String(msg.chat.id),
-          text:
-            "Команда принята, но этот чат не является owner-chat.\n" +
-            `Ваш chat_id: <code>${msg.chat.id}</code>\n` +
-            "Сверьте с TELEGRAM_CONTENT_OWNER_CHAT_ID на сервере.",
-          parse_mode: "HTML",
-        });
-      } catch {
-        // ignore send failures (token/proxy)
-      }
     }
     return { ok: false, error: "unauthorized" };
   }

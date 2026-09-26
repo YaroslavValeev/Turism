@@ -17,15 +17,12 @@ export async function acquireTelegramPollingLease(owner: string, now = new Date(
   });
   if (claimed.count === 1) return true;
 
-  try {
-    await prisma.telegramPollingState.create({
-      data: { id: STATE_ID, leaseOwner: owner, leaseExpiresAt },
-    });
-    return true;
-  } catch (error) {
-    if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== "P2002") throw error;
-    return false;
-  }
+  // ON CONFLICT DO NOTHING: a lease held by another worker is a normal outcome, not a unique-key error.
+  const created = await prisma.telegramPollingState.createMany({
+    data: [{ id: STATE_ID, leaseOwner: owner, leaseExpiresAt }],
+    skipDuplicates: true,
+  });
+  return created.count === 1;
 }
 
 export async function renewTelegramPollingLease(owner: string, now = new Date()): Promise<boolean> {

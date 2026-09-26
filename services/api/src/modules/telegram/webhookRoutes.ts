@@ -24,6 +24,10 @@ export async function dispatchTelegramWebhookUpdate(env: Env, update: TelegramUp
     return { ok: false as const };
   });
 
+  if (!env.TELEGRAM_PUBLIC_BOT_ENABLED) {
+    return { contentOk: content.ok, platformOk: true };
+  }
+
   const platform = await handleTelegramPlatformUpdate(env, update).catch((error) => {
     safeError("[telegram-webhook] platform handler failed", error);
     return { ok: false as const };

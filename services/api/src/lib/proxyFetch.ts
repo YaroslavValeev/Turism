@@ -143,7 +143,12 @@ export async function proxyAwareFetch(
       const chunks: Buffer[] = [];
       res.on("data", (c: Buffer) => chunks.push(c));
       res.on("end", () => {
-        resolve(new Response(Buffer.concat(chunks), { status: res.statusCode ?? 502 }));
+        const responseHeaders = new Headers();
+        for (const [name, value] of Object.entries(res.headers)) {
+          if (typeof value === "string") responseHeaders.set(name, value);
+          else if (Array.isArray(value)) responseHeaders.set(name, value.join(", "));
+        }
+        resolve(new Response(Buffer.concat(chunks), { status: res.statusCode ?? 502, headers: responseHeaders }));
       });
     });
     req.on("timeout", () => req.destroy(new Error("SOCKS fetch timeout")));

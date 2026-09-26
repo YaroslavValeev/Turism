@@ -9,6 +9,7 @@ import {
 import { Prisma, Source, EventCandidate, NormalizedItem, RawItem } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
 import { proxyAwareFetch } from "../../lib/proxyFetch";
+import { instagramProxyForUrl } from "./instagramProxy";
 import { writeAuditLog } from "../../lib/audit";
 import { canPublishAutopilot, programIncludeForPublishGate } from "../programs/publishGate";
 import { archiveExpiredPublishedPrograms } from "../programs/expiration";
@@ -3574,14 +3575,15 @@ async function fetchJsonWithRetry(url: string, headers?: Record<string, string>)
     try {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 15000);
-      const response = (await fetchFn(url, {
-        signal: controller.signal as unknown,
-        headers: {
-          "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135 Safari/537.36",
-          accept: "*/*",
-          ...headers,
-        },
-      })) as {
+      const requestHeaders = {
+        "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135 Safari/537.36",
+        accept: "*/*",
+        ...headers,
+      };
+      const proxy = instagramProxyForUrl(url);
+      const response = (proxy
+        ? await proxyAwareFetch(url, { headers: requestHeaders }, proxy)
+        : await fetchFn(url, { signal: controller.signal as unknown, headers: requestHeaders })) as {
         ok: boolean;
         status: number;
         json: () => Promise<unknown>;

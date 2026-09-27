@@ -10,6 +10,8 @@ import {
   sendDraftToOwner,
 } from "../content-pipeline/approval.service";
 import { transcribeOggOrMp3 } from "./transcribeVoice";
+import { safeError } from "../../lib/safeLogger";
+import { ingestManualPost, MANUAL_POST_MIN_TEXT_LENGTH, type ManualPostResult } from "../ingestion/service";
 import { parseOutreachCallback } from "../organizer-outreach/notify";
 import {
   approveAndSendOutreachCampaign,
@@ -43,6 +45,7 @@ type Message = {
   from?: TgUser;
   chat: { id: number };
   text?: string;
+  caption?: string;
   voice?: { file_id: string; file_unique_id: string; duration: number; mime_type?: string };
   reply_to_message?: { message_id: number; chat: { id: number } };
 };
@@ -243,15 +246,15 @@ async function handleOwnerMessage(
     orderBy: { updatedAt: "desc" },
     include: { ownerReviewAwaitingDraft: true },
   });
-  if (!item?.ownerReviewAwaitingDraftId || !item.ownerReviewAwaitingDraft) {
-    return { ok: true };
-  }
-  const d = item.ownerReviewAwaitingDraft;
-  if (d.telegramPreviewChatId && String(d.telegramPreviewChatId) !== String(msg.chat.id)) {
-    return { ok: true };
-  }
-  if (item.workflowStatus !== "rewrite_requested" || d.id !== item.ownerReviewAwaitingDraftId) {
-    return { ok: true };
+  const d = item?.ownerReviewAwaitingDraft;
+  const awaitingRewrite =
+    !!item &&
+    !!d &&
+    item.workflowStatus === "rewrite_requested" &&
+    d.id === item.ownerReviewAwaitingDraftId &&
+    (!d.telegramPreviewChatId || String(d.telegramPreviewChatId) === String(msg.chat.id));
+  if (!awaitingRewrite || !d) {
+    return handleManualPostMessage(env, msg);
   }
 
   let text = (msg.text ?? "").trim();
@@ -290,6 +293,50 @@ async function handleOwnerMessage(
     });
     return { ok: false, error: (r as { error: string }).error };
   }
+  return { ok: true };
+}
+
+function formatManualPostDate(date: Date): string {
+  return date.toISOString().slice(0, 10).split("-").reverse().join(".");
+}
+
+export function formatManualPostReply(result: ManualPostResult): string {
+  switch (result.kind) {
+    case "too_short":
+      return `Чтобы добавить программу, пришлите текст поста целиком (от ${MANUAL_POST_MIN_TEXT_LENGTH} символов): даты, место, цена. Ссылку на Instagram-профиль организатора можно вставить в тот же текст.`;
+    case "duplicate":
+      return result.programId
+        ? "Этот пост уже добавлен. Черновик ждёт в /check_publish."
+        : "Этот пост уже добавлен ранее.";
+    case "failed":
+      return `Не удалось сделать черновик: ${result.reason}. Создайте программу в админке вручную.`;
+    case "created":
+    case "merged": {
+      const head = result.kind === "created" ? "Черновик программы создан" : "Похожая программа уже есть, я дополнил её";
+      const lines = [
+        `${head}: ${result.title}`,
+        `Даты: ${formatManualPostDate(result.startDate)} – ${formatManualPostDate(result.endDate)}`,
+        result.region ? `Регион: ${result.region}` : null,
+        `Источник: ${result.sourceName}`,
+        "Проверьте даты и цену в админке, затем опубликуйте: /check_publish",
+      ];
+      return lines.filter(Boolean).join("\n");
+    }
+  }
+}
+
+async function handleManualPostMessage(env: Env, msg: Message): Promise<{ ok: true } | { ok: false; error: string }> {
+  const text = (msg.text ?? msg.caption ?? "").trim();
+  if (!text) return { ok: true };
+  let reply: string;
+  try {
+    const result = await ingestManualPost({ text, actorId: `tg:${msg.from?.id ?? "unknown"}` });
+    reply = formatManualPostReply(result);
+  } catch (error) {
+    safeError("[telegram] manual post ingest failed", error);
+    reply = "Не удалось обработать пост. Подробности — «Задачи» в Admin.";
+  }
+  await callTelegramJson(env, "sendMessage", { chat_id: String(msg.chat.id), text: reply });
   return { ok: true };
 }
 

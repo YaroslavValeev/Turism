@@ -843,6 +843,7 @@ export function extractPrice(text: string): { priceFrom: number | null; currency
 function hasExplicitDateSignal(text: string): boolean {
   return (
     /(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})/.test(text) ||
+    /(?<![\d.])\d{1,2}\.\d{1,2}\s*(?:-|–|—)\s*\d{1,2}\.\d{1,2}(?!\.?\d)/.test(text) ||
     /(\d{1,2})(?:\s*(?:-|–|—)\s*(\d{1,2}))?\s+(января|янв|февраля|фев|марта|мар|апреля|апр|мая|июня|июн|июля|июл|августа|авг|сентября|сент|сен|октября|окт|ноября|ноя|декабря|дек|january|jan|february|feb|march|mar|april|apr|may|june|jun|july|jul|august|aug|september|sep|october|oct|november|nov|december|dec)(?:\s+\d{4})?/i.test(
       text,
     ) ||
@@ -908,6 +909,23 @@ function extractDates(text: string, fallbackDate: Date | null): { startDate: Dat
 
     return {
       startDate: toMiddayDate(startYear, startMonth, startDay),
+      endDate: toMiddayDate(endYear, endMonth, endDay),
+    };
+  }
+
+  const yearlessNumericRangePattern = /(?<![\d.])(\d{1,2})\.(\d{1,2})\s*(?:-|–|—)\s*(\d{1,2})\.(\d{1,2})(?!\.?\d)/g;
+  let yearlessRangeMatch: RegExpExecArray | null;
+  while ((yearlessRangeMatch = yearlessNumericRangePattern.exec(text)) !== null) {
+    const startDay = Number(yearlessRangeMatch[1]);
+    const startMonth = Number(yearlessRangeMatch[2]);
+    const endDay = Number(yearlessRangeMatch[3]);
+    const endMonth = Number(yearlessRangeMatch[4]);
+    const baseYear = new Date().getUTCFullYear();
+    const endYear = endMonth < startMonth ? baseYear + 1 : baseYear;
+    if (!isValidCalendarDate(baseYear, startMonth, startDay) || !isValidCalendarDate(endYear, endMonth, endDay)) continue;
+
+    return {
+      startDate: toMiddayDate(baseYear, startMonth, startDay),
       endDate: toMiddayDate(endYear, endMonth, endDay),
     };
   }
@@ -3596,6 +3614,8 @@ async function fetchJsonWithRetry(url: string, headers?: Record<string, string>)
       return await response.json();
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
+      // Повтор при rate limit только продлевает бан (Instagram), поэтому 429 сразу наверх.
+      if (lastError.message === "HTTP 429") break;
       await new Promise((resolve) => setTimeout(resolve, attempt * 400));
     }
   }
@@ -4075,6 +4095,143 @@ export async function runSourceCollection(sourceId: string, actorId: string | nu
     });
     throw error;
   }
+}
+
+export const MANUAL_POST_SOURCE_NAME = "Ручной ввод (бот владельца)";
+export const MANUAL_POST_MIN_TEXT_LENGTH = 60;
+
+export type ManualPostResult =
+  | { kind: "too_short" }
+  | { kind: "duplicate"; programId: string | null }
+  | { kind: "failed"; reason: string }
+  | {
+      kind: "created" | "merged";
+      programId: string;
+      title: string;
+      startDate: Date;
+      endDate: Date;
+      region: string | null;
+      sourceName: string;
+    };
+
+export function extractManualPostLinks(text: string): { instagramHandle: string | null; firstUrl: string | null } {
+  const urls = text.match(/https?:\/\/[^\s<>"')]+/gi) ?? [];
+  let instagramHandle: string | null = null;
+  for (const url of urls) {
+    const handle = extractInstagramUsername(url);
+    if (handle && /^[a-z0-9._]{1,30}$/i.test(handle)) {
+      instagramHandle = handle.toLowerCase();
+      break;
+    }
+  }
+  return { instagramHandle, firstUrl: urls[0] ?? null };
+}
+
+async function resolveManualPostSource(instagramHandle: string | null): Promise<Source> {
+  if (instagramHandle) {
+    const candidates = await prisma.source.findMany({
+      where: { type: "instagram", urlOrHandle: { contains: instagramHandle, mode: "insensitive" } },
+    });
+    const exact = candidates.find((source) => extractInstagramUsername(source.urlOrHandle)?.toLowerCase() === instagramHandle);
+    if (exact) return exact;
+  }
+  const existing = await prisma.source.findFirst({ where: { type: "site", name: MANUAL_POST_SOURCE_NAME } });
+  if (existing) return existing;
+  // Неактивный источник: планировщик его не собирает, он только держит посты, присланные владельцем.
+  return prisma.source.create({
+    data: {
+      type: "site",
+      name: MANUAL_POST_SOURCE_NAME,
+      urlOrHandle: "",
+      isActive: false,
+      trustScore: 0.9,
+      metaJson: { manualPosts: true },
+    },
+  });
+}
+
+/**
+ * Пост, присланный владельцем в рабочий бот (например, текст из Instagram, который не собирается
+ * автоматически), проходит тот же путь, что и собранный: raw → normalized → кандидат → черновик программы.
+ * Публикация остаётся за владельцем (/check_publish).
+ */
+export async function ingestManualPost(input: { text: string; actorId: string | null }): Promise<ManualPostResult> {
+  const text = input.text.trim();
+  if (text.length < MANUAL_POST_MIN_TEXT_LENGTH) return { kind: "too_short" };
+
+  const { instagramHandle, firstUrl } = extractManualPostLinks(text);
+  const source = await resolveManualPostSource(instagramHandle);
+  const externalItemId = `manual:${makeHash(text).slice(0, 24)}`;
+  const contentHash = makeHash(externalItemId, firstUrl, null, text);
+
+  const previous = await prisma.rawItem.findFirst({
+    where: buildRawItemContentIdentityWhere(source.id, contentHash),
+    select: {
+      normalizedItem: {
+        select: { candidates: { select: { publishedProgram: { select: { programId: true } } }, orderBy: { createdAt: "desc" }, take: 1 } },
+      },
+    },
+  });
+  if (previous) {
+    return { kind: "duplicate", programId: previous.normalizedItem?.candidates[0]?.publishedProgram?.programId ?? null };
+  }
+
+  const runId = await createSourceRun(source.id, "manual");
+  try {
+    await persistCollectedItems(
+      source,
+      runId,
+      [
+        {
+          externalItemId,
+          sourceUrl: firstUrl ?? undefined,
+          authorName: source.name,
+          publishedAt: new Date(),
+          rawText: text,
+          rawMedia: [],
+          rawPayload: { via: "owner_telegram_bot" },
+        },
+      ],
+      input.actorId,
+    );
+    await finalizeSourceRun(runId, "success", { itemsFound: 1, itemsCreated: 1 });
+  } catch (error) {
+    await finalizeSourceRun(runId, "failed", { errorMessage: error instanceof Error ? error.message : String(error) });
+    throw error;
+  }
+
+  await runNormalizationJob(input.actorId, [source.id]);
+  const raw = await prisma.rawItem.findFirst({
+    where: buildRawItemContentIdentityWhere(source.id, contentHash),
+    select: {
+      parseStatus: true,
+      normalizedItem: { select: { candidates: { select: { id: true, status: true }, orderBy: { createdAt: "desc" }, take: 1 } } },
+    },
+  });
+  const candidate = raw?.normalizedItem?.candidates[0];
+  if (!candidate) {
+    return { kind: "failed", reason: raw?.parseStatus === "failed" ? "не удалось разобрать текст" : "кандидат не создан" };
+  }
+  if (candidate.status === "rejected" || candidate.status === "archived" || candidate.status === "merged") {
+    // Владелец прислал пост сам — это решение сильнее автоматического скоринга.
+    await prisma.eventCandidate.update({ where: { id: candidate.id }, data: { status: "needs_review" } });
+  }
+
+  const link = await publishCandidateToDraft(candidate.id, input.actorId, "Пост прислан владельцем в Telegram-бот");
+  const program = await prisma.program.findUnique({
+    where: { id: link.programId },
+    select: { id: true, title: true, startDate: true, endDate: true, region: true },
+  });
+  if (!program) return { kind: "failed", reason: "программа не найдена после создания" };
+  return {
+    kind: link.duplicateSkipped ? "merged" : "created",
+    programId: program.id,
+    title: program.title,
+    startDate: program.startDate,
+    endDate: program.endDate,
+    region: program.region,
+    sourceName: source.name,
+  };
 }
 
 export async function runIngestionJob(actorId: string | null, sourceIds?: string[]): Promise<RunSummary> {

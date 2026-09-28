@@ -11,7 +11,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     <div className="mw-admin-layout" style={{ minHeight: "100vh" }}>
       <AdminSidebar mobileOpen={mobileOpen} onCloseMobile={() => setMobileOpen(false)} />
       <div className="mw-admin-workspace mw-admin-workspace--shelled">
-        <AdminTopbar onOpenSidebar={() => setMobileOpen(true)} searchDisabled />
+        <AdminTopbar onOpenSidebar={() => setMobileOpen(true)} />
         <PilotModeBanner />
         {children}
       </div>

@@ -16,6 +16,7 @@ function mapProgram(p: PublicProgramRelated): ProgramCardProgram {
     endDate: p.endDate,
     durationDays: p.durationDays,
     priceFromRub: p.priceFromRub,
+    currency: p.currency ?? null,
     levelRequired: p.levelRequired,
     audienceFit: p.audienceFit,
     riskLevel: p.riskLevel,

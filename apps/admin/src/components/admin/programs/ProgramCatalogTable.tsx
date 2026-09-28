@@ -11,9 +11,12 @@ import {
 } from "@mywave/shared-types";
 import { AdminStatusBadge } from "../AdminStatusBadge";
 import {
+  CURRENCY_OPTIONS,
   EMPTY_MEDIA_DRAFT,
+  priceDraftFromProgram,
   type AvailabilityDraft,
   type MediaDraft,
+  type PriceDraft,
   type Program,
   type ProgramScoreSnap,
   type SpotlightDraft,
@@ -49,6 +52,10 @@ type Props = {
   onAddMedia: (programId: string) => void;
   onSaveAvailability: (programId: string) => void;
   onSaveSpotlight: (programId: string) => void;
+  priceDrafts: Record<string, PriceDraft>;
+  setPriceDrafts: Dispatch<SetStateAction<Record<string, PriceDraft>>>;
+  savingPriceId: string | null;
+  onSavePrice: (programId: string) => void;
 };
 
 function publishStatusTone(s: string): "ok" | "warn" | "danger" | "muted" {
@@ -81,6 +88,10 @@ export function ProgramCatalogTable({
   onAddMedia,
   onSaveAvailability,
   onSaveSpotlight,
+  priceDrafts,
+  setPriceDrafts,
+  savingPriceId,
+  onSavePrice,
 }: Props) {
   return (
     <table className="mw-admin-table mw-admin-table--programs">
@@ -102,7 +113,7 @@ export function ProgramCatalogTable({
           <th>Статус публикации</th>
           <th>Оценка (внутр.)</th>
           <th>Горячее предложение</th>
-          <th>Наличие</th>
+          <th>Наличие и цена</th>
           <th>Источник (intake)</th>
           <th>Даты</th>
           <th>Медиа</th>
@@ -124,6 +135,9 @@ export function ProgramCatalogTable({
             availabilityDraft.capacityTotal !== (program.capacityTotal != null ? String(program.capacityTotal) : "")
             || availabilityDraft.spotsAvailable !== (program.spotsAvailable != null ? String(program.spotsAvailable) : "");
           const spotlightDirty = spotlightDraft.isStarred !== program.isStarred;
+          const savedPrice = priceDraftFromProgram(program);
+          const priceDraft = priceDrafts[program.id] ?? savedPrice;
+          const priceDirty = priceDraft.price !== savedPrice.price || priceDraft.currency !== savedPrice.currency;
           const today = new Date();
           today.setHours(0, 0, 0, 0);
           const isPast = new Date(program.endDate) < today;
@@ -258,6 +272,45 @@ export function ProgramCatalogTable({
                     disabled={savingAvailabilityId === program.id || !availabilityDirty}
                   >
                     {savingAvailabilityId === program.id ? "Сохраняем..." : "Сохранить наличие"}
+                  </button>
+                </div>
+                <div className="mw-admin-stack-6 mw-admin-mt-8">
+                  <div className="mw-admin-inline-form">
+                    <input
+                      className="mw-admin-input"
+                      type="number"
+                      min="0"
+                      value={priceDraft.price}
+                      onChange={(e) =>
+                        setPriceDrafts((c) => ({ ...c, [program.id]: { ...priceDraft, price: e.target.value } }))
+                      }
+                      placeholder="Цена от"
+                    />
+                    <select
+                      className="mw-admin-input"
+                      value={priceDraft.currency}
+                      onChange={(e) =>
+                        setPriceDrafts((c) => ({ ...c, [program.id]: { ...priceDraft, currency: e.target.value } }))
+                      }
+                      aria-label="Валюта цены"
+                    >
+                      {(CURRENCY_OPTIONS.includes(priceDraft.currency)
+                        ? CURRENCY_OPTIONS
+                        : [priceDraft.currency, ...CURRENCY_OPTIONS]
+                      ).map((code) => (
+                        <option key={code} value={code}>
+                          {code}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <button
+                    type="button"
+                    className="mw-admin-btn mw-admin-btn--ghost"
+                    onClick={() => onSavePrice(program.id)}
+                    disabled={savingPriceId === program.id || !priceDirty}
+                  >
+                    {savingPriceId === program.id ? "Сохраняем..." : "Сохранить цену"}
                   </button>
                 </div>
               </td>

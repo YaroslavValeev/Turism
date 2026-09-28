@@ -26,6 +26,7 @@ import {
   resolveProgramField,
 } from "../../../lib/recommendedProgramFields";
 import { trackProductEvent } from "../../../lib/analytics/client";
+import { ProgramPrice } from "../../../components/ProgramPrice";
 
 import { getPublicApiBase } from "../../../lib/publicApiBase";
 import { contactError, bookingFeedback } from "../../../lib/bookingFeedback";
@@ -51,6 +52,8 @@ export type Program = {
   riskLevel: string | null;
   priceFromRub: number | null;
   currency: string | null;
+  priceRubApprox?: number | null;
+  priceRubRateDate?: string | null;
   audienceFit: string | null;
   itineraryDayByDay: string | null;
   inclusions: string | null;
@@ -710,8 +713,7 @@ export function ProgramPdpClient({
                     letterSpacing: "-0.02em",
                   }}
                 >
-                  от {program.priceFromRub.toLocaleString("ru-RU")}{" "}
-                  {program.currency ?? "₽"}
+                  <ProgramPrice program={program} />
                 </span>
               )}
               <span style={{ color: "var(--mw-muted)", fontSize: "0.95rem" }}>
@@ -1360,8 +1362,7 @@ export function ProgramPdpClient({
                   fontWeight: 700,
                 }}
               >
-                от {program.priceFromRub.toLocaleString("ru-RU")}{" "}
-                {program.currency ?? "₽"}
+                <ProgramPrice program={program} />
               </p>
             )}
             <p
@@ -1406,8 +1407,7 @@ export function ProgramPdpClient({
             )}
             {program.priceFromRub != null && (
               <span style={{ fontWeight: 700 }}>
-                от {program.priceFromRub.toLocaleString("ru-RU")}{" "}
-                {program.currency ?? "₽"}
+                <ProgramPrice program={program} />
               </span>
             )}
             <span

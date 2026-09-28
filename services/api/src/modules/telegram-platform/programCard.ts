@@ -1,5 +1,6 @@
 import { prisma } from "../../lib/prisma";
 import { isProgramPubliclyVisible } from "../programs/publicVisibility";
+import { formatMoney } from "../fx/cbrRates";
 
 export async function getProgramCardForTelegram(programId: string) {
   const program = await prisma.program.findUnique({
@@ -22,6 +23,7 @@ export async function getProgramCardForTelegram(programId: string) {
     endDate: program.endDate.toISOString(),
     durationDays: program.durationDays,
     priceFromRub: program.priceFromRub,
+    currency: program.currency,
     levelRequired: program.levelRequired,
     riskLevel: program.riskLevel,
     inclusions: program.inclusions,
@@ -40,7 +42,7 @@ export async function getProgramCardForTelegram(programId: string) {
 
 export function formatProgramCardText(card: Awaited<ReturnType<typeof getProgramCardForTelegram>>): string {
   if (!card) return "Программа недоступна.";
-  const price = card.priceFromRub != null ? `${card.priceFromRub} ₽` : "уточняйте у организатора";
+  const price = card.priceFromRub != null ? formatMoney(card.priceFromRub, card.currency) : "уточняйте у организатора";
   const lines = [
     `*${card.title}*`,
     `${card.discipline} · ${card.region}`,

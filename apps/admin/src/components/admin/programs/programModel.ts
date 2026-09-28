@@ -25,6 +25,8 @@ export type Program = {
   capacityTotal: number | null;
   spotsAvailable: number | null;
   isStarred: boolean;
+  priceFromRub?: number | null;
+  currency?: string | null;
   media: unknown[];
   organizer?: { id: string; displayName: string; verificationStatus: string };
 };
@@ -50,7 +52,22 @@ export type ProgramForm = {
   itineraryDayByDay: string;
   inclusions: string;
   priceFromRub: string;
+  currency: string;
 };
+
+export const CURRENCY_OPTIONS = ["RUB", "USD", "EUR", "KZT", "GEL", "TRY", "AED", "THB", "IDR", "CNY"];
+
+export type PriceDraft = {
+  price: string;
+  currency: string;
+};
+
+export function priceDraftFromProgram(p: Pick<Program, "priceFromRub" | "currency">): PriceDraft {
+  return {
+    price: p.priceFromRub != null ? String(p.priceFromRub) : "",
+    currency: (p.currency ?? "RUB").toUpperCase(),
+  };
+}
 
 export type MediaDraft = {
   mediaType: string;
@@ -97,6 +114,7 @@ export const INITIAL_PROGRAM_FORM: ProgramForm = {
   itineraryDayByDay: "День 1: знакомство и брифинг. День 2–3: катание, разбор техники, восстановление.",
   inclusions: "Тренировки, сопровождение организатора, координация от MyWave.",
   priceFromRub: "",
+  currency: "RUB",
 };
 
 export function programBandLabel(scoreBand: string | undefined): string {

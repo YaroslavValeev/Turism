@@ -9,7 +9,13 @@ import {
   getSeverityLabel,
 } from "@mywave/shared-types";
 import { AdminSectionCard } from "../AdminSectionCard";
-import { LEVEL_OPTIONS, RISK_LEVEL_OPTIONS, type OrganizerOption, type ProgramForm } from "./programModel";
+import {
+  CURRENCY_OPTIONS,
+  LEVEL_OPTIONS,
+  RISK_LEVEL_OPTIONS,
+  type OrganizerOption,
+  type ProgramForm,
+} from "./programModel";
 
 type Props = {
   createForm: ProgramForm;
@@ -139,8 +145,20 @@ export function ProgramCreateFormCard({ createForm, setCreateForm, organizers, c
           className="mw-admin-input"
           value={createForm.priceFromRub}
           onChange={(e) => setCreateForm((c) => ({ ...c, priceFromRub: e.target.value }))}
-          placeholder="Цена от, ₽"
+          placeholder="Цена от (в валюте организатора)"
         />
+        <select
+          className="mw-admin-input"
+          value={createForm.currency}
+          onChange={(e) => setCreateForm((c) => ({ ...c, currency: e.target.value }))}
+          aria-label="Валюта цены"
+        >
+          {CURRENCY_OPTIONS.map((code) => (
+            <option key={code} value={code}>
+              {code}
+            </option>
+          ))}
+        </select>
         <textarea
           className="mw-admin-textarea"
           value={createForm.gearRequirements}

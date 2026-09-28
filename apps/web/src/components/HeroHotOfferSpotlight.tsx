@@ -12,6 +12,8 @@ export type HotOfferSlide = {
   timingLabel: string;
   metaLabel: string;
   priceLabel: string | null;
+  priceRubLabel?: string | null;
+  priceRubTitle?: string;
   spotsLabel: string | null;
   isStarred: boolean;
 };
@@ -87,7 +89,16 @@ export function HeroHotOfferSpotlight({ slides }: Props) {
         <h2 className="mw-hot-offer__title">{active.title}</h2>
         <p className="mw-hot-offer__meta">{active.metaLabel}</p>
         <div className="mw-hot-offer__facts">
-          {active.priceLabel && <span className="mw-hot-offer__fact">{active.priceLabel}</span>}
+          {active.priceLabel && (
+            <span className="mw-hot-offer__fact mw-price-fx">
+              <span className="mw-price-fx__main">{active.priceLabel}</span>
+              {active.priceRubLabel ? (
+                <span className="mw-price-fx__rub" title={active.priceRubTitle}>
+                  {active.priceRubLabel}
+                </span>
+              ) : null}
+            </span>
+          )}
           {active.spotsLabel && <span className="mw-hot-offer__fact">{active.spotsLabel}</span>}
         </div>
       </div>

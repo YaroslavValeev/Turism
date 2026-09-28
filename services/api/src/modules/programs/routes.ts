@@ -17,6 +17,7 @@ import type { AdminPayload } from "../../middleware/auth";
 import { isProgramPubliclyVisible } from "./publicVisibility";
 import { dedupeProgramsByEventKey } from "./dedup";
 import { setProgramPublishStatus } from "./publishStatus.service";
+import { getCbrRates, priceInRub, type CbrRates } from "../fx/cbrRates";
 
 function isAdminRequest(req: Request, env: Env): boolean {
   const token = req.headers.authorization?.replace(/^Bearer\s+/, "");
@@ -29,10 +30,18 @@ function isAdminRequest(req: Request, env: Env): boolean {
   }
 }
 
-/** Public catalog must not expose operator-only intake source (see docs/INGESTION_POLICY.md). */
-function toPublicProgram<P extends { intakeSource?: string | null }>(p: P): Omit<P, "intakeSource"> {
+/**
+ * Public catalog must not expose operator-only intake source (see docs/INGESTION_POLICY.md).
+ * Цена хранится в валюте организатора (priceFromRub + currency); для иностранных валют добавляем
+ * справочную сумму в рублях по курсу ЦБ.
+ */
+function toPublicProgram<P extends { intakeSource?: string | null; priceFromRub?: number | null; currency?: string | null }>(
+  p: P,
+  rates: CbrRates | null,
+): Omit<P, "intakeSource"> & { priceRubApprox: number | null; priceRubRateDate: string | null } {
   const { intakeSource: _omit, ...rest } = p;
-  return rest;
+  const priceRubApprox = priceInRub(p.priceFromRub, p.currency, rates);
+  return { ...rest, priceRubApprox, priceRubRateDate: priceRubApprox != null ? rates?.date ?? null : null };
 }
 
 function containsSyntheticMarker(value: string | null | undefined): boolean {
@@ -122,7 +131,8 @@ export function programsRoutes(env: Env): Router {
     const publicList = dedupeProgramsByEventKey(list).filter(
       (p) => isProgramPubliclyVisible(p) && !isSyntheticPublicProgram(p),
     );
-    res.json(publicList.map((p) => toPublicProgram(p)));
+    const rates = await getCbrRates();
+    res.json(publicList.map((p) => toPublicProgram(p, rates)));
   });
 
   router.get("/:id", async (req: Request, res: Response) => {
@@ -142,7 +152,7 @@ export function programsRoutes(env: Env): Router {
       res.status(404).json({ error: "Not found" });
       return;
     }
-    res.json(toPublicProgram(p));
+    res.json(toPublicProgram(p, await getCbrRates()));
   });
 
   router.post("/", admin, async (req: Request, res: Response) => {

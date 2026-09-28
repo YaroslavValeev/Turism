@@ -823,7 +823,7 @@ function detectLevel(text: string): string | null {
 }
 
 export function extractPrice(text: string): { priceFrom: number | null; currency: string | null } {
-  const pricePattern = /(?:от|from)?\s*([\d\s]{2,})\s*(₽|р\.?|руб\.?|rub|eur|usd|\$|€)/gi;
+  const pricePattern = /(?:от|from)?\s*([\d\s]{2,})\s*(₽|р\.?|руб\.?|rub|eur|usd|\$|€|₸|тенге|kzt)/gi;
   for (const match of text.matchAll(pricePattern)) {
     const matchIndex = match.index ?? 0;
     const contextBefore = text.slice(Math.max(0, matchIndex - 80), matchIndex).toLowerCase();
@@ -834,7 +834,14 @@ export function extractPrice(text: string): { priceFrom: number | null; currency
     const rawNumber = match[1].replace(/[^\d]/g, "");
     const priceFrom = rawNumber ? Number(rawNumber) : null;
     const currencyToken = match[2].toLowerCase();
-    const currency = currencyToken === "€" || currencyToken === "eur" ? "EUR" : currencyToken === "$" || currencyToken === "usd" ? "USD" : "RUB";
+    const currency =
+      currencyToken === "€" || currencyToken === "eur"
+        ? "EUR"
+        : currencyToken === "$" || currencyToken === "usd"
+          ? "USD"
+          : currencyToken === "₸" || currencyToken === "тенге" || currencyToken === "kzt"
+            ? "KZT"
+            : "RUB";
     return { priceFrom, currency };
   }
   return { priceFrom: null, currency: null };
@@ -2850,7 +2857,8 @@ function createDraftProgramPayload(candidate: CandidateWithRelations, organizerI
     audienceFit: programCardText(normalized.descriptionShort ?? normalized.descriptionFull, "Требует ручной нормализации оператором."),
     levelRequired: normalized.level ?? "all_levels",
     riskLevel: "medium",
-    priceFromRub: normalized.currency === "RUB" ? normalized.priceFrom : null,
+    // Сумма в валюте организатора (поле исторически называется priceFromRub); рубли сайт считает по курсу ЦБ.
+    priceFromRub: normalized.priceFrom,
     currency: normalized.currency ?? "RUB",
     inclusions: programCardText(suggestedInclusions, "Базовая программа и сопровождение организатора. Детальный состав включенного оператор уточняет по источнику перед передачей заявки."),
     exclusions: null,

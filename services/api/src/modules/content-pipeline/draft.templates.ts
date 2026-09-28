@@ -1,4 +1,5 @@
 import type { ContentDraftType } from "@prisma/client";
+import { formatMoney } from "../fx/cbrRates";
 
 /** Версия шаблонов (детерминированная генерация без LLM). */
 export const CONTENT_DRAFT_PROMPT_VERSION = "content-draft-template-v1";
@@ -52,8 +53,7 @@ function locationLine(n: NormalizedSnapshot): string {
 
 function priceLine(n: NormalizedSnapshot): string {
   if (n.priceFrom == null) return "";
-  const cur = n.currency?.trim() || "RUB";
-  return `${n.priceFrom} ${cur}`;
+  return formatMoney(n.priceFrom, n.currency);
 }
 
 function buildHashtags(n: NormalizedSnapshot): string[] {

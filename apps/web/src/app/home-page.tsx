@@ -29,6 +29,7 @@ import { getDisciplineCompactLabel, getDisciplineDisplay } from "../lib/discipli
 import { pickBestProgramCoverImageUrl } from "../lib/programCardCover";
 import { getPublicApiBase } from "../lib/publicApiBase";
 import { ruPluralNoun } from "../lib/ruPlural";
+import { formatProgramPrice, formatProgramPriceRub, formatProgramPriceRubTitle } from "../lib/priceFormat";
 import { StartAlertsSignup } from "../components/StartAlertsSignup";
 
 type Program = {
@@ -42,6 +43,9 @@ type Program = {
   durationDays: number;
   levelRequired: string | null;
   priceFromRub: number | null;
+  currency?: string | null;
+  priceRubApprox?: number | null;
+  priceRubRateDate?: string | null;
   capacityTotal?: number | null;
   spotsAvailable?: number | null;
   isStarred?: boolean;
@@ -435,7 +439,9 @@ function HomePageInner() {
         kicker: `${getDisciplineCompactLabel(program.discipline)} · ${locationPart}`,
         timingLabel,
         metaLabel: facts.join(" · "),
-        priceLabel: program.priceFromRub != null ? `от ${program.priceFromRub.toLocaleString("ru-RU")} ₽` : null,
+        priceLabel: formatProgramPrice(program),
+        priceRubLabel: formatProgramPriceRub(program),
+        priceRubTitle: formatProgramPriceRubTitle(program),
         spotsLabel: program.spotsAvailable != null ? `осталось ${program.spotsAvailable} мест` : null,
         isStarred: Boolean(program.isStarred),
       };

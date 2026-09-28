@@ -9,6 +9,8 @@ export type ProgramCardProgram = {
   durationDays: number;
   priceFromRub: number | null;
   currency?: string | null;
+  priceRubApprox?: number | null;
+  priceRubRateDate?: string | null;
   formatType?: string | null;
   levelRequired?: string | null;
   audienceFit?: string | null;

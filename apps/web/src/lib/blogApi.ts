@@ -59,6 +59,7 @@ export type PublicProgramRelated = {
   endDate: string;
   durationDays: number;
   priceFromRub: number | null;
+  currency?: string | null;
   levelRequired: string | null;
   audienceFit: string | null;
   riskLevel: string | null;

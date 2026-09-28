@@ -6,6 +6,7 @@ import { getProgramLevelLabel } from "@mywave/shared-types";
 import { getDisciplineDisplay } from "../lib/disciplineLabels";
 import { pickBestProgramCoverImageUrl } from "../lib/programCardCover";
 import { ruPluralNoun } from "../lib/ruPlural";
+import { formatProgramPrice, formatProgramPriceRub, formatProgramPriceRubTitle } from "../lib/priceFormat";
 
 export type ProgramLike = {
   id: string;
@@ -18,6 +19,9 @@ export type ProgramLike = {
   durationDays: number;
   levelRequired: string | null;
   priceFromRub: number | null;
+  currency?: string | null;
+  priceRubApprox?: number | null;
+  priceRubRateDate?: string | null;
   audienceFit: string | null;
   itineraryDayByDay?: string | null;
   media?: { id?: string; url: string; mediaType: string }[];
@@ -131,6 +135,9 @@ export type TourCardModel = {
   durationLine: string;
   levelLine: string;
   priceLabel: string;
+  /** Тонкая строка «≈ … ₽ по курсу ЦБ» для цен в иностранной валюте. */
+  priceRubLabel?: string | null;
+  priceRubTitle?: string;
   badge: (typeof BADGE_META)[BadgeKey];
 };
 
@@ -229,7 +236,9 @@ export function programToTourCard(
     dateLine: formatDateRangeRu(p.startDate, p.endDate),
     durationLine,
     levelLine: lineLevelLabel(p),
-    priceLabel: p.priceFromRub != null ? `от ${p.priceFromRub.toLocaleString("ru-RU")} ₽` : "Цена по запросу",
+    priceLabel: formatProgramPrice(p) ?? "Цена по запросу",
+    priceRubLabel: formatProgramPriceRub(p),
+    priceRubTitle: formatProgramPriceRubTitle(p),
     badge,
   };
 }

@@ -217,7 +217,14 @@ function TourCard({
           </li>
         </ul>
         <div className="tour-card-footer">
-          <span className="tour-card-price">{item.priceLabel}</span>
+          <span className="tour-card-price mw-price-fx">
+            <span className="mw-price-fx__main">{item.priceLabel}</span>
+            {item.priceRubLabel ? (
+              <span className="mw-price-fx__rub" title={item.priceRubTitle}>
+                {item.priceRubLabel}
+              </span>
+            ) : null}
+          </span>
           <Link href={item.href} className="tour-card-button">
             Подробнее
           </Link>

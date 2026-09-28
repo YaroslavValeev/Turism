@@ -926,13 +926,20 @@ function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-export function matchesLocationKeyword(text: string, keyword: string): boolean {
+/** Позиция ключевого слова в тексте; совпадение только с начала слова («чили» не находится в «получили»). */
+export function locationKeywordIndex(text: string, keyword: string): number {
   const normalizedKeyword = normalizeText(keyword).toLowerCase();
-  if (!normalizedKeyword) return false;
-  if (normalizedKeyword === "анд") {
-    return /(?:^|[^\p{L}\p{N}])анд(?:ы|ах|ами|ов)?(?=$|[^\p{L}\p{N}])/iu.test(text);
-  }
-  return text.toLowerCase().includes(normalizedKeyword);
+  if (!normalizedKeyword) return -1;
+  const pattern =
+    normalizedKeyword === "анд"
+      ? /(?:^|[^\p{L}\p{N}])(анд)(?:ы|ах|ами|ов)?(?=$|[^\p{L}\p{N}])/iu
+      : new RegExp(`(?:^|[^\\p{L}\\p{N}])(${escapeRegExp(normalizedKeyword)})`, "iu");
+  const match = pattern.exec(text.toLowerCase());
+  return match ? match.index + match[0].indexOf(match[1]) : -1;
+}
+
+export function matchesLocationKeyword(text: string, keyword: string): boolean {
+  return locationKeywordIndex(text, keyword) >= 0;
 }
 
 function extractDates(text: string, fallbackDate: Date | null): { startDate: Date | null; endDate: Date | null } {
@@ -1074,9 +1081,8 @@ export function detectRegion(text: string, source: Pick<SourceWithOrganizer, "co
   let matchedIndex = Number.POSITIVE_INFINITY;
   for (const signal of LOCATION_SIGNALS) {
     for (const keyword of signal.keywords) {
-      if (!matchesLocationKeyword(lower, keyword)) continue;
-      const index = lower.indexOf(normalizeText(keyword).toLowerCase());
-      const position = index >= 0 ? index : 1e9;
+      const position = locationKeywordIndex(lower, keyword);
+      if (position < 0) continue;
       if (!matched || position < matchedIndex) {
         matched = signal;
         matchedIndex = position;
@@ -4610,6 +4616,89 @@ export async function runEnduroCandidateRemediation(
       updated: candidates.length,
     };
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+}
+
+type LocationFields = { country: string | null; region: string | null; city: string | null };
+
+export type LocationRemediationChange = {
+  candidateId: string;
+  title: string | null;
+  textStart: string | null;
+  from: LocationFields;
+  to: LocationFields;
+};
+
+/**
+ * Пересчитывает только страну/регион/город у будущих неопубликованных кандидатов на проверке
+ * из источников с подстрокой sourceName в названии. Без apply — только отчёт.
+ */
+export async function runSourceLocationRemediation(options: {
+  sourceName: string;
+  apply: boolean;
+  actorId: string | null;
+  now?: Date;
+}): Promise<{ apply: boolean; scanned: number; changes: LocationRemediationChange[] }> {
+  const sourceName = options.sourceName.trim();
+  if (sourceName.length < 3) throw new Error("sourceName must contain at least 3 characters");
+  const now = options.now ?? new Date();
+
+  const candidates = (await prisma.eventCandidate.findMany({
+    where: {
+      status: "needs_review",
+      publishedProgram: null,
+      normalizedItem: {
+        OR: [{ startDate: { gte: now } }, { startDate: null }],
+        rawItem: { source: { name: { contains: sourceName, mode: "insensitive" } } },
+      },
+    },
+    include: {
+      publishedProgram: true,
+      normalizedItem: {
+        include: {
+          rawItem: { include: { source: { include: { organizer: { select: { id: true, displayName: true } } } } } },
+        },
+      },
+    },
+    orderBy: { createdAt: "asc" },
+  })) as CandidateWithRelations[];
+
+  const changes: LocationRemediationChange[] = [];
+  for (const candidate of candidates) {
+    const item = candidate.normalizedItem;
+    const rebuilt = buildNormalizedDraft(item.rawItem);
+    const from: LocationFields = { country: item.country, region: item.region, city: item.city };
+    const to: LocationFields = { country: rebuilt.country, region: rebuilt.region, city: rebuilt.city };
+    if (from.country === to.country && from.region === to.region && from.city === to.city) continue;
+    changes.push({
+      candidateId: candidate.id,
+      title: item.title,
+      textStart: truncate(normalizeText(item.rawItem.rawText), 160),
+      from,
+      to,
+    });
+  }
+
+  if (options.apply && changes.length > 0) {
+    await prisma.$transaction(async (tx) => {
+      for (const change of changes) {
+        const candidate = candidates.find((c) => c.id === change.candidateId)!;
+        await tx.normalizedItem.update({ where: { id: candidate.normalizedItemId }, data: change.to });
+        await tx.auditLog.create({
+          data: {
+            entityType: "event_candidate",
+            entityId: candidate.id,
+            changedField: "location_remediation",
+            oldValue: JSON.stringify(change.from),
+            newValue: JSON.stringify(change.to),
+            changedBy: options.actorId,
+            reason: `location parser remediation for sources matching "${sourceName}"; status and publication preserved`,
+          },
+        });
+      }
+    });
+  }
+
+  return { apply: options.apply, scanned: candidates.length, changes };
 }
 
 export async function runDedupJob(actorId: string | null, sourceIds?: string[]): Promise<RunSummary> {

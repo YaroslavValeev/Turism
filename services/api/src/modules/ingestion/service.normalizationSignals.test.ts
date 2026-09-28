@@ -50,6 +50,17 @@ describe("explicit location in post text", () => {
     });
   });
 
+  it("does not find a location keyword inside another word", () => {
+    expect(matchesLocationKeyword("участники получили призы", "чили")).toBe(false);
+    expect(matchesLocationKeyword("поездка в чили", "чили")).toBe(true);
+    expect(detectRegion("мы научили новичков, лучший отель рядом с трассой", krasnodarSource).region).toBe("Krasnodar");
+    expect(detectRegion("республика башкортостан, нуримановский район. все получили медали", {})).toEqual({
+      country: "Russia",
+      region: "Республика Башкортостан",
+      city: null,
+    });
+  });
+
   it("still falls back to the source region when the text names no place", () => {
     expect(detectRegion("регистрация открыта, взнос 2 500 р.", krasnodarSource)).toEqual({
       country: "Russia",

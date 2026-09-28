@@ -129,7 +129,8 @@ export async function proxyAwareFetch(
   const proxy = normalizeProxyUrl(proxyUrl);
   if (!proxy) return fetch(url, init);
   if (!proxy.startsWith("socks5://") && !proxy.startsWith("socks4://")) {
-    throw new Error(`Unsupported proxy scheme: ${proxy.split(":", 1)[0]}`);
+    // Значение не выводим: при ошибке в настройке туда может попасть секрет.
+    throw new Error("Unsupported proxy scheme: expected socks5:// or socks4://");
   }
   const agent = new SocksProxyAgent(proxy);
   const method = (init?.method ?? "GET").toUpperCase();

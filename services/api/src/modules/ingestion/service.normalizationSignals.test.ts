@@ -4,11 +4,60 @@ const prismaMock = vi.hoisted(() => ({}));
 
 vi.mock("../../lib/prisma", () => ({ prisma: prismaMock }));
 
-import { extractDatesByPriority, extractEnduroRaceFields, extractPrice, matchesLocationKeyword } from "./service";
+import {
+  detectRegion,
+  extractDatesByPriority,
+  extractEnduroRaceFields,
+  extractExplicitRussianLocation,
+  extractPrice,
+  matchesLocationKeyword,
+} from "./service";
 
 function midday(year: number, month: number, day: number): Date {
   return new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
 }
+
+describe("explicit location in post text", () => {
+  const krasnodarSource = { country: "Russia", region: "Krasnodar" };
+
+  it("extracts region and settlement in their common written forms", () => {
+    expect(extractExplicitRussianLocation("VALEZHNIK – Пермский край, п. Павловский. Классы")).toMatchObject({
+      region: "Пермский край",
+      city: "Павловский",
+    });
+    expect(extractExplicitRussianLocation("старт: Тверская обл., г. Конаково")).toMatchObject({
+      region: "Тверская область",
+      city: "Конаково",
+    });
+    expect(extractExplicitRussianLocation("Краснодарский край, г. Горячий ключ")).toMatchObject({
+      region: "Краснодарский край",
+      city: "Горячий Ключ",
+    });
+    expect(extractExplicitRussianLocation("кемп в горах, Республика Алтай")).toMatchObject({
+      region: "Республика Алтай",
+      city: null,
+    });
+    expect(extractExplicitRussianLocation("катаемся всё лето")).toBeNull();
+  });
+
+  it("prefers the first place in a digest over a later Krasnodar mention and the source default", () => {
+    const digest =
+      "планируем выходные правильно 26-27 сентября valezhnik – пермский край, п. павловский 27 сентября прохват sharmax motors – краснодарский край, г. горячий ключ";
+    expect(detectRegion(digest, krasnodarSource)).toEqual({
+      country: "Russia",
+      region: "Пермский край",
+      city: "Павловский",
+    });
+  });
+
+  it("still falls back to the source region when the text names no place", () => {
+    expect(detectRegion("регистрация открыта, взнос 2 500 р.", krasnodarSource)).toEqual({
+      country: "Russia",
+      region: "Krasnodar",
+      city: null,
+    });
+  });
+});
 
 describe("ingestion semantic normalization signals", () => {
   describe("enduro race announcement fields", () => {
@@ -35,6 +84,19 @@ describe("ingestion semantic normalization signals", () => {
         country: "Russia",
         region: "Алтайский край",
         city: "Белокуриха",
+      });
+    });
+
+    it("reads an unlisted region straight from the post (Пермский край, п. Павловский)", () => {
+      expect(
+        extractEnduroRaceFields(
+          "26 сентября 2026 – VALEZHNIK Пермский край, п. Павловский Протяженность трека – 20-35 км. Классы Хард Лайт Взнос – 2 500 р.",
+        ),
+      ).toEqual({
+        title: "VALEZHNIK",
+        country: "Russia",
+        region: "Пермский край",
+        city: "Павловский",
       });
     });
 

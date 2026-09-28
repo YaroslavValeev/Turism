@@ -328,6 +328,58 @@ const LOCATION_SIGNALS: Array<{
   { keywords: ["сочи", "rosa khutor", "роза хутор", "красная поляна"], country: "Russia", region: "Сочи", city: "Сочи" },
 ];
 
+export type ExplicitLocation = { country: string; region: string; city: string | null; index: number };
+
+const EXPLICIT_REGION_PATTERNS: RegExp[] = [
+  /(?<![\p{L}])([а-яё]+(?:-[а-яё]+)?(?:ский|цкий|ской|кий))\s+(?:край|кр\.)(?![\p{L}])/giu,
+  /(?<![\p{L}])([а-яё]+(?:-[а-яё]+)?(?:ская|цкая|ная))\s+(?:область|обл\.?)(?![\p{L}])/giu,
+  /(?<![\p{L}])([а-яё]+(?:-[а-яё]+)?(?:ская|цкая))\s+республика(?![\p{L}])/giu,
+  /(?<![\p{L}])(?:республика|респ\.)\s+([а-яё]+(?:-[а-яё]+)?)(?![\p{L}])/giu,
+];
+
+const SETTLEMENT_AFTER_REGION =
+  /^[\s,–—-]*(?:[а-яё-]+\s+(?:район|р-н)[\s,]*)?(?:г\.|город|п\.|пос\.|посёлок|поселок|пгт\.?|рп\.?|с\.|село|д\.|дер\.|деревня|ст\.|ст-ца|станица|х\.|хутор)\s*([а-яё]+(?:[\s-][а-яё]+)?)/iu;
+
+const SETTLEMENT_SECOND_WORDS = new Set([
+  "ключ", "поляна", "бор", "лог", "яр", "луки", "горки", "озеро", "ручей", "поле", "камень", "хутор", "слобода", "город", "новгород",
+]);
+
+function titleCaseRu(value: string): string {
+  return value
+    .split(/([\s-])/)
+    .map((part) => (/^[\s-]$/.test(part) || !part ? part : part[0].toUpperCase() + part.slice(1)))
+    .join("");
+}
+
+/**
+ * Явный российский топоним в тексте («Пермский край, п. Павловский», «Тверская обл., г. Конаково»,
+ * «Республика Алтай»). Берётся самое раннее упоминание — в дайджестах первым идёт основное событие.
+ */
+export function extractExplicitRussianLocation(text: string): ExplicitLocation | null {
+  const lower = normalizeText(text).toLowerCase();
+  let best: { index: number; end: number; region: string } | null = null;
+  for (const [patternIndex, pattern] of EXPLICIT_REGION_PATTERNS.entries()) {
+    pattern.lastIndex = 0;
+    const match = pattern.exec(lower);
+    if (!match || (best && match.index >= best.index)) continue;
+    const name = titleCaseRu(match[1]);
+    const region =
+      patternIndex === 0
+        ? `${name} край`
+        : patternIndex === 1
+          ? `${name} область`
+          : patternIndex === 2
+            ? `${name} республика`
+            : `Республика ${name}`;
+    best = { index: match.index, end: match.index + match[0].length, region };
+  }
+  if (!best) return null;
+  const settlement = SETTLEMENT_AFTER_REGION.exec(lower.slice(best.end, best.end + 80));
+  const [first, second] = settlement?.[1]?.split(/\s+/) ?? [];
+  const city = first ? titleCaseRu(second && SETTLEMENT_SECOND_WORDS.has(second) ? `${first} ${second}` : first) : null;
+  return { country: "Russia", region: best.region, city, index: best.index };
+}
+
 const WAKESTYLE_LOCATION_OVERRIDES: Record<string, { country: string; region: string; city: string }> = {
   геленджике: { country: "Russia", region: "Краснодарский край", city: "Геленджик" },
   геленджик: { country: "Russia", region: "Краснодарский край", city: "Геленджик" },
@@ -512,17 +564,18 @@ export function extractEnduroRaceFields(rawText: string | null | undefined): End
   const title = eventAfterDate
     ? normalizeText(
         eventAfterDate.replace(
-          /\s+(?:республика\s+узбекистан|[а-яё-]+\s+обл\.?|алтайский край|карачаево-черкесская республика|классы|расписание|взнос|требования|регистрация|электронный хронометраж)(?=\s|,|$)[\s\S]*$/i,
+          /\s+(?:республика\s+узбекистан|[а-яё-]+\s+(?:обл\.?|область|край)|республика\s+[а-яё-]+|[а-яё-]+\s+республика|классы|расписание|взнос|требования|регистрация|электронный хронометраж)(?=\s|,|$)[\s\S]*$/i,
           "",
         ),
       )
     : null;
+  const explicit = matchedLocation ? null : extractExplicitRussianLocation(text);
 
   return {
     title: title || null,
-    country: matchedLocation?.country ?? null,
-    region: matchedLocation?.region ?? null,
-    city: matchedLocation?.city ?? null,
+    country: matchedLocation?.country ?? explicit?.country ?? null,
+    region: matchedLocation?.region ?? explicit?.region ?? null,
+    city: matchedLocation?.city ?? explicit?.city ?? null,
   };
 }
 
@@ -1015,9 +1068,25 @@ function addDays(date: Date, days: number): Date {
   return new Date(date.getTime() + days * 24 * 60 * 60 * 1000);
 }
 
-function detectRegion(text: string, source: SourceWithOrganizer): { country: string | null; region: string | null; city: string | null } {
+export function detectRegion(text: string, source: Pick<SourceWithOrganizer, "country" | "region">): { country: string | null; region: string | null; city: string | null } {
   const lower = text.toLowerCase();
-  const matched = LOCATION_SIGNALS.find(({ keywords }) => keywords.some((keyword) => matchesLocationKeyword(lower, keyword)));
+  let matched: (typeof LOCATION_SIGNALS)[number] | undefined;
+  let matchedIndex = Number.POSITIVE_INFINITY;
+  for (const signal of LOCATION_SIGNALS) {
+    for (const keyword of signal.keywords) {
+      if (!matchesLocationKeyword(lower, keyword)) continue;
+      const index = lower.indexOf(normalizeText(keyword).toLowerCase());
+      const position = index >= 0 ? index : 1e9;
+      if (!matched || position < matchedIndex) {
+        matched = signal;
+        matchedIndex = position;
+      }
+    }
+  }
+  const explicit = extractExplicitRussianLocation(lower);
+  if (explicit && explicit.index <= matchedIndex) {
+    return { country: explicit.country, region: explicit.region, city: explicit.city };
+  }
   const city = matched?.city ?? null;
 
   return {

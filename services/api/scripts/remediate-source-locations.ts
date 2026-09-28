@@ -13,7 +13,10 @@ async function main() {
   const result = await runSourceLocationRemediation({ sourceName, apply, actorId: "script:remediate-source-locations" });
   for (const change of result.changes) {
     const fmt = (l: { region: string | null; city: string | null }) => `${l.region ?? "—"} / ${l.city ?? "—"}`;
-    console.log(`• ${(change.title ?? "").slice(0, 70)}\n    ${fmt(change.from)}  →  ${fmt(change.to)}\n    текст: ${change.textStart ?? ""}`);
+    const titleLine = change.titleTo ? `\n    заголовок → ${change.titleTo.slice(0, 70)}` : "";
+    console.log(
+      `• ${(change.title ?? "").slice(0, 70)}\n    ${fmt(change.from)}  →  ${fmt(change.to)}${titleLine}\n    текст: ${(change.textStart ?? "").slice(0, 110)}`,
+    );
   }
   console.log(`\nscanned=${result.scanned} changes=${result.changes.length} apply=${result.apply}`);
   if (!apply) {

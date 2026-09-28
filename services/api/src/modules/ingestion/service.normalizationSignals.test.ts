@@ -50,6 +50,28 @@ describe("explicit location in post text", () => {
     });
   });
 
+  it("keeps two-word settlements and rural settlement abbreviations from real enduro posts", () => {
+    const cases: Array<[string, string, string]> = [
+      ["10 октября 2026 – Зов предков. 5 лет Республика Татарстан, с. Набережные Моркваши Классы Железо", "Республика Татарстан", "Набережные Моркваши"],
+      ["04 октября 2026 – Тропа ежа Свердловская обл., г. Новая Ляля Классы Золото", "Свердловская область", "Новая Ляля"],
+      ["03 октября 2026 – Susanin Race Костромская обл., с.п. Бакшеевское Классы Хард Лайт", "Костромская область", "Бакшеевское"],
+      ["26 сентября 2026 – VALEZHNIK Пермский край, п. Павловский Протяженность трека – 20-35 км.", "Пермский край", "Павловский"],
+      ["17 октября 2026 – Супер-эндуро Краснодарский край, г. Абинск Олимпийская система парных заездов", "Краснодарский край", "Абинск"],
+      ["03-04 октября Последний богатырь – Краснодарский край, г. Горячий ключ В поиске зацепа", "Краснодарский край", "Горячий Ключ"],
+    ];
+    for (const [text, region, city] of cases) {
+      expect(extractExplicitRussianLocation(text)).toMatchObject({ region, city });
+    }
+  });
+
+  it("strips the republic from an enduro race title", () => {
+    expect(
+      extractEnduroRaceFields(
+        "17 октября 2026 – Чандарский хребет Республика Башкортостан, Нуримановский район Поистине самый хардовый трек",
+      ),
+    ).toMatchObject({ title: "Чандарский хребет", region: "Республика Башкортостан" });
+  });
+
   it("does not find a location keyword inside another word", () => {
     expect(matchesLocationKeyword("участники получили призы", "чили")).toBe(false);
     expect(matchesLocationKeyword("поездка в чили", "чили")).toBe(true);

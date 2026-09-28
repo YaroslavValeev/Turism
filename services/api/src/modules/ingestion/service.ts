@@ -338,11 +338,19 @@ const EXPLICIT_REGION_PATTERNS: RegExp[] = [
 ];
 
 const SETTLEMENT_AFTER_REGION =
-  /^[\s,–—-]*(?:[а-яё-]+\s+(?:район|р-н)[\s,]*)?(?:г\.|город|п\.|пос\.|посёлок|поселок|пгт\.?|рп\.?|с\.|село|д\.|дер\.|деревня|ст\.|ст-ца|станица|х\.|хутор)\s*([а-яё]+(?:[\s-][а-яё]+)?)/iu;
+  /^[\s,–—-]*(?:[а-яё-]+\s+(?:район|р-н)[\s,]*)?(?:с\.\s*п\.|с\/п|г\.\s*о\.|г\.|город|п\.|пос\.|посёлок|поселок|пгт\.?|рп\.?|с\.|село|д\.|дер\.|деревня|ст\.|ст-ца|станица|х\.|хутор)\s*([а-яё]+(?:[\s-][а-яё]+)?)/iu;
 
 const SETTLEMENT_SECOND_WORDS = new Set([
   "ключ", "поляна", "бор", "лог", "яр", "луки", "горки", "озеро", "ручей", "поле", "камень", "хутор", "слобода", "город", "новгород",
 ]);
+
+/** Первое слово раздела поста после адреса — не часть названия населённого пункта. */
+const SETTLEMENT_STOP_WORDS = new Set([
+  "классы", "класс", "взнос", "требования", "регистрация", "расписание", "протяженность", "протяжённость", "трасса", "трек",
+  "старт", "дата", "даты", "место", "маршрут", "программа", "поистине", "олимпийская", "стоимость", "цена", "участие",
+]);
+
+const ADJECTIVE_ENDING = /(?:ая|яя|ое|ее|ые|ие|ий|ый|ой)$/u;
 
 function titleCaseRu(value: string): string {
   return value
@@ -356,7 +364,8 @@ function titleCaseRu(value: string): string {
  * «Республика Алтай»). Берётся самое раннее упоминание — в дайджестах первым идёт основное событие.
  */
 export function extractExplicitRussianLocation(text: string): ExplicitLocation | null {
-  const lower = normalizeText(text).toLowerCase();
+  const original = normalizeText(text);
+  const lower = original.toLowerCase();
   let best: { index: number; end: number; region: string } | null = null;
   for (const [patternIndex, pattern] of EXPLICIT_REGION_PATTERNS.entries()) {
     pattern.lastIndex = 0;
@@ -374,9 +383,19 @@ export function extractExplicitRussianLocation(text: string): ExplicitLocation |
     best = { index: match.index, end: match.index + match[0].length, region };
   }
   if (!best) return null;
-  const settlement = SETTLEMENT_AFTER_REGION.exec(lower.slice(best.end, best.end + 80));
+  const tail = lower.slice(best.end, best.end + 80);
+  const settlement = SETTLEMENT_AFTER_REGION.exec(tail);
   const [first, second] = settlement?.[1]?.split(/\s+/) ?? [];
-  const city = first ? titleCaseRu(second && SETTLEMENT_SECOND_WORDS.has(second) ? `${first} ${second}` : first) : null;
+  let city: string | null = null;
+  if (first && !SETTLEMENT_STOP_WORDS.has(first)) {
+    const secondStart = best.end + settlement!.index + settlement![0].length - (second?.length ?? 0);
+    const secondCapitalized = second ? /^\p{Lu}/u.test(original.slice(secondStart, secondStart + 1)) : false;
+    const keepSecond =
+      Boolean(second) &&
+      !SETTLEMENT_STOP_WORDS.has(second) &&
+      (SETTLEMENT_SECOND_WORDS.has(second) || (ADJECTIVE_ENDING.test(first) && secondCapitalized));
+    city = titleCaseRu(keepSecond ? `${first} ${second}` : first);
+  }
   return { country: "Russia", region: best.region, city, index: best.index };
 }
 
@@ -564,7 +583,7 @@ export function extractEnduroRaceFields(rawText: string | null | undefined): End
   const title = eventAfterDate
     ? normalizeText(
         eventAfterDate.replace(
-          /\s+(?:республика\s+узбекистан|[а-яё-]+\s+(?:обл\.?|область|край)|республика\s+[а-яё-]+|[а-яё-]+\s+республика|классы|расписание|взнос|требования|регистрация|электронный хронометраж)(?=\s|,|$)[\s\S]*$/i,
+          /\s+(?:республика\s+узбекистан|[а-яё-]+(?:ская|цкая|ная)\s+(?:обл\.?|область)|[а-яё-]+(?:ский|цкий|кий|ской)\s+край|республика\s+[а-яё-]+|[а-яё-]+(?:ская|цкая)\s+республика|классы|расписание|взнос|требования|регистрация|электронный хронометраж)(?=\s|,|$)[\s\S]*$/i,
           "",
         ),
       )
@@ -1075,7 +1094,7 @@ function addDays(date: Date, days: number): Date {
   return new Date(date.getTime() + days * 24 * 60 * 60 * 1000);
 }
 
-export function detectRegion(text: string, source: Pick<SourceWithOrganizer, "country" | "region">): { country: string | null; region: string | null; city: string | null } {
+export function detectRegion(text: string, source: Pick<SourceWithOrganizer, "country" | "region">, originalText?: string): { country: string | null; region: string | null; city: string | null } {
   const lower = text.toLowerCase();
   let matched: (typeof LOCATION_SIGNALS)[number] | undefined;
   let matchedIndex = Number.POSITIVE_INFINITY;
@@ -1089,7 +1108,7 @@ export function detectRegion(text: string, source: Pick<SourceWithOrganizer, "co
       }
     }
   }
-  const explicit = extractExplicitRussianLocation(lower);
+  const explicit = extractExplicitRussianLocation(originalText ?? text);
   if (explicit && explicit.index <= matchedIndex) {
     return { country: explicit.country, region: explicit.region, city: explicit.city };
   }
@@ -1560,7 +1579,7 @@ function applyWhitePeaksOverrides(rawItem: RawItemWithSource, normalized: Omit<N
   const candidateTitle = normalizeText(titlePriceDateMatch?.groups?.title ?? segment.split(/\s{2,}|\.(?=\s|$)/)[0] ?? normalized.title ?? "");
   const price = extractPrice(segment.toLowerCase());
   const extractedDates = extractDates(segment.toLowerCase(), null);
-  const region = detectRegion(segment.toLowerCase(), rawItem.source);
+  const region = detectRegion(segment.toLowerCase(), rawItem.source, segment);
 
   return {
     ...normalized,
@@ -2791,7 +2810,7 @@ export function buildNormalizedDraft(rawItem: RawItemWithSource): NormalizedDraf
   const combined = normalizeText(`${rawTitle ?? ""}\n${rawText ?? ""}\n${ocrText ?? ""}`);
   const lower = combined.toLowerCase();
   const extractedDates = extractDatesByPriority([title, rawText, ocrText], rawItem.publishedAt);
-  const region = detectRegion(lower, rawItem.source);
+  const region = detectRegion(lower, rawItem.source, combined);
   const taxonomy = applyEnduroRaceTaxonomy(rawItem.source.name, combined, {
     eventType: detectEventType(lower),
     discipline: detectDiscipline(lower, rawItem.source),
@@ -4623,6 +4642,7 @@ type LocationFields = { country: string | null; region: string | null; city: str
 export type LocationRemediationChange = {
   candidateId: string;
   title: string | null;
+  titleTo: string | null;
   textStart: string | null;
   from: LocationFields;
   to: LocationFields;
@@ -4668,10 +4688,12 @@ export async function runSourceLocationRemediation(options: {
     const rebuilt = buildNormalizedDraft(item.rawItem);
     const from: LocationFields = { country: item.country, region: item.region, city: item.city };
     const to: LocationFields = { country: rebuilt.country, region: rebuilt.region, city: rebuilt.city };
-    if (from.country === to.country && from.region === to.region && from.city === to.city) continue;
+    const titleTo = rebuilt.title && rebuilt.title !== item.title ? rebuilt.title : null;
+    if (!titleTo && from.country === to.country && from.region === to.region && from.city === to.city) continue;
     changes.push({
       candidateId: candidate.id,
       title: item.title,
+      titleTo,
       textStart: truncate(normalizeText(item.rawItem.rawText), 160),
       from,
       to,
@@ -4682,14 +4704,17 @@ export async function runSourceLocationRemediation(options: {
     await prisma.$transaction(async (tx) => {
       for (const change of changes) {
         const candidate = candidates.find((c) => c.id === change.candidateId)!;
-        await tx.normalizedItem.update({ where: { id: candidate.normalizedItemId }, data: change.to });
+        await tx.normalizedItem.update({
+          where: { id: candidate.normalizedItemId },
+          data: { ...change.to, ...(change.titleTo ? { title: change.titleTo } : {}) },
+        });
         await tx.auditLog.create({
           data: {
             entityType: "event_candidate",
             entityId: candidate.id,
             changedField: "location_remediation",
-            oldValue: JSON.stringify(change.from),
-            newValue: JSON.stringify(change.to),
+            oldValue: JSON.stringify({ ...change.from, title: change.title }),
+            newValue: JSON.stringify({ ...change.to, title: change.titleTo ?? change.title }),
             changedBy: options.actorId,
             reason: `location parser remediation for sources matching "${sourceName}"; status and publication preserved`,
           },

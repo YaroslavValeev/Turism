@@ -4256,7 +4256,12 @@ async function resolveManualPostSource(instagramHandle: string | null): Promise<
  * автоматически), проходит тот же путь, что и собранный: raw → normalized → кандидат → черновик программы.
  * Публикация остаётся за владельцем (/check_publish).
  */
-export async function ingestManualPost(input: { text: string; actorId: string | null }): Promise<ManualPostResult> {
+export async function ingestManualPost(input: {
+  text: string;
+  actorId: string | null;
+  /** Уже сохранённые в /ingestion-media фото из сообщения владельца. */
+  media?: Array<{ url: string; mediaType: "image" | "video" }>;
+}): Promise<ManualPostResult> {
   const text = input.text.trim();
   if (text.length < MANUAL_POST_MIN_TEXT_LENGTH) return { kind: "too_short" };
 
@@ -4289,7 +4294,7 @@ export async function ingestManualPost(input: { text: string; actorId: string | 
           authorName: source.name,
           publishedAt: new Date(),
           rawText: text,
-          rawMedia: [],
+          rawMedia: input.media ?? [],
           rawPayload: { via: "owner_telegram_bot" },
         },
       ],

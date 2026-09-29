@@ -1,0 +1,929 @@
+[
+  {
+    "region": "Камчатка",
+    "name": "Снежная Долина",
+    "organizerName": "ООО \"Снежная Долина\"",
+    "url": "https://snow-valley.ru/",
+    "kind": "туроператор/горно-спортивная база",
+    "keyPerson": null,
+    "role": null,
+    "disciplines": [
+      "хели-ски",
+      "фрирайд",
+      "активные туры"
+    ],
+    "seasonality": "круглый год; хели-ски зимой/весной",
+    "contacts": {
+      "site": "https://snow-valley.ru/",
+      "email": "go@snow-valley.ru",
+      "phone": "+7 (924) 792-82-22"
+    },
+    "legal": {
+      "registry": "РТО 021610",
+      "inn": "4101109668"
+    },
+    "reputation": "публичный профиль и отзывы на сайте; независимые отзывы проверить",
+    "partners": [],
+    "osintScore": 5,
+    "evidence": [
+      "https://snow-valley.ru/about",
+      "https://visitkamchatka.ru/tour-operators/"
+    ]
+  },
+  {
+    "region": "Камчатка",
+    "name": "Kamchatka Peaks / Камчатская Вершина",
+    "organizerName": "ООО \"Камчатская Вершина\"",
+    "url": "https://kamchatkapeaks.ru/",
+    "kind": "туроператор/гиды",
+    "keyPerson": "Алёна Дмитриева",
+    "role": "директор",
+    "disciplines": [
+      "скитур",
+      "фрирайд",
+      "альпинизм",
+      "треккинг"
+    ],
+    "seasonality": "круглый год",
+    "contacts": {
+      "site": "https://kamchatkapeaks.ru/",
+      "email": "kamchatkapeaks@mail.ru",
+      "phone": "+7 (914) 782-22-13"
+    },
+    "legal": {
+      "registry": "РТО 023288",
+      "inn": null
+    },
+    "reputation": "команда и квалификации гидов опубликованы; внешние отзывы проверить",
+    "partners": [
+      "АО Д2 Страхование"
+    ],
+    "osintScore": 5,
+    "evidence": [
+      "https://kamchatkapeaks.ru/about/",
+      "https://visitkamchatka.ru/discover-kamchatka/partners/"
+    ]
+  },
+  {
+    "region": "Камчатка",
+    "name": "Горы по колено",
+    "organizerName": "ООО \"ГОРЫ ПО КОЛЕНО\"",
+    "url": "https://gory-po-koleno.ru/",
+    "kind": "туроператор/гиды",
+    "keyPerson": "Дмитрий Гуменюк",
+    "role": "генеральный директор",
+    "disciplines": [
+      "фрирайд",
+      "скитур",
+      "походы",
+      "восхождения"
+    ],
+    "seasonality": "круглый год",
+    "contacts": {
+      "site": "https://gory-po-koleno.ru/",
+      "email": "idem-v-gory@yandex.ru",
+      "phone": "+7 (914) 025-33-48"
+    },
+    "legal": {
+      "registry": "РТО 024387",
+      "inn": null
+    },
+    "reputation": "публичная команда и контакты; независимые отзывы проверить",
+    "partners": [],
+    "osintScore": 5,
+    "evidence": [
+      "https://gory-po-koleno.ru/contacts",
+      "https://visitkamchatka.ru/discover-kamchatka/partners/"
+    ]
+  },
+  {
+    "region": "Камчатка",
+    "name": "HeliPro",
+    "organizerName": "HeliPro",
+    "url": "https://www.helipro.ru/",
+    "kind": "экстремальный туроператор",
+    "keyPerson": null,
+    "role": null,
+    "disciplines": [
+      "хели-ски",
+      "фрирайд",
+      "экспедиции"
+    ],
+    "seasonality": "зима/весна + экспедиции",
+    "contacts": {
+      "site": "https://www.helipro.ru/",
+      "email": "office@helipro.ru",
+      "phone": "+7 (916) 588-50-55"
+    },
+    "legal": {
+      "registry": null,
+      "inn": null
+    },
+    "reputation": "действующий каталог экстремальных программ; юрлицо/реестр перепроверить",
+    "partners": [],
+    "osintScore": 4,
+    "evidence": [
+      "https://www.helipro.ru/en/programs/",
+      "https://www.helipro.ru/programs/odnodnevnaya-programma-heli-ski-na-kamchatke/"
+    ]
+  },
+  {
+    "region": "Камчатка",
+    "name": "Kamchatka Travel / Kamsnow",
+    "organizerName": "Kamchatka Travel",
+    "url": "https://kamchatka-travel.com/",
+    "kind": "организатор активных туров",
+    "keyPerson": null,
+    "role": null,
+    "disciplines": [
+      "фрирайд",
+      "скитур",
+      "хели-ски",
+      "джип-туры"
+    ],
+    "seasonality": "круглый год",
+    "contacts": {
+      "site": "https://kamchatka-travel.com/",
+      "email": "kamsnow@yandex.ru",
+      "phone": null
+    },
+    "legal": {
+      "registry": null,
+      "inn": null
+    },
+    "reputation": "детальные программы 2026; юрлицо/реестр/отзывы обогатить",
+    "partners": [],
+    "osintScore": 4,
+    "evidence": [
+      "https://kamchatka-travel.com/ru/snow",
+      "https://kamchatka-travel.com/ru/freeridecamp"
+    ]
+  },
+  {
+    "region": "Камчатка",
+    "name": "Kamchatka Snow Travel",
+    "organizerName": "Kamchatka Snow Travel",
+    "url": "https://kamchatka-snowtravel.ru/",
+    "kind": "фрирайд-организатор",
+    "keyPerson": "Макс",
+    "role": "контакт/организатор (как указано на сайте)",
+    "disciplines": [
+      "фрирайд",
+      "хели-ски",
+      "снегоходные заброски"
+    ],
+    "seasonality": "январь–май",
+    "contacts": {
+      "site": "https://kamchatka-snowtravel.ru/",
+      "email": null,
+      "phone": null
+    },
+    "legal": {
+      "registry": null,
+      "inn": null
+    },
+    "reputation": "детальная программа тура; юрлицо/реестр/отзывы обогатить",
+    "partners": [],
+    "osintScore": 3,
+    "evidence": [
+      "https://kamchatka-snowtravel.ru/freeride_tour"
+    ]
+  },
+  {
+    "region": "Камчатка",
+    "name": "Камчатский Тур",
+    "organizerName": "ООО \"Камчатский Тур\"",
+    "url": "https://kamchattour.ru/",
+    "kind": "туроператор",
+    "keyPerson": "Дмитрий Емелин",
+    "role": "генеральный директор",
+    "disciplines": [
+      "восхождения",
+      "джип-туры",
+      "активные туры",
+      "экспедиции"
+    ],
+    "seasonality": "круглый год",
+    "contacts": {
+      "site": "https://kamchattour.ru/",
+      "email": null,
+      "phone": "+7 (914) 024-34-39"
+    },
+    "legal": {
+      "registry": "В031-00161-00/05657591",
+      "inn": null
+    },
+    "reputation": "реестровый номер и программы 2026 опубликованы; отзывы проверить",
+    "partners": [],
+    "osintScore": 5,
+    "evidence": [
+      "https://kamchattour.ru/",
+      "https://visitkamchatka.ru/tour-operators/"
+    ]
+  },
+  {
+    "region": "Камчатка",
+    "name": "Омега Турс",
+    "organizerName": "Омега Турс",
+    "url": "https://omega-tours.ru/",
+    "kind": "туроператор",
+    "keyPerson": null,
+    "role": null,
+    "disciplines": [
+      "экспедиции",
+      "активный отдых",
+      "снегоходы",
+      "рыбалка"
+    ],
+    "seasonality": "круглый год",
+    "contacts": {
+      "site": "https://omega-tours.ru/",
+      "email": "office@omega-tours.ru",
+      "phone": "+7 (984) 167-04-27"
+    },
+    "legal": {
+      "registry": "В031-00161-00/05040816",
+      "inn": null
+    },
+    "reputation": "реестровый номер и программы 2026 опубликованы; отзывы проверить",
+    "partners": [],
+    "osintScore": 5,
+    "evidence": [
+      "https://omega-tours.ru/about/"
+    ]
+  },
+  {
+    "region": "Камчатка",
+    "name": "Северная Экспедиция",
+    "organizerName": "ООО \"Северная Экспедиция\"",
+    "url": "https://northern-expeditions.com/",
+    "kind": "экспедиционный туроператор",
+    "keyPerson": null,
+    "role": null,
+    "disciplines": [
+      "экспедиции",
+      "активные туры"
+    ],
+    "seasonality": "по программам",
+    "contacts": {
+      "site": "https://northern-expeditions.com/",
+      "email": null,
+      "phone": null
+    },
+    "legal": {
+      "registry": null,
+      "inn": null
+    },
+    "reputation": "есть в официальном каталоге туроператоров Камчатки; реквизиты обогатить",
+    "partners": [],
+    "osintScore": 4,
+    "evidence": [
+      "https://visitkamchatka.ru/tour-operators/",
+      "https://northern-expeditions.com/"
+    ]
+  },
+  {
+    "region": "Камчатка",
+    "name": "БЕАРТРО",
+    "organizerName": "ООО \"БЕАРТРО\"",
+    "url": "https://beartro.ru/",
+    "kind": "туроператор",
+    "keyPerson": null,
+    "role": null,
+    "disciplines": [
+      "активные туры",
+      "экспедиции"
+    ],
+    "seasonality": "по программам",
+    "contacts": {
+      "site": "https://beartro.ru/",
+      "email": null,
+      "phone": "+7 (984) 165-96-19"
+    },
+    "legal": {
+      "registry": null,
+      "inn": null
+    },
+    "reputation": "указан на официальном туристическом портале Камчатки; реквизиты и отзывы обогатить",
+    "partners": [],
+    "osintScore": 4,
+    "evidence": [
+      "https://visitkamchatka.ru/discover-kamchatka/partners/"
+    ]
+  },
+  {
+    "region": "Алтай",
+    "name": "Алтай-Актив-Тур",
+    "organizerName": "ООО \"ААТ\"",
+    "url": "https://alaktu.ru/",
+    "kind": "туроператор",
+    "keyPerson": null,
+    "role": null,
+    "disciplines": [
+      "рафтинг",
+      "пешие туры",
+      "конные туры",
+      "горные лыжи"
+    ],
+    "seasonality": "круглый год",
+    "contacts": {
+      "site": "https://alaktu.ru/",
+      "email": null,
+      "phone": "+7 (913) 692-73-47"
+    },
+    "legal": {
+      "registry": "РТО 026179",
+      "inn": "0408017882"
+    },
+    "reputation": "официальный портал + активный календарь программ",
+    "partners": [],
+    "osintScore": 5,
+    "evidence": [
+      "https://altai.travel/tourism/tour-operators/ooo-aat",
+      "https://alaktu.ru/calendar"
+    ]
+  },
+  {
+    "region": "Алтай",
+    "name": "Алтай-Рафтинг-Центр",
+    "organizerName": "ООО \"АЛТАЙ-РАФТИНГ-ЦЕНТР\"",
+    "url": "https://altay-rafting-center.ru/",
+    "kind": "туроператор/рафтинг",
+    "keyPerson": null,
+    "role": null,
+    "disciplines": [
+      "рафтинг",
+      "водный туризм"
+    ],
+    "seasonality": "весна–осень",
+    "contacts": {
+      "site": "https://altay-rafting-center.ru/",
+      "email": null,
+      "phone": "+7 (913) 996-70-33"
+    },
+    "legal": {
+      "registry": "РТО 017470",
+      "inn": null
+    },
+    "reputation": "официальный портал описывает профильных инструкторов и программы",
+    "partners": [],
+    "osintScore": 5,
+    "evidence": [
+      "https://altai.travel/tourism/tour-operators/ooo-altay-rafting-centr",
+      "https://altai.travel/tourism/tours/rafting-srednyaya-katun-6-dney"
+    ]
+  },
+  {
+    "region": "Алтай",
+    "name": "Под Рюкзаком",
+    "organizerName": "ООО \"ПОД РЮКЗАКОМ\"",
+    "url": "https://www.touring-altai.com/",
+    "kind": "туроператор",
+    "keyPerson": null,
+    "role": null,
+    "disciplines": [
+      "рафтинг",
+      "водный туризм",
+      "походы"
+    ],
+    "seasonality": "по программам",
+    "contacts": {
+      "site": "https://www.touring-altai.com/",
+      "email": null,
+      "phone": "+7 (983) 352-40-50"
+    },
+    "legal": {
+      "registry": "В031-00161-77/02253917",
+      "inn": null
+    },
+    "reputation": "официальный каталог Алтая; команда заявляет профильных инструкторов",
+    "partners": [],
+    "osintScore": 5,
+    "evidence": [
+      "https://altai.travel/tourism/tour-operators/ooo-pod-ryukzakom"
+    ]
+  },
+  {
+    "region": "Алтай",
+    "name": "Высотник",
+    "organizerName": "ООО \"ВЫСОТНИК\"",
+    "url": "https://belukha.ru/",
+    "kind": "туроператор/горные программы",
+    "keyPerson": null,
+    "role": null,
+    "disciplines": [
+      "альпинизм",
+      "треккинг",
+      "горные маршруты"
+    ],
+    "seasonality": "по программам",
+    "contacts": {
+      "site": "https://belukha.ru/",
+      "email": null,
+      "phone": null
+    },
+    "legal": {
+      "registry": "РТО 020114",
+      "inn": null
+    },
+    "reputation": "в официальном списке туроператоров Алтая; отзывы обогатить",
+    "partners": [],
+    "osintScore": 4,
+    "evidence": [
+      "https://altai.travel/tourism/tour-operators"
+    ]
+  },
+  {
+    "region": "Алтай",
+    "name": "Манул Трэвел",
+    "organizerName": "ООО \"МТ\" (Манул Трэвел)",
+    "url": "https://manultravel.ru/",
+    "kind": "туроператор",
+    "keyPerson": null,
+    "role": null,
+    "disciplines": [
+      "активные туры",
+      "треккинг"
+    ],
+    "seasonality": "по программам",
+    "contacts": {
+      "site": "https://manultravel.ru/",
+      "email": null,
+      "phone": null
+    },
+    "legal": {
+      "registry": "РТО 026013",
+      "inn": null
+    },
+    "reputation": "в официальном каталоге туроператоров Алтая; детали обогатить",
+    "partners": [],
+    "osintScore": 4,
+    "evidence": [
+      "https://altai.travel/tourism/tour-operators"
+    ]
+  },
+  {
+    "region": "Алтай",
+    "name": "Большой Алтай / Глобал-Тур",
+    "organizerName": "ООО \"ГЛОБАЛ-ТУР\"",
+    "url": "https://big-altai.ru/",
+    "kind": "туроператор",
+    "keyPerson": null,
+    "role": null,
+    "disciplines": [
+      "активные туры",
+      "рафтинг",
+      "горные лыжи",
+      "сноуборд"
+    ],
+    "seasonality": "круглый год",
+    "contacts": {
+      "site": "https://big-altai.ru/",
+      "email": null,
+      "phone": null
+    },
+    "legal": {
+      "registry": "РТО 019715",
+      "inn": null
+    },
+    "reputation": "официальный каталог туроператоров Алтая; отзывы обогатить",
+    "partners": [],
+    "osintScore": 4,
+    "evidence": [
+      "https://altai.travel/tourism/tour-operators"
+    ]
+  },
+  {
+    "region": "Алтай",
+    "name": "Центр активного туризма",
+    "organizerName": "ООО \"ЦЕНТР АКТИВНОГО ТУРИЗМА\"",
+    "url": "https://catours.ru/",
+    "kind": "туроператор",
+    "keyPerson": null,
+    "role": null,
+    "disciplines": [
+      "активные туры",
+      "походы",
+      "экспедиции"
+    ],
+    "seasonality": "по программам",
+    "contacts": {
+      "site": "https://catours.ru/",
+      "email": null,
+      "phone": null
+    },
+    "legal": {
+      "registry": "РТО 021971",
+      "inn": null
+    },
+    "reputation": "официальный каталог туроператоров Алтая; детали обогатить",
+    "partners": [],
+    "osintScore": 4,
+    "evidence": [
+      "https://altai.travel/tourism/tour-operators"
+    ]
+  },
+  {
+    "region": "Алтай",
+    "name": "Алтай без границ",
+    "organizerName": "ООО \"Алтай без границ\"",
+    "url": "https://altaibg.ru/",
+    "kind": "туроператор",
+    "keyPerson": null,
+    "role": null,
+    "disciplines": [
+      "активные туры",
+      "автотуры",
+      "треккинг"
+    ],
+    "seasonality": "по программам",
+    "contacts": {
+      "site": "https://altaibg.ru/",
+      "email": null,
+      "phone": null
+    },
+    "legal": {
+      "registry": null,
+      "inn": null
+    },
+    "reputation": "официальный каталог туроператоров Алтая; реестр/контакты обогатить",
+    "partners": [],
+    "osintScore": 4,
+    "evidence": [
+      "https://altai.travel/tourism/tour-operators"
+    ]
+  },
+  {
+    "region": "Алтай",
+    "name": "Алтай Чилл",
+    "organizerName": "ООО \"АЛТАЙ ЧИЛЛ\"",
+    "url": "https://altaychill.com/",
+    "kind": "туроператор",
+    "keyPerson": null,
+    "role": null,
+    "disciplines": [
+      "активные туры",
+      "автотуры",
+      "треккинг"
+    ],
+    "seasonality": "по программам",
+    "contacts": {
+      "site": "https://altaychill.com/",
+      "email": null,
+      "phone": null
+    },
+    "legal": {
+      "registry": "РТО 026308",
+      "inn": null
+    },
+    "reputation": "официальный каталог туроператоров Алтая; отзывы обогатить",
+    "partners": [],
+    "osintScore": 4,
+    "evidence": [
+      "https://altai.travel/tourism/tour-operators"
+    ]
+  },
+  {
+    "region": "Алтай",
+    "name": "Алтай Саммит",
+    "organizerName": "ООО \"АЛТАЙ САММИТ\"",
+    "url": "https://altaysummit.ru/",
+    "kind": "туроператор/горные программы",
+    "keyPerson": null,
+    "role": null,
+    "disciplines": [
+      "альпинизм",
+      "треккинг",
+      "горные туры"
+    ],
+    "seasonality": "по программам",
+    "contacts": {
+      "site": "https://altaysummit.ru/",
+      "email": null,
+      "phone": null
+    },
+    "legal": {
+      "registry": null,
+      "inn": null
+    },
+    "reputation": "официальный каталог туроператоров Алтая; реестр/отзывы обогатить",
+    "partners": [],
+    "osintScore": 4,
+    "evidence": [
+      "https://altai.travel/tourism/tour-operators"
+    ]
+  },
+  {
+    "region": "Приэльбрусье",
+    "name": "Elbrus Tours",
+    "organizerName": "Elbrus Tours",
+    "url": "https://www.elbrustours.ru/",
+    "kind": "туроператор/команда горных гидов",
+    "keyPerson": null,
+    "role": null,
+    "disciplines": [
+      "скитур",
+      "фрирайд",
+      "альпинизм"
+    ],
+    "seasonality": "круглый год",
+    "contacts": {
+      "site": "https://www.elbrustours.ru/",
+      "email": null,
+      "phone": null
+    },
+    "legal": {
+      "registry": null,
+      "inn": null
+    },
+    "reputation": "публикует команду гидов, квалификации и программы; реквизиты обогатить",
+    "partners": [],
+    "osintScore": 5,
+    "evidence": [
+      "https://www.elbrustours.ru/en/Elbrus/guides.php",
+      "https://www.elbrustours.ru/en/Elbrus/ski-touring.php"
+    ]
+  },
+  {
+    "region": "Приэльбрусье",
+    "name": "Elbrus Travel",
+    "organizerName": "Elbrus Travel",
+    "url": "https://elbrus.travel/",
+    "kind": "туроператор/горные гиды",
+    "keyPerson": "Gia Ksnelashvili",
+    "role": "гид/член команды",
+    "disciplines": [
+      "альпинизм",
+      "фрирайд",
+      "ски-тур"
+    ],
+    "seasonality": "круглый год",
+    "contacts": {
+      "site": "https://elbrus.travel/",
+      "email": null,
+      "phone": null
+    },
+    "legal": {
+      "registry": null,
+      "inn": null
+    },
+    "reputation": "публичная команда с опытом; юрлицо/реестр обогатить",
+    "partners": [],
+    "osintScore": 4,
+    "evidence": [
+      "https://elbrus.travel/our-team/"
+    ]
+  },
+  {
+    "region": "Приэльбрусье",
+    "name": "ПРО ЛЫЖИ / школа Гриши Корнеева",
+    "organizerName": "ПРО ЛЫЖИ",
+    "url": "https://proskischool.ru/",
+    "kind": "школа/кэмпы",
+    "keyPerson": "Гриша Корнеев",
+    "role": "основатель/тренер (бренд школы)",
+    "disciplines": [
+      "фрирайд",
+      "backcountry",
+      "горные лыжи",
+      "восхождения"
+    ],
+    "seasonality": "зима–лето",
+    "contacts": {
+      "site": "https://proskischool.ru/",
+      "email": null,
+      "phone": null
+    },
+    "legal": {
+      "registry": null,
+      "inn": null
+    },
+    "reputation": "актуальные программы 2026 по Приэльбрусью; реквизиты обогатить",
+    "partners": [],
+    "osintScore": 4,
+    "evidence": [
+      "https://proskischool.ru/",
+      "https://proskischool.ru/climbing_elbrus"
+    ]
+  },
+  {
+    "region": "Приэльбрусье",
+    "name": "inSki",
+    "organizerName": "inSki",
+    "url": "https://inski.fun/",
+    "kind": "школа/фрирайд и скитур",
+    "keyPerson": "Анастасия Романова",
+    "role": "гид (в расписании)",
+    "disciplines": [
+      "фрирайд",
+      "скитур"
+    ],
+    "seasonality": "зима/весна",
+    "contacts": {
+      "site": "https://inski.fun/",
+      "email": null,
+      "phone": null
+    },
+    "legal": {
+      "registry": null,
+      "inn": null
+    },
+    "reputation": "расписание сезона 2026–2027 включает Эльбрус; реквизиты обогатить",
+    "partners": [],
+    "osintScore": 4,
+    "evidence": [
+      "https://inski.fun/"
+    ]
+  },
+  {
+    "region": "Приэльбрусье",
+    "name": "Горный Клуб Спорт-Марафон",
+    "organizerName": "Горный Клуб Спорт-Марафон",
+    "url": "https://kpmountainclub.ru/",
+    "kind": "горный клуб/школа/туры",
+    "keyPerson": "Стас Горбачевский",
+    "role": "гид программы",
+    "disciplines": [
+      "скитур",
+      "фрирайд",
+      "лавинные курсы",
+      "треккинг"
+    ],
+    "seasonality": "круглый год",
+    "contacts": {
+      "site": "https://kpmountainclub.ru/",
+      "email": null,
+      "phone": "+7 (938) 420-92-16"
+    },
+    "legal": {
+      "registry": null,
+      "inn": null
+    },
+    "reputation": "актуальный календарь и профили гидов; юрлицо обогатить",
+    "partners": [
+      "Спорт-Марафон"
+    ],
+    "osintScore": 5,
+    "evidence": [
+      "https://kpmountainclub.ru/programs-schedule/",
+      "https://kpmountainclub.ru/freeride-skitour/skitur-po-hizhinam-prijelbrusja/"
+    ]
+  },
+  {
+    "region": "Приэльбрусье",
+    "name": "АльпИндустрия-Тур",
+    "organizerName": "ООО \"КОМАНДА ПРИКЛЮЧЕНИЙ АЛЬПИНДУСТРИЯ\"",
+    "url": "https://alpindustria-tour.ru/",
+    "kind": "туроператор/горная школа",
+    "keyPerson": "Марина Мигурская",
+    "role": "главный менеджер по горным программам",
+    "disciplines": [
+      "скитур",
+      "альпинизм",
+      "восхождения"
+    ],
+    "seasonality": "круглый год",
+    "contacts": {
+      "site": "https://alpindustria-tour.ru/",
+      "email": "inbox@alpindustria-tour.ru",
+      "phone": "+7 (495) 229-50-70"
+    },
+    "legal": {
+      "registry": null,
+      "inn": null
+    },
+    "reputation": "публичные гиды, программы и корпоративные реквизиты; реестр обогатить",
+    "partners": [
+      "АльпИндустрия"
+    ],
+    "osintScore": 5,
+    "evidence": [
+      "https://alpindustria-tour.ru/programms/skitur-v-priehlbruse-i-voskhozhdenie-na-ehlbrus.html"
+    ]
+  },
+  {
+    "region": "Приэльбрусье",
+    "name": "Mountain Crew",
+    "organizerName": "Mountain Crew",
+    "url": "https://mtcrew.ru/",
+    "kind": "школа/кэмпы/горные программы",
+    "keyPerson": "Сергей Туриков",
+    "role": "инструктор программы",
+    "disciplines": [
+      "фрирайд",
+      "скитур",
+      "альпинизм",
+      "горные лыжи"
+    ],
+    "seasonality": "круглый год",
+    "contacts": {
+      "site": "https://mtcrew.ru/",
+      "email": null,
+      "phone": null
+    },
+    "legal": {
+      "registry": null,
+      "inn": null
+    },
+    "reputation": "календарь 2026/27 и условия оплаты/отмены опубликованы; реквизиты обогатить",
+    "partners": [],
+    "osintScore": 4,
+    "evidence": [
+      "https://mtcrew.ru/freeride-advanced",
+      "https://mtcrew.ru/calendar"
+    ]
+  },
+  {
+    "region": "Приэльбрусье",
+    "name": "KavkazSkiTur",
+    "organizerName": "KavkazSkiTur",
+    "url": "https://kavkazskitur.com/",
+    "kind": "туроператор/горные программы",
+    "keyPerson": null,
+    "role": null,
+    "disciplines": [
+      "скитур",
+      "альпинизм",
+      "горные лыжи",
+      "сноуборд"
+    ],
+    "seasonality": "круглый год",
+    "contacts": {
+      "site": "https://kavkazskitur.com/",
+      "email": "info@kavkazskitur.com",
+      "phone": "+7 (928) 691-44-05"
+    },
+    "legal": {
+      "registry": "РТО 025832 — перепроверить в ЕФРТ",
+      "inn": null
+    },
+    "reputation": "актуальные программы Elbrus 2026 и контакты; реестр повторно сверить",
+    "partners": [],
+    "osintScore": 4,
+    "evidence": [
+      "https://kavkazskitur.com/"
+    ]
+  },
+  {
+    "region": "Приэльбрусье",
+    "name": "Trail Running School",
+    "organizerName": "Trail Running School",
+    "url": "https://www.trailrunningschool.com/",
+    "kind": "школа/тренировочные лагеря",
+    "keyPerson": "Екатерина Митяева / Дмитрий Митяев",
+    "role": "тренеры лагеря",
+    "disciplines": [
+      "трейлраннинг",
+      "горные тренировочные сборы"
+    ],
+    "seasonality": "лето/осень",
+    "contacts": {
+      "site": "https://www.trailrunningschool.com/",
+      "email": null,
+      "phone": null
+    },
+    "legal": {
+      "registry": null,
+      "inn": null
+    },
+    "reputation": "Elbrus Trail Camp 2026 с тренерами и лимитами; юрлицо обогатить",
+    "partners": [],
+    "osintScore": 4,
+    "evidence": [
+      "https://www.trailrunningschool.com/elbrus-trail-camp-2026/",
+      "https://www.trailrunningschool.com/elbrus-trail-camp-osen-2026/"
+    ]
+  },
+  {
+    "region": "Приэльбрусье",
+    "name": "Elbrus Adventures",
+    "organizerName": "Elbrus Adventures",
+    "url": "https://resort-elbrus.ru/services/8/sluzhba-instruktorov-elbrus-adventures",
+    "kind": "служба инструкторов",
+    "keyPerson": null,
+    "role": null,
+    "disciplines": [
+      "горные лыжи",
+      "сноуборд",
+      "обучение"
+    ],
+    "seasonality": "зима",
+    "contacts": {
+      "site": "https://resort-elbrus.ru/services/8/sluzhba-instruktorov-elbrus-adventures",
+      "email": null,
+      "phone": "+7 (938) 702-00-97"
+    },
+    "legal": {
+      "registry": null,
+      "inn": null
+    },
+    "reputation": "опубликована на официальном сайте курорта Эльбрус с правилами и контактами; юрстатус обогатить",
+    "partners": [
+      "Курорт Эльбрус"
+    ],
+    "osintScore": 4,
+    "evidence": [
+      "https://resort-elbrus.ru/services/8/sluzhba-instruktorov-elbrus-adventures"
+    ]
+  }
+]

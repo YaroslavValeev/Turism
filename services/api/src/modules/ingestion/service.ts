@@ -15,6 +15,7 @@ import { writeAuditLog } from "../../lib/audit";
 import { canPublishAutopilot, programIncludeForPublishGate } from "../programs/publishGate";
 import { archiveExpiredPublishedPrograms } from "../programs/expiration";
 import { buildProgramDedupKey, pickPreferredProgram, type ProgramDedupShape } from "../programs/dedup";
+import { nextMediaPosition } from "../programs/mediaOrder";
 import { cacheExternalProgramMediaForWeb } from "./mediaCache";
 import { fetchIngestionTextWithRetry } from "./sourceFetch";
 import { applyEnduroRaceTaxonomy } from "./taxonomy";
@@ -5049,6 +5050,7 @@ export async function publishCandidateToDraft(
           ingestedAt: duplicateProgram.ingestedAt,
         }),
       });
+      let appendPosition = nextMediaPosition(duplicateProgram.media);
       for (const media of mediaEntries) {
         if (duplicateProgram.media.some((existing) => existing.url === media.url)) continue;
         await tx.programMedia.create({
@@ -5057,8 +5059,10 @@ export async function publishCandidateToDraft(
             mediaType: media.mediaType,
             url: media.url,
             caption: media.mediaType === "video" ? "Видео из источника" : "Добавлено из duplicate ingestion candidate",
+            position: appendPosition,
           },
         });
+        appendPosition += 1;
       }
       let outLink = duplicateLink;
       let gateResult: { ok: boolean; missing: string[] } | null = null;
@@ -5159,13 +5163,14 @@ export async function publishCandidateToDraft(
     const program = await tx.program.create({
       data: programPayload,
     });
-    for (const media of mediaEntries) {
+    for (const [position, media] of mediaEntries.entries()) {
       await tx.programMedia.create({
         data: {
           programId: program.id,
           mediaType: media.mediaType,
           url: media.url,
           caption: media.mediaType === "video" ? "Видео из источника" : "Создано из ingestion candidate",
+          position,
         },
       });
     }

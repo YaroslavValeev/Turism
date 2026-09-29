@@ -52,6 +52,7 @@ type Program = {
   audienceFit: string | null;
   itineraryDayByDay?: string | null;
   riskLevel?: string | null;
+  mediaOrderPinned?: boolean;
   cta: string | null;
   organizer?: {
     id?: string;
@@ -434,7 +435,11 @@ function HomePageInner() {
         title: program.title,
         href: `/program/${program.id}`,
         imageSrc:
-          pickBestProgramCoverImageUrl(program.media, `${program.title} ${program.audienceFit ?? ""} ${program.itineraryDayByDay ?? ""}`) ??
+          pickBestProgramCoverImageUrl(
+            program.media,
+            `${program.title} ${program.audienceFit ?? ""} ${program.itineraryDayByDay ?? ""}`,
+            { mediaOrderPinned: program.mediaOrderPinned },
+          ) ??
           HERO_FALLBACK_IMAGES[index % HERO_FALLBACK_IMAGES.length],
         kicker: `${getDisciplineCompactLabel(program.discipline)} · ${locationPart}`,
         timingLabel,

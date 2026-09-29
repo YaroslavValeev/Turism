@@ -2,6 +2,7 @@ import type { Env } from "@mywave/config";
 import { prisma } from "../../lib/prisma";
 import { sendEmailIfConfigured } from "./mailer";
 import { safeLog } from "../../lib/safeLogger";
+import { PROGRAM_MEDIA_ORDER } from "../programs/mediaOrder";
 import { callTelegramJson, isTelegramBotApiConfigured } from "../telegram/telegramApi";
 import {
   resolveLocalIngestionMedia,
@@ -108,7 +109,7 @@ async function loadProgramNotifySource(program: PublishedProgramPayload): Promis
 async function loadProgramPrimaryMediaUrl(programId: string): Promise<string | null> {
   const media = await prisma.programMedia.findMany({
     where: { programId, mediaType: "image" },
-    orderBy: { id: "asc" },
+    orderBy: PROGRAM_MEDIA_ORDER,
     select: { url: true },
     take: 10,
   });

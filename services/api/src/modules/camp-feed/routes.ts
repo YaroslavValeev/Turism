@@ -5,12 +5,13 @@ import { prisma } from "../../lib/prisma";
 import { requireCampApiAuth } from "./auth";
 import { mapProgramToCamp, resolveProgramIdFromCampId, type CampContract, type CampPublicationStatus, type CampSport } from "./mapper";
 import { getCampApiRuntimeStatus, recordCampApiFeedError, recordCampApiFeedSuccess } from "./monitoring";
+import { orderedProgramMedia } from "../programs/mediaOrder";
 
 const DEFAULT_LIMIT = 100;
 const MAX_LIMIT = 100;
 
 const campProgramInclude = {
-  media: true,
+  media: orderedProgramMedia,
   organizer: { select: { id: true, displayName: true, verificationStatus: true } },
   source: { select: { id: true, name: true, urlOrHandle: true, country: true, region: true, language: true } },
 } satisfies Prisma.ProgramInclude;

@@ -166,6 +166,8 @@ model Program {
   startDate               DateTime
   endDate                 DateTime
   durationDays            Int
+  /// true — порядок медиа (и обложку) задал админ; витрина не переставляет их эвристиками.
+  mediaOrderPinned        Boolean                @default(false)
   formatType              String? // tour | camp | clinic | training | ...
   audienceFit             String?                @db.Text
   levelRequired           String? // beginner | intermediate | advanced | expert
@@ -602,8 +604,11 @@ model ProgramMedia {
   mediaType String // image | video
   url       String
   caption   String?
+  /// 0 — обложка карточки; порядок галереи по возрастанию.
+  position  Int     @default(0)
   program   Program @relation(fields: [programId], references: [id], onDelete: Cascade)
 
+  @@index([programId, position])
   @@map("program_media")
 }
 

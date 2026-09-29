@@ -18,6 +18,7 @@ import { isProgramPubliclyVisible } from "./publicVisibility";
 import { dedupeProgramsByEventKey } from "./dedup";
 import { setProgramPublishStatus } from "./publishStatus.service";
 import { validateProgramCardPatch, validateProgramMediaInput } from "./programEditValidation";
+import { nextMediaPosition, orderedProgramMedia, validateMediaReorder } from "./mediaOrder";
 import { getCbrRates, priceInRub, type CbrRates } from "../fx/cbrRates";
 
 function isAdminRequest(req: Request, env: Env): boolean {
@@ -122,7 +123,7 @@ export function programsRoutes(env: Env): Router {
     if (risk) where.riskLevel = risk;
     const list = await prisma.program.findMany({
       where,
-      include: { media: true, organizer: { select: { id: true, displayName: true, verificationStatus: true } } },
+      include: { media: orderedProgramMedia, organizer: { select: { id: true, displayName: true, verificationStatus: true } } },
       orderBy: allowAll ? [{ updatedAt: "desc" }, { startDate: "asc" }] : { startDate: "asc" },
     });
     if (allowAll) {
@@ -139,7 +140,7 @@ export function programsRoutes(env: Env): Router {
   router.get("/:id", async (req: Request, res: Response) => {
     const p = await prisma.program.findUnique({
       where: { id: req.params.id },
-      include: { media: true, organizer: { select: { id: true, displayName: true, verificationStatus: true } } },
+      include: { media: orderedProgramMedia, organizer: { select: { id: true, displayName: true, verificationStatus: true } } },
     });
     if (!p) {
       res.status(404).json({ error: "Not found" });
@@ -227,7 +228,7 @@ export function programsRoutes(env: Env): Router {
         intakeSource,
         publishStatus,
       },
-      include: { media: true },
+      include: { media: orderedProgramMedia },
     });
     await writeAuditLog({
       entityType: "program",
@@ -244,7 +245,7 @@ export function programsRoutes(env: Env): Router {
   router.patch("/:id", admin, async (req: Request, res: Response) => {
     const existing = await prisma.program.findUnique({
       where: { id: req.params.id },
-      include: { media: true },
+      include: { media: orderedProgramMedia },
     });
     if (!existing) {
       res.status(404).json({ error: "Not found" });
@@ -312,7 +313,7 @@ export function programsRoutes(env: Env): Router {
     const p = await prisma.program.update({
       where: { id: req.params.id },
       data,
-      include: { media: true },
+      include: { media: orderedProgramMedia },
     });
     for (const [field, newVal] of Object.entries(data)) {
       const oldVal = existing[field as keyof typeof existing];
@@ -359,7 +360,10 @@ export function programsRoutes(env: Env): Router {
   });
 
   router.post("/:id/media", admin, async (req: Request, res: Response) => {
-    const program = await prisma.program.findUnique({ where: { id: req.params.id } });
+    const program = await prisma.program.findUnique({
+      where: { id: req.params.id },
+      include: { media: { select: { position: true } } },
+    });
     if (!program) {
       res.status(404).json({ error: "Not found" });
       return;
@@ -376,6 +380,7 @@ export function programsRoutes(env: Env): Router {
         mediaType: mediaType as string,
         url: (url as string).trim(),
         caption: typeof caption === "string" && caption.trim() ? caption.trim() : null,
+        position: nextMediaPosition(program.media),
       },
     });
     await writeAuditLog({
@@ -387,6 +392,43 @@ export function programsRoutes(env: Env): Router {
       changedBy: req.adminUserId ?? null,
     });
     res.status(201).json(media);
+  });
+
+  /** PUT /programs/:id/media/order { mediaIds } — первый id становится обложкой. */
+  router.put("/:id/media/order", admin, async (req: Request, res: Response) => {
+    const program = await prisma.program.findUnique({
+      where: { id: req.params.id },
+      include: { media: orderedProgramMedia },
+    });
+    if (!program) {
+      res.status(404).json({ error: "Not found" });
+      return;
+    }
+    const reorder = validateMediaReorder(req.body, program.media.map((item) => item.id));
+    if (!reorder.ok) {
+      res.status(400).json({ error: reorder.error });
+      return;
+    }
+    const oldOrder = program.media.map((item) => item.id);
+    await prisma.$transaction([
+      ...reorder.order.map((mediaId, position) =>
+        prisma.programMedia.update({ where: { id: mediaId }, data: { position } }),
+      ),
+      prisma.program.update({ where: { id: program.id }, data: { mediaOrderPinned: true } }),
+    ]);
+    await writeAuditLog({
+      entityType: "program",
+      entityId: program.id,
+      changedField: "media_order",
+      oldValue: oldOrder.join(","),
+      newValue: reorder.order.join(","),
+      changedBy: req.adminUserId ?? null,
+    });
+    const media = await prisma.programMedia.findMany({
+      where: { programId: program.id },
+      orderBy: orderedProgramMedia.orderBy,
+    });
+    res.json(media);
   });
 
   router.delete("/:id/media/:mediaId", admin, async (req: Request, res: Response) => {

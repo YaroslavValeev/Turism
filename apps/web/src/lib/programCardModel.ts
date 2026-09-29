@@ -23,6 +23,7 @@ export type ProgramCardProgram = {
     verificationBadge?: string | null;
   };
   media?: { id?: string; url: string; mediaType: string }[];
+  mediaOrderPinned?: boolean;
   autoPublished?: boolean;
   sourceType?: string | null;
   sourceUrl?: string | null;

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { connection } from "next/server";
 import { exploreNavLinkFromRaw } from "@mywave/explore-links";
 import { fetchPublicCollectionList } from "../../lib/collectionsApi";
 import { getPublicSiteUrl } from "../../lib/siteUrl";
@@ -59,6 +60,8 @@ function collectionMeta(c: { discipline: string | null; region: string | null; s
 }
 
 export default async function CollectionsIndexPage() {
+  // API недоступен во время docker build: пререндер «запёк» бы пустую страницу до первой ревалидации.
+  await connection();
   const siteUrl = getPublicSiteUrl();
   let list: Awaited<ReturnType<typeof fetchPublicCollectionList>> | null = null;
   let err: string | null = null;

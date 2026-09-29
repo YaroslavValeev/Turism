@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { connection } from "next/server";
 import { fetchPublicExploreList } from "../../lib/exploreApi";
 import type { ExploreHubType } from "../../lib/exploreApi";
 
@@ -90,6 +91,8 @@ function catalogHref(item: { type: ExploreHubType; slug: string; label: string }
 }
 
 export default async function ExploreIndexPage() {
+  // API недоступен во время docker build: пререндер «запёк» бы пустую страницу до первой ревалидации.
+  await connection();
   const items = await fetchPublicExploreList();
 
   const byType: Record<ExploreHubType, typeof items> = { discipline: [], region: [], season: [] };

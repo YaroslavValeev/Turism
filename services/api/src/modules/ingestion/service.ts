@@ -9,7 +9,8 @@ import {
 import { Prisma, Source, EventCandidate, NormalizedItem, RawItem } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
 import { proxyAwareFetch } from "../../lib/proxyFetch";
-import { instagramProxyForUrl, instagramSessionHeaders } from "./instagramProxy";
+import { instagramProxyForUrl, instagramSessionHeaders, isInstagramHost } from "./instagramProxy";
+import { extractInstagramEdgeMedia } from "./instagramMedia";
 import { writeAuditLog } from "../../lib/audit";
 import { canPublishAutopilot, programIncludeForPublishGate } from "../programs/publishGate";
 import { archiveExpiredPublishedPrograms } from "../programs/expiration";
@@ -3784,22 +3785,6 @@ function deriveInstagramPostTitle(caption: string, sourceName: string): string |
   return truncate(firstLine || normalized, 140);
 }
 
-function getInstagramEdgeImage(edge: Record<string, unknown>): string | null {
-  const node = edge as {
-    display_url?: string | null;
-    thumbnail_src?: string | null;
-    thumbnail_tall_src?: string | null;
-    video_url?: string | null;
-  };
-  return (
-    normalizeRemoteAssetUrl(node.display_url) ??
-    normalizeRemoteAssetUrl(node.thumbnail_tall_src) ??
-    normalizeRemoteAssetUrl(node.thumbnail_src) ??
-    normalizeRemoteAssetUrl(node.video_url) ??
-    null
-  );
-}
-
 async function parseInstagramWebProfileItems(source: Source, profileUrl: string): Promise<CollectedItem[]> {
   const username = extractInstagramUsername(profileUrl) ?? extractInstagramUsername(source.urlOrHandle);
   if (!username) return [];
@@ -3850,7 +3835,7 @@ async function parseInstagramWebProfileItems(source: Source, profileUrl: string)
           .filter(Boolean)
           .join(". "),
       );
-      const imageUrl = getInstagramEdgeImage(edge);
+      const media = extractInstagramEdgeMedia(edge);
       const takenAt =
         typeof edge.taken_at_timestamp === "number"
           ? new Date(edge.taken_at_timestamp * 1000)
@@ -3863,7 +3848,7 @@ async function parseInstagramWebProfileItems(source: Source, profileUrl: string)
         publishedAt: takenAt,
         rawTitle: deriveInstagramPostTitle(caption, source.name),
         rawText: truncate(rawText, 2200),
-        rawMedia: imageUrl ? [{ url: imageUrl }] : [],
+        rawMedia: media,
         rawPayload: {
           mode: "instagram_web_profile_info",
           username,
@@ -4086,8 +4071,20 @@ async function finalizeSourceRun(
   });
 }
 
-/** Подписанные ссылки telesco.pe истекают — при повторном сборе поста подставляем свежие. */
-async function refreshExistingTelegramRawMedia(existing: RawItem, freshMedia: unknown): Promise<void> {
+function isInstagramCdnMediaUrl(url: string): boolean {
+  try {
+    return isInstagramHost(new URL(url).hostname);
+  } catch {
+    return false;
+  }
+}
+
+/** Подписанные ссылки telesco.pe и Instagram CDN истекают — при повторном сборе поста подставляем свежие. */
+async function refreshExistingSignedRawMedia(
+  existing: RawItem,
+  freshMedia: unknown,
+  isSignedCdnUrl: (url: string) => boolean,
+): Promise<void> {
   if (!Array.isArray(freshMedia) || freshMedia.length === 0) return;
   if (JSON.stringify(existing.rawMediaJson ?? []) === JSON.stringify(freshMedia)) return;
   try {
@@ -4099,13 +4096,13 @@ async function refreshExistingTelegramRawMedia(existing: RawItem, freshMedia: un
       where: { rawItemId: existing.id },
       select: { id: true, imageUrl: true },
     });
-    if (!normalized?.imageUrl || !isTelegramCdnMediaUrl(normalized.imageUrl)) return;
+    if (!normalized?.imageUrl || !isSignedCdnUrl(normalized.imageUrl)) return;
     const nextImage = extractImageUrl(freshMedia, "");
     if (nextImage && nextImage !== normalized.imageUrl) {
       await prisma.normalizedItem.update({ where: { id: normalized.id }, data: { imageUrl: nextImage } });
     }
   } catch (error) {
-    console.warn("[ingestion] telegram media refresh failed", existing.id, error instanceof Error ? error.message : error);
+    console.warn("[ingestion] signed media refresh failed", existing.id, error instanceof Error ? error.message : error);
   }
 }
 
@@ -4117,7 +4114,8 @@ async function persistCollectedItems(source: Source, sourceRunId: string, items:
       where: buildRawItemContentIdentityWhere(source.id, contentHash),
     });
     if (existing) {
-      if (source.type === "telegram") await refreshExistingTelegramRawMedia(existing, item.rawMedia);
+      if (source.type === "telegram") await refreshExistingSignedRawMedia(existing, item.rawMedia, isTelegramCdnMediaUrl);
+      if (source.type === "instagram") await refreshExistingSignedRawMedia(existing, item.rawMedia, isInstagramCdnMediaUrl);
       continue;
     }
     const raw = await prisma.$transaction(async (tx) => {

@@ -1,6 +1,6 @@
 "use client";
 
-import type { Dispatch, SetStateAction } from "react";
+import { Fragment, useState, type Dispatch, type SetStateAction } from "react";
 import Link from "next/link";
 import {
   PROGRAM_INTAKE_SOURCES,
@@ -10,6 +10,7 @@ import {
   getProgramPublishStatusLabel,
 } from "@mywave/shared-types";
 import { AdminStatusBadge } from "../AdminStatusBadge";
+import { ProgramCardEditor } from "./ProgramCardEditor";
 import {
   CURRENCY_OPTIONS,
   EMPTY_MEDIA_DRAFT,
@@ -56,7 +57,11 @@ type Props = {
   setPriceDrafts: Dispatch<SetStateAction<Record<string, PriceDraft>>>;
   savingPriceId: string | null;
   onSavePrice: (programId: string) => void;
+  onCardChanged: (message: string) => Promise<void> | void;
+  onCardError: (message: string) => void;
 };
+
+const PROGRAM_TABLE_COLUMNS = 10;
 
 function publishStatusTone(s: string): "ok" | "warn" | "danger" | "muted" {
   if (s === "published") return "ok";
@@ -92,7 +97,10 @@ export function ProgramCatalogTable({
   setPriceDrafts,
   savingPriceId,
   onSavePrice,
+  onCardChanged,
+  onCardError,
 }: Props) {
+  const [editingProgramId, setEditingProgramId] = useState<string | null>(null);
   return (
     <table className="mw-admin-table mw-admin-table--programs">
       <colgroup>
@@ -147,14 +155,24 @@ export function ProgramCatalogTable({
           const bandClass = programBandPillClass(score?.scoreBand);
           const hints = programHints(program, score);
           const priorityLabel = moderationPriorityLabel(score);
+          const isEditing = editingProgramId === program.id;
           return (
-            <tr key={program.id}>
+            <Fragment key={program.id}>
+            <tr>
               <td className="mw-admin-program-td">
                 <strong>
                   {program.isStarred ? "⭐ " : ""}
                   {program.title}
                 </strong>
                 <div className="mw-admin-caption">{program.organizer?.displayName ?? "—"} · {program.discipline}</div>
+                <button
+                  type="button"
+                  className="mw-admin-btn mw-admin-btn--ghost mw-admin-mt-8"
+                  onClick={() => setEditingProgramId(isEditing ? null : program.id)}
+                  aria-expanded={isEditing}
+                >
+                  {isEditing ? "Свернуть редактор" : "Редактировать карточку"}
+                </button>
               </td>
               <td className="mw-admin-program-td">
                 <div className="mw-admin-mb-8">
@@ -399,6 +417,14 @@ export function ProgramCatalogTable({
                 </div>
               </td>
             </tr>
+            {isEditing ? (
+              <tr>
+                <td colSpan={PROGRAM_TABLE_COLUMNS}>
+                  <ProgramCardEditor program={program} onChanged={onCardChanged} onError={onCardError} />
+                </td>
+              </tr>
+            ) : null}
+            </Fragment>
           );
         })}
       </tbody>

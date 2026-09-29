@@ -39,6 +39,7 @@ export function ProgramCard({
   const coverUrl = pickBestProgramCoverImageUrl(
     program.media,
     [program.title, program.audienceFit].filter(Boolean).join(" "),
+    { mediaOrderPinned: program.mediaOrderPinned },
   );
   const coverFit = programCardCoverFit(
     coverUrl,

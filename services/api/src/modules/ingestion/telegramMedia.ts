@@ -6,6 +6,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
 import { proxyAwareFetch } from "../../lib/proxyFetch";
 import { cacheExternalProgramMediaForWeb } from "./mediaCache";
+import { nextMediaPosition } from "../programs/mediaOrder";
 
 export type TelegramMediaEntry = { url: string; mediaType: "image" | "video" };
 
@@ -180,14 +181,16 @@ export async function refreshTelegramProgramMedia(
       OR: [{ url: { contains: "telesco.pe" } }, { url: { contains: "cdn-telegram.org" } }],
       ...(options.programIds?.length ? { programId: { in: options.programIds } } : {}),
     },
-    select: { id: true, programId: true, url: true },
+    select: { id: true, programId: true, url: true, position: true },
   });
 
   const staleByProgram = new Map<string, string[]>();
+  const stalePositionsByProgram = new Map<string, number[]>();
   for (const row of staleRows) {
     const ids = staleByProgram.get(row.programId) ?? [];
     ids.push(row.id);
     staleByProgram.set(row.programId, ids);
+    stalePositionsByProgram.set(row.programId, [...(stalePositionsByProgram.get(row.programId) ?? []), row.position]);
   }
 
   const result: TelegramMediaRefreshResult = { programsChecked: 0, programsUpdated: 0, mediaCached: 0, failures: [] };
@@ -198,7 +201,7 @@ export async function refreshTelegramProgramMedia(
     try {
       const program = await prisma.program.findUnique({
         where: { id: programId },
-        select: { id: true, sourceUrl: true, media: { select: { url: true } } },
+        select: { id: true, sourceUrl: true, media: { select: { url: true, position: true } } },
       });
       if (!program) throw new Error("program not found");
 
@@ -231,12 +234,20 @@ export async function refreshTelegramProgramMedia(
       if (options.dryRun) continue;
 
       const existingUrls = new Set(program.media.map((item) => item.url));
+      // Свежие файлы занимают места протухших ссылок, чтобы не сбить выбранную обложку.
+      const freeSlots = [...(stalePositionsByProgram.get(programId) ?? [])].sort((a, b) => a - b);
+      let appendPosition = nextMediaPosition(program.media);
       await prisma.$transaction([
         prisma.programMedia.deleteMany({ where: { id: { in: staleByProgram.get(programId)! } } }),
         prisma.programMedia.createMany({
           data: cached
             .filter((item) => !existingUrls.has(item.url))
-            .map((item) => ({ programId, url: item.url, mediaType: item.mediaType })),
+            .map((item) => ({
+              programId,
+              url: item.url,
+              mediaType: item.mediaType,
+              position: freeSlots.shift() ?? appendPosition++,
+            })),
         }),
         ...(rawItem
           ? [

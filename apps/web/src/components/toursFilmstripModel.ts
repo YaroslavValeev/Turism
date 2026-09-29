@@ -25,6 +25,7 @@ export type ProgramLike = {
   audienceFit: string | null;
   itineraryDayByDay?: string | null;
   media?: { id?: string; url: string; mediaType: string }[];
+  mediaOrderPinned?: boolean;
 };
 
 export type TourCategoryKey = "all" | "wakesurf" | "family" | "kids" | "beginner";
@@ -145,7 +146,9 @@ const FALLBACK_IMAGES = ["/pilot-media/program-1.svg", "/pilot-media/program-2.s
 
 function coverUrl(p: ProgramLike, index: number): { url: string; isRemote: boolean } {
   const raw =
-    pickBestProgramCoverImageUrl(p.media, `${p.title} ${p.audienceFit ?? ""} ${p.itineraryDayByDay ?? ""}`) ??
+    pickBestProgramCoverImageUrl(p.media, `${p.title} ${p.audienceFit ?? ""} ${p.itineraryDayByDay ?? ""}`, {
+      mediaOrderPinned: p.mediaOrderPinned,
+    }) ??
     FALLBACK_IMAGES[index % FALLBACK_IMAGES.length]!;
   /** Абсолютные URL и прокси `/api/media?...` не гоняем через `next/image`: оптимизатор даёт 400 на длинных query. */
   const isAbsoluteRemote = /^https?:\/\//i.test(raw);

@@ -1,6 +1,7 @@
 import type { Env } from "@mywave/config";
 import { prisma } from "../../lib/prisma";
 import { isProgramPubliclyVisible } from "../programs/publicVisibility";
+import { orderedProgramMedia } from "../programs/mediaOrder";
 import type { PublicOrganizerCard, PublicProgramCard } from "../public-blog/related";
 
 function orderByIdOrder<T extends { id: string }>(rows: T[], idOrder: string[]): T[] {
@@ -39,7 +40,7 @@ export async function loadCollectionRelated(
       ? prisma.program.findMany({
           where: { id: { in: col.relatedProgramIds } },
           include: {
-            media: true,
+            media: orderedProgramMedia,
             organizer: { select: { id: true, displayName: true, verificationStatus: true } },
           },
         })
@@ -82,6 +83,7 @@ export async function loadCollectionRelated(
       reviewStatus: p.reviewStatus,
       publishStatus: p.publishStatus,
       media: p.media.map((m) => ({ id: m.id, url: m.url, mediaType: m.mediaType })),
+      mediaOrderPinned: p.mediaOrderPinned,
       organizer: p.organizer,
     })),
     col.relatedProgramIds,

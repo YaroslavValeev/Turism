@@ -1,6 +1,7 @@
 import type { Env } from "@mywave/config";
 import { prisma } from "../../lib/prisma";
 import { isProgramPubliclyVisible } from "../programs/publicVisibility";
+import { orderedProgramMedia } from "../programs/mediaOrder";
 import { publicCollectionVisibilityWhere } from "../public-collections/resolve";
 
 export type PublicProgramCard = {
@@ -22,6 +23,7 @@ export type PublicProgramCard = {
   reviewStatus: string | null;
   publishStatus: string;
   media: { id: string; url: string; mediaType: string }[];
+  mediaOrderPinned: boolean;
   organizer: { id: string; displayName: string; verificationStatus: string };
 };
 
@@ -86,7 +88,7 @@ export async function loadBlogRelated(
       ? prisma.program.findMany({
           where: { id: { in: post.relatedProgramIds } },
           include: {
-            media: true,
+            media: orderedProgramMedia,
             organizer: { select: { id: true, displayName: true, verificationStatus: true } },
           },
         })
@@ -138,6 +140,7 @@ export async function loadBlogRelated(
       reviewStatus: p.reviewStatus,
       publishStatus: p.publishStatus,
       media: p.media.map((m) => ({ id: m.id, url: m.url, mediaType: m.mediaType })),
+      mediaOrderPinned: p.mediaOrderPinned,
       organizer: p.organizer,
     })),
     post.relatedProgramIds,

@@ -23,6 +23,7 @@ export function ProgramRailCard({ program, levelLabel, catalogHrefBuilder, progr
   const coverUrl = pickBestProgramCoverImageUrl(
     program.media,
     [program.title, program.audienceFit].filter(Boolean).join(" "),
+    { mediaOrderPinned: program.mediaOrderPinned },
   );
   const coverFit = programCardCoverFit(coverUrl, program.title, program.organizer?.displayName);
   const placeholderMod = programCardCoverPlaceholderClass(program.title, program.id);

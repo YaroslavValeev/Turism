@@ -8,6 +8,7 @@ import {
   rawStringToHubSlug,
 } from "@mywave/explore-links";
 import { isProgramPubliclyVisible } from "../programs/publicVisibility";
+import { orderedProgramMedia } from "../programs/mediaOrder";
 import { publicCollectionVisibilityWhere } from "../public-collections/resolve";
 import type { PublicProgramCard } from "../public-blog/related";
 import { resolveExploreHubSeo, type ResolvedExploreSeo } from "./resolveSeo";
@@ -144,6 +145,7 @@ type ProgramWithMediaOrg = {
   reviewStatus: string;
   publishStatus: string;
   media: { id: string; url: string; mediaType: string }[];
+  mediaOrderPinned: boolean;
   organizer: { id: string; displayName: string; verificationStatus: string };
 };
 
@@ -167,6 +169,7 @@ function cardFromProgram(p: ProgramWithMediaOrg): PublicProgramCard {
     reviewStatus: p.reviewStatus,
     publishStatus: p.publishStatus,
     media: p.media.map((m) => ({ id: m.id, url: m.url, mediaType: m.mediaType })),
+    mediaOrderPinned: p.mediaOrderPinned,
     organizer: p.organizer,
   };
 }
@@ -310,7 +313,7 @@ export async function loadExploreHub(
       : prisma.program.findMany({
           where: { ...orF, publishStatus: "published" },
           include: {
-            media: true,
+            media: orderedProgramMedia,
             organizer: { select: { id: true, displayName: true, verificationStatus: true } },
           },
           orderBy: { startDate: "asc" },

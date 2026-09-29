@@ -7,6 +7,7 @@ import {
   PROGRAM_CARD_TEXT_FIELDS,
   cardDraftFromProgram,
   cardPatchFromDraft,
+  reorderMediaIds,
   type Program,
   type ProgramCardDraft,
 } from "./programModel";
@@ -27,6 +28,7 @@ export function ProgramCardEditor({ program, onChanged, onError }: Props) {
   const [draft, setDraft] = useState<ProgramCardDraft>(() => cardDraftFromProgram(program));
   const [saving, setSaving] = useState(false);
   const [deletingMediaId, setDeletingMediaId] = useState<string | null>(null);
+  const [reordering, setReordering] = useState(false);
   const patch = cardPatchFromDraft(program, draft);
   const dirty = Object.keys(patch).length > 0;
 
@@ -52,6 +54,21 @@ export function ProgramCardEditor({ program, onChanged, onError }: Props) {
       onError(error instanceof Error ? error.message : "Не удалось удалить медиа");
     } finally {
       setDeletingMediaId(null);
+    }
+  };
+
+  const handleMoveMedia = async (from: number, to: number, message: string) => {
+    setReordering(true);
+    try {
+      await adminJson(`/programs/${program.id}/media/order`, {
+        method: "PUT",
+        body: JSON.stringify({ mediaIds: reorderMediaIds(program.media, from, to) }),
+      });
+      await onChanged(message);
+    } catch (error) {
+      onError(error instanceof Error ? error.message : "Не удалось изменить порядок медиа");
+    } finally {
+      setReordering(false);
     }
   };
 
@@ -121,9 +138,12 @@ export function ProgramCardEditor({ program, onChanged, onError }: Props) {
         </button>
       </div>
 
-      <div className="mw-admin-caption">Медиа карточки ({program.media.length}). Новое медиа — полем «Ссылка на медиа» в строке таблицы.</div>
+      <div className="mw-admin-caption">
+        Медиа карточки ({program.media.length}). Первое — обложка на витрине и в Telegram. Новое медиа — полем «Ссылка на
+        медиа» в строке таблицы, оно встаёт в конец.
+      </div>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
-        {program.media.map((media) => (
+        {program.media.map((media, index) => (
           <div key={media.id} className="mw-admin-stack-6" style={{ width: 160 }}>
             {media.mediaType === "video" ? (
               <video src={previewUrl(media.url)} style={{ width: 160, height: 110, objectFit: "cover" }} muted preload="metadata" />
@@ -137,9 +157,40 @@ export function ProgramCardEditor({ program, onChanged, onError }: Props) {
               />
             )}
             <span className="mw-admin-caption">
+              {index === 0 ? <strong>Обложка · </strong> : null}
               {getMediaTypeLabel(media.mediaType)}
               {media.url.startsWith("/ingestion-media/") ? " · на нашем сервере" : " · внешняя ссылка"}
             </span>
+            <div className="mw-admin-inline-form">
+              <button
+                type="button"
+                className="mw-admin-btn mw-admin-btn--ghost"
+                onClick={() => handleMoveMedia(index, index - 1, "Порядок медиа обновлён.")}
+                disabled={reordering || index === 0}
+                aria-label="Переместить левее"
+              >
+                ←
+              </button>
+              <button
+                type="button"
+                className="mw-admin-btn mw-admin-btn--ghost"
+                onClick={() => handleMoveMedia(index, index + 1, "Порядок медиа обновлён.")}
+                disabled={reordering || index === program.media.length - 1}
+                aria-label="Переместить правее"
+              >
+                →
+              </button>
+            </div>
+            {index > 0 && media.mediaType === "image" ? (
+              <button
+                type="button"
+                className="mw-admin-btn mw-admin-btn--ghost"
+                onClick={() => handleMoveMedia(index, 0, "Обложка карточки изменена.")}
+                disabled={reordering}
+              >
+                Сделать обложкой
+              </button>
+            ) : null}
             <button
               type="button"
               className="mw-admin-btn mw-admin-btn--ghost"

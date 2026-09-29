@@ -1,13 +1,14 @@
 import { prisma } from "../../lib/prisma";
 import { isProgramPubliclyVisible } from "../programs/publicVisibility";
 import { formatMoney } from "../fx/cbrRates";
+import { PROGRAM_MEDIA_ORDER } from "../programs/mediaOrder";
 
 export async function getProgramCardForTelegram(programId: string) {
   const program = await prisma.program.findUnique({
     where: { id: programId },
     include: {
       organizer: { select: { id: true, displayName: true, verificationStatus: true } },
-      media: { take: 1, orderBy: { id: "asc" } },
+      media: { take: 1, orderBy: PROGRAM_MEDIA_ORDER },
     },
   });
   if (!program || !isProgramPubliclyVisible(program)) {

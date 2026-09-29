@@ -43,7 +43,17 @@ export type ProgramMediaItem = {
   mediaType: string;
   url: string;
   caption?: string | null;
+  position?: number;
 };
+
+/** Порядок id после перемещения медиа с from на to; первый id — обложка карточки. */
+export function reorderMediaIds(media: ReadonlyArray<ProgramMediaItem>, from: number, to: number): string[] {
+  const ids = media.map((item) => item.id);
+  if (from < 0 || from >= ids.length || to < 0 || to >= ids.length || from === to) return ids;
+  const [moved] = ids.splice(from, 1);
+  ids.splice(to, 0, moved!);
+  return ids;
+}
 
 export const PROGRAM_CARD_TEXT_FIELDS = [
   { key: "title", label: "Название", multiline: false },

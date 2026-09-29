@@ -1,66 +1,34 @@
 import { Router, type Request, type Response } from "express";
 import { proxyAwareFetch } from "../../lib/proxyFetch";
 import { instagramProxyForUrl } from "../ingestion/instagramProxy";
-
-function isBlockedPrivateHost(hostname: string): boolean {
-  const host = hostname.toLowerCase();
-  if (host === "localhost" || host === "127.0.0.1" || host === "::1") return true;
-  if (host.endsWith(".local")) return true;
-  if (host.startsWith("10.")) return true;
-  if (host.startsWith("192.168.")) return true;
-  if (/^172\.(1[6-9]|2\d|3[0-1])\./.test(host)) return true;
-  return false;
-}
-
-function isTelegramCdnHost(hostname: string): boolean {
-  const host = hostname.toLowerCase();
-  return (
-    host.includes("telesco.pe") ||
-    host.includes("telegram.org") ||
-    host.includes("t.me") ||
-    host.includes("cdn-telegram.org")
-  );
-}
+import {
+  isAllowedMediaContentType,
+  isTelegramMediaHost,
+  PUBLIC_MEDIA_MAX_BYTES,
+  resolvePublicMediaTarget,
+} from "./publicMediaPolicy";
 
 function buildReferer(url: URL): string {
-  const host = url.hostname.toLowerCase();
-  if (host.includes("instagram.com") || host.includes("cdninstagram.com") || host.includes("fbcdn.net")) {
-    return "https://www.instagram.com/";
-  }
-  if (isTelegramCdnHost(host)) return "https://t.me/";
-  return `${url.protocol}//${url.hostname}/`;
+  return isTelegramMediaHost(url.hostname) ? "https://t.me/" : "https://www.instagram.com/";
 }
 
 /**
  * GET /public/media?url=https://...
- * Проксирует картинки/видео (Telegram CDN — через TELEGRAM_BOT_HTTP_PROXY, Instagram CDN — через INSTAGRAM_HTTP_PROXY).
+ * Проксирует картинки/видео только с CDN Telegram (через TELEGRAM_BOT_HTTP_PROXY) и Instagram (через INSTAGRAM_HTTP_PROXY).
  */
 export function publicMediaRoutes(): Router {
   const router = Router();
 
   router.get("/media", async (req: Request, res: Response) => {
-    const remoteUrl = String(req.query.url ?? "").trim();
-    if (!remoteUrl) {
-      res.status(400).json({ error: "Missing url" });
+    const target = resolvePublicMediaTarget(req.query.url);
+    if (!target.ok) {
+      res.status(target.status).json({ error: target.error });
       return;
     }
-
-    let parsed: URL;
-    try {
-      parsed = new URL(remoteUrl.startsWith("//") ? `https:${remoteUrl}` : remoteUrl);
-    } catch {
-      res.status(400).json({ error: "Invalid url" });
-      return;
-    }
-
-    if (!["http:", "https:"].includes(parsed.protocol) || isBlockedPrivateHost(parsed.hostname)) {
-      res.status(403).json({ error: "Forbidden" });
-      return;
-    }
+    const parsed = target.url;
 
     const telegramProxy = process.env.TELEGRAM_BOT_HTTP_PROXY?.trim() || null;
-    const upstreamProxy =
-      telegramProxy && isTelegramCdnHost(parsed.hostname) ? telegramProxy : instagramProxyForUrl(parsed.toString());
+    const upstreamProxy = isTelegramMediaHost(parsed.hostname) ? telegramProxy : instagramProxyForUrl(parsed.toString());
 
     try {
       const upstream = await proxyAwareFetch(
@@ -72,6 +40,8 @@ export function publicMediaRoutes(): Router {
             accept: "image/webp,image/avif,image/apng,image/*,video/webm,video/mp4,*/*;q=0.8",
             referer: buildReferer(parsed),
           },
+          // Редирект мог бы увести с разрешённого CDN на произвольный хост.
+          redirect: "manual",
           signal: AbortSignal.timeout(45000),
         },
         upstreamProxy,
@@ -82,14 +52,27 @@ export function publicMediaRoutes(): Router {
         return;
       }
 
-      const contentType = upstream.headers.get("content-type") ?? "application/octet-stream";
+      const contentType = upstream.headers.get("content-type");
+      if (!isAllowedMediaContentType(contentType)) {
+        res.status(502).json({ error: "Upstream is not media" });
+        return;
+      }
+      const declaredLength = Number(upstream.headers.get("content-length") ?? 0);
+      if (declaredLength > PUBLIC_MEDIA_MAX_BYTES) {
+        res.status(502).json({ error: "Upstream media too large" });
+        return;
+      }
       const buffer = Buffer.from(await upstream.arrayBuffer());
-      res.setHeader("content-type", contentType);
+      if (buffer.length > PUBLIC_MEDIA_MAX_BYTES) {
+        res.status(502).json({ error: "Upstream media too large" });
+        return;
+      }
+      res.setHeader("content-type", String(contentType));
+      res.setHeader("x-content-type-options", "nosniff");
       res.setHeader("cache-control", "public, max-age=3600");
       res.status(200).send(buffer);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      res.status(502).json({ error: "Media proxy failed", detail: message });
+    } catch {
+      res.status(502).json({ error: "Media proxy failed" });
     }
   });
 

@@ -118,13 +118,18 @@ function isPromoGraphicUrl(url: string): boolean {
 }
 
 /** Первое фото в альбоме TG нередко — инфографика; при «климатическом» тексте берём изображения в обратном порядке. */
+/** mediaOrderPinned: порядок и обложку выбрал админ — эвристики ниже его не перебивают. */
+export type ProgramCoverOptions = { mediaOrderPinned?: boolean | null };
+
 export function pickBestProgramCoverImageUrl(
   media: ProgramMediaItem[] | undefined,
   contextHint: string | null | undefined,
+  options: ProgramCoverOptions = {},
 ): string | null {
   if (!media?.length) return null;
   const images = media.filter((m) => m.mediaType === "image" && m.url?.trim());
   if (images.length === 0) return null;
+  if (options.mediaOrderPinned) return presentProgramMediaUrl(images[0]?.url ?? null);
   const climate = isLikelyStatsOrClimateInfographicContext(String(contextHint ?? ""));
   // Раньше при одном фото и «климатическом» описании возвращали null → пустая карточка; лучше показать кадр, чем ничего.
   if (climate && images.length === 1) {
@@ -151,8 +156,9 @@ export function firstProgramCoverImageUrl(media: ProgramMediaItem[] | undefined)
 export function orderProgramMediaForDisplay<T extends ProgramMediaItem & { id?: string }>(
   media: T[] | undefined,
   contextHint: string | null | undefined,
+  options: ProgramCoverOptions = {},
 ): T[] {
-  if (!media?.length || media.length <= 1) return media ?? [];
+  if (!media?.length || media.length <= 1 || options.mediaOrderPinned) return media ?? [];
   if (!isLikelyStatsOrClimateInfographicContext(String(contextHint ?? ""))) return media;
   return [...media].reverse();
 }

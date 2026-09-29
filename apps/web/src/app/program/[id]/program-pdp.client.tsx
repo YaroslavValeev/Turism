@@ -80,6 +80,7 @@ export type Program = {
     caption: string | null;
     mediaType: string;
   }[];
+  mediaOrderPinned?: boolean;
 };
 
 function sourceTypeLabelRuPdp(t: string | null | undefined): string {
@@ -421,6 +422,7 @@ export function ProgramPdpClient({
     return orderProgramMediaForDisplay(
       program.media,
       `${program.title} ${program.audienceFit ?? ""} ${program.itineraryDayByDay ?? ""}`,
+      { mediaOrderPinned: program.mediaOrderPinned },
     );
   }, [program]);
 

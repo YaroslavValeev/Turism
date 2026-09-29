@@ -1558,3 +1558,207 @@ model ContentCollection {
   @@index([season])
   @@map("content_collections")
 }
+
+// --- MyWave Spot Map v1.1 --------------------------------------------------
+// A separate trust domain from travel programs. Official rating unit:
+// concrete service at a concrete spot + tested equipment configuration.
+
+model Spot {
+  id              String         @id @default(cuid())
+  name            String
+  slug            String         @unique
+  country         String         @default("Россия")
+  region          String
+  city            String?
+  address         String?        @db.Text
+  latitude        Float?
+  longitude       Float?
+  sourceUrl       String?        @db.Text
+  cardStatus      String         @default("draft") // draft | internal_review | published | archived
+  factsStatus     String         @default("unverified") // unverified | partially_verified | verified | conflict
+  relatedToMyWave Boolean        @default(false)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  offerings       SpotOffering[]
+
+  @@index([cardStatus, region])
+  @@index([country, region])
+  @@map("spots")
+}
+
+model SpotOffering {
+  id                      String               @id @default(cuid())
+  spotId                  String
+  name                    String
+  discipline              String               @default("wakesurf")
+  equipmentLabel          String?
+  equipmentIdentity       String?              @db.Text
+  priceAmountRub          Int?
+  priceDurationMinutes    Int?
+  priceIncludes           String?              @db.Text
+  status                  String               @default("active") // active | paused | archived
+  currentRatingSnapshotId String?              @unique
+  createdAt               DateTime             @default(now())
+  updatedAt               DateTime             @updatedAt
+  spot                    Spot                 @relation(fields: [spotId], references: [id], onDelete: Cascade)
+  audits                  SpotAudit[]
+  ratingSnapshots         SpotRatingSnapshot[]
+  appeals                 SpotAppeal[]
+
+  @@index([discipline, status])
+  @@index([spotId, discipline])
+  @@map("spot_offerings")
+}
+
+model SpotExpert {
+  id            String      @id @default(cuid())
+  displayName   String
+  discipline    String
+  qualification String?     @db.Text
+  independent   Boolean     @default(true)
+  active        Boolean     @default(true)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  audits        SpotAudit[]
+
+  @@index([discipline, active])
+  @@map("spot_experts")
+}
+
+model SpotAudit {
+  id                         String               @id @default(cuid())
+  offeringId                 String
+  expertId                   String
+  status                     String               @default("draft") // draft | in_progress | ready_for_editor | signed | published | cancelled
+  methodologyVersion         String
+  protocolVersion            String
+  criteriaVersion            String
+  ratingVersion              String
+  startedAt                  DateTime?
+  testedAt                   DateTime?
+  completedAt                DateTime?
+  professionalTestCompleted  Boolean              @default(false)
+  expertSigned               Boolean              @default(false)
+  criterionEvidenceComplete  Boolean              @default(false)
+  evidenceIntegrityConfirmed Boolean              @default(false)
+  categoryScores             Json?
+  externalExpertConfirmed    Boolean              @default(false)
+  independentEditorConfirmed Boolean              @default(false)
+  signedAt                   DateTime?
+  createdAt                  DateTime             @default(now())
+  updatedAt                  DateTime             @updatedAt
+  offering                   SpotOffering         @relation(fields: [offeringId], references: [id], onDelete: Cascade)
+  expert                     SpotExpert           @relation(fields: [expertId], references: [id], onDelete: Restrict)
+  evidence                   SpotEvidence[]
+  gates                      SpotGateResult[]
+  remediations               SpotRemediation[]
+  ratingSnapshot             SpotRatingSnapshot?
+
+  @@index([offeringId, createdAt])
+  @@index([expertId, status])
+  @@map("spot_audits")
+}
+
+model SpotEvidence {
+  id            String    @id @default(cuid())
+  auditId       String
+  criterionKey  String?
+  gateId        String?
+  sessionKey    String?
+  storagePath   String    @db.Text
+  sha256        String
+  source        String
+  mediaType     String
+  uploadedBy    String?
+  rightsStatus  String
+  publicAllowed Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  audit         SpotAudit @relation(fields: [auditId], references: [id], onDelete: Cascade)
+
+  @@index([auditId, criterionKey])
+  @@index([auditId, gateId])
+  @@map("spot_evidence")
+}
+
+model SpotGateResult {
+  id        String    @id @default(cuid())
+  auditId   String
+  gateId    String
+  status    String // pass | fail | unknown
+  rationale String?   @db.Text
+  decidedBy String?
+  decidedAt DateTime  @default(now())
+  audit     SpotAudit @relation(fields: [auditId], references: [id], onDelete: Cascade)
+
+  @@unique([auditId, gateId])
+  @@index([auditId, status])
+  @@map("spot_gate_results")
+}
+
+model SpotRatingSnapshot {
+  id                 String       @id @default(cuid())
+  offeringId         String
+  auditId            String       @unique
+  methodologyVersion String
+  protocolVersion    String
+  criteriaVersion    String
+  ratingVersion      String
+  officialScore      Decimal      @db.Decimal(3, 1)
+  band               String
+  categoryScores     Json
+  gateStatuses       Json
+  expertId           String
+  expertDisplayName  String
+  testedAt           DateTime
+  expiresAt          DateTime
+  publishedAt        DateTime
+  publishedBy        String
+  createdAt          DateTime     @default(now())
+  offering           SpotOffering @relation(fields: [offeringId], references: [id], onDelete: Cascade)
+  audit              SpotAudit    @relation(fields: [auditId], references: [id], onDelete: Restrict)
+
+  @@index([offeringId, publishedAt])
+  @@index([expiresAt])
+  @@map("spot_rating_snapshots")
+}
+
+model SpotRemediation {
+  id                        String    @id @default(cuid())
+  auditId                   String
+  gateId                    String    @default("G05")
+  evidenceId                String?
+  status                    String    @default("pending") // pending | accepted | rejected | needs_info
+  moderatorId               String?
+  rationale                 String?   @db.Text
+  verifiedWorkingHotWater   Boolean   @default(false)
+  decidedAt                 DateTime?
+  createdAt                 DateTime  @default(now())
+  updatedAt                 DateTime  @updatedAt
+  audit                     SpotAudit @relation(fields: [auditId], references: [id], onDelete: Cascade)
+
+  @@index([auditId, gateId, status])
+  @@map("spot_remediations")
+}
+
+model SpotAppeal {
+  id                  String       @id @default(cuid())
+  offeringId          String
+  snapshotId          String
+  status              String       @default("registered") // registered | under_review | resolved | rejected
+  reason              String       @db.Text
+  openedBy            String?
+  openedAt            DateTime     @default(now())
+  secondExpertAuditId String?
+  thirdExpertAuditId  String?
+  decision            String?      @db.Text
+  resolvedBy          String?
+  resolvedAt          DateTime?
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+  offering            SpotOffering @relation(fields: [offeringId], references: [id], onDelete: Cascade)
+
+  @@index([offeringId, status])
+  @@index([snapshotId])
+  @@map("spot_appeals")
+}
+

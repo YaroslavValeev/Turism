@@ -50,7 +50,9 @@
     "sync:web-analytics-env": "pnpm --filter @mywave/config build && node scripts/sync-web-analytics-env.mjs",
     "e2e:checkpoint1": "node scripts/e2e_checkpoint1.js",
     "e2e:checkpoint2": "node scripts/e2e_checkpoint2_commission.js",
-    "e2e:fair-success-fee": "node scripts/e2e_fair_success_fee.js"
+    "e2e:fair-success-fee": "node scripts/e2e_fair_success_fee.js",
+    "osint:proposals:validate": "pnpm --filter api exec tsx prisma/import_source_proposals.ts prisma/source_proposals_osint_2026-09-29.json",
+    "osint:proposals:import": "pnpm --filter api exec tsx prisma/import_source_proposals.ts prisma/source_proposals_osint_2026-09-29.json --apply"
   },
   "devDependencies": {
     "@mywave/config": "workspace:*",

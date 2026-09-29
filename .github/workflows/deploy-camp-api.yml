@@ -380,7 +380,7 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -4 -p 22 -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
 
-          DP="${DEPLOY_PATH:-/opt/mywave/toutism}"
+          DP="${DEPLOY_PATH:-/opt/mywave/tourism}"
           DP="$(echo "$DP" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
           SSH_LONG="-4 -i ${HOME}/.ssh/deploy_key -p 22 -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=45 -o ConnectionAttempts=1 -o ServerAliveInterval=20 -o ServerAliveCountMax=240 -o TCPKeepAlive=yes"
 

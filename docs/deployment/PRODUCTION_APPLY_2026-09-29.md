@@ -2,8 +2,7 @@
 
 Статус: **НЕ ВЫПОЛНЯТЬ deploy/migrations/import/cron, пока Owner не снял production STOP по Camp/Tour API.**
 
-Release candidate на момент документа:
-`572af19f4be60db4f0b19664916f0ec9f89d8368`
+Release SHA не зашивается в документ: перед выкладкой Owner/релиз-инженер фиксирует конкретный одобренный SHA из `main` в переменной `EXPECTED_RELEASE_SHA`.
 
 ## 1. Что уже в main
 
@@ -101,16 +100,17 @@ export MW=/opt/mywave/tourism
 cd "$MW"
 DC=(docker compose --env-file .env.production -f docker-compose.production.yml)
 
+test -n "${EXPECTED_RELEASE_SHA:-}" || { echo "Set EXPECTED_RELEASE_SHA to the approved main SHA"; exit 1; }
 cat .release/REVISION
-test "$(cat .release/REVISION)" = "572af19f4be60db4f0b19664916f0ec9f89d8368" \
+test "$(cat .release/REVISION)" = "$EXPECTED_RELEASE_SHA" \
   && echo "release SHA OK" \
   || { echo "STOP: unexpected release SHA"; exit 1; }
 
 "${DC[@]}" ps
-PROD_HEALTHCHECK_EXPECTED_SHA="$(cat .release/REVISION)" MYWAVE_ROOT="$MW" bash scripts/prod_healthcheck.sh
+PROD_HEALTHCHECK_EXPECTED_SHA="$EXPECTED_RELEASE_SHA" MYWAVE_ROOT="$MW" bash scripts/prod_healthcheck.sh
 ```
 
-Если после даты этого документа в main появились новые изменения, сначала заменить expected SHA на новый одобренный release SHA.
+`EXPECTED_RELEASE_SHA` задаётся значением одобренного коммита перед запуском и не хранится как вечная константа в runbook.
 
 ## 5. Проверить runtime Instagram без раскрытия secret
 

@@ -8,6 +8,7 @@ import { writeAuditLog } from "../../lib/audit";
 import { runDedupJob, runNormalizationJob, runSourceCollection } from "../ingestion/service";
 import { emitBackendAnalyticsEventBestEffort } from "../analytics/service";
 import { callTelegramJson } from "./telegramApi";
+import { safeError } from "../../lib/safeLogger";
 
 type TelegramChat = { id: number };
 
@@ -236,8 +237,14 @@ async function runActiveSource(env: Env, chatId: number, sourceId: string, actor
     await runNormalizationJob(actorId, [source.id]);
     await runDedupJob(actorId, [source.id]);
     await sendMessage(env, chatId, `Готово: ${truncate(source.name)} обработан. Проверьте кандидаты в Admin.`);
-  } catch {
-    await sendMessage(env, chatId, `Не удалось обработать ${truncate(source.name)}. Смотрите «Задачи» в Admin.`);
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    safeError(`[telegram-operator] manual source run failed sourceId=${source.id}`, error);
+    await sendMessage(
+      env,
+      chatId,
+      `Не удалось обработать ${truncate(source.name)}: ${truncate(reason, 120)}. Подробности — «Задачи» в Admin.`,
+    );
   }
 }
 

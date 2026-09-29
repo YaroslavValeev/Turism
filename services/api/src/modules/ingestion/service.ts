@@ -9,6 +9,7 @@ import {
 import { Prisma, Source, EventCandidate, NormalizedItem, RawItem } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
 import { proxyAwareFetch } from "../../lib/proxyFetch";
+import { instagramProxyForUrl, instagramSessionHeaders } from "./instagramProxy";
 import { writeAuditLog } from "../../lib/audit";
 import { canPublishAutopilot, programIncludeForPublishGate } from "../programs/publishGate";
 import { archiveExpiredPublishedPrograms } from "../programs/expiration";
@@ -327,6 +328,77 @@ const LOCATION_SIGNALS: Array<{
   { keywords: ["сочи", "rosa khutor", "роза хутор", "красная поляна"], country: "Russia", region: "Сочи", city: "Сочи" },
 ];
 
+export type ExplicitLocation = { country: string; region: string; city: string | null; index: number };
+
+const EXPLICIT_REGION_PATTERNS: RegExp[] = [
+  /(?<![\p{L}])([а-яё]+(?:-[а-яё]+)?(?:ский|цкий|ской|кий))\s+(?:край|кр\.)(?![\p{L}])/giu,
+  /(?<![\p{L}])([а-яё]+(?:-[а-яё]+)?(?:ская|цкая|ная))\s+(?:область|обл\.?)(?![\p{L}])/giu,
+  /(?<![\p{L}])([а-яё]+(?:-[а-яё]+)?(?:ская|цкая))\s+республика(?![\p{L}])/giu,
+  /(?<![\p{L}])(?:республика|респ\.)\s+([а-яё]+(?:-[а-яё]+)?)(?![\p{L}])/giu,
+];
+
+const SETTLEMENT_AFTER_REGION =
+  /^[\s,–—-]*(?:[а-яё-]+\s+(?:район|р-н)[\s,]*)?(?:с\.\s*п\.|с\/п|г\.\s*о\.|г\.|город|п\.|пос\.|посёлок|поселок|пгт\.?|рп\.?|с\.|село|д\.|дер\.|деревня|ст\.|ст-ца|станица|х\.|хутор)\s*([а-яё]+(?:[\s-][а-яё]+)?)/iu;
+
+const SETTLEMENT_SECOND_WORDS = new Set([
+  "ключ", "поляна", "бор", "лог", "яр", "луки", "горки", "озеро", "ручей", "поле", "камень", "хутор", "слобода", "город", "новгород",
+]);
+
+/** Первое слово раздела поста после адреса — не часть названия населённого пункта. */
+const SETTLEMENT_STOP_WORDS = new Set([
+  "классы", "класс", "взнос", "требования", "регистрация", "расписание", "протяженность", "протяжённость", "трасса", "трек",
+  "старт", "дата", "даты", "место", "маршрут", "программа", "поистине", "олимпийская", "стоимость", "цена", "участие",
+]);
+
+const ADJECTIVE_ENDING = /(?:ая|яя|ое|ее|ые|ие|ий|ый|ой)$/u;
+
+function titleCaseRu(value: string): string {
+  return value
+    .split(/([\s-])/)
+    .map((part) => (/^[\s-]$/.test(part) || !part ? part : part[0].toUpperCase() + part.slice(1)))
+    .join("");
+}
+
+/**
+ * Явный российский топоним в тексте («Пермский край, п. Павловский», «Тверская обл., г. Конаково»,
+ * «Республика Алтай»). Берётся самое раннее упоминание — в дайджестах первым идёт основное событие.
+ */
+export function extractExplicitRussianLocation(text: string): ExplicitLocation | null {
+  const original = normalizeText(text);
+  const lower = original.toLowerCase();
+  let best: { index: number; end: number; region: string } | null = null;
+  for (const [patternIndex, pattern] of EXPLICIT_REGION_PATTERNS.entries()) {
+    pattern.lastIndex = 0;
+    const match = pattern.exec(lower);
+    if (!match || (best && match.index >= best.index)) continue;
+    const name = titleCaseRu(match[1]);
+    const region =
+      patternIndex === 0
+        ? `${name} край`
+        : patternIndex === 1
+          ? `${name} область`
+          : patternIndex === 2
+            ? `${name} республика`
+            : `Республика ${name}`;
+    best = { index: match.index, end: match.index + match[0].length, region };
+  }
+  if (!best) return null;
+  const tail = lower.slice(best.end, best.end + 80);
+  const settlement = SETTLEMENT_AFTER_REGION.exec(tail);
+  const [first, second] = settlement?.[1]?.split(/\s+/) ?? [];
+  let city: string | null = null;
+  if (first && !SETTLEMENT_STOP_WORDS.has(first)) {
+    const secondStart = best.end + settlement!.index + settlement![0].length - (second?.length ?? 0);
+    const secondCapitalized = second ? /^\p{Lu}/u.test(original.slice(secondStart, secondStart + 1)) : false;
+    const keepSecond =
+      Boolean(second) &&
+      !SETTLEMENT_STOP_WORDS.has(second) &&
+      (SETTLEMENT_SECOND_WORDS.has(second) || (ADJECTIVE_ENDING.test(first) && secondCapitalized));
+    city = titleCaseRu(keepSecond ? `${first} ${second}` : first);
+  }
+  return { country: "Russia", region: best.region, city, index: best.index };
+}
+
 const WAKESTYLE_LOCATION_OVERRIDES: Record<string, { country: string; region: string; city: string }> = {
   геленджике: { country: "Russia", region: "Краснодарский край", city: "Геленджик" },
   геленджик: { country: "Russia", region: "Краснодарский край", city: "Геленджик" },
@@ -511,17 +583,18 @@ export function extractEnduroRaceFields(rawText: string | null | undefined): End
   const title = eventAfterDate
     ? normalizeText(
         eventAfterDate.replace(
-          /\s+(?:республика\s+узбекистан|[а-яё-]+\s+обл\.?|алтайский край|карачаево-черкесская республика|классы|расписание|взнос|требования|регистрация|электронный хронометраж)(?=\s|,|$)[\s\S]*$/i,
+          /\s+(?:республика\s+узбекистан|[а-яё-]+(?:ская|цкая|ная)\s+(?:обл\.?|область)|[а-яё-]+(?:ский|цкий|кий|ской)\s+край|республика\s+[а-яё-]+|[а-яё-]+(?:ская|цкая)\s+республика|классы|расписание|взнос|требования|регистрация|электронный хронометраж)(?=\s|,|$)[\s\S]*$/i,
           "",
         ),
       )
     : null;
+  const explicit = matchedLocation ? null : extractExplicitRussianLocation(text);
 
   return {
     title: title || null,
-    country: matchedLocation?.country ?? null,
-    region: matchedLocation?.region ?? null,
-    city: matchedLocation?.city ?? null,
+    country: matchedLocation?.country ?? explicit?.country ?? null,
+    region: matchedLocation?.region ?? explicit?.region ?? null,
+    city: matchedLocation?.city ?? explicit?.city ?? null,
   };
 }
 
@@ -822,7 +895,7 @@ function detectLevel(text: string): string | null {
 }
 
 export function extractPrice(text: string): { priceFrom: number | null; currency: string | null } {
-  const pricePattern = /(?:от|from)?\s*([\d\s]{2,})\s*(₽|р\.?|руб\.?|rub|eur|usd|\$|€)/gi;
+  const pricePattern = /(?:от|from)?\s*([\d\s]{2,})\s*(₽|р\.?|руб\.?|rub|eur|usd|\$|€|₸|тенге|kzt)/gi;
   for (const match of text.matchAll(pricePattern)) {
     const matchIndex = match.index ?? 0;
     const contextBefore = text.slice(Math.max(0, matchIndex - 80), matchIndex).toLowerCase();
@@ -833,7 +906,14 @@ export function extractPrice(text: string): { priceFrom: number | null; currency
     const rawNumber = match[1].replace(/[^\d]/g, "");
     const priceFrom = rawNumber ? Number(rawNumber) : null;
     const currencyToken = match[2].toLowerCase();
-    const currency = currencyToken === "€" || currencyToken === "eur" ? "EUR" : currencyToken === "$" || currencyToken === "usd" ? "USD" : "RUB";
+    const currency =
+      currencyToken === "€" || currencyToken === "eur"
+        ? "EUR"
+        : currencyToken === "$" || currencyToken === "usd"
+          ? "USD"
+          : currencyToken === "₸" || currencyToken === "тенге" || currencyToken === "kzt"
+            ? "KZT"
+            : "RUB";
     return { priceFrom, currency };
   }
   return { priceFrom: null, currency: null };
@@ -842,6 +922,7 @@ export function extractPrice(text: string): { priceFrom: number | null; currency
 function hasExplicitDateSignal(text: string): boolean {
   return (
     /(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})/.test(text) ||
+    /(?<![\d.])\d{1,2}\.\d{1,2}\s*(?:-|–|—)\s*\d{1,2}\.\d{1,2}(?!\.?\d)/.test(text) ||
     /(\d{1,2})(?:\s*(?:-|–|—)\s*(\d{1,2}))?\s+(января|янв|февраля|фев|марта|мар|апреля|апр|мая|июня|июн|июля|июл|августа|авг|сентября|сент|сен|октября|окт|ноября|ноя|декабря|дек|january|jan|february|feb|march|mar|april|apr|may|june|jun|july|jul|august|aug|september|sep|october|oct|november|nov|december|dec)(?:\s+\d{4})?/i.test(
       text,
     ) ||
@@ -864,13 +945,20 @@ function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-export function matchesLocationKeyword(text: string, keyword: string): boolean {
+/** Позиция ключевого слова в тексте; совпадение только с начала слова («чили» не находится в «получили»). */
+export function locationKeywordIndex(text: string, keyword: string): number {
   const normalizedKeyword = normalizeText(keyword).toLowerCase();
-  if (!normalizedKeyword) return false;
-  if (normalizedKeyword === "анд") {
-    return /(?:^|[^\p{L}\p{N}])анд(?:ы|ах|ами|ов)?(?=$|[^\p{L}\p{N}])/iu.test(text);
-  }
-  return text.toLowerCase().includes(normalizedKeyword);
+  if (!normalizedKeyword) return -1;
+  const pattern =
+    normalizedKeyword === "анд"
+      ? /(?:^|[^\p{L}\p{N}])(анд)(?:ы|ах|ами|ов)?(?=$|[^\p{L}\p{N}])/iu
+      : new RegExp(`(?:^|[^\\p{L}\\p{N}])(${escapeRegExp(normalizedKeyword)})`, "iu");
+  const match = pattern.exec(text.toLowerCase());
+  return match ? match.index + match[0].indexOf(match[1]) : -1;
+}
+
+export function matchesLocationKeyword(text: string, keyword: string): boolean {
+  return locationKeywordIndex(text, keyword) >= 0;
 }
 
 function extractDates(text: string, fallbackDate: Date | null): { startDate: Date | null; endDate: Date | null } {
@@ -907,6 +995,23 @@ function extractDates(text: string, fallbackDate: Date | null): { startDate: Dat
 
     return {
       startDate: toMiddayDate(startYear, startMonth, startDay),
+      endDate: toMiddayDate(endYear, endMonth, endDay),
+    };
+  }
+
+  const yearlessNumericRangePattern = /(?<![\d.])(\d{1,2})\.(\d{1,2})\s*(?:-|–|—)\s*(\d{1,2})\.(\d{1,2})(?!\.?\d)/g;
+  let yearlessRangeMatch: RegExpExecArray | null;
+  while ((yearlessRangeMatch = yearlessNumericRangePattern.exec(text)) !== null) {
+    const startDay = Number(yearlessRangeMatch[1]);
+    const startMonth = Number(yearlessRangeMatch[2]);
+    const endDay = Number(yearlessRangeMatch[3]);
+    const endMonth = Number(yearlessRangeMatch[4]);
+    const baseYear = new Date().getUTCFullYear();
+    const endYear = endMonth < startMonth ? baseYear + 1 : baseYear;
+    if (!isValidCalendarDate(baseYear, startMonth, startDay) || !isValidCalendarDate(endYear, endMonth, endDay)) continue;
+
+    return {
+      startDate: toMiddayDate(baseYear, startMonth, startDay),
       endDate: toMiddayDate(endYear, endMonth, endDay),
     };
   }
@@ -989,9 +1094,24 @@ function addDays(date: Date, days: number): Date {
   return new Date(date.getTime() + days * 24 * 60 * 60 * 1000);
 }
 
-function detectRegion(text: string, source: SourceWithOrganizer): { country: string | null; region: string | null; city: string | null } {
+export function detectRegion(text: string, source: Pick<SourceWithOrganizer, "country" | "region">, originalText?: string): { country: string | null; region: string | null; city: string | null } {
   const lower = text.toLowerCase();
-  const matched = LOCATION_SIGNALS.find(({ keywords }) => keywords.some((keyword) => matchesLocationKeyword(lower, keyword)));
+  let matched: (typeof LOCATION_SIGNALS)[number] | undefined;
+  let matchedIndex = Number.POSITIVE_INFINITY;
+  for (const signal of LOCATION_SIGNALS) {
+    for (const keyword of signal.keywords) {
+      const position = locationKeywordIndex(lower, keyword);
+      if (position < 0) continue;
+      if (!matched || position < matchedIndex) {
+        matched = signal;
+        matchedIndex = position;
+      }
+    }
+  }
+  const explicit = extractExplicitRussianLocation(originalText ?? text);
+  if (explicit && explicit.index <= matchedIndex) {
+    return { country: explicit.country, region: explicit.region, city: explicit.city };
+  }
   const city = matched?.city ?? null;
 
   return {
@@ -1459,7 +1579,7 @@ function applyWhitePeaksOverrides(rawItem: RawItemWithSource, normalized: Omit<N
   const candidateTitle = normalizeText(titlePriceDateMatch?.groups?.title ?? segment.split(/\s{2,}|\.(?=\s|$)/)[0] ?? normalized.title ?? "");
   const price = extractPrice(segment.toLowerCase());
   const extractedDates = extractDates(segment.toLowerCase(), null);
-  const region = detectRegion(segment.toLowerCase(), rawItem.source);
+  const region = detectRegion(segment.toLowerCase(), rawItem.source, segment);
 
   return {
     ...normalized,
@@ -2690,7 +2810,7 @@ export function buildNormalizedDraft(rawItem: RawItemWithSource): NormalizedDraf
   const combined = normalizeText(`${rawTitle ?? ""}\n${rawText ?? ""}\n${ocrText ?? ""}`);
   const lower = combined.toLowerCase();
   const extractedDates = extractDatesByPriority([title, rawText, ocrText], rawItem.publishedAt);
-  const region = detectRegion(lower, rawItem.source);
+  const region = detectRegion(lower, rawItem.source, combined);
   const taxonomy = applyEnduroRaceTaxonomy(rawItem.source.name, combined, {
     eventType: detectEventType(lower),
     discipline: detectDiscipline(lower, rawItem.source),
@@ -2831,7 +2951,8 @@ function createDraftProgramPayload(candidate: CandidateWithRelations, organizerI
     audienceFit: programCardText(normalized.descriptionShort ?? normalized.descriptionFull, "Требует ручной нормализации оператором."),
     levelRequired: normalized.level ?? "all_levels",
     riskLevel: "medium",
-    priceFromRub: normalized.currency === "RUB" ? normalized.priceFrom : null,
+    // Сумма в валюте организатора (поле исторически называется priceFromRub); рубли сайт считает по курсу ЦБ.
+    priceFromRub: normalized.priceFrom,
     currency: normalized.currency ?? "RUB",
     inclusions: programCardText(suggestedInclusions, "Базовая программа и сопровождение организатора. Детальный состав включенного оператор уточняет по источнику перед передачей заявки."),
     exclusions: null,
@@ -3574,14 +3695,16 @@ async function fetchJsonWithRetry(url: string, headers?: Record<string, string>)
     try {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 15000);
-      const response = (await fetchFn(url, {
-        signal: controller.signal as unknown,
-        headers: {
-          "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135 Safari/537.36",
-          accept: "*/*",
-          ...headers,
-        },
-      })) as {
+      const requestHeaders = {
+        "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135 Safari/537.36",
+        accept: "*/*",
+        ...headers,
+        ...instagramSessionHeaders(url),
+      };
+      const proxy = instagramProxyForUrl(url);
+      const response = (proxy
+        ? await proxyAwareFetch(url, { headers: requestHeaders }, proxy)
+        : await fetchFn(url, { signal: controller.signal as unknown, headers: requestHeaders })) as {
         ok: boolean;
         status: number;
         json: () => Promise<unknown>;
@@ -3593,6 +3716,8 @@ async function fetchJsonWithRetry(url: string, headers?: Record<string, string>)
       return await response.json();
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
+      // Повтор при rate limit только продлевает бан (Instagram), поэтому 429 сразу наверх.
+      if (lastError.message === "HTTP 429") break;
       await new Promise((resolve) => setTimeout(resolve, attempt * 400));
     }
   }
@@ -4074,6 +4199,143 @@ export async function runSourceCollection(sourceId: string, actorId: string | nu
   }
 }
 
+export const MANUAL_POST_SOURCE_NAME = "Ручной ввод (бот владельца)";
+export const MANUAL_POST_MIN_TEXT_LENGTH = 60;
+
+export type ManualPostResult =
+  | { kind: "too_short" }
+  | { kind: "duplicate"; programId: string | null }
+  | { kind: "failed"; reason: string }
+  | {
+      kind: "created" | "merged";
+      programId: string;
+      title: string;
+      startDate: Date;
+      endDate: Date;
+      region: string | null;
+      sourceName: string;
+    };
+
+export function extractManualPostLinks(text: string): { instagramHandle: string | null; firstUrl: string | null } {
+  const urls = text.match(/https?:\/\/[^\s<>"')]+/gi) ?? [];
+  let instagramHandle: string | null = null;
+  for (const url of urls) {
+    const handle = extractInstagramUsername(url);
+    if (handle && /^[a-z0-9._]{1,30}$/i.test(handle)) {
+      instagramHandle = handle.toLowerCase();
+      break;
+    }
+  }
+  return { instagramHandle, firstUrl: urls[0] ?? null };
+}
+
+async function resolveManualPostSource(instagramHandle: string | null): Promise<Source> {
+  if (instagramHandle) {
+    const candidates = await prisma.source.findMany({
+      where: { type: "instagram", urlOrHandle: { contains: instagramHandle, mode: "insensitive" } },
+    });
+    const exact = candidates.find((source) => extractInstagramUsername(source.urlOrHandle)?.toLowerCase() === instagramHandle);
+    if (exact) return exact;
+  }
+  const existing = await prisma.source.findFirst({ where: { type: "site", name: MANUAL_POST_SOURCE_NAME } });
+  if (existing) return existing;
+  // Неактивный источник: планировщик его не собирает, он только держит посты, присланные владельцем.
+  return prisma.source.create({
+    data: {
+      type: "site",
+      name: MANUAL_POST_SOURCE_NAME,
+      urlOrHandle: "",
+      isActive: false,
+      trustScore: 0.9,
+      metaJson: { manualPosts: true },
+    },
+  });
+}
+
+/**
+ * Пост, присланный владельцем в рабочий бот (например, текст из Instagram, который не собирается
+ * автоматически), проходит тот же путь, что и собранный: raw → normalized → кандидат → черновик программы.
+ * Публикация остаётся за владельцем (/check_publish).
+ */
+export async function ingestManualPost(input: { text: string; actorId: string | null }): Promise<ManualPostResult> {
+  const text = input.text.trim();
+  if (text.length < MANUAL_POST_MIN_TEXT_LENGTH) return { kind: "too_short" };
+
+  const { instagramHandle, firstUrl } = extractManualPostLinks(text);
+  const source = await resolveManualPostSource(instagramHandle);
+  const externalItemId = `manual:${makeHash(text).slice(0, 24)}`;
+  const contentHash = makeHash(externalItemId, firstUrl, null, text);
+
+  const previous = await prisma.rawItem.findFirst({
+    where: buildRawItemContentIdentityWhere(source.id, contentHash),
+    select: {
+      normalizedItem: {
+        select: { candidates: { select: { publishedProgram: { select: { programId: true } } }, orderBy: { createdAt: "desc" }, take: 1 } },
+      },
+    },
+  });
+  if (previous) {
+    return { kind: "duplicate", programId: previous.normalizedItem?.candidates[0]?.publishedProgram?.programId ?? null };
+  }
+
+  const runId = await createSourceRun(source.id, "manual");
+  try {
+    await persistCollectedItems(
+      source,
+      runId,
+      [
+        {
+          externalItemId,
+          sourceUrl: firstUrl ?? undefined,
+          authorName: source.name,
+          publishedAt: new Date(),
+          rawText: text,
+          rawMedia: [],
+          rawPayload: { via: "owner_telegram_bot" },
+        },
+      ],
+      input.actorId,
+    );
+    await finalizeSourceRun(runId, "success", { itemsFound: 1, itemsCreated: 1 });
+  } catch (error) {
+    await finalizeSourceRun(runId, "failed", { errorMessage: error instanceof Error ? error.message : String(error) });
+    throw error;
+  }
+
+  await runNormalizationJob(input.actorId, [source.id]);
+  const raw = await prisma.rawItem.findFirst({
+    where: buildRawItemContentIdentityWhere(source.id, contentHash),
+    select: {
+      parseStatus: true,
+      normalizedItem: { select: { candidates: { select: { id: true, status: true }, orderBy: { createdAt: "desc" }, take: 1 } } },
+    },
+  });
+  const candidate = raw?.normalizedItem?.candidates[0];
+  if (!candidate) {
+    return { kind: "failed", reason: raw?.parseStatus === "failed" ? "не удалось разобрать текст" : "кандидат не создан" };
+  }
+  if (candidate.status === "rejected" || candidate.status === "archived" || candidate.status === "merged") {
+    // Владелец прислал пост сам — это решение сильнее автоматического скоринга.
+    await prisma.eventCandidate.update({ where: { id: candidate.id }, data: { status: "needs_review" } });
+  }
+
+  const link = await publishCandidateToDraft(candidate.id, input.actorId, "Пост прислан владельцем в Telegram-бот");
+  const program = await prisma.program.findUnique({
+    where: { id: link.programId },
+    select: { id: true, title: true, startDate: true, endDate: true, region: true },
+  });
+  if (!program) return { kind: "failed", reason: "программа не найдена после создания" };
+  return {
+    kind: link.duplicateSkipped ? "merged" : "created",
+    programId: program.id,
+    title: program.title,
+    startDate: program.startDate,
+    endDate: program.endDate,
+    region: program.region,
+    sourceName: source.name,
+  };
+}
+
 export async function runIngestionJob(actorId: string | null, sourceIds?: string[]): Promise<RunSummary> {
   const sources = await prisma.source.findMany({
     where: sourceIds?.length ? { id: { in: sourceIds }, isActive: true } : { isActive: true },
@@ -4373,6 +4635,95 @@ export async function runEnduroCandidateRemediation(
       updated: candidates.length,
     };
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+}
+
+type LocationFields = { country: string | null; region: string | null; city: string | null };
+
+export type LocationRemediationChange = {
+  candidateId: string;
+  title: string | null;
+  titleTo: string | null;
+  textStart: string | null;
+  from: LocationFields;
+  to: LocationFields;
+};
+
+/**
+ * Пересчитывает только страну/регион/город у будущих неопубликованных кандидатов на проверке
+ * из источников с подстрокой sourceName в названии. Без apply — только отчёт.
+ */
+export async function runSourceLocationRemediation(options: {
+  sourceName: string;
+  apply: boolean;
+  actorId: string | null;
+  now?: Date;
+}): Promise<{ apply: boolean; scanned: number; changes: LocationRemediationChange[] }> {
+  const sourceName = options.sourceName.trim();
+  if (sourceName.length < 3) throw new Error("sourceName must contain at least 3 characters");
+  const now = options.now ?? new Date();
+
+  const candidates = (await prisma.eventCandidate.findMany({
+    where: {
+      status: "needs_review",
+      publishedProgram: null,
+      normalizedItem: {
+        OR: [{ startDate: { gte: now } }, { startDate: null }],
+        rawItem: { source: { name: { contains: sourceName, mode: "insensitive" } } },
+      },
+    },
+    include: {
+      publishedProgram: true,
+      normalizedItem: {
+        include: {
+          rawItem: { include: { source: { include: { organizer: { select: { id: true, displayName: true } } } } } },
+        },
+      },
+    },
+    orderBy: { createdAt: "asc" },
+  })) as CandidateWithRelations[];
+
+  const changes: LocationRemediationChange[] = [];
+  for (const candidate of candidates) {
+    const item = candidate.normalizedItem;
+    const rebuilt = buildNormalizedDraft(item.rawItem);
+    const from: LocationFields = { country: item.country, region: item.region, city: item.city };
+    const to: LocationFields = { country: rebuilt.country, region: rebuilt.region, city: rebuilt.city };
+    const titleTo = rebuilt.title && rebuilt.title !== item.title ? rebuilt.title : null;
+    if (!titleTo && from.country === to.country && from.region === to.region && from.city === to.city) continue;
+    changes.push({
+      candidateId: candidate.id,
+      title: item.title,
+      titleTo,
+      textStart: truncate(normalizeText(item.rawItem.rawText), 160),
+      from,
+      to,
+    });
+  }
+
+  if (options.apply && changes.length > 0) {
+    await prisma.$transaction(async (tx) => {
+      for (const change of changes) {
+        const candidate = candidates.find((c) => c.id === change.candidateId)!;
+        await tx.normalizedItem.update({
+          where: { id: candidate.normalizedItemId },
+          data: { ...change.to, ...(change.titleTo ? { title: change.titleTo } : {}) },
+        });
+        await tx.auditLog.create({
+          data: {
+            entityType: "event_candidate",
+            entityId: candidate.id,
+            changedField: "location_remediation",
+            oldValue: JSON.stringify({ ...change.from, title: change.title }),
+            newValue: JSON.stringify({ ...change.to, title: change.titleTo ?? change.title }),
+            changedBy: options.actorId,
+            reason: `location parser remediation for sources matching "${sourceName}"; status and publication preserved`,
+          },
+        });
+      }
+    });
+  }
+
+  return { apply: options.apply, scanned: candidates.length, changes };
 }
 
 export async function runDedupJob(actorId: string | null, sourceIds?: string[]): Promise<RunSummary> {

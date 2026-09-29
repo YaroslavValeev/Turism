@@ -6,6 +6,7 @@ import crypto from "crypto";
 import fs from "fs/promises";
 import path from "path";
 import { proxyAwareFetch } from "../../lib/proxyFetch";
+import { instagramProxyForUrl } from "./instagramProxy";
 
 export const INGESTION_MEDIA_DIR = path.resolve(__dirname, "../../../../../apps/web/public/ingestion-media");
 export const INGESTION_MEDIA_PREFIX = "/ingestion-media";
@@ -112,7 +113,7 @@ export async function cacheExternalProgramMediaForWeb(
   } catch {
     return null;
   }
-  const useSocks = Boolean(proxy) && isTelegramCdnHost(host);
+  const mediaProxy = Boolean(proxy) && isTelegramCdnHost(host) ? proxy : instagramProxyForUrl(normalized);
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 45000);
@@ -129,7 +130,7 @@ export async function cacheExternalProgramMediaForWeb(
           referer,
         },
       },
-      useSocks ? proxy : null,
+      mediaProxy,
     );
 
     if (!response.ok) return null;

@@ -13,6 +13,7 @@ export type PublicProgramCard = {
   endDate: string;
   durationDays: number;
   priceFromRub: number | null;
+  currency: string | null;
   levelRequired: string | null;
   audienceFit: string | null;
   riskLevel: string | null;
@@ -128,6 +129,7 @@ export async function loadBlogRelated(
       endDate: p.endDate.toISOString(),
       durationDays: p.durationDays,
       priceFromRub: p.priceFromRub,
+      currency: p.currency ?? null,
       levelRequired: p.levelRequired,
       audienceFit: p.audienceFit,
       riskLevel: p.riskLevel,

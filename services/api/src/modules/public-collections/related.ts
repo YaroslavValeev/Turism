@@ -73,6 +73,7 @@ export async function loadCollectionRelated(
       endDate: p.endDate.toISOString(),
       durationDays: p.durationDays,
       priceFromRub: p.priceFromRub,
+      currency: p.currency ?? null,
       levelRequired: p.levelRequired,
       audienceFit: p.audienceFit,
       riskLevel: p.riskLevel,

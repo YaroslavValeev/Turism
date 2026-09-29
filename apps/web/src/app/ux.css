@@ -328,6 +328,19 @@ textarea {
   font-size: 1.15rem;
   margin: 0 0 12px;
 }
+.mw-price-fx {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 2px;
+}
+/* Справочная сумма в рублях по курсу ЦБ: тонкая вторичная строка под основной ценой. */
+.mw-price-fx__rub {
+  font-size: 0.78em;
+  font-weight: 400;
+  opacity: 0.72;
+  line-height: 1.25;
+  white-space: nowrap;
+}
 .mw-card-trust {
   font-size: 0.875rem;
   color: var(--mw-muted);

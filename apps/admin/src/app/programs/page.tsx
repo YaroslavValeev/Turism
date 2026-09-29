@@ -16,7 +16,9 @@ import {
   INITIAL_PROGRAM_FORM,
   type AvailabilityDraft,
   type MediaDraft,
+  priceDraftFromProgram,
   type OrganizerOption,
+  type PriceDraft,
   type Program,
   type ProgramForm,
   type ProgramScoreSnap,
@@ -50,6 +52,8 @@ export default function AdminProgramsPage() {
   const [savingIntakeId, setSavingIntakeId] = useState<string | null>(null);
   const [availabilityDrafts, setAvailabilityDrafts] = useState<Record<string, AvailabilityDraft>>({});
   const [savingAvailabilityId, setSavingAvailabilityId] = useState<string | null>(null);
+  const [priceDrafts, setPriceDrafts] = useState<Record<string, PriceDraft>>({});
+  const [savingPriceId, setSavingPriceId] = useState<string | null>(null);
   const [spotlightDrafts, setSpotlightDrafts] = useState<Record<string, SpotlightDraft>>({});
   const [savingSpotlightId, setSavingSpotlightId] = useState<string | null>(null);
   const [createForm, setCreateForm] = useState<ProgramForm>(INITIAL_PROGRAM_FORM);
@@ -94,6 +98,7 @@ export default function AdminProgramsPage() {
           ]),
         ),
       );
+      setPriceDrafts(Object.fromEntries(list.map((p) => [p.id, priceDraftFromProgram(p)])));
       setSpotlightDrafts(
         Object.fromEntries(
           list.map((p) => [p.id, { isStarred: p.isStarred }]),
@@ -180,6 +185,7 @@ export default function AdminProgramsPage() {
           itineraryDayByDay: createForm.itineraryDayByDay.trim(),
           inclusions: createForm.inclusions.trim(),
           priceFromRub: createForm.priceFromRub ? Number(createForm.priceFromRub) : undefined,
+          currency: createForm.currency,
           organizerName: organizer?.displayName,
           intakeSource: createForm.intakeSource || undefined,
         }),
@@ -296,6 +302,30 @@ export default function AdminProgramsPage() {
       setError(saveError instanceof Error ? saveError.message : "Не удалось сохранить наличие");
     } finally {
       setSavingAvailabilityId(null);
+    }
+  };
+
+  const handleSavePrice = async (programId: string) => {
+    if (!getAdminToken()) return;
+    const program = programs.find((p) => p.id === programId);
+    const draft = priceDrafts[programId] ?? (program ? priceDraftFromProgram(program) : { price: "", currency: "RUB" });
+    setSavingPriceId(programId);
+    setError("");
+    setMessage("");
+    try {
+      await adminJson(`/programs/${programId}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          priceFromRub: draft.price === "" ? null : Number(draft.price),
+          currency: draft.currency,
+        }),
+      });
+      setMessage("Цена обновлена.");
+      await loadPrograms();
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : "Не удалось сохранить цену");
+    } finally {
+      setSavingPriceId(null);
     }
   };
 
@@ -453,6 +483,10 @@ export default function AdminProgramsPage() {
             onSaveIntake={handleSaveIntake}
             onAddMedia={handleAddMedia}
             onSaveAvailability={handleSaveAvailability}
+            priceDrafts={priceDrafts}
+            setPriceDrafts={setPriceDrafts}
+            savingPriceId={savingPriceId}
+            onSavePrice={handleSavePrice}
             onSaveSpotlight={handleSaveSpotlight}
           />
         </div>

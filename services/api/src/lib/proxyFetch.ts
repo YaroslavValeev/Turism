@@ -129,7 +129,8 @@ export async function proxyAwareFetch(
   const proxy = normalizeProxyUrl(proxyUrl);
   if (!proxy) return fetch(url, init);
   if (!proxy.startsWith("socks5://") && !proxy.startsWith("socks4://")) {
-    throw new Error(`Unsupported proxy scheme: ${proxy.split(":", 1)[0]}`);
+    // Значение не выводим: при ошибке в настройке туда может попасть секрет.
+    throw new Error("Unsupported proxy scheme: expected socks5:// or socks4://");
   }
   const agent = new SocksProxyAgent(proxy);
   const method = (init?.method ?? "GET").toUpperCase();
@@ -143,7 +144,12 @@ export async function proxyAwareFetch(
       const chunks: Buffer[] = [];
       res.on("data", (c: Buffer) => chunks.push(c));
       res.on("end", () => {
-        resolve(new Response(Buffer.concat(chunks), { status: res.statusCode ?? 502 }));
+        const responseHeaders = new Headers();
+        for (const [name, value] of Object.entries(res.headers)) {
+          if (typeof value === "string") responseHeaders.set(name, value);
+          else if (Array.isArray(value)) responseHeaders.set(name, value.join(", "));
+        }
+        resolve(new Response(Buffer.concat(chunks), { status: res.statusCode ?? 502, headers: responseHeaders }));
       });
     });
     req.on("timeout", () => req.destroy(new Error("SOCKS fetch timeout")));

@@ -3,6 +3,7 @@ import { getDisciplineDisplay } from "../lib/disciplineLabels";
 import { participantLevel } from "../lib/catalog";
 import { reviewWord } from "../lib/programCardHelpers";
 import type { ProgramCardProgram } from "../lib/programCardModel";
+import { ProgramPrice } from "./ProgramPrice";
 
 type Props = {
   program: ProgramCardProgram;
@@ -49,9 +50,7 @@ export function ProgramCardBody({
         </div>
       </dl>
       <p className="mw-card-price">
-        {program.priceFromRub != null
-          ? `от ${program.priceFromRub.toLocaleString("ru-RU")} ${program.currency || "₽"}`
-          : "Стоимость уточняется"}
+        <ProgramPrice program={program} />
       </p>
       <p className="mw-card-trust">
         {program.autoPublished

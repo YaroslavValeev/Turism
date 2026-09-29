@@ -95,6 +95,11 @@ function buildFilename(url: string, cacheKey: string, extension: string): string
   return `${key}-${digest}.${extension}`;
 }
 
+/** Only the host is logged: CDN URLs carry signed tokens. */
+function logMediaCacheMiss(host: string, reason: string, viaProxy: boolean): void {
+  console.warn(`[media-cache] not cached host=${host} proxy=${viaProxy ? "yes" : "no"} reason=${reason.slice(0, 200)}`);
+}
+
 export async function cacheExternalProgramMediaForWeb(
   url: string | null | undefined,
   cacheKey: string,
@@ -133,9 +138,15 @@ export async function cacheExternalProgramMediaForWeb(
       mediaProxy,
     );
 
-    if (!response.ok) return null;
+    if (!response.ok) {
+      logMediaCacheMiss(host, `HTTP ${response.status}`, Boolean(mediaProxy));
+      return null;
+    }
     const contentType = response.headers.get("content-type");
-    if (!isAllowedMediaContentType(contentType)) return null;
+    if (!isAllowedMediaContentType(contentType)) {
+      logMediaCacheMiss(host, `content-type ${contentType}`, Boolean(mediaProxy));
+      return null;
+    }
 
     const extension = inferMediaExtension(normalized, contentType);
     const filename = buildFilename(normalized, cacheKey, extension);
@@ -149,10 +160,14 @@ export async function cacheExternalProgramMediaForWeb(
     }
 
     const body = Buffer.from(await response.arrayBuffer());
-    if (!body.length) return null;
+    if (!body.length) {
+      logMediaCacheMiss(host, "empty body", Boolean(mediaProxy));
+      return null;
+    }
     await fs.writeFile(targetPath, body);
     return `${INGESTION_MEDIA_PREFIX}/${filename}`;
-  } catch {
+  } catch (error) {
+    logMediaCacheMiss(host, error instanceof Error ? error.message : String(error), Boolean(mediaProxy));
     return null;
   } finally {
     clearTimeout(timeout);

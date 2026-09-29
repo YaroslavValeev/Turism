@@ -17,6 +17,7 @@ import type { AdminPayload } from "../../middleware/auth";
 import { isProgramPubliclyVisible } from "./publicVisibility";
 import { dedupeProgramsByEventKey } from "./dedup";
 import { setProgramPublishStatus } from "./publishStatus.service";
+import { validateProgramCardPatch, validateProgramMediaInput } from "./programEditValidation";
 import { getCbrRates, priceInRub, type CbrRates } from "../fx/cbrRates";
 
 function isAdminRequest(req: Request, env: Env): boolean {
@@ -250,6 +251,11 @@ export function programsRoutes(env: Env): Router {
       return;
     }
     const body = req.body as Record<string, unknown>;
+    const validationError = validateProgramCardPatch(body, existing);
+    if (validationError) {
+      res.status(400).json({ error: validationError });
+      return;
+    }
     const allowed = [
       "title", "discipline", "region", "exactLocation", "startDate", "endDate", "durationDays",
       "formatType", "audienceFit", "levelRequired", "riskLevel", "priceFromRub", "capacityTotal", "spotsAvailable", "currency",
@@ -291,7 +297,9 @@ export function programsRoutes(env: Env): Router {
           continue;
         }
         if (key === "startDate" || key === "endDate") data[key] = new Date(body[key] as string);
-        else if (key === "durationDays" || key === "priceFromRub") data[key] = Number(body[key]);
+        else if (key === "title" || key === "region") data[key] = String(body[key]).trim();
+        else if (key === "durationDays") data[key] = Number(body[key]);
+        else if (key === "priceFromRub") data[key] = body[key] === null || body[key] === "" ? null : Number(body[key]);
         else data[key] = body[key];
       }
     }
@@ -357,22 +365,49 @@ export function programsRoutes(env: Env): Router {
       return;
     }
     const { mediaType, url, caption } = req.body as { mediaType?: string; url?: string; caption?: string };
-    if (!mediaType || !url) {
-      res.status(400).json({ error: "mediaType and url required" });
+    const mediaError = validateProgramMediaInput(mediaType, url);
+    if (mediaError) {
+      res.status(400).json({ error: mediaError });
       return;
     }
     const media = await prisma.programMedia.create({
-      data: { programId: program.id, mediaType, url, caption: caption ?? null },
+      data: {
+        programId: program.id,
+        mediaType: mediaType as string,
+        url: (url as string).trim(),
+        caption: typeof caption === "string" && caption.trim() ? caption.trim() : null,
+      },
     });
     await writeAuditLog({
       entityType: "program_media",
       entityId: media.id,
       changedField: "created",
       oldValue: null,
-      newValue: url,
+      newValue: media.url,
       changedBy: req.adminUserId ?? null,
     });
     res.status(201).json(media);
+  });
+
+  router.delete("/:id/media/:mediaId", admin, async (req: Request, res: Response) => {
+    const media = await prisma.programMedia.findFirst({
+      where: { id: req.params.mediaId, programId: req.params.id },
+    });
+    if (!media) {
+      res.status(404).json({ error: "Not found" });
+      return;
+    }
+    await prisma.programMedia.delete({ where: { id: media.id } });
+    await writeAuditLog({
+      entityType: "program_media",
+      entityId: media.id,
+      changedField: "deleted",
+      oldValue: media.url,
+      newValue: null,
+      changedBy: req.adminUserId ?? null,
+      reason: `removed from program ${media.programId}`,
+    });
+    res.status(204).end();
   });
 
   return router;

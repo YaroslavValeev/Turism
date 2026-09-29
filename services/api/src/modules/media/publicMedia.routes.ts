@@ -1,5 +1,6 @@
 import { Router, type Request, type Response } from "express";
 import { proxyAwareFetch } from "../../lib/proxyFetch";
+import { instagramProxyForUrl } from "../ingestion/instagramProxy";
 
 function isBlockedPrivateHost(hostname: string): boolean {
   const host = hostname.toLowerCase();
@@ -32,7 +33,7 @@ function buildReferer(url: URL): string {
 
 /**
  * GET /public/media?url=https://...
- * Проксирует картинки/видео (Telegram CDN — через TELEGRAM_BOT_HTTP_PROXY).
+ * Проксирует картинки/видео (Telegram CDN — через TELEGRAM_BOT_HTTP_PROXY, Instagram CDN — через INSTAGRAM_HTTP_PROXY).
  */
 export function publicMediaRoutes(): Router {
   const router = Router();
@@ -57,8 +58,9 @@ export function publicMediaRoutes(): Router {
       return;
     }
 
-    const proxy = process.env.TELEGRAM_BOT_HTTP_PROXY?.trim() || null;
-    const useSocks = Boolean(proxy) && isTelegramCdnHost(parsed.hostname);
+    const telegramProxy = process.env.TELEGRAM_BOT_HTTP_PROXY?.trim() || null;
+    const upstreamProxy =
+      telegramProxy && isTelegramCdnHost(parsed.hostname) ? telegramProxy : instagramProxyForUrl(parsed.toString());
 
     try {
       const upstream = await proxyAwareFetch(
@@ -72,7 +74,7 @@ export function publicMediaRoutes(): Router {
           },
           signal: AbortSignal.timeout(45000),
         },
-        useSocks ? proxy : null,
+        upstreamProxy,
       );
 
       if (!upstream.ok) {

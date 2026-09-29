@@ -27,9 +27,76 @@ export type Program = {
   isStarred: boolean;
   priceFromRub?: number | null;
   currency?: string | null;
-  media: unknown[];
+  exactLocation?: string | null;
+  audienceFit?: string | null;
+  itineraryDayByDay?: string | null;
+  inclusions?: string | null;
+  exclusions?: string | null;
+  gearRequirements?: string | null;
+  cancellationRules?: string | null;
+  media: ProgramMediaItem[];
   organizer?: { id: string; displayName: string; verificationStatus: string };
 };
+
+export type ProgramMediaItem = {
+  id: string;
+  mediaType: string;
+  url: string;
+  caption?: string | null;
+};
+
+export const PROGRAM_CARD_TEXT_FIELDS = [
+  { key: "title", label: "Название", multiline: false },
+  { key: "region", label: "Регион", multiline: false },
+  { key: "exactLocation", label: "Точное место", multiline: false },
+  { key: "audienceFit", label: "Описание / для кого", multiline: true },
+  { key: "itineraryDayByDay", label: "Программа по дням", multiline: true },
+  { key: "inclusions", label: "Включено", multiline: true },
+  { key: "exclusions", label: "Не включено", multiline: true },
+  { key: "gearRequirements", label: "Снаряжение", multiline: true },
+  { key: "cancellationRules", label: "Условия отмены", multiline: true },
+] as const;
+
+export type ProgramCardTextKey = (typeof PROGRAM_CARD_TEXT_FIELDS)[number]["key"];
+
+const REQUIRED_CARD_TEXT_KEYS: readonly ProgramCardTextKey[] = ["title", "region"];
+
+export type ProgramCardDraft = Record<ProgramCardTextKey, string> & {
+  startDate: string;
+  endDate: string;
+  durationDays: string;
+};
+
+function toDateInput(value: string): string {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? "" : date.toISOString().slice(0, 10);
+}
+
+export function cardDraftFromProgram(p: Program): ProgramCardDraft {
+  const text = Object.fromEntries(
+    PROGRAM_CARD_TEXT_FIELDS.map(({ key }) => [key, String((p as Record<string, unknown>)[key] ?? "")]),
+  ) as Record<ProgramCardTextKey, string>;
+  return {
+    ...text,
+    startDate: toDateInput(p.startDate),
+    endDate: toDateInput(p.endDate),
+    durationDays: String(p.durationDays ?? ""),
+  };
+}
+
+/** Only changed fields go to PATCH so the audit log stays meaningful. */
+export function cardPatchFromDraft(p: Program, draft: ProgramCardDraft): Record<string, unknown> {
+  const saved = cardDraftFromProgram(p);
+  const patch: Record<string, unknown> = {};
+  for (const { key } of PROGRAM_CARD_TEXT_FIELDS) {
+    if (draft[key] === saved[key]) continue;
+    patch[key] = REQUIRED_CARD_TEXT_KEYS.includes(key) ? draft[key].trim() : draft[key].trim() || null;
+  }
+  if (draft.startDate !== saved.startDate) patch.startDate = draft.startDate;
+  if (draft.endDate !== saved.endDate) patch.endDate = draft.endDate;
+  if (draft.durationDays !== saved.durationDays) patch.durationDays = Number(draft.durationDays);
+  return patch;
+}
 
 export type ProgramForm = {
   organizerId: string;

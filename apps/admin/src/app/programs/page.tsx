@@ -69,12 +69,13 @@ export default function AdminProgramsPage() {
     }
   };
 
-  const loadPrograms = async () => {
+  const loadPrograms = async (options: { silent?: boolean } = {}) => {
     if (!getAdminToken()) {
       window.location.href = "/login";
       return;
     }
-    setLoading(true);
+    // Silent reload keeps the table (and an open card editor) mounted.
+    if (!options.silent) setLoading(true);
     setError("");
     const q =
       "?all=1"
@@ -488,6 +489,15 @@ export default function AdminProgramsPage() {
             savingPriceId={savingPriceId}
             onSavePrice={handleSavePrice}
             onSaveSpotlight={handleSaveSpotlight}
+            onCardChanged={async (cardMessage) => {
+              setError("");
+              setMessage(cardMessage);
+              await loadPrograms({ silent: true });
+            }}
+            onCardError={(cardError) => {
+              setMessage("");
+              setError(cardError);
+            }}
           />
         </div>
       )}

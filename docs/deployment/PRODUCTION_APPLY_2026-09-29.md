@@ -4,6 +4,21 @@
 
 Release SHA не зашивается в документ: перед выкладкой Owner/релиз-инженер фиксирует конкретный одобренный SHA из `main` в переменной `EXPECTED_RELEASE_SHA`.
 
+## 0. Короткий путь: `scripts/ops/prod-acceptance.sh`
+
+Скрипт повторяет разделы 2–7 одной командой на фазу. Read-only фазы можно запускать при STOP, изменяющие требуют `OWNER_GO=1`. Секреты не печатаются.
+
+| Фаза | Меняет прод | Что делает |
+|------|-------------|------------|
+| `preflight` | нет | REVISION, контейнеры, health, наличие env, один DNS backend `api` |
+| `env` | да | backup обоих env-файлов, owner-only бот, `INSTAGRAM_HTTP_PROXY` из `TELEGRAM_BOT_HTTP_PROXY`, скрытый ввод `INSTAGRAM_SESSION_ID`; переносит эти ключи из `services/api/.env.production`, который иначе перекрывает корневой файл |
+| `verify` | нет | 5 проверок после deploy (SHA, healthcheck, DNS, Camp list/detail, env внутри `api`) |
+| `instagram <user>` | нет | диагностика: HTTP-статус, прокси/сессия, посты, медиа, скачивание первого фото |
+| `osint-validate` / `osint-import` | нет / да | раздел 6 |
+| `scores` | да | раздел 7 |
+
+Скрипт приезжает на VPS вместе с релизом; до первого deploy используйте команды разделов 2–3.
+
 ## 1. Что уже в main
 
 - PR #94: owner-only Telegram, Instagram SOCKS + session cookie, manual post fallback, currency, admin search, location fixes.

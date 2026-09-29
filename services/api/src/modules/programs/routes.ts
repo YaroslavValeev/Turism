@@ -2,7 +2,7 @@
  * Programs CRUD + publish workflow. Source: endpoint_contracts, program_card_schema, canonical_status_models.
  * GET public (catalog: only published); admin with ?all=1 + Bearer sees all. POST/PATCH/publish-status admin. Publish gate enforced.
  */
-import { Router, Request, Response } from "express";
+import express, { Router, Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import {
   isProgramIntakeSource,
@@ -19,6 +19,7 @@ import { dedupeProgramsByEventKey } from "./dedup";
 import { setProgramPublishStatus } from "./publishStatus.service";
 import { validateProgramCardPatch, validateProgramMediaInput } from "./programEditValidation";
 import { nextMediaPosition, orderedProgramMedia, validateMediaReorder } from "./mediaOrder";
+import { detectUploadedMedia, MEDIA_UPLOAD_MAX_BYTES, saveUploadedMedia } from "./mediaUpload";
 import { getCbrRates, priceInRub, type CbrRates } from "../fx/cbrRates";
 
 function isAdminRequest(req: Request, env: Env): boolean {
@@ -393,6 +394,48 @@ export function programsRoutes(env: Env): Router {
     });
     res.status(201).json(media);
   });
+
+  /** POST /programs/:id/media/upload — тело запроса = сам файл (JPEG/PNG/WebP/MP4/WebM), добавляется в конец галереи. */
+  router.post(
+    "/:id/media/upload",
+    admin,
+    express.raw({ type: () => true, limit: MEDIA_UPLOAD_MAX_BYTES }),
+    async (req: Request, res: Response) => {
+      const program = await prisma.program.findUnique({
+        where: { id: req.params.id },
+        include: { media: { select: { position: true } } },
+      });
+      if (!program) {
+        res.status(404).json({ error: "Not found" });
+        return;
+      }
+      const body = Buffer.isBuffer(req.body) ? req.body : Buffer.alloc(0);
+      const detected = detectUploadedMedia(body);
+      if (!detected) {
+        res.status(400).json({ error: "Поддерживаются только JPEG, PNG, WebP, MP4 и WebM" });
+        return;
+      }
+      const url = await saveUploadedMedia(body, detected);
+      const media = await prisma.programMedia.create({
+        data: {
+          programId: program.id,
+          mediaType: detected.mediaType,
+          url,
+          caption: "Загружено в админке",
+          position: nextMediaPosition(program.media),
+        },
+      });
+      await writeAuditLog({
+        entityType: "program_media",
+        entityId: media.id,
+        changedField: "uploaded",
+        oldValue: null,
+        newValue: url,
+        changedBy: req.adminUserId ?? null,
+      });
+      res.status(201).json(media);
+    },
+  );
 
   /** PUT /programs/:id/media/order { mediaIds } — первый id становится обложкой. */
   router.put("/:id/media/order", admin, async (req: Request, res: Response) => {

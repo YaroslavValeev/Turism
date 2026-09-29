@@ -19,6 +19,13 @@ import {
   declineOutreachCampaign,
 } from "../organizer-outreach/service";
 import { submitSourceProposal } from "../sources/sourceProposal";
+import {
+  appendProgramImages,
+  ownerAlbumRegistry,
+  pickLargestPhoto,
+  saveTelegramPhotoToIngestionMedia,
+  type TgPhotoSize,
+} from "./ownerPostMedia";
 import { handleTelegramOperatorCallback, isTelegramOperator, sendTelegramOperatorMenu } from "./operatorMenu";
 import {
   handleProgramAdminCallback,
@@ -46,6 +53,8 @@ type Message = {
   chat: { id: number };
   text?: string;
   caption?: string;
+  photo?: TgPhotoSize[];
+  media_group_id?: string;
   voice?: { file_id: string; file_unique_id: string; duration: number; mime_type?: string };
   reply_to_message?: { message_id: number; chat: { id: number } };
 };
@@ -303,7 +312,7 @@ function formatManualPostDate(date: Date): string {
 export function formatManualPostReply(result: ManualPostResult): string {
   switch (result.kind) {
     case "too_short":
-      return `Чтобы добавить программу, пришлите текст поста целиком (от ${MANUAL_POST_MIN_TEXT_LENGTH} символов): даты, место, цена. Ссылку на Instagram-профиль организатора можно вставить в тот же текст.`;
+      return `Чтобы добавить программу, пришлите текст поста целиком (от ${MANUAL_POST_MIN_TEXT_LENGTH} символов): даты, место, цена. Ссылку на Instagram-профиль организатора можно вставить в тот же текст, а фото — прислать с текстом в подписи (альбомом тоже можно).`;
     case "duplicate":
       return result.programId
         ? "Этот пост уже добавлен. Черновик ждёт в /check_publish."
@@ -325,13 +334,53 @@ export function formatManualPostReply(result: ManualPostResult): string {
   }
 }
 
+function manualPostProgramId(result: ManualPostResult): string | null {
+  if (result.kind === "created" || result.kind === "merged") return result.programId;
+  if (result.kind === "duplicate") return result.programId;
+  return null;
+}
+
+/** Фото альбома без подписи: молча прикладываем к программе из подписанного сообщения того же альбома. */
+async function handleAlbumPhotoWithoutCaption(env: Env, msg: Message, photo: TgPhotoSize): Promise<void> {
+  const groupId = msg.media_group_id;
+  if (!groupId) return;
+  try {
+    const url = await saveTelegramPhotoToIngestionMedia(env, photo);
+    if (!url) return;
+    const programId = ownerAlbumRegistry.addPhoto(groupId, url);
+    if (programId) await appendProgramImages(programId, [url]);
+  } catch (error) {
+    safeError("[telegram] owner album photo failed", error);
+  }
+}
+
 async function handleManualPostMessage(env: Env, msg: Message): Promise<{ ok: true } | { ok: false; error: string }> {
   const text = (msg.text ?? msg.caption ?? "").trim();
-  if (!text) return { ok: true };
+  const photo = pickLargestPhoto(msg.photo);
+  if (!text) {
+    if (photo) await handleAlbumPhotoWithoutCaption(env, msg, photo);
+    return { ok: true };
+  }
   let reply: string;
   try {
-    const result = await ingestManualPost({ text, actorId: `tg:${msg.from?.id ?? "unknown"}` });
+    const photoUrl = photo ? await saveTelegramPhotoToIngestionMedia(env, photo) : null;
+    const media = photoUrl ? [{ url: photoUrl, mediaType: "image" as const }] : [];
+    const result = await ingestManualPost({ text, actorId: `tg:${msg.from?.id ?? "unknown"}`, media });
     reply = formatManualPostReply(result);
+    const programId = manualPostProgramId(result);
+    if (programId) {
+      if (photoUrl && result.kind !== "duplicate") reply += "\nФото из сообщения приложено к карточке.";
+      const extra = [
+        // Повторно присланный текст с новым фото — это «duplicate», фото всё равно нужно приложить.
+        ...(result.kind === "duplicate" && photoUrl ? [photoUrl] : []),
+        ...(msg.media_group_id ? ownerAlbumRegistry.bindProgram(msg.media_group_id, programId) : []),
+      ];
+      const added = await appendProgramImages(programId, extra);
+      if (result.kind === "duplicate" && added > 0) reply += `\nДобавил фото к программе: ${added}.`;
+    }
+    if (photo && !photoUrl) {
+      reply += "\nФото из сообщения скачать не удалось — добавьте его в админке («Редактировать карточку»).";
+    }
   } catch (error) {
     safeError("[telegram] manual post ingest failed", error);
     reply = "Не удалось обработать пост. Подробности — «Задачи» в Admin.";

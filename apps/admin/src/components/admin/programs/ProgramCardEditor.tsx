@@ -13,6 +13,9 @@ import {
 } from "./programModel";
 
 const WEB_BASE = (process.env.NEXT_PUBLIC_WEB_URL ?? "").replace(/\/+$/, "");
+/** Совпадает с MEDIA_UPLOAD_MAX_BYTES в API и client_max_body_size в nginx. */
+const UPLOAD_MAX_BYTES = 25 * 1024 * 1024;
+const UPLOAD_ACCEPT = "image/jpeg,image/png,image/webp,video/mp4,video/webm";
 
 function previewUrl(url: string): string {
   return url.startsWith("/") ? `${WEB_BASE}${url}` : url;
@@ -29,6 +32,7 @@ export function ProgramCardEditor({ program, onChanged, onError }: Props) {
   const [saving, setSaving] = useState(false);
   const [deletingMediaId, setDeletingMediaId] = useState<string | null>(null);
   const [reordering, setReordering] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const patch = cardPatchFromDraft(program, draft);
   const dirty = Object.keys(patch).length > 0;
 
@@ -54,6 +58,35 @@ export function ProgramCardEditor({ program, onChanged, onError }: Props) {
       onError(error instanceof Error ? error.message : "Не удалось удалить медиа");
     } finally {
       setDeletingMediaId(null);
+    }
+  };
+
+  const handleUpload = async (files: FileList | null) => {
+    const list = Array.from(files ?? []);
+    if (!list.length) return;
+    const tooBig = list.find((file) => file.size > UPLOAD_MAX_BYTES);
+    if (tooBig) {
+      onError(`Файл «${tooBig.name}» больше 25 МБ — сожмите его перед загрузкой.`);
+      return;
+    }
+    setUploading(true);
+    let uploaded = 0;
+    try {
+      for (const file of list) {
+        await adminJson(`/programs/${program.id}/media/upload`, {
+          method: "POST",
+          headers: { "Content-Type": file.type || "application/octet-stream" },
+          body: file,
+        });
+        uploaded += 1;
+      }
+      await onChanged(`Загружено файлов: ${uploaded}.`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Не удалось загрузить файл";
+      onError(uploaded ? `Загружено ${uploaded} из ${list.length}. ${message}` : message);
+      if (uploaded) await onChanged(`Загружено файлов: ${uploaded}.`);
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -139,9 +172,22 @@ export function ProgramCardEditor({ program, onChanged, onError }: Props) {
       </div>
 
       <div className="mw-admin-caption">
-        Медиа карточки ({program.media.length}). Первое — обложка на витрине и в Telegram. Новое медиа — полем «Ссылка на
-        медиа» в строке таблицы, оно встаёт в конец.
+        Медиа карточки ({program.media.length}). Первое — обложка на витрине и в Telegram. Новое медиа (файлом или полем
+        «Ссылка на медиа» в строке таблицы) встаёт в конец.
       </div>
+      <label className="mw-admin-inline-form">
+        <span className="mw-admin-caption">{uploading ? "Загружаем..." : "Загрузить файлы (JPEG, PNG, WebP, MP4, WebM, до 25 МБ):"}</span>
+        <input
+          type="file"
+          accept={UPLOAD_ACCEPT}
+          multiple
+          disabled={uploading}
+          onChange={(e) => {
+            void handleUpload(e.target.files);
+            e.target.value = "";
+          }}
+        />
+      </label>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
         {program.media.map((media, index) => (
           <div key={media.id} className="mw-admin-stack-6" style={{ width: 160 }}>

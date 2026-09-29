@@ -9,6 +9,9 @@ Release SHA не зашивается в документ: перед выкла
 - PR #94: owner-only Telegram, Instagram SOCKS + session cookie, manual post fallback, currency, admin search, location fixes.
 - PR #95: OSINT discovery playbook + safe SourceProposal importer + 30 candidates.
 - PR #96: CI validation of OSINT seed.
+- PR #97–#99: этот runbook, канонический путь `/opt/mywave/tourism`, operator-supplied release SHA guard.
+- PR #100: ядро MyWave Spot Map v1.1 (rating engine, без БД/UI).
+- Camp API guards (перенос актуальной части PR #18): `scripts/camp-api/contract-smoke.sh`, rollback в `Deploy Camp API`, restart reverse-proxy после замены `api`. Row-based pagination из main сохранена.
 
 ## 2. Безопасный preflight — можно выполнять при STOP
 
@@ -22,6 +25,14 @@ cat .release/REVISION 2>/dev/null || true
 curl -4 -sS https://mywavetour.ru/api/health
 grep -E '^(TELEGRAM_PUBLIC_BOT_ENABLED|INSTAGRAM_HTTP_PROXY|ANALYTICS_OPS_SCHEDULER_ENABLED)=' .env.production || true
 ```
+
+Camp API guard (read-only, токен не попадает в argv/логи): один Docker DNS backend `api` + согласованность list/detail (`default`, `limit=5`, `offset=5&limit=5`, `limit=100`, detail для каждого id). Pagination row-based, поэтому `limit=5` может вернуть меньше 5 кэмпов — проверяется префиксная согласованность, а не размер страницы.
+
+```bash
+cd /opt/mywave/tourism && bash scripts/camp-api/contract-smoke.sh
+```
+
+Если скрипта ещё нет на VPS (он приезжает вместе с релизом), выполнить из свежего Camp API артефакта или дождаться deploy. Два разных IP для `api` → production STOP остаётся.
 
 Не выводить в консоль:
 - `INSTAGRAM_SESSION_ID`
@@ -199,3 +210,17 @@ ls -lh "$(cat /var/lib/mywave-tourism/last-release-backup)"
 ```
 
 Do not perform a DB/data rollback without a separate owner-approved rollback decision.
+
+Camp API selected-artifact deploy (`Deploy Camp API` workflow) дополнительно откатывается сам: при любой ошибке после замены файлов восстанавливает `camp-feed`, `services/api/.env.production`, `/root/CAMP_API_TOKEN.current`, предыдущий образ `api` и перезапускает reverse-proxy.
+
+## 10. Критерии снятия production STOP
+
+Все семь пунктов обязательны:
+
+1. `scripts/camp-api/contract-smoke.sh` — один Docker DNS backend `api`.
+2. `prod_healthcheck.sh` зелёный.
+3. `.release/REVISION` = `EXPECTED_RELEASE_SHA`.
+4. `scripts/camp-api/contract-smoke.sh` — list/detail consistency ok.
+5. `INSTAGRAM_HTTP_PROXY` и `INSTAGRAM_SESSION_ID` присутствуют внутри контейнера `api`.
+6. `pnpm osint:proposals:validate` — 30 кандидатов, 10/10/10.
+7. Score snapshots созданы (counts > 0 после one-shot recalculation).

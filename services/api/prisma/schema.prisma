@@ -1638,6 +1638,7 @@ model SpotAudit {
   testedAt                   DateTime?
   completedAt                DateTime?
   professionalTestCompleted  Boolean              @default(false)
+  methodologyApprovedForPublication Boolean        @default(false)
   expertSigned               Boolean              @default(false)
   criterionEvidenceComplete  Boolean              @default(false)
   evidenceIntegrityConfirmed Boolean              @default(false)

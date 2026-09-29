@@ -62,11 +62,25 @@ echo "== Explore hub pages =="
 _explore_tmp="$(mktemp)"
 _explore_links_tmp="$(mktemp)"
 trap 'rm -f "$_catalog_tmp" "$_explore_tmp" "$_explore_links_tmp"' EXIT
-"${CURL_EXT[@]}" "${PUBLIC_ORIGIN}/explore" -o "$_explore_tmp"
+# Первый рендер /explore после деплоя бывает долгим (холодный кэш Next.js) — несколько попыток с таймаутом.
+_explore_ok=0
+for _attempt in 1 2 3; do
+  if "${CURL_EXT[@]}" --max-time 90 "${PUBLIC_ORIGIN}/explore" -o "$_explore_tmp"; then
+    _explore_ok=1
+    break
+  fi
+  echo "prod_healthcheck: /explore attempt ${_attempt} failed, retrying" >&2
+  sleep 5
+done
+if [[ "$_explore_ok" != "1" ]]; then
+  echo "prod_healthcheck: /explore did not return 200 after 3 attempts" >&2
+  exit 1
+fi
+# awk вместо head: head закрывает pipe раньше времени, sort ловит SIGPIPE, и pipefail молча валит скрипт.
 grep -o 'href="/explore/[^"?#]*' "$_explore_tmp" \
   | sed 's/^href="//' \
   | sort -u \
-  | head -n "${PROD_HEALTHCHECK_EXPLORE_LINK_LIMIT:-5}" >"$_explore_links_tmp"
+  | awk -v limit="${PROD_HEALTHCHECK_EXPLORE_LINK_LIMIT:-5}" 'NR <= limit' >"$_explore_links_tmp" || true
 if [[ ! -s "$_explore_links_tmp" ]]; then
   echo "prod_healthcheck: /explore contains no /explore/* links" >&2
   exit 1
@@ -102,7 +116,7 @@ if [[ "${PROD_HEALTHCHECK_CREATE_BOOKING:-0}" == "1" ]]; then
   : "${PROD_HEALTHCHECK_BOOKING_PROGRAM_ID:?PROD_HEALTHCHECK_BOOKING_PROGRAM_ID is required when PROD_HEALTHCHECK_CREATE_BOOKING=1}"
   _booking_program_id="$PROD_HEALTHCHECK_BOOKING_PROGRAM_ID"
   if [[ "$_booking_program_id" == "auto" ]]; then
-    _booking_program_id="$(grep -o '"id"[[:space:]]*:[[:space:]]*"[^"]*"' "$_catalog_tmp" | head -n 1 | sed 's/.*"id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/')"
+    _booking_program_id="$(grep -o '"id"[[:space:]]*:[[:space:]]*"[^"]*"' "$_catalog_tmp" | awk 'NR == 1' | sed 's/.*"id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/')"
     if [[ -z "$_booking_program_id" ]]; then
       echo "prod_healthcheck: could not auto-select a published program id from /api/programs" >&2
       exit 1

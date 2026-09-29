@@ -62,6 +62,7 @@ CREATE TABLE "spot_audits" (
   "testedAt" TIMESTAMP(3),
   "completedAt" TIMESTAMP(3),
   "professionalTestCompleted" BOOLEAN NOT NULL DEFAULT false,
+  "methodologyApprovedForPublication" BOOLEAN NOT NULL DEFAULT false,
   "expertSigned" BOOLEAN NOT NULL DEFAULT false,
   "criterionEvidenceComplete" BOOLEAN NOT NULL DEFAULT false,
   "evidenceIntegrityConfirmed" BOOLEAN NOT NULL DEFAULT false,

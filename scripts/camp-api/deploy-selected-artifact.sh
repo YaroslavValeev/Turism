@@ -27,6 +27,12 @@ mkdir -p "$VERIFY_DIR"
 tar -xzf "$ARTIFACT" -C "$VERIFY_DIR"
 (cd "$VERIFY_DIR" && sha256sum -c SHA256SUMS)
 
+CAMP_API_DC="docker compose --env-file $ENV_FILE -f $COMPOSE_FILE"
+# shellcheck source=/dev/null
+source "$VERIFY_DIR/scripts/camp-api/contract-smoke.sh"
+trap cleanup_camp_api_auth EXIT
+assert_single_api_dns
+
 BACKUP_PATH="/tmp/camp-api-selected-backup-$(date +%Y%m%d%H%M%S).tgz"
 tar -czf "$BACKUP_PATH" --ignore-failed-read \
   .env.example \
@@ -71,12 +77,16 @@ else
   docker compose --progress=plain --env-file "$ENV_FILE" -f "$COMPOSE_FILE" build api
 fi
 
-docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up -d --no-deps api reverse-proxy
+docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up -d --no-deps api
+# nginx caches the resolved upstream IP; restart it after the api container is replaced.
+docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" restart reverse-proxy
 docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" ps api reverse-proxy
 
-CAMP_API_TOKEN="$(cat /root/CAMP_API_TOKEN.current)"
+assert_single_api_dns
+prepare_camp_api_auth "$(read_camp_api_token)"
+
 curl -kfsS --resolve api.mywavetour.ru:443:127.0.0.1 \
-  -H "Authorization: Bearer ${CAMP_API_TOKEN}" \
+  --config "$CAMP_API_CURL_CONFIG" \
   "https://api.mywavetour.ru/api/v1/camps?status=published&sports=wakesurf,wakeboard&audience=ru&limit=5&offset=0" \
   -o /tmp/mywave-camps-sample.json
 
@@ -86,10 +96,9 @@ curl -ksS --resolve api.mywavetour.ru:443:127.0.0.1 \
   "https://api.mywavetour.ru/api/v1/camps" | grep -qx '401'
 
 curl -kfsS --resolve api.mywavetour.ru:443:127.0.0.1 \
-  -H "Authorization: Bearer ${CAMP_API_TOKEN}" \
+  --config "$CAMP_API_CURL_CONFIG" \
   "https://api.mywavetour.ru/api/v1/camps/health" \
   -o /tmp/camp-api-health.json
-unset CAMP_API_TOKEN
 
 python3 - <<'PY'
 import json
@@ -98,3 +107,5 @@ for path in ["/tmp/mywave-camps-sample.json", "/tmp/camp-api-health.json"]:
     assert isinstance(data, dict), path
 print("camp-api deploy smoke: ok")
 PY
+
+assert_camp_api_contract

@@ -23,7 +23,9 @@ tar -tzf "$BACKUP_PATH" >/tmp/camp-api-rollback.files
 tar -xzf "$BACKUP_PATH" -C "$DEPLOY_PATH"
 
 docker compose --progress=plain --env-file "$ENV_FILE" -f "$COMPOSE_FILE" build api
-docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up -d --no-deps api reverse-proxy
+docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up -d --no-deps api
+# nginx caches the resolved upstream IP; restart it after the api container is replaced.
+docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" restart reverse-proxy
 docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" ps api reverse-proxy
 
 curl -fsS --max-time 10 http://127.0.0.1:3001/health >/dev/null

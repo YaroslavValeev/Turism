@@ -1,6 +1,6 @@
 # Spot Map v1.1 — data layer plan (шаг 2 канона)
 
-Статус: проект, ждёт решений владельца (раздел 6)  
+Статус: шаг 1 реализован (миграция `20260929150000_spot_map_data_layer`, `spots/ratingInput.ts`); решения владельца — раздел 6  
 Основа: `SPOT_MAP_V1_1_INTEGRATION_CANON.md`, `services/api/src/modules/spots/ratingEngine.ts` (PR #100)
 
 ## 1. Что уже есть
@@ -23,8 +23,7 @@
 |---|---|---|
 | `Spot` | место | name, region, lat/lng, waterBodyType, organizerId?, relatedToMyWave, discoveryStatus (`candidate`/`listed`/`archived`) |
 | `SpotServiceUnit` | единица рейтинга | spotId, discipline (`wakesurf` в MVP), serviceName, equipmentConfig (JSON: лодка/модель/балласт) |
-| `SpotReviewer` | эксперт/редактор | displayName, role (`expert`/`editor`), isExternal, userId?, disciplines[] |
-| `SpotAudit` | проф. тест | unitId, testedAt, protocolVersion, criteriaVersion, methodologyVersion, status (`draft`/`submitted`/`signed`/`void`), expertId, expertSignedAt, externalExpertConfirmed, independentEditorId? |
+| `SpotAudit` | проф. тест | unitId, testedAt, protocolVersion, criteriaVersion, methodologyVersion, status (`draft`/`submitted`/`signed`/`void`), expertUserId → `User`, expertSignedAt, externalExpertConfirmed, externalExpertName?, independentEditorUserId? → `User` |
 | `SpotAuditCategoryScore` | 6 категорий | auditId, category, score (Decimal 3,1), unique(auditId, category) |
 | `SpotAuditGateResult` | 8 гейтов | auditId, gateId (G01–G08), status (`pass`/`fail`/`unknown`), unique(auditId, gateId) |
 | `SpotEvidence` | доказательства | auditId, criterion/gateId?, kind (`photo`/`video`/`document`), storageKey, sha256, capturedAt, isGenerated=false, integrityConfirmedBy/At |
@@ -32,7 +31,13 @@
 | `SpotRatingSnapshot` | неизменяемый результат | unitId, auditId, 4 версии, officialScore?, band?, publishable, blockers (JSON), inputJson, expiresAt, publishedAt?, publishedBy?, revokedAt?, revokeReason? |
 | `SpotAppeal` | апелляция | snapshotId, submittedBy, reason, status, resolution, resolvedBy/At |
 
-Неизменяемость снимка: API не имеет UPDATE для `officialScore/band/inputJson`; дополнительно — триггер Postgres, запрещающий изменение этих колонок после `publishedAt IS NOT NULL` (разрешены только `revokedAt/revokeReason`).
+Ограничения в БД (миграция):
+
+- CHECK `spot_gate_remediations.gateId = 'G05'`; CHECK статусов аудита и гейтов; CHECK `score` 0–10; CHECK «опубликовать можно только `publishable=true`».
+- Триггер `spot_rating_snapshots_guard`: вычисленные поля (версии, score, band, blockers, inputJson, expiresAt, computedAt/By) неизменяемы всегда; `publishedAt/publishedByUserId` ставятся один раз; `revokedAt/revokeReason` ставятся один раз; отозванный неопубликованный снимок нельзя опубликовать; опубликованный снимок нельзя удалить.
+- FK на аудит/доказательства/снимки — `RESTRICT`: историю нельзя стереть каскадом.
+
+Сборка входа движка — `buildSpotRatingInput(audit, options)`: отсутствующий гейт = `unknown`; G05 = `pass` только при принятой ремедиации на несгенерированном доказательстве; доказательства по каждой из 6 категорий; целостность — у всех доказательств; редактор ≠ эксперт; неполные оценки категорий → ошибка `category_scores_incomplete` (без догадок).
 
 ## 4. Поток публикации
 
@@ -48,9 +53,9 @@ draft audit → оценки + гейты + evidence → подпись эксп
 6. Импорт реестра кандидатов как `discoveryStatus=candidate` без рейтинга.
 7. Пилотные аудиты; публикация рейтингов только после них.
 
-## 6. Решения владельца (блокируют шаг 1)
+## 6. Решения владельца (приняты 2026-09-29)
 
-1. **Где хранить доказательства?** Текущий `/ingestion-media` публичный. Предложение: отдельный приватный volume `spot_evidence`, отдача только через admin API. Публично — только выбранные фото спота.
-2. **Эксперты/редакторы — отдельная сущность `SpotReviewer`** (могут не иметь входа в админку) или только пользователи админки?
-3. **Координаты и карта:** хранить lat/lng сразу (да/нет) и какой провайдер карты на web (Яндекс/OSM) — влияет на шаг 5, не на схему.
-4. **Связь с организаторами Travel:** необязательный `organizerId` у `Spot` — ок?
+1. **Доказательства** — отдельный приватный volume `spot_evidence` (не `/ingestion-media`), отдача только через admin API; `SpotEvidence.storageKey` — путь внутри него. Публично — только выбранные фото спота. Volume добавляется в compose на шаге 2 (Admin API).
+2. **Эксперт и редактор** — пользователи админки (`User`, роль `admin`); отдельной сущности `SpotReviewer` нет. Внешний эксперт для связанных с MyWave спотов фиксируется флагом `externalExpertConfirmed` + `externalExpertName`.
+3. **Координаты** — `latitude/longitude` (Decimal 9,6) храним сразу; карта на web — Яндекс Карты (шаг 5).
+4. **Организатор** — необязательный `Spot.organizerId` (`ON DELETE SET NULL`), пока нет более достоверного канала связи.

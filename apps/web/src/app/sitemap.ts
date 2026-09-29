@@ -1,7 +1,10 @@
 import type { MetadataRoute } from "next";
+import { connection } from "next/server";
 import { getServerApiBaseUrl, safeServerFetch } from "../lib/serverApiBase";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  // API недоступен во время docker build: без этого sitemap собирался бы без программ, статей и тем.
+  await connection();
   const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://mywavetour.ru").replace(/\/+$/, "");
   const staticEntries: MetadataRoute.Sitemap = [
     {

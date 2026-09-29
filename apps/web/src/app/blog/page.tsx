@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { connection } from "next/server";
 import { fetchPublicBlogList } from "../../lib/blogApi";
 import { getPublicSiteUrl } from "../../lib/siteUrl";
 
@@ -29,6 +30,8 @@ function formatRuDate(iso: string) {
 }
 
 export default async function BlogIndexPage() {
+  // API недоступен во время docker build: пререндер «запёк» бы пустую страницу до первой ревалидации.
+  await connection();
   const siteUrl = getPublicSiteUrl();
   let list: Awaited<ReturnType<typeof fetchPublicBlogList>> | null = null;
   let error: string | null = null;

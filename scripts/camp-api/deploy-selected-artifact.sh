@@ -5,7 +5,7 @@ set -euo pipefail
 [ "$OWNER_GO" = "1" ] || { echo "OWNER_GO must be 1" >&2; exit 1; }
 
 EXPECTED_HOSTNAME="${EXPECTED_HOSTNAME:-msk-1-vm-9j6k}"
-DEPLOY_PATH="${DEPLOY_PATH:-/opt/mywave/toutism}"
+DEPLOY_PATH="${DEPLOY_PATH:-/opt/mywave/tourism}"
 ARTIFACT="${ARTIFACT:-/tmp/camp-api-release.tgz}"
 ROTATE_CAMP_TOKEN="${ROTATE_CAMP_TOKEN:-false}"
 BUILD_MODE="${BUILD_MODE:-incremental}"

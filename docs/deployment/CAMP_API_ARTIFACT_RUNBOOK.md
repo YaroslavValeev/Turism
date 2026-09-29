@@ -94,7 +94,7 @@ Server: Tour VPS
 Hostname: `msk-1-vm-9j6k`
 IP: `5.129.249.113`
 Terminal: Timeweb web-console or SSH
-Working directory: `/opt/mywave/toutism`
+Working directory: `/opt/mywave/tourism`
 Allowed services: `api`, `reverse-proxy`
 Forbidden services: `web`, `admin`, Telegram bot/admin services, ParserNews,
 TGbotAdmin MyWave, YClients
@@ -103,8 +103,8 @@ Preflight:
 
 ```bash
 set -euo pipefail
-cd /opt/mywave/toutism
-EXPECTED_HOSTNAME=msk-1-vm-9j6k DEPLOY_PATH=/opt/mywave/toutism bash scripts/camp-api/docker-preflight.sh
+cd /opt/mywave/tourism
+EXPECTED_HOSTNAME=msk-1-vm-9j6k DEPLOY_PATH=/opt/mywave/tourism bash scripts/camp-api/docker-preflight.sh
 ```
 
 Verify copied artifact:
@@ -122,10 +122,10 @@ Deploy selected files, optionally rotating token without printing it:
 
 ```bash
 set -euo pipefail
-cd /opt/mywave/toutism
+cd /opt/mywave/tourism
 OWNER_GO=1 \
 EXPECTED_HOSTNAME=msk-1-vm-9j6k \
-DEPLOY_PATH=/opt/mywave/toutism \
+DEPLOY_PATH=/opt/mywave/tourism \
 ARTIFACT=/tmp/camp-api-release.tgz \
 ROTATE_CAMP_TOKEN=true \
 BUILD_MODE=incremental \
@@ -148,7 +148,7 @@ Do not echo token:
 
 ```bash
 set -euo pipefail
-cd /opt/mywave/toutism
+cd /opt/mywave/tourism
 CAMP_API_TOKEN="$(cat /root/CAMP_API_TOKEN.current)"
 
 curl -kfsS --resolve api.mywavetour.ru:443:127.0.0.1 \
@@ -204,10 +204,10 @@ The token value must never be printed in chat or CI logs.
 
 ```bash
 set -euo pipefail
-cd /opt/mywave/toutism
+cd /opt/mywave/tourism
 OWNER_GO=1 \
 EXPECTED_HOSTNAME=msk-1-vm-9j6k \
-DEPLOY_PATH=/opt/mywave/toutism \
+DEPLOY_PATH=/opt/mywave/tourism \
 bash scripts/camp-api/rollback-selected-artifact.sh
 ```
 

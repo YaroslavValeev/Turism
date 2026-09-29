@@ -2,7 +2,7 @@
 set -euo pipefail
 
 EXPECTED_HOSTNAME="${EXPECTED_HOSTNAME:-msk-1-vm-9j6k}"
-DEPLOY_PATH="${DEPLOY_PATH:-/opt/mywave/toutism}"
+DEPLOY_PATH="${DEPLOY_PATH:-/opt/mywave/tourism}"
 COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.production.yml}"
 ENV_FILE="${ENV_FILE:-.env.production}"
 

@@ -93,6 +93,8 @@ model User {
   passwordHash String? // for admin login only
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+  spotAuditsAsExpert SpotAudit[] @relation("SpotAuditExpert")
+  spotAuditsAsEditor SpotAudit[] @relation("SpotAuditEditor")
 }
 
 model Organizer {
@@ -131,6 +133,7 @@ model Organizer {
   contactChannels      OrganizerContactChannel[]
   telegramAccounts     OrganizerTelegramAccount[]
   telegramLeadAttempts TelegramLeadAttempt[]
+  spots                Spot[]
 
   @@map("organizers")
 }
@@ -1562,4 +1565,195 @@ model ContentCollection {
   @@index([region])
   @@index([season])
   @@map("content_collections")
+}
+
+// ---------------------------------------------------------------------------
+// Spot Map v1.1 (docs/product/SPOT_MAP_DATA_LAYER_PLAN.md). Отдельный контур доверия:
+// отзывы, OSINT, оплата и рейтинги Travel сюда не пишут и official score не меняют.
+// ---------------------------------------------------------------------------
+
+model Spot {
+  id              String            @id @default(cuid())
+  name            String
+  region          String
+  address         String?
+  latitude        Decimal?          @db.Decimal(9, 6)
+  longitude       Decimal?          @db.Decimal(9, 6)
+  waterBodyType   String? // lake | river | reservoir | sea | bay
+  organizerId     String?
+  /// Спот связан с MyWave: для официального рейтинга нужны внешний эксперт и независимый редактор.
+  relatedToMyWave Boolean           @default(false)
+  discoveryStatus String            @default("candidate") // candidate | listed | archived
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  organizer       Organizer?        @relation(fields: [organizerId], references: [id], onDelete: SetNull)
+  serviceUnits    SpotServiceUnit[]
+
+  @@index([region])
+  @@index([discoveryStatus])
+  @@index([organizerId])
+  @@map("spots")
+}
+
+/// Единица официального рейтинга: конкретная услуга на конкретном споте с протестированной конфигурацией инструмента.
+model SpotServiceUnit {
+  id              String               @id @default(cuid())
+  spotId          String
+  discipline      String               @default("wakesurf")
+  serviceName     String
+  /// Лодка/модель/балласт и т.п.: оценка одной лодки не описывает весь флот.
+  equipmentConfig Json
+  isActive        Boolean              @default(true)
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+  spot            Spot                 @relation(fields: [spotId], references: [id], onDelete: Cascade)
+  audits          SpotAudit[]
+  snapshots       SpotRatingSnapshot[]
+
+  @@index([spotId])
+  @@index([discipline])
+  @@map("spot_service_units")
+}
+
+/// Профессиональный тест единицы. Эксперт и редактор — пользователи админки.
+model SpotAudit {
+  id                      String                   @id @default(cuid())
+  unitId                  String
+  testedAt                DateTime
+  methodologyVersion      String
+  protocolVersion         String
+  criteriaVersion         String
+  status                  String                   @default("draft") // draft | submitted | signed | void
+  expertUserId            String?
+  expertSignedAt          DateTime?
+  externalExpertConfirmed Boolean                  @default(false)
+  externalExpertName      String?
+  independentEditorUserId String?
+  notes                   String?                  @db.Text
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
+  unit                    SpotServiceUnit          @relation(fields: [unitId], references: [id], onDelete: Restrict)
+  expert                  User?                    @relation("SpotAuditExpert", fields: [expertUserId], references: [id], onDelete: Restrict)
+  independentEditor       User?                    @relation("SpotAuditEditor", fields: [independentEditorUserId], references: [id], onDelete: Restrict)
+  categoryScores          SpotAuditCategoryScore[]
+  gateResults             SpotAuditGateResult[]
+  evidence                SpotEvidence[]
+  remediations            SpotGateRemediation[]
+  snapshots               SpotRatingSnapshot[]
+
+  @@index([unitId])
+  @@index([status])
+  @@map("spot_audits")
+}
+
+model SpotAuditCategoryScore {
+  id       String    @id @default(cuid())
+  auditId  String
+  category String // infrastructure | instrument | waterArea | personnel | safety | atmosphere
+  score    Decimal   @db.Decimal(3, 1)
+  audit    SpotAudit @relation(fields: [auditId], references: [id], onDelete: Cascade)
+
+  @@unique([auditId, category])
+  @@map("spot_audit_category_scores")
+}
+
+model SpotAuditGateResult {
+  id      String    @id @default(cuid())
+  auditId String
+  gateId  String // G01..G08
+  status  String // pass | fail | unknown
+  audit   SpotAudit @relation(fields: [auditId], references: [id], onDelete: Cascade)
+
+  @@unique([auditId, gateId])
+  @@map("spot_audit_gate_results")
+}
+
+/// Файлы лежат в приватном хранилище (не в публичном /ingestion-media), отдаются только через admin API.
+model SpotEvidence {
+  id                         String                @id @default(cuid())
+  auditId                    String
+  /// Категория (infrastructure…) или гейт (G01…), к которому относится доказательство.
+  criterion                  String?
+  kind                       String // photo | video | document
+  storageKey                 String                @unique
+  sha256                     String
+  mimeType                   String
+  sizeBytes                  Int
+  capturedAt                 DateTime?
+  isGenerated                Boolean               @default(false)
+  uploadedByUserId           String?
+  integrityConfirmedByUserId String?
+  integrityConfirmedAt       DateTime?
+  createdAt                  DateTime              @default(now())
+  audit                      SpotAudit             @relation(fields: [auditId], references: [id], onDelete: Restrict)
+  remediations               SpotGateRemediation[]
+
+  @@index([auditId])
+  @@map("spot_evidence")
+}
+
+/// Удалённое исправление гейта: по канону v1.1 только G05 (горячий душ) — ограничено CHECK в миграции.
+model SpotGateRemediation {
+  id                      String       @id @default(cuid())
+  auditId                 String
+  gateId                  String       @default("G05")
+  evidenceId              String
+  moderatorUserId         String
+  rationale               String       @db.Text
+  verifiedWorkingHotWater Boolean
+  accepted                Boolean
+  reasons                 Json
+  decidedAt               DateTime     @default(now())
+  audit                   SpotAudit    @relation(fields: [auditId], references: [id], onDelete: Restrict)
+  evidence                SpotEvidence @relation(fields: [evidenceId], references: [id], onDelete: Restrict)
+
+  @@index([auditId])
+  @@map("spot_gate_remediations")
+}
+
+/// Неизменяемый результат оценки (триггер в миграции): новая оценка = новая строка.
+model SpotRatingSnapshot {
+  id                 String          @id @default(cuid())
+  unitId             String
+  auditId            String
+  methodologyVersion String
+  protocolVersion    String
+  criteriaVersion    String
+  ratingVersion      String
+  officialScore      Decimal?        @db.Decimal(3, 1)
+  band               String?
+  publishable        Boolean
+  blockers           Json
+  inputJson          Json
+  expiresAt          DateTime
+  computedAt         DateTime        @default(now())
+  computedByUserId   String?
+  publishedAt        DateTime?
+  publishedByUserId  String?
+  revokedAt          DateTime?
+  revokeReason       String?
+  unit               SpotServiceUnit @relation(fields: [unitId], references: [id], onDelete: Restrict)
+  audit              SpotAudit       @relation(fields: [auditId], references: [id], onDelete: Restrict)
+  appeals            SpotAppeal[]
+
+  @@index([unitId, publishedAt])
+  @@index([auditId])
+  @@map("spot_rating_snapshots")
+}
+
+model SpotAppeal {
+  id               String             @id @default(cuid())
+  snapshotId       String
+  submittedBy      String
+  reason           String             @db.Text
+  status           String             @default("open") // open | accepted | rejected
+  resolution       String?            @db.Text
+  resolvedByUserId String?
+  resolvedAt       DateTime?
+  createdAt        DateTime           @default(now())
+  snapshot         SpotRatingSnapshot @relation(fields: [snapshotId], references: [id], onDelete: Restrict)
+
+  @@index([snapshotId])
+  @@index([status])
+  @@map("spot_appeals")
 }

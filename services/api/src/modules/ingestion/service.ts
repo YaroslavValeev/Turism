@@ -19,6 +19,7 @@ import { nextMediaPosition } from "../programs/mediaOrder";
 import { lockedProgramFields, withoutManualFields } from "../programs/manualFields";
 import { enrichProgramCardAfterIngestion } from "../programs/cardEnrichment.service";
 import { pickOrganizerByName, shouldLinkSourceToResolvedOrganizer } from "../organizers/workflow";
+import { toSafeDbText, toSafeDbValue } from "./safeDbText";
 import { cacheExternalProgramMediaForWeb } from "./mediaCache";
 import { fetchIngestionTextWithRetry } from "./sourceFetch";
 import { applyEnduroRaceTaxonomy } from "./taxonomy";
@@ -4243,12 +4244,12 @@ async function persistCollectedItems(source: Source, sourceRunId: string, items:
           externalItemId: item.externalItemId ?? null,
           sourceType: source.type,
           sourceUrl: item.sourceUrl ?? normalizeSourceUrl(source),
-          authorName: item.authorName ?? source.name,
+          authorName: toSafeDbText(item.authorName ?? source.name),
           publishedAt: item.publishedAt ?? null,
-          rawTitle: item.rawTitle ?? null,
-          rawText: item.rawText ?? null,
-          rawMediaJson: (item.rawMedia ?? []) as Prisma.InputJsonValue,
-          rawPayloadJson: (item.rawPayload ?? {}) as Prisma.InputJsonValue,
+          rawTitle: item.rawTitle == null ? null : toSafeDbText(item.rawTitle),
+          rawText: item.rawText == null ? null : toSafeDbText(item.rawText),
+          rawMediaJson: toSafeDbValue(item.rawMedia ?? []) as Prisma.InputJsonValue,
+          rawPayloadJson: toSafeDbValue(item.rawPayload ?? {}) as Prisma.InputJsonValue,
           contentHash,
           parseStatus: "ok",
           fetchedAt: new Date(),

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import type { Program, ProgramMedia } from "@prisma/client";
-import { canPublish, canPublishAutopilot, programIncludeForPublishGate } from "./publishGate";
+import { canPublish, canPublishAutopilot, describePublishMissing, programIncludeForPublishGate } from "./publishGate";
 
 type GateInput = Parameters<typeof canPublishAutopilot>[0];
 
@@ -137,6 +137,30 @@ describe("manual publish content quality", () => {
     const r = canPublish(programFixture({ cancellationRules: "TODO: добавить оператором" }));
     expect(r.ok).toBe(false);
     expect(r.missing).toContain("placeholder_or_scraped_markup_detected");
+  });
+
+  const stub = "Требует ручного заполнения оператором.";
+  const notes = { general: [], audience: "", accommodation: "", transfer: "", gear: "Шлем и перчатки обычно свои.", cancellation: "Уточните условия возврата у организатора." };
+
+  it("считает заглушку сбора пустым полем, а не мусором в тексте", () => {
+    const r = canPublish(programFixture({ gearRequirements: stub, cancellationRules: stub }));
+    expect(r.missing).toEqual(["gear_requirements", "cancellation_rules"]);
+    expect(describePublishMissing(r.missing)).toBe("снаряжение, условия отмены");
+  });
+
+  it("принимает примечание MyWave вместо пустых снаряжения и условий отмены", () => {
+    const aiEnrichment = { generatedAt: "2026-09-30", model: "m", sourceHash: "h", fields: [], notes };
+    expect(canPublish(programFixture({ gearRequirements: stub, cancellationRules: null, aiEnrichment } as never)).ok).toBe(true);
+    expect(canPublishAutopilot(programFixture({ cancellationRules: stub, aiEnrichment } as never)).ok).toBe(true);
+    expect(canPublishAutopilot(programFixture({ cancellationRules: stub })).missing).toEqual([
+      "cancellation",
+      "placeholder_or_scraped_markup_detected",
+    ]);
+  });
+
+  it("не считает описанием заглушку «Требует ручной нормализации»", () => {
+    const r = canPublish(programFixture({ audienceFit: "Требует ручной нормализации оператором.", inclusions: null }));
+    expect(r.missing).toEqual(["program summary/structure (itinerary_day_by_day, audience_fit or inclusions)"]);
   });
 });
 

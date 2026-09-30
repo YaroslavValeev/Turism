@@ -7,7 +7,7 @@ import {
   matchValuesForRaws,
   rawStringToHubSlug,
 } from "@mywave/explore-links";
-import { isProgramPubliclyVisible } from "../programs/publicVisibility";
+import { PUBLIC_VISIBILITY_SELECT, isProgramPubliclyVisible } from "../programs/publicVisibility";
 import { orderedProgramMedia } from "../programs/mediaOrder";
 import { publicCollectionVisibilityWhere } from "../public-collections/resolve";
 import type { PublicProgramCard } from "../public-blog/related";
@@ -59,10 +59,7 @@ async function getDistinctRawsForType(t: ExploreHubType): Promise<string[]> {
       select: {
         discipline: true,
         region: true,
-        endDate: true,
-        spotsAvailable: true,
-        publishStatus: true,
-        organizer: { select: { verificationStatus: true } },
+        ...PUBLIC_VISIBILITY_SELECT,
       },
     }),
     prisma.contentCollection.findMany({
@@ -217,11 +214,8 @@ export async function loadExploreIndex(): Promise<ExploreListItem[]> {
           : prisma.program.findMany({
               where: { ...orF, publishStatus: "published" },
               select: {
-                endDate: true,
-                spotsAvailable: true,
-                publishStatus: true,
                 updatedAt: true,
-                organizer: { select: { verificationStatus: true } },
+                ...PUBLIC_VISIBILITY_SELECT,
               },
             }),
         prisma.contentCollection.count({

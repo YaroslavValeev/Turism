@@ -8,7 +8,7 @@ import { writeAuditLog } from "../../lib/audit";
 import { requireAdmin } from "../../middleware/auth";
 import { isBookingStatus, isValidTransition, getNextStatuses } from "./statusRules";
 import type { Env } from "@mywave/config";
-import { isProgramPubliclyVisible } from "../programs/publicVisibility";
+import { PUBLIC_VISIBILITY_SELECT, isProgramPubliclyVisible } from "../programs/publicVisibility";
 import { emitBackendAnalyticsEventBestEffort } from "../analytics/service";
 import { computeTravelerKeyHash } from "../../lib/travelerKey";
 import { ensureReviewRequestForCompletedBooking } from "../reviews/reviewRequests";
@@ -52,10 +52,7 @@ export function bookingsRoutes(env: Env): Router {
       select: {
         id: true,
         organizerId: true,
-        publishStatus: true,
-        endDate: true,
-        spotsAvailable: true,
-        organizer: { select: { verificationStatus: true } },
+        ...PUBLIC_VISIBILITY_SELECT,
       },
     });
     if (!program || !isProgramPubliclyVisible(program)) {

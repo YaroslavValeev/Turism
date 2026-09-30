@@ -3,7 +3,7 @@ import type { Env } from "@mywave/config";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
 import { computeTravelerKeyHash } from "../../lib/travelerKey";
-import { isProgramPubliclyVisible } from "../programs/publicVisibility";
+import { PUBLIC_VISIBILITY_SELECT, isProgramPubliclyVisible } from "../programs/publicVisibility";
 import { createDealForBooking } from "../deals/dealService";
 import { emitBackendAnalyticsEventBestEffort } from "../analytics/service";
 import { CONSENT_POLICY_VERSION, CONSENT_TEXTS, requiredConsentsForProgram, type RequiredConsentType } from "./consentTexts";
@@ -33,7 +33,7 @@ export async function startLeadAttempt(input: {
 }) {
   const program = await prisma.program.findUnique({
     where: { id: input.programId },
-    select: { id: true, organizerId: true, publishStatus: true, organizer: { select: { verificationStatus: true } } },
+    select: { id: true, organizerId: true, ...PUBLIC_VISIBILITY_SELECT },
   });
   if (!program || !isProgramPubliclyVisible(program)) {
     return { ok: false as const, error: "program_not_found" };

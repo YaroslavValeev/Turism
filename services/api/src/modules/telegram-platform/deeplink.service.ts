@@ -1,5 +1,5 @@
 import { prisma } from "../../lib/prisma";
-import { isProgramPubliclyVisible } from "../programs/publicVisibility";
+import { PUBLIC_VISIBILITY_SELECT, isProgramPubliclyVisible } from "../programs/publicVisibility";
 import { parseDeeplinkPayload, type ParsedDeeplink } from "./deeplink";
 import { logTelegramPlatformEvent } from "./events";
 
@@ -21,7 +21,7 @@ export async function validateAndRecordDeeplink(input: {
     if (!pid) return { ok: false, parsed };
     const program = await prisma.program.findUnique({
       where: { id: pid },
-      select: { id: true, publishStatus: true, organizer: { select: { verificationStatus: true } } },
+      select: { id: true, ...PUBLIC_VISIBILITY_SELECT },
     });
     if (!program || !isProgramPubliclyVisible(program)) {
       return { ok: false, parsed };

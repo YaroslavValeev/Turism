@@ -35,10 +35,51 @@ export type Program = {
   gearRequirements?: string | null;
   cancellationRules?: string | null;
   manualFields?: string[];
-  aiEnrichment?: { generatedAt?: string; fields?: string[] } | null;
+  aiEnrichment?: { generatedAt?: string; fields?: string[]; notes?: Partial<MyWaveNotes> } | null;
   media: ProgramMediaItem[];
   organizer?: { id: string; displayName: string; verificationStatus: string };
 };
+
+/** Рекомендации MyWave из ИИ-автозаполнения: сайт показывает их серым курсивом, когда организатор ничего не написал. */
+export type MyWaveNotes = {
+  general: string[];
+  audience: string;
+  accommodation: string;
+  transfer: string;
+  gear: string;
+  cancellation: string;
+};
+
+/** Тот же блок, к которому сайт привязывает примечание (apps/web program-pdp). */
+export function myWaveNoteForField(p: Program, key: string): string {
+  const notes = p.aiEnrichment?.notes;
+  if (!notes) return "";
+  switch (key) {
+    case "audienceFit":
+      return notes.audience?.trim() ?? "";
+    case "gearRequirements":
+      return notes.gear?.trim() ?? "";
+    case "cancellationRules":
+      return notes.cancellation?.trim() ?? "";
+    case "inclusions":
+      return [notes.accommodation, notes.transfer].map((s) => s?.trim()).filter(Boolean).join(" ");
+    default:
+      return "";
+  }
+}
+
+/** Совпадает с PUBLIC_HORIZON_DAYS в API: дальше этого срока программа опубликована, но на сайте не видна. */
+export const PUBLIC_HORIZON_DAYS = 183;
+
+export function storefrontVisibleFrom(startDate: string, now = new Date()): Date | null {
+  const start = new Date(startDate);
+  if (Number.isNaN(start.getTime())) return null;
+  const day = 24 * 60 * 60 * 1000;
+  const startDay = Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), start.getUTCDate());
+  const today = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  const opensAt = startDay - PUBLIC_HORIZON_DAYS * day;
+  return opensAt > today ? new Date(opensAt) : null;
+}
 
 /** Подпись поля: правлено вручную (сбор и ИИ не трогают) или заполнено ИИ по посту. */
 export function cardFieldOrigin(p: Program, key: string): "manual" | "ai" | null {
@@ -93,7 +134,7 @@ function toDateInput(value: string): string {
 
 /** Служебные заглушки сбора (сайт их скрывает) — в редакторе показываем как пустое поле. */
 const INGESTION_PLACEHOLDERS = [
-  /^требует ручного заполнения/i,
+  /^требует\s+ручно(?:го\s+заполнения|й\s+нормализации)/i,
   /^базовая программа и сопровождение организатора\.\s*детальный состав/i,
 ];
 

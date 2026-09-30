@@ -10,6 +10,7 @@ import {
 import { prisma } from "../../lib/prisma";
 import { writeAuditLog } from "../../lib/audit";
 import { canPublish, programIncludeForPublishGate } from "./publishGate";
+import { storefrontVisibleFrom } from "./publicVisibility";
 import { notifySubscribersOnProgramPublished } from "../subscriptions/notifier";
 
 export type SetProgramPublishStatusResult =
@@ -18,6 +19,8 @@ export type SetProgramPublishStatusResult =
       program: Awaited<ReturnType<typeof prisma.program.update>>;
       notified: boolean;
       alreadyPublished: boolean;
+      /** Set when the program is published but still beyond the storefront horizon. */
+      visibleFrom: Date | null;
     }
   | { ok: false; error: "not_found" }
   | { ok: false; error: "invalid_status"; allowed: string }
@@ -86,7 +89,8 @@ export async function setProgramPublishStatus(
   });
 
   let notified = false;
-  if (existing.publishStatus !== "published" && program.publishStatus === "published") {
+  const visibleFrom = storefrontVisibleFrom(program.startDate);
+  if (existing.publishStatus !== "published" && program.publishStatus === "published" && !visibleFrom) {
     void notifySubscribersOnProgramPublished(env, {
       id: program.id,
       title: program.title,
@@ -97,5 +101,5 @@ export async function setProgramPublishStatus(
     notified = true;
   }
 
-  return { ok: true, program, notified, alreadyPublished };
+  return { ok: true, program, notified, alreadyPublished, visibleFrom };
 }

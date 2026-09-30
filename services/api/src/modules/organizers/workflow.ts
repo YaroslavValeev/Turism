@@ -73,7 +73,11 @@ export function shouldLinkSourceToResolvedOrganizer(input: {
 }): boolean {
   if (input.organizerStatus === "rejected") return false;
   const meta = input.sourceMetaJson;
-  if (meta && typeof meta === "object" && (meta as Record<string, unknown>).multiOrganizer === true) return false;
+  if (meta && typeof meta === "object") {
+    const flags = meta as Record<string, unknown>;
+    // manualPosts: the owner-bot inbox holds posts of many organizers.
+    if (flags.multiOrganizer === true || flags.manualPosts === true) return false;
+  }
   const itemName = input.itemOrganizerName?.trim();
   if (!itemName) return true;
   const itemKey = normalizeOrganizerName(itemName);

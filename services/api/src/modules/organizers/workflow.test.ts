@@ -87,6 +87,9 @@ describe("shouldLinkSourceToResolvedOrganizer", () => {
     expect(
       shouldLinkSourceToResolvedOrganizer({ ...base, sourceMetaJson: { multiOrganizer: true }, itemOrganizerName: null }),
     ).toBe(false);
+    expect(
+      shouldLinkSourceToResolvedOrganizer({ ...base, sourceMetaJson: { manualPosts: true }, itemOrganizerName: null }),
+    ).toBe(false);
   });
 
   it("remembers a manual unlink so ingestion does not relink the source", () => {

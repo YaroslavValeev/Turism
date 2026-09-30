@@ -60,6 +60,42 @@ export function findSimilarOrganizers<T extends { id: string; displayName: strin
   });
 }
 
+/**
+ * Ingestion links a source to the organizer it resolved only when that organizer is the
+ * source's own account. Listings of many organizers (item names differ from the source)
+ * stay unlinked, otherwise every later item would be attributed to the first organizer.
+ */
+export function shouldLinkSourceToResolvedOrganizer(input: {
+  sourceName: string;
+  sourceMetaJson: unknown;
+  itemOrganizerName: string | null | undefined;
+  organizerStatus: string;
+}): boolean {
+  if (input.organizerStatus === "rejected") return false;
+  const meta = input.sourceMetaJson;
+  if (meta && typeof meta === "object" && (meta as Record<string, unknown>).multiOrganizer === true) return false;
+  const itemName = input.itemOrganizerName?.trim();
+  if (!itemName) return true;
+  const itemKey = normalizeOrganizerName(itemName);
+  return itemKey.length >= 3 && itemKey === normalizeOrganizerName(input.sourceName);
+}
+
+/**
+ * An operator unlinking a source means "this source is not one organizer's account",
+ * so ingestion must not link it back; linking by hand lifts that flag.
+ */
+export function sourceMetaAfterManualOrganizerChange(metaJson: unknown, linked: boolean): Record<string, unknown> {
+  const meta = metaJson && typeof metaJson === "object" && !Array.isArray(metaJson) ? { ...(metaJson as Record<string, unknown>) } : {};
+  if (linked) delete meta.multiOrganizer;
+  else meta.multiOrganizer = true;
+  return meta;
+}
+
+/** Same-name lookup must not resurrect a record that was rejected or merged into another one. */
+export function pickOrganizerByName<T extends { verificationStatus: string }>(matches: readonly T[]): T | null {
+  return matches.find((organizer) => organizer.verificationStatus !== "rejected") ?? matches[0] ?? null;
+}
+
 export type MergeBlockers = Record<string, number>;
 
 /** Money, contracts and unique-keyed records are never moved automatically. */

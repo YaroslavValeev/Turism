@@ -7,6 +7,7 @@ import { writeAuditLog } from "../../lib/audit";
 import { isSourceType } from "../ingestion/constants";
 import { runDedupJob, runNormalizationJob, runSourceCollection } from "../ingestion/service";
 import { runLinkageBackfillReport } from "./sourceLinkageBackfill";
+import { sourceMetaAfterManualOrganizerChange } from "../organizers/workflow";
 import { approveSourceProposal, rejectSourceProposal, submitSourceProposal } from "./sourceProposal";
 import { safeError } from "../../lib/safeLogger";
 
@@ -182,7 +183,11 @@ export function sourcesRoutes(env: Env): Router {
     if (body.fetchIntervalMinutes !== undefined) data.fetchIntervalMinutes = Number(body.fetchIntervalMinutes);
     if (body.isActive !== undefined) data.isActive = Boolean(body.isActive);
     if (body.organizerId !== undefined) data.organizer = body.organizerId ? { connect: { id: String(body.organizerId) } } : { disconnect: true };
-    if (body.metaJson !== undefined) data.metaJson = body.metaJson as Prisma.InputJsonValue;
+    if (body.metaJson !== undefined) {
+      data.metaJson = body.metaJson as Prisma.InputJsonValue;
+    } else if (body.organizerId !== undefined && (body.organizerId ? true : existing.organizerId !== null)) {
+      data.metaJson = sourceMetaAfterManualOrganizerChange(existing.metaJson, Boolean(body.organizerId)) as Prisma.InputJsonValue;
+    }
 
     const source = await prisma.source.update({
       where: { id: req.params.id },

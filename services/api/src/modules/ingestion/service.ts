@@ -18,6 +18,7 @@ import { buildProgramDedupKey, pickPreferredProgram, type ProgramDedupShape } fr
 import { nextMediaPosition } from "../programs/mediaOrder";
 import { lockedProgramFields, withoutManualFields } from "../programs/manualFields";
 import { enrichProgramCardAfterIngestion } from "../programs/cardEnrichment.service";
+import { pickOrganizerByName, shouldLinkSourceToResolvedOrganizer } from "../organizers/workflow";
 import { cacheExternalProgramMediaForWeb } from "./mediaCache";
 import { fetchIngestionTextWithRetry } from "./sourceFetch";
 import { applyEnduroRaceTaxonomy } from "./taxonomy";
@@ -5076,35 +5077,65 @@ export async function runDedupCandidatesJob(actorId: string | null, candidateIds
 }
 
 async function resolveOrganizerForCandidate(tx: Prisma.TransactionClient, candidate: CandidateWithRelations): Promise<string> {
-  const sourceOrganizerId = candidate.normalizedItem.rawItem.source.organizerId;
-  if (sourceOrganizerId) return sourceOrganizerId;
+  const source = candidate.normalizedItem.rawItem.source;
+  if (source.organizerId) return source.organizerId;
 
   const organizerName = firstNonEmpty(
     candidate.normalizedItem.organizerName,
     candidate.normalizedItem.rawItem.authorName,
-    candidate.normalizedItem.rawItem.source.name,
+    source.name,
   ) ?? "Unknown organizer";
 
-  const existing = await tx.organizer.findFirst({
+  const matches = await tx.organizer.findMany({
     where: {
       displayName: {
         equals: organizerName,
         mode: "insensitive",
       },
     },
+    select: { id: true, verificationStatus: true },
+    orderBy: { createdAt: "asc" },
+    take: 10,
   });
-  if (existing) return existing.id;
+  const organizer =
+    pickOrganizerByName(matches) ??
+    (await tx.organizer.create({
+      data: {
+        displayName: organizerName,
+        legalStatus: null,
+        contactEmail: `ingestion+${candidate.id}@mywave.local`,
+        contactPhone: null,
+        verificationStatus: "listed",
+      },
+      select: { id: true, verificationStatus: true },
+    }));
 
-  const created = await tx.organizer.create({
-    data: {
-      displayName: organizerName,
-      legalStatus: null,
-      contactEmail: `ingestion+${candidate.id}@mywave.local`,
-      contactPhone: null,
-      verificationStatus: "listed",
-    },
+  const link = shouldLinkSourceToResolvedOrganizer({
+    sourceName: source.name,
+    sourceMetaJson: source.metaJson,
+    itemOrganizerName: candidate.normalizedItem.organizerName,
+    organizerStatus: organizer.verificationStatus,
   });
-  return created.id;
+  if (link) {
+    const linked = await tx.source.updateMany({
+      where: { id: source.id, organizerId: null },
+      data: { organizerId: organizer.id },
+    });
+    if (linked.count > 0) {
+      await tx.auditLog.create({
+        data: {
+          entityType: "source",
+          entityId: source.id,
+          changedField: "organizerId",
+          oldValue: null,
+          newValue: organizer.id,
+          changedBy: null,
+          reason: "ingestion linked source to its own organizer",
+        },
+      });
+    }
+  }
+  return organizer.id;
 }
 
 export async function publishCandidateToDraft(

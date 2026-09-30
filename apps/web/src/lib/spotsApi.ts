@@ -8,6 +8,7 @@ export type PublicSpotRating = {
   ratingVersion: string;
   publishedAt: string;
   expiresAt: string;
+  categoryScores: Record<string, number> | null;
 };
 
 export type PublicSpotUnit = {
@@ -71,6 +72,28 @@ export async function fetchPublicSpot(id: string): Promise<PublicSpot | null> {
   if (!res || !res.ok) return null;
   const data = (await res.json()) as { spot?: PublicSpot };
   return data.spot ?? null;
+}
+
+export const SPOT_COMPARE_MAX = 4;
+
+/** Нормализует `?ids=` из query (строка через запятую или повторяющийся параметр). */
+export function compareIdsFromQuery(value: string | string[] | undefined): string[] {
+  const parts = (Array.isArray(value) ? value : value ? [value] : [])
+    .flatMap((v) => v.split(","))
+    .map((v) => v.trim())
+    .filter((v) => /^[A-Za-z0-9_-]{1,64}$/.test(v));
+  return [...new Set(parts)].slice(0, SPOT_COMPARE_MAX);
+}
+
+export async function fetchSpotsCompare(ids: string[]): Promise<PublicSpot[] | null> {
+  if (ids.length < 2) return [];
+  const res = await safeServerFetch(
+    `${getServerApiBaseUrl()}/public/spots/compare?ids=${ids.map(encodeURIComponent).join(",")}`,
+    { next: { revalidate: 300 } },
+  );
+  if (!res || !res.ok) return null;
+  const data = (await res.json()) as { items?: PublicSpot[] };
+  return data.items ?? [];
 }
 
 export async function fetchSpotsMethodology(): Promise<SpotsMethodology | null> {

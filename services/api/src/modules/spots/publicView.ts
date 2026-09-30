@@ -16,7 +16,10 @@ export interface SnapshotRow {
   publishedAt: Date | null;
   revokedAt: Date | null;
   expiresAt: Date;
+  inputJson?: unknown;
 }
+
+type SpotRatingCategoryId = keyof typeof SPOT_RATING_WEIGHTS;
 
 export interface UnitRow {
   id: string;
@@ -47,6 +50,7 @@ export interface PublicSpotRating {
   ratingVersion: string;
   publishedAt: string;
   expiresAt: string;
+  categoryScores: Record<SpotRatingCategoryId, number> | null;
 }
 
 export interface PublicSpotUnit {
@@ -80,6 +84,20 @@ function isBand(value: string | null): value is SpotRatingBand {
   return value != null && value in SPOT_RATING_BAND_LABEL_RU;
 }
 
+/** Оценки по категориям из входа снимка: показываем только полный и корректный набор. */
+export function snapshotCategoryScores(inputJson: unknown): Record<SpotRatingCategoryId, number> | null {
+  if (typeof inputJson !== "object" || inputJson === null) return null;
+  const raw = (inputJson as { categoryScores?: unknown }).categoryScores;
+  if (typeof raw !== "object" || raw === null) return null;
+  const out = {} as Record<SpotRatingCategoryId, number>;
+  for (const id of Object.keys(SPOT_RATING_WEIGHTS) as SpotRatingCategoryId[]) {
+    const value = (raw as Record<string, unknown>)[id];
+    if (typeof value !== "number" || !Number.isFinite(value) || value < 0 || value > 10) return null;
+    out[id] = value;
+  }
+  return out;
+}
+
 /** Действующий = опубликован, не отозван, тест не истёк; из нескольких — последний опубликованный. */
 export function pickCurrentSnapshot(snapshots: SnapshotRow[], now: Date): PublicSpotRating | null {
   const current = snapshots
@@ -96,6 +114,7 @@ export function pickCurrentSnapshot(snapshots: SnapshotRow[], now: Date): Public
     ratingVersion: current.ratingVersion,
     publishedAt: current.publishedAt!.toISOString(),
     expiresAt: current.expiresAt.toISOString(),
+    categoryScores: snapshotCategoryScores(current.inputJson),
   };
 }
 
@@ -145,6 +164,24 @@ export function sortPublicSpots(spots: PublicSpot[]): PublicSpot[] {
     if (sa !== sb) return sb - sa;
     return a.region.localeCompare(b.region, "ru") || a.name.localeCompare(b.name, "ru");
   });
+}
+
+export const SPOT_COMPARE_MIN = 2;
+export const SPOT_COMPARE_MAX = 4;
+
+/** Принимает `?ids=a,b` и `?ids=a&ids=b`; порядок сохраняется, дубли убираются. */
+export function parseCompareIds(value: unknown): { ok: true; ids: string[] } | { ok: false; error: string } {
+  const parts = (Array.isArray(value) ? value : [value])
+    .filter((v): v is string => typeof v === "string")
+    .flatMap((v) => v.split(","))
+    .map((v) => v.trim())
+    .filter(Boolean);
+  const ids = [...new Set(parts)];
+  if (ids.some((id) => !/^[A-Za-z0-9_-]{1,64}$/.test(id))) return { ok: false, error: "invalid id" };
+  if (ids.length < SPOT_COMPARE_MIN || ids.length > SPOT_COMPARE_MAX) {
+    return { ok: false, error: `ids: from ${SPOT_COMPARE_MIN} to ${SPOT_COMPARE_MAX} spots` };
+  }
+  return { ok: true, ids };
 }
 
 const CATEGORY_LABEL_RU: Record<keyof typeof SPOT_RATING_WEIGHTS, string> = {

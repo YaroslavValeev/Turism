@@ -52,6 +52,26 @@ describe("public spots routes", () => {
     expect(mocks.findFirst.mock.calls[0][0].where).toEqual({ id: "candidate-1", discoveryStatus: "listed" });
   });
 
+  it("compares listed spots in the requested order and reports missing ones", async () => {
+    const row = (id: string) => ({
+      id, name: id, region: "R", address: null, latitude: null, longitude: null,
+      waterBodyType: null, relatedToMyWave: false, serviceUnits: [],
+    });
+    mocks.findMany.mockResolvedValue([row("b"), row("a")]);
+    const res = await fetch(`${base}/spots/compare?ids=a,b&ids=c`);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { items: Array<{ id: string }>; missing: string[] };
+    expect(body.items.map((s) => s.id)).toEqual(["a", "b"]);
+    expect(body.missing).toEqual(["c"]);
+    expect(mocks.findMany.mock.calls[0][0].where).toEqual({ id: { in: ["a", "b", "c"] }, discoveryStatus: "listed" });
+  });
+
+  it("rejects compare requests with too few or too many spots", async () => {
+    expect((await fetch(`${base}/spots/compare?ids=a`)).status).toBe(400);
+    expect((await fetch(`${base}/spots/compare?ids=a,b,c,d,e`)).status).toBe(400);
+    expect(mocks.findMany).not.toHaveBeenCalled();
+  });
+
   it("serves methodology without touching the database", async () => {
     const res = await fetch(`${base}/spots/methodology`);
     expect(res.status).toBe(200);

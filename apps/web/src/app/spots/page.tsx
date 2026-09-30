@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { connection } from "next/server";
-import { WATER_BODY_LABEL_RU, fetchPublicSpots, yandexMapsUrl } from "../../lib/spotsApi";
+import { SPOT_COMPARE_MAX, WATER_BODY_LABEL_RU, fetchPublicSpots, yandexMapsUrl } from "../../lib/spotsApi";
 import { SPOT_MAP_MAX_POINTS } from "../../lib/spotsMap";
 import { SpotRatingBadge } from "./SpotRatingBadge";
 import { SpotsMap } from "./SpotsMap";
@@ -43,6 +43,7 @@ export default async function SpotsIndexPage() {
     .filter((s): s is typeof s & { latitude: number; longitude: number } => s.latitude != null && s.longitude != null)
     .slice(0, SPOT_MAP_MAX_POINTS);
   const markerNo = new Map(mapped.map((s, i) => [s.id, i + 1]));
+  const canCompare = (spots?.length ?? 0) >= 2;
 
   return (
     <div className="mw-container" style={{ paddingBottom: "3rem" }}>
@@ -85,6 +86,13 @@ export default async function SpotsIndexPage() {
       ) : (
         <>
         {mapped.length > 0 ? <SpotsMap points={mapped} title="Карта вейксерф-спотов" /> : null}
+        <form action="/spots/compare" method="get">
+        {canCompare ? (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "0.75rem", alignItems: "center", marginBottom: "1rem" }}>
+            <button type="submit" className="mw-btn mw-btn--ghost">Сравнить отмеченные</button>
+            <span style={{ color: "#58706d", fontSize: "0.92rem" }}>Отметьте от 2 до {SPOT_COMPARE_MAX} спотов</span>
+          </div>
+        ) : null}
         <ul
           style={{
             listStyle: "none",
@@ -127,6 +135,12 @@ export default async function SpotsIndexPage() {
                   </p>
                 </div>
                 <SpotRatingBadge rating={spot.bestRating} />
+                {canCompare ? (
+                  <label style={{ display: "inline-flex", gap: "0.45rem", alignItems: "center", fontSize: "0.92rem", color: "#385a56" }}>
+                    <input type="checkbox" name="ids" value={spot.id} />
+                    Сравнить
+                  </label>
+                ) : null}
                 <p style={{ margin: 0, display: "flex", flexWrap: "wrap", gap: "0.55rem" }}>
                   <Link href={`/spots/${spot.id}`} className="mw-btn mw-btn--primary" style={{ fontSize: "0.92rem" }}>Подробнее</Link>
                   {spot.latitude != null && spot.longitude != null ? (
@@ -145,6 +159,7 @@ export default async function SpotsIndexPage() {
             </li>
           ))}
         </ul>
+        </form>
         </>
       )}
     </div>

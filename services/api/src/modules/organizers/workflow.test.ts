@@ -5,6 +5,9 @@ import {
   findSimilarOrganizers,
   isIngestionStubOrganizer,
   normalizeOrganizerName,
+  pickOrganizerByName,
+  shouldLinkSourceToResolvedOrganizer,
+  sourceMetaAfterManualOrganizerChange,
 } from "./workflow";
 
 describe("checkVerificationTransition", () => {
@@ -51,10 +54,51 @@ describe("organizer duplicates", () => {
     expect(findSimilarOrganizers({ id: "x", displayName: "A" }, all)).toEqual([]);
   });
 
+  it("prefers a live organizer over a rejected or merged one with the same name", () => {
+    const rejected = { id: "old", verificationStatus: "rejected" };
+    const live = { id: "new", verificationStatus: "listed" };
+    expect(pickOrganizerByName([rejected, live])).toBe(live);
+    expect(pickOrganizerByName([rejected])).toBe(rejected);
+    expect(pickOrganizerByName([])).toBeNull();
+  });
+
   it("blocks automatic merge when money or contracts are attached", () => {
     expect(describeMergeBlockers({ bookings: 0, payments: 0 })).toBeNull();
     expect(describeMergeBlockers({ bookings: 2, contracts: 1 })).toBe(
       "У организатора есть бронирования: 2, договоры: 1 — объединение только вручную.",
+    );
+  });
+});
+
+describe("shouldLinkSourceToResolvedOrganizer", () => {
+  const base = { sourceName: "BirdTravel", sourceMetaJson: null, organizerStatus: "listed" };
+
+  it("links a single-organizer source whose items carry no own organizer name", () => {
+    expect(shouldLinkSourceToResolvedOrganizer({ ...base, itemOrganizerName: null })).toBe(true);
+    expect(shouldLinkSourceToResolvedOrganizer({ ...base, itemOrganizerName: "  " })).toBe(true);
+  });
+
+  it("links when the item organizer is the source itself", () => {
+    expect(shouldLinkSourceToResolvedOrganizer({ ...base, itemOrganizerName: "ООО «Bird Travel»" })).toBe(true);
+  });
+
+  it("keeps listings of other organizers unlinked", () => {
+    expect(shouldLinkSourceToResolvedOrganizer({ ...base, itemOrganizerName: "Mountain Guru" })).toBe(false);
+    expect(
+      shouldLinkSourceToResolvedOrganizer({ ...base, sourceMetaJson: { multiOrganizer: true }, itemOrganizerName: null }),
+    ).toBe(false);
+  });
+
+  it("remembers a manual unlink so ingestion does not relink the source", () => {
+    const unlinked = sourceMetaAfterManualOrganizerChange({ autoPublish: false }, false);
+    expect(unlinked).toEqual({ autoPublish: false, multiOrganizer: true });
+    expect(shouldLinkSourceToResolvedOrganizer({ ...base, sourceMetaJson: unlinked, itemOrganizerName: null })).toBe(false);
+    expect(sourceMetaAfterManualOrganizerChange(unlinked, true)).toEqual({ autoPublish: false });
+  });
+
+  it("never links to a rejected organizer", () => {
+    expect(shouldLinkSourceToResolvedOrganizer({ ...base, itemOrganizerName: null, organizerStatus: "rejected" })).toBe(
+      false,
     );
   });
 });

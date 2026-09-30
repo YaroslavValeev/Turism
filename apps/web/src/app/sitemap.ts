@@ -110,5 +110,24 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }
   }
 
+  staticEntries.push({ url: `${siteUrl}/spots/methodology`, changeFrequency: "monthly", priority: 0.5 });
+  {
+    const resSpots = await safeServerFetch(`${base}/public/spots`, { next: { revalidate: 300 } });
+    if (resSpots?.ok) {
+      const data = (await resSpots.json()) as { items?: { id: string }[] };
+      const items = data.items ?? [];
+      if (items.length > 0) {
+        staticEntries.push({ url: `${siteUrl}/spots`, changeFrequency: "weekly", priority: 0.7 });
+        for (const it of items) {
+          staticEntries.push({
+            url: `${siteUrl}/spots/${encodeURIComponent(it.id)}`,
+            changeFrequency: "monthly",
+            priority: 0.6,
+          });
+        }
+      }
+    }
+  }
+
   return staticEntries;
 }

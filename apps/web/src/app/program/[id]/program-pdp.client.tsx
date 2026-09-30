@@ -469,11 +469,11 @@ export function ProgramPdpClient({
   }
 
   const audienceFit = mergeProgramField(
-    program.audienceFit,
+    organizerText(program.audienceFit),
     overrides.audienceFit,
   );
   const itinerary = mergeProgramField(
-    program.itineraryDayByDay,
+    organizerText(program.itineraryDayByDay),
     overrides.itineraryDayByDay,
   );
   const trustReason = mergeProgramField(

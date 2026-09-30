@@ -1,14 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { getMediaTypeLabel } from "@mywave/shared-types";
+import { getMediaTypeLabel, getProgramPublishStatusLabel } from "@mywave/shared-types";
 import { adminJson } from "../../../lib/admin";
 import {
   PROGRAM_CARD_TEXT_FIELDS,
   cardDraftFromProgram,
   cardFieldOrigin,
   cardPatchFromDraft,
+  myWaveNoteForField,
   reorderMediaIds,
+  storefrontVisibleFrom,
   type Program,
   type ProgramCardDraft,
 } from "./programModel";
@@ -21,6 +23,10 @@ const UPLOAD_ACCEPT = "image/jpeg,image/png,image/webp,video/mp4,video/webm";
 
 function previewUrl(url: string): string {
   return url.startsWith("/") ? `${WEB_BASE}${url}` : url;
+}
+
+function formatDay(date: Date): string {
+  return date.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "UTC" });
 }
 
 function pickText(draft: ProgramCardDraft, key: string): Partial<ProgramCardDraft> {
@@ -40,16 +46,56 @@ export function ProgramCardEditor({ program, onChanged, onError }: Props) {
   const [reordering, setReordering] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [enriching, setEnriching] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+  const [justFilled, setJustFilled] = useState<string[]>([]);
+  const [enrichedProgram, setEnrichedProgram] = useState<Program | null>(null);
+  const shown = enrichedProgram ?? program;
   const patch = cardPatchFromDraft(program, draft);
   const dirty = Object.keys(patch).length > 0;
+  const isPublished = program.publishStatus === "published";
+  const visibleFrom = storefrontVisibleFrom(program.startDate);
+  const generalNotes = shown.aiEnrichment?.notes?.general?.filter((note) => note.trim()) ?? [];
+  // The page-level message sits at the top of a long list, out of view while editing a card.
+  const [notice, setNotice] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
+  const report = async (text: string) => {
+    setNotice({ kind: "ok", text });
+    await onChanged(text);
+  };
+  const fail = (text: string) => {
+    setNotice({ kind: "error", text });
+    onError(text);
+  };
+
+  const setPublishStatus = async (publishStatus: "published" | "paused") => {
+    setPublishing(true);
+    try {
+      await adminJson(`/programs/${program.id}/publish-status`, {
+        method: "PATCH",
+        body: JSON.stringify({ publishStatus }),
+      });
+      const title = `«${program.title}»`;
+      await report(
+        publishStatus === "paused"
+          ? `${title} снята с сайта (статус «${getProgramPublishStatusLabel("paused")}»).`
+          : visibleFrom
+            ? `${title} опубликована. Старт позже чем через 6 месяцев — на сайте появится автоматически ${formatDay(visibleFrom)}.`
+            : `${title} опубликована и видна на сайте.`,
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Не удалось сменить статус";
+      fail(message.replace(/^Publish gate not passed:\s*/, "Нельзя опубликовать: "));
+    } finally {
+      setPublishing(false);
+    }
+  };
 
   const handleSave = async () => {
     setSaving(true);
     try {
       await adminJson(`/programs/${program.id}`, { method: "PATCH", body: JSON.stringify(patch) });
-      await onChanged(`Карточка «${draft.title.trim() || program.title}» сохранена.`);
+      await report(`Карточка «${draft.title.trim() || program.title}» сохранена.`);
     } catch (error) {
-      onError(error instanceof Error ? error.message : "Не удалось сохранить карточку");
+      fail(error instanceof Error ? error.message : "Не удалось сохранить карточку");
     } finally {
       setSaving(false);
     }
@@ -63,20 +109,28 @@ export function ProgramCardEditor({ program, onChanged, onError }: Props) {
         `/programs/${program.id}/enrich`,
         { method: "POST" },
       );
-      if (res.program) setDraft(cardDraftFromProgram(res.program));
+      if (res.program) {
+        setDraft(cardDraftFromProgram(res.program));
+        setEnrichedProgram(res.program);
+      }
       const { outcome } = res;
       if (outcome.status === "failed") {
-        onError(`ИИ не ответил (${outcome.reason}). Проверьте ключ OpenAI и прокси на сервере.`);
+        fail(`ИИ не ответил (${outcome.reason}). Проверьте ключ OpenAI и прокси на сервере.`);
         return;
       }
-      await onChanged(
+      const filled = outcome.status === "enriched" ? (outcome.fields ?? []) : [];
+      setJustFilled(filled);
+      const labels = filled.map((key) => PROGRAM_CARD_TEXT_FIELDS.find((f) => f.key === key)?.label ?? key);
+      await report(
         outcome.status === "enriched"
-          ? `ИИ заполнил поля: ${outcome.fields?.length ? outcome.fields.join(", ") : "нет новых данных в посте"}. Поля с ручными правками не тронуты.`
+          ? filled.length
+            ? `ИИ заполнил по посту: ${labels.join(", ")} (подсвечены зелёным). Чего нет в посте, ИИ не выдумывает — под пустыми полями показано серое «Примечание MyWave», которое увидит посетитель.`
+            : "В посте нет новых фактов для полей. Под пустыми полями показаны примечания MyWave — их увидит посетитель сайта."
           : `Автозаполнение пропущено: ${outcome.reason === "no_source_text" ? "нет текста исходного поста" : outcome.reason}.`,
       );
     } catch (error) {
       const message = error instanceof Error ? error.message : "Не удалось выполнить автозаполнение";
-      onError(
+      fail(
         message.includes("card_enrichment_disabled")
           ? "ИИ-автозаполнение выключено на сервере (нужны AI_ENABLED, AI_CARD_ENRICH_ENABLED и OPENAI_API_KEY)."
           : message,
@@ -93,9 +147,9 @@ export function ProgramCardEditor({ program, onChanged, onError }: Props) {
         body: JSON.stringify({ releaseManualFields: [key] }),
       });
       setDraft((d) => ({ ...d, ...pickText(cardDraftFromProgram(updated), key) }));
-      await onChanged("Поле снова обновляется из источника и ИИ-автозаполнением.");
+      await report("Поле снова обновляется из источника и ИИ-автозаполнением.");
     } catch (error) {
-      onError(error instanceof Error ? error.message : "Не удалось снять ручную правку");
+      fail(error instanceof Error ? error.message : "Не удалось снять ручную правку");
     }
   };
 
@@ -104,9 +158,9 @@ export function ProgramCardEditor({ program, onChanged, onError }: Props) {
     setDeletingMediaId(mediaId);
     try {
       await adminJson(`/programs/${program.id}/media/${mediaId}`, { method: "DELETE" });
-      await onChanged("Медиа удалено из карточки.");
+      await report("Медиа удалено из карточки.");
     } catch (error) {
-      onError(error instanceof Error ? error.message : "Не удалось удалить медиа");
+      fail(error instanceof Error ? error.message : "Не удалось удалить медиа");
     } finally {
       setDeletingMediaId(null);
     }
@@ -117,7 +171,7 @@ export function ProgramCardEditor({ program, onChanged, onError }: Props) {
     if (!list.length) return;
     const tooBig = list.find((file) => file.size > UPLOAD_MAX_BYTES);
     if (tooBig) {
-      onError(`Файл «${tooBig.name}» больше 25 МБ — сожмите его перед загрузкой.`);
+      fail(`Файл «${tooBig.name}» больше 25 МБ — сожмите его перед загрузкой.`);
       return;
     }
     setUploading(true);
@@ -131,11 +185,11 @@ export function ProgramCardEditor({ program, onChanged, onError }: Props) {
         });
         uploaded += 1;
       }
-      await onChanged(`Загружено файлов: ${uploaded}.`);
+      await report(`Загружено файлов: ${uploaded}.`);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Не удалось загрузить файл";
-      onError(uploaded ? `Загружено ${uploaded} из ${list.length}. ${message}` : message);
-      if (uploaded) await onChanged(`Загружено файлов: ${uploaded}.`);
+      fail(uploaded ? `Загружено ${uploaded} из ${list.length}. ${message}` : message);
+      if (uploaded) await report(`Загружено файлов: ${uploaded}.`);
     } finally {
       setUploading(false);
     }
@@ -148,9 +202,9 @@ export function ProgramCardEditor({ program, onChanged, onError }: Props) {
         method: "PUT",
         body: JSON.stringify({ mediaIds: reorderMediaIds(program.media, from, to) }),
       });
-      await onChanged(message);
+      await report(message);
     } catch (error) {
-      onError(error instanceof Error ? error.message : "Не удалось изменить порядок медиа");
+      fail(error instanceof Error ? error.message : "Не удалось изменить порядок медиа");
     } finally {
       setReordering(false);
     }
@@ -180,7 +234,9 @@ export function ProgramCardEditor({ program, onChanged, onError }: Props) {
                     снять
                   </button>
                 </>
-              ) : cardFieldOrigin(program, key) === "ai" ? (
+              ) : justFilled.includes(key) ? (
+                <strong style={{ color: "#1f7a4d" }}> · только что заполнено ИИ по посту</strong>
+              ) : cardFieldOrigin(shown, key) === "ai" ? (
                 " · заполнено ИИ по посту"
               ) : null}
             </span>
@@ -188,17 +244,24 @@ export function ProgramCardEditor({ program, onChanged, onError }: Props) {
               <textarea
                 className="mw-admin-input"
                 rows={4}
-                placeholder="Организатор не указал — на сайте будет серое «Примечание MyWave»"
+                placeholder="Организатор не указал. Нажмите «Автозаполнить (ИИ)» или впишите сами."
                 value={draft[key]}
+                style={justFilled.includes(key) ? { borderColor: "#1f7a4d", background: "#f1faf4" } : undefined}
                 onChange={(e) => setDraft((d) => ({ ...d, [key]: e.target.value }))}
               />
             ) : (
               <input
                 className="mw-admin-input"
                 value={draft[key]}
+                style={justFilled.includes(key) ? { borderColor: "#1f7a4d", background: "#f1faf4" } : undefined}
                 onChange={(e) => setDraft((d) => ({ ...d, [key]: e.target.value }))}
               />
             )}
+            {!draft[key].trim() && myWaveNoteForField(shown, key) ? (
+              <span className="mw-admin-caption" style={{ fontStyle: "italic", fontWeight: 300, color: "#6b7280" }}>
+                На сайте вместо пустого поля: «Примечание MyWave — не от организатора. {myWaveNoteForField(shown, key)}»
+              </span>
+            ) : null}
           </label>
         ))}
         <div className="mw-admin-stack-6">
@@ -252,6 +315,58 @@ export function ProgramCardEditor({ program, onChanged, onError }: Props) {
         >
           {enriching ? "ИИ заполняет..." : "Автозаполнить (ИИ)"}
         </button>
+      </div>
+
+      {generalNotes.length ? (
+        <div className="mw-admin-caption" style={{ fontStyle: "italic", fontWeight: 300, color: "#6b7280" }}>
+          Общие рекомендации MyWave на странице программы: {generalNotes.join(" · ")}
+        </div>
+      ) : null}
+
+      <div
+        className="mw-admin-stack-6"
+        style={{ border: "1px solid #d9e2dc", borderRadius: 10, padding: "10px 12px", background: isPublished ? "#f1faf4" : "#fafafa" }}
+      >
+        <span className="mw-admin-caption">
+          Публикация: <strong>{getProgramPublishStatusLabel(program.publishStatus)}</strong>
+          {isPublished && visibleFrom ? ` · старт позже чем через 6 месяцев — на сайте появится ${formatDay(visibleFrom)}` : null}
+          {isPublished && !visibleFrom ? " · видна на сайте (если организатор не на паузе и есть места)" : null}
+          {!isPublished && visibleFrom ? ` · после публикации появится на сайте ${formatDay(visibleFrom)} (за 6 месяцев до старта)` : null}
+        </span>
+        <div className="mw-admin-inline-form">
+          {isPublished ? (
+            <>
+              {WEB_BASE ? (
+                <a className="mw-admin-btn mw-admin-btn--ghost" href={`${WEB_BASE}/program/${program.id}`} target="_blank" rel="noreferrer">
+                  Открыть на сайте
+                </a>
+              ) : null}
+              <button
+                type="button"
+                className="mw-admin-btn mw-admin-btn--ghost"
+                onClick={() => void setPublishStatus("paused")}
+                disabled={publishing}
+              >
+                {publishing ? "Снимаем..." : "Снять с сайта"}
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              className="mw-admin-btn"
+              onClick={() => void setPublishStatus("published")}
+              disabled={publishing || dirty}
+              title={dirty ? "Сначала сохраните карточку" : "Проверит обязательные поля и опубликует программу"}
+            >
+              {publishing ? "Публикуем..." : dirty ? "Сохраните, затем опубликуйте" : "Опубликовать на сайте"}
+            </button>
+          )}
+        </div>
+        {notice ? (
+          <span className="mw-admin-caption" style={{ color: notice.kind === "error" ? "#b42318" : "#1f7a4d" }}>
+            {notice.text}
+          </span>
+        ) : null}
       </div>
 
       <div className="mw-admin-caption">

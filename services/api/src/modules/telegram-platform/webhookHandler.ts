@@ -11,7 +11,7 @@ import { parseReconciliationCallback, applyReconciliationCallback } from "./reco
 import { requiredConsentsForProgram, CONSENT_TEXTS, type RequiredConsentType } from "./consentTexts";
 import { consentLabel, formatConsentList, leadSubmitErrorMessage } from "./userMessages";
 import { prisma } from "../../lib/prisma";
-import { isProgramPubliclyVisible } from "../programs/publicVisibility";
+import { PUBLIC_VISIBILITY_SELECT, isProgramPubliclyVisible } from "../programs/publicVisibility";
 
 // Minimal Telegram update types (subset).
 type TgUser = { id: number; username?: string; first_name?: string; last_name?: string; language_code?: string };
@@ -264,7 +264,7 @@ async function handleMessage(env: Env, msg: Message) {
     // Required consents from real program risk + kids heuristic.
     const program = await prisma.program.findUnique({
       where: { id: session.programId ?? "" },
-      select: { publishStatus: true, riskLevel: true, audienceFit: true, organizer: { select: { verificationStatus: true } } },
+      select: { riskLevel: true, audienceFit: true, ...PUBLIC_VISIBILITY_SELECT },
     });
     if (!program || !isProgramPubliclyVisible(program)) {
       await callTelegramJson(env, "sendMessage", { chat_id: chatId, text: "Программа недоступна." });

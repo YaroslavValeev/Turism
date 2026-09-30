@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isProgramPubliclyVisible } from "./publicVisibility";
+import { isProgramPubliclyVisible, storefrontVisibleFrom } from "./publicVisibility";
 
 const now = new Date("2026-07-20T12:00:00.000Z");
 
@@ -41,6 +41,17 @@ describe("isProgramPubliclyVisible", () => {
     expect(isProgramPubliclyVisible({ ...base, organizer: { verificationStatus: "rejected" } }, now)).toBe(false);
     expect(isProgramPubliclyVisible({ ...base, organizer: { verificationStatus: "listed" } }, now)).toBe(true);
     expect(isProgramPubliclyVisible({ ...base, organizer: null }, now)).toBe(true);
+  });
+
+  it("keeps programs starting more than 6 months ahead off the storefront until the window opens", () => {
+    const base = { publishStatus: "published", endDate: "2027-09-10T00:00:00.000Z" };
+    expect(isProgramPubliclyVisible({ ...base, startDate: "2027-09-01T00:00:00.000Z" }, now)).toBe(false);
+    expect(storefrontVisibleFrom("2027-09-01T00:00:00.000Z", now)?.toISOString().slice(0, 10)).toBe("2027-03-02");
+    expect(isProgramPubliclyVisible({ ...base, startDate: "2027-09-01T00:00:00.000Z" }, new Date("2027-03-02T08:00:00Z"))).toBe(
+      true,
+    );
+    expect(storefrontVisibleFrom("2026-12-01T00:00:00.000Z", now)).toBeNull();
+    expect(isProgramPubliclyVisible({ ...base, startDate: null }, now)).toBe(true);
   });
 
   it("keeps legacy published programs visible when availability is unknown", () => {

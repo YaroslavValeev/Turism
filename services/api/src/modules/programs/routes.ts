@@ -17,6 +17,7 @@ import type { AdminPayload } from "../../middleware/auth";
 import { isProgramPubliclyVisible } from "./publicVisibility";
 import { dedupeProgramsByEventKey } from "./dedup";
 import { setProgramPublishStatus } from "./publishStatus.service";
+import { describePublishMissing } from "./publishGate";
 import { validateProgramCardPatch, validateProgramMediaInput } from "./programEditValidation";
 import { changedContentFields, isProgramContentField, nextManualFields } from "./manualFields";
 import { containsSyntheticMarker } from "./syntheticMarker";
@@ -437,10 +438,14 @@ export function programsRoutes(env: Env): Router {
         res.status(400).json({ error: "valid publishStatus required", allowed: result.allowed });
         return;
       }
-      res.status(400).json({ error: "Publish gate not passed", missing: result.missing });
+      res.status(400).json({
+        error: "Publish gate not passed",
+        missing: result.missing,
+        message: `не заполнено — ${describePublishMissing(result.missing)}`,
+      });
       return;
     }
-    res.json(result.program);
+    res.json({ ...result.program, visibleFrom: result.visibleFrom });
   });
 
   router.post("/:id/media", admin, async (req: Request, res: Response) => {

@@ -414,6 +414,25 @@ textarea {
   color: var(--mw-muted);
   line-height: 1.6;
 }
+.mw-mywave-note {
+  margin: 0 0 8px;
+  font-weight: 300;
+  font-size: 0.92rem;
+  line-height: 1.6;
+  color: rgba(55, 65, 81, 0.62);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.mw-mywave-note__label {
+  font-style: italic;
+}
+.mw-organizer-caption {
+  margin: -4px 0 10px;
+  font-size: 0.8rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--mw-muted);
+}
 .mw-program-description {
   max-width: 70ch;
 }

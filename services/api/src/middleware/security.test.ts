@@ -39,6 +39,7 @@ const baseEnv: Env = {
   AI_ENABLED: false,
   AI_OWNER_APPROVAL_REQUIRED: true,
   AI_AUTOPUBLISH_ENABLED: false,
+  AI_CARD_ENRICH_ENABLED: false,
   CORS_ALLOWED_ORIGINS: "https://mywavetour.ru/programs/, https://www.mywavetour.ru/",
 };
 

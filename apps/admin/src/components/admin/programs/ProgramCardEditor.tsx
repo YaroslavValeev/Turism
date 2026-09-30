@@ -6,6 +6,7 @@ import { adminJson } from "../../../lib/admin";
 import {
   PROGRAM_CARD_TEXT_FIELDS,
   cardDraftFromProgram,
+  cardFieldOrigin,
   cardPatchFromDraft,
   reorderMediaIds,
   type Program,
@@ -21,6 +22,10 @@ function previewUrl(url: string): string {
   return url.startsWith("/") ? `${WEB_BASE}${url}` : url;
 }
 
+function pickText(draft: ProgramCardDraft, key: string): Partial<ProgramCardDraft> {
+  return key in draft ? { [key]: draft[key as keyof ProgramCardDraft] } : {};
+}
+
 type Props = {
   program: Program;
   onChanged: (message: string) => Promise<void> | void;
@@ -33,6 +38,7 @@ export function ProgramCardEditor({ program, onChanged, onError }: Props) {
   const [deletingMediaId, setDeletingMediaId] = useState<string | null>(null);
   const [reordering, setReordering] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [enriching, setEnriching] = useState(false);
   const patch = cardPatchFromDraft(program, draft);
   const dirty = Object.keys(patch).length > 0;
 
@@ -45,6 +51,50 @@ export function ProgramCardEditor({ program, onChanged, onError }: Props) {
       onError(error instanceof Error ? error.message : "Не удалось сохранить карточку");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleEnrich = async () => {
+    if (dirty && !window.confirm("Несохранённые правки будут потеряны. Продолжить автозаполнение?")) return;
+    setEnriching(true);
+    try {
+      const res = await adminJson<{ outcome: { status: string; fields?: string[]; reason?: string }; program: Program | null }>(
+        `/programs/${program.id}/enrich`,
+        { method: "POST" },
+      );
+      if (res.program) setDraft(cardDraftFromProgram(res.program));
+      const { outcome } = res;
+      if (outcome.status === "failed") {
+        onError(`ИИ не ответил (${outcome.reason}). Проверьте ключ OpenAI и прокси на сервере.`);
+        return;
+      }
+      await onChanged(
+        outcome.status === "enriched"
+          ? `ИИ заполнил поля: ${outcome.fields?.length ? outcome.fields.join(", ") : "нет новых данных в посте"}. Поля с ручными правками не тронуты.`
+          : `Автозаполнение пропущено: ${outcome.reason === "no_source_text" ? "нет текста исходного поста" : outcome.reason}.`,
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Не удалось выполнить автозаполнение";
+      onError(
+        message.includes("card_enrichment_disabled")
+          ? "ИИ-автозаполнение выключено на сервере (нужны AI_ENABLED, AI_CARD_ENRICH_ENABLED и OPENAI_API_KEY)."
+          : message,
+      );
+    } finally {
+      setEnriching(false);
+    }
+  };
+
+  const handleRelease = async (key: string) => {
+    try {
+      const updated = await adminJson<Program>(`/programs/${program.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ releaseManualFields: [key] }),
+      });
+      setDraft((d) => ({ ...d, ...pickText(cardDraftFromProgram(updated), key) }));
+      await onChanged("Поле снова обновляется из источника и ИИ-автозаполнением.");
+    } catch (error) {
+      onError(error instanceof Error ? error.message : "Не удалось снять ручную правку");
     }
   };
 
@@ -110,7 +160,28 @@ export function ProgramCardEditor({ program, onChanged, onError }: Props) {
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 12 }}>
         {PROGRAM_CARD_TEXT_FIELDS.map(({ key, label, multiline }) => (
           <label key={key} className="mw-admin-stack-6">
-            <span className="mw-admin-caption">{label}</span>
+            <span className="mw-admin-caption">
+              {label}
+              {cardFieldOrigin(program, key) === "manual" ? (
+                <>
+                  {" · ручная правка "}
+                  <button
+                    type="button"
+                    className="mw-admin-btn mw-admin-btn--ghost"
+                    style={{ padding: "0 6px", fontSize: 12 }}
+                    title="Разрешить сбору из источника и ИИ снова обновлять это поле"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      void handleRelease(key);
+                    }}
+                  >
+                    снять
+                  </button>
+                </>
+              ) : cardFieldOrigin(program, key) === "ai" ? (
+                " · заполнено ИИ по посту"
+              ) : null}
+            </span>
             {multiline ? (
               <textarea
                 className="mw-admin-input"
@@ -168,6 +239,15 @@ export function ProgramCardEditor({ program, onChanged, onError }: Props) {
           disabled={saving || !dirty}
         >
           Отменить правки
+        </button>
+        <button
+          type="button"
+          className="mw-admin-btn mw-admin-btn--ghost"
+          onClick={handleEnrich}
+          disabled={saving || enriching}
+          title="Заполнить название, «для кого», включено/не включено и снаряжение по исходному посту. Ручные правки не трогаются."
+        >
+          {enriching ? "ИИ заполняет..." : "Автозаполнить (ИИ)"}
         </button>
       </div>
 

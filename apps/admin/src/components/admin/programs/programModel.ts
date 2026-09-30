@@ -34,9 +34,18 @@ export type Program = {
   exclusions?: string | null;
   gearRequirements?: string | null;
   cancellationRules?: string | null;
+  manualFields?: string[];
+  aiEnrichment?: { generatedAt?: string; fields?: string[] } | null;
   media: ProgramMediaItem[];
   organizer?: { id: string; displayName: string; verificationStatus: string };
 };
+
+/** Подпись поля: правлено вручную (сбор и ИИ не трогают) или заполнено ИИ по посту. */
+export function cardFieldOrigin(p: Program, key: string): "manual" | "ai" | null {
+  if (p.manualFields?.includes(key)) return "manual";
+  if (p.aiEnrichment?.fields?.includes(key)) return "ai";
+  return null;
+}
 
 export type ProgramMediaItem = {
   id: string;

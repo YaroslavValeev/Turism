@@ -153,6 +153,11 @@ export interface Env {
   AI_OWNER_APPROVAL_REQUIRED: boolean;
   /** Запрещён автопаблиш AI; по умолчанию false. */
   AI_AUTOPUBLISH_ENABLED: boolean;
+  /**
+   * ИИ-автозаполнение текста карточек (заголовок, «для кого», включено, экипировка, примечания MyWave).
+   * Меняет только текст, статус публикации не трогает; поля из manualFields не перезаписывает. Требует AI_ENABLED.
+   */
+  AI_CARD_ENRICH_ENABLED: boolean;
 }
 
 export function loadEnv(): Env {
@@ -225,5 +230,6 @@ export function loadEnv(): Env {
     AI_ENABLED: optionalBoolean("AI_ENABLED", false),
     AI_OWNER_APPROVAL_REQUIRED: optionalBoolean("AI_OWNER_APPROVAL_REQUIRED", true),
     AI_AUTOPUBLISH_ENABLED: optionalBoolean("AI_AUTOPUBLISH_ENABLED", false),
+    AI_CARD_ENRICH_ENABLED: optionalBoolean("AI_CARD_ENRICH_ENABLED", false),
   };
 }

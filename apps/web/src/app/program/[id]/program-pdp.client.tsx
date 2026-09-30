@@ -23,6 +23,8 @@ import {
 } from "../../../lib/programCardCover";
 import {
   extractLabeledFieldValue,
+  organizerText,
+  readMyWaveNotes,
   resolveProgramField,
 } from "../../../lib/recommendedProgramFields";
 import { trackProductEvent } from "../../../lib/analytics/client";
@@ -81,6 +83,7 @@ export type Program = {
     mediaType: string;
   }[];
   mediaOrderPinned?: boolean;
+  aiEnrichment?: unknown;
 };
 
 function sourceTypeLabelRuPdp(t: string | null | undefined): string {
@@ -211,17 +214,36 @@ function ProgramInfoField({
   label: string;
   value: { mode: "confirmed" | "recommended"; text: string };
 }) {
+  if (value.mode === "recommended") {
+    return (
+      <div>
+        <h3 className="mw-h3">{label}</h3>
+        <MyWaveNote>{value.text}</MyWaveNote>
+      </div>
+    );
+  }
   return (
     <div>
       <h3 className="mw-h3">{label}</h3>
-      <p
-        className={value.mode === "recommended" ? "recommended-field" : ""}
-        style={{ whiteSpace: "pre-wrap", margin: 0, color: "var(--mw-muted)", lineHeight: 1.65, overflowWrap: "anywhere", wordBreak: "break-word" }}
-      >
+      <p style={{ whiteSpace: "pre-wrap", margin: 0, color: "var(--mw-muted)", lineHeight: 1.65, overflowWrap: "anywhere", wordBreak: "break-word" }}>
         {renderTextWithLinks(value.text)}
       </p>
     </div>
   );
+}
+
+/** Подсказка MyWave: общая практика для формата, не слова организатора — тонким серым шрифтом. */
+function MyWaveNote({ children }: { children: ReactNode }) {
+  return (
+    <p className="mw-mywave-note">
+      <span className="mw-mywave-note__label">Примечание MyWave — не от организатора. </span>
+      {children}
+    </p>
+  );
+}
+
+function OrganizerSourceCaption() {
+  return <p className="mw-organizer-caption">По данным организатора</p>;
 }
 
 function linesToBullets(text: string): string[] {
@@ -463,16 +485,20 @@ export function ProgramPdpClient({
     overrides.whatHappensAfterBooking,
   );
   const gear = mergeProgramField(
-    program.gearRequirements,
+    organizerText(program.gearRequirements),
     overrides.gearRequirements,
   );
+  const myWaveNotes = readMyWaveNotes(program.aiEnrichment);
+  const inclusions = organizerText(program.inclusions);
+  const exclusions = organizerText(program.exclusions);
+  const cancellationRules = organizerText(program.cancellationRules);
   const medical = mergeProgramField(
     program.medicalLimitations,
     overrides.medicalLimitations,
   );
   const sourceTextScope = [
-    program.inclusions,
-    program.exclusions,
+    inclusions,
+    exclusions,
     itinerary,
     audienceFit,
     trustReason,
@@ -491,6 +517,7 @@ export function ProgramPdpClient({
   const equipmentField = resolveProgramField({
     field: "equipment",
     organizerValue: gear,
+    myWaveNote: myWaveNotes?.gear,
     discipline: program.discipline,
     programFormat: program.formatType,
     isKids: isKidsProgram,
@@ -502,6 +529,7 @@ export function ProgramPdpClient({
       extractLabeledFieldValue("accommodation", sourceTextScope) ??
       program.accommodationDetails ??
       null,
+    myWaveNote: myWaveNotes?.accommodation,
     discipline: program.discipline,
     programFormat: program.formatType,
     isKids: isKidsProgram,
@@ -513,6 +541,7 @@ export function ProgramPdpClient({
       extractLabeledFieldValue("transfer", sourceTextScope) ??
       program.transferDetails ??
       null,
+    myWaveNote: myWaveNotes?.transfer,
     discipline: program.discipline,
     programFormat: program.formatType,
     isKids: isKidsProgram,
@@ -617,12 +646,8 @@ export function ProgramPdpClient({
           ? "Лето"
           : "Осень";
 
-  const inclusionLines = program.inclusions
-    ? linesToBullets(program.inclusions)
-    : [];
-  const exclusionLines = program.exclusions
-    ? linesToBullets(program.exclusions)
-    : [];
+  const inclusionLines = inclusions ? linesToBullets(inclusions) : [];
+  const exclusionLines = exclusions ? linesToBullets(exclusions) : [];
 
   const programEntryQuery = buildInternalContentQuery("program", program.id);
   const exploreHubLinks = validExploreMainLinks(
@@ -929,19 +954,21 @@ export function ProgramPdpClient({
 
           {audienceFit && (
             <SectionBlock title="Для кого программа">
+              <OrganizerSourceCaption />
               <Prose text={audienceFit} />
             </SectionBlock>
           )}
 
-          {(program.inclusions || program.exclusions) && (
+          {(inclusions || exclusions) && (
             <SectionBlock title="Включено и не включено">
+              <OrganizerSourceCaption />
               <div className="mw-pdp-two-col">
                 <div>
                   <h3 className="mw-h3">Включено</h3>
                   {inclusionLines.length > 0 ? (
                     <BulletList items={inclusionLines} />
-                  ) : program.inclusions ? (
-                    <Prose text={program.inclusions} />
+                  ) : inclusions ? (
+                    <Prose text={inclusions} />
                   ) : (
                     <p style={{ color: "var(--mw-muted)", margin: 0 }}>
                       Организатор не указал отдельным списком.
@@ -952,8 +979,8 @@ export function ProgramPdpClient({
                   <h3 className="mw-h3">Не включено</h3>
                   {exclusionLines.length > 0 ? (
                     <BulletList items={exclusionLines} />
-                  ) : program.exclusions ? (
-                    <Prose text={program.exclusions} />
+                  ) : exclusions ? (
+                    <Prose text={exclusions} />
                   ) : (
                     <p style={{ color: "var(--mw-muted)", margin: 0 }}>
                       Организатор не указал отдельным списком.
@@ -961,6 +988,14 @@ export function ProgramPdpClient({
                   )}
                 </div>
               </div>
+            </SectionBlock>
+          )}
+
+          {myWaveNotes && myWaveNotes.general.length > 0 && (
+            <SectionBlock title="Полезно знать">
+              {myWaveNotes.general.map((note) => (
+                <MyWaveNote key={note}>{note}</MyWaveNote>
+              ))}
             </SectionBlock>
           )}
 
@@ -1065,9 +1100,13 @@ export function ProgramPdpClient({
             </SectionBlock>
           )}
 
-          {program.cancellationRules && (
+          {(cancellationRules || myWaveNotes?.cancellation) && (
             <SectionBlock title="Условия участия и отмены">
-              <Prose text={program.cancellationRules} />
+              {cancellationRules ? (
+                <Prose text={cancellationRules} />
+              ) : (
+                <MyWaveNote>{myWaveNotes?.cancellation}</MyWaveNote>
+              )}
             </SectionBlock>
           )}
 

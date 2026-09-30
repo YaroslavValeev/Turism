@@ -116,6 +116,26 @@ describe("parseCardEnrichment", () => {
     expect(result?.organizer.gearRequirements).toEqual(["Страховка не менее 100 000 р."]);
   });
 
+  it("переносит требования и условия оплаты из «Не включено» в нужные поля", () => {
+    const post =
+      "Питание: завтрак и обед. Бронирование 50% стоимости при записи, вторая часть 50% за неделю до старта. Присутствие и расписка от родителей для спортсменов до 18 лет. Перелет не включен.";
+    const result = parseCardEnrichment(
+      {
+        organizer: {
+          exclusions: [
+            "Перелет",
+            "50% предоплата при записи, оставшиеся 50% за неделю до старта",
+            "Присутствие и расписка от родителей для спортсменов до 18 лет",
+          ],
+        },
+      },
+      post,
+    );
+    expect(result?.organizer.exclusions).toEqual(["Перелет"]);
+    expect(result?.organizer.cancellationRules).toEqual(["50% предоплата при записи, оставшиеся 50% за неделю до старта"]);
+    expect(result?.organizer.gearRequirements).toEqual(["Присутствие и расписка от родителей для спортсменов до 18 лет"]);
+  });
+
   it("возвращает null на не-объект", () => {
     expect(parseCardEnrichment("oops", SOURCE)).toBeNull();
   });
@@ -123,7 +143,14 @@ describe("parseCardEnrichment", () => {
 
 describe("buildEnrichmentUpdate", () => {
   const result = {
-    organizer: { title: "Кайт-сафари на яхте", audienceFit: "Любой уровень", inclusions: ["Питание", "Проживание"], exclusions: [], gearRequirements: [] },
+    organizer: {
+      title: "Кайт-сафари на яхте",
+      audienceFit: "Любой уровень",
+      inclusions: ["Питание", "Проживание"],
+      exclusions: [],
+      gearRequirements: [],
+      cancellationRules: [],
+    },
     notes: { general: [], audience: "", accommodation: "", transfer: "", gear: "", cancellation: "" },
   };
 
@@ -139,6 +166,37 @@ describe("buildEnrichmentUpdate", () => {
     expect(data.exclusions).toBeNull();
     expect(data.gearRequirements).toBeNull();
     expect("title" in data).toBe(false);
+  });
+
+  it("не обнуляет ранее заполненные ИИ условия отмены", () => {
+    const empty = { ...result, organizer: { ...result.organizer, cancellationRules: [] } };
+    const { data } = buildEnrichmentUpdate(
+      { manualFields: [], aiEnrichment: { fields: ["cancellationRules"] } },
+      empty,
+      { model: "m", sourceHash: "z", now: new Date("2026-09-30T00:00:00Z") },
+    );
+    expect("cancellationRules" in data).toBe(false);
+  });
+
+  it("очищает сырой «для кого» из сбора, если ИИ ничего не подтвердил", () => {
+    const post = "Друзья, мы едем закрывать сезон в Краснодаре в октябре! Остались места на даты 25-31 октября.";
+    const empty = { ...result, organizer: { ...result.organizer, audienceFit: "" } };
+    const meta = { model: "m", sourceHash: "y", now: new Date("2026-09-30T00:00:00Z"), sourceText: post };
+    expect(
+      buildEnrichmentUpdate({ manualFields: [], audienceFit: "Друзья, мы едем закрывать сезон в Краснодаре…" }, empty, meta).data
+        .audienceFit,
+    ).toBeNull();
+    expect(
+      buildEnrichmentUpdate({ manualFields: [], audienceFit: 'a href="/dream-summits/0_53/">Тетнульди' }, empty, meta).data
+        .audienceFit,
+    ).toBeNull();
+    expect(
+      "audienceFit" in buildEnrichmentUpdate({ manualFields: [], audienceFit: "Для райдеров от 16 лет" }, empty, meta).data,
+    ).toBe(false);
+    expect(
+      "audienceFit" in
+        buildEnrichmentUpdate({ manualFields: ["audienceFit"], audienceFit: "Друзья, мы едем закрывать сезон" }, empty, meta).data,
+    ).toBe(false);
   });
 
   it("не трогает поля, которые админ правил вручную, и пропускает пустые", () => {

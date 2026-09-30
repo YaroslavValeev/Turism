@@ -1,7 +1,14 @@
 import { createHash } from "node:crypto";
 
 /** Поля карточки, которые ИИ заполняет «от организатора» — только по фактам из поста. */
-export const ENRICHABLE_FIELDS = ["title", "audienceFit", "inclusions", "exclusions", "gearRequirements"] as const;
+export const ENRICHABLE_FIELDS = [
+  "title",
+  "audienceFit",
+  "inclusions",
+  "exclusions",
+  "gearRequirements",
+  "cancellationRules",
+] as const;
 export type EnrichableField = (typeof ENRICHABLE_FIELDS)[number];
 
 export interface MyWaveNotes {
@@ -20,6 +27,7 @@ export interface CardEnrichmentResult {
     inclusions: string[];
     exclusions: string[];
     gearRequirements: string[];
+    cancellationRules: string[];
   };
   notes: MyWaveNotes;
 }
@@ -40,7 +48,8 @@ export const CARD_ENRICHMENT_SYSTEM_PROMPT = `Ты редактор катало
    - audienceFit: 1–2 предложения, кому подходит, только из того, что сказано в посте. Уровень участников («для новичков», «для всех уровней», «для опытных») пиши, только если он прямо назван в посте.
    - inclusions: что получает каждый участник за стоимость (проживание, питание, тренировки, сопровождение), по словам организатора, короткими пунктами. Призы и награждение победителей сюда не относятся.
    - exclusions: только то, что организатор прямо называет не включённым или оплачиваемым отдельно. Требования к участникам (страховка, справки, возраст, согласие родителей) сюда не относятся.
-   - gearRequirements: снаряжение и обязательные требования к участнику (страховка, документы), только если сказано.
+   - gearRequirements: снаряжение и обязательные требования к участнику (страховка, документы, возраст, расписка родителей), только если сказано.
+   - cancellationRules: условия записи, оплаты, предоплаты, брони и отмены, только если сказано. Цены не пиши.
 2) "notes" — рекомендации MyWave для того, чего в посте НЕТ: общая практика для такой дисциплины и формата. Это НЕ слова организатора и НЕ факты о программе.
    - Заполняй примечание, только если в посте нет этой информации (например, про проживание в посте ничего — пиши accommodation; если есть — оставь пусто).
    - audience: кому обычно подходит такой формат и какая подготовка желательна, если в посте об этом не сказано.
@@ -52,7 +61,7 @@ export const CARD_ENRICHMENT_SYSTEM_PROMPT = `Ты редактор катало
    - Каждое примечание до 200 символов.
 
 Верни ТОЛЬКО JSON:
-{"organizer":{"title":"","audienceFit":"","inclusions":[],"exclusions":[],"gearRequirements":[]},"notes":{"general":[],"audience":"","accommodation":"","transfer":"","gear":"","cancellation":""}}`;
+{"organizer":{"title":"","audienceFit":"","inclusions":[],"exclusions":[],"gearRequirements":[],"cancellationRules":[]},"notes":{"general":[],"audience":"","accommodation":"","transfer":"","gear":"","cancellation":""}}`;
 
 /** Регион каталога сюда не передаём: он бывает определён эвристикой неверно, а модель ему доверяет. */
 export function buildEnrichmentUserMessage(input: {
@@ -135,6 +144,18 @@ export function hasUnsupportedLevelClaim(text: string, sourceText: string): bool
 
 /** Награды и призы победителям — не то, что получает каждый участник. */
 const AWARD_RE = /награ|приз|победител|кубок/i;
+/** Требования к участнику, которые модель иногда кладёт в «Не включено». */
+const REQUIREMENT_RE = /страхов|расписк|справк|медицинск|возраст|документ|паспорт|согласи|разрешени/i;
+/** Условия оплаты и брони — место им в «Условиях участия и отмены». */
+const TERMS_RE = /предоплат|оплат|бронир|\bброн|возврат|отмен|депозит/i;
+
+function uniqueByStems(items: string[]): string[] {
+  const out: string[] = [];
+  for (const item of items) {
+    if (!out.some((kept) => groundedInSource(item, stems(kept)))) out.push(item);
+  }
+  return out;
+}
 
 /**
  * `context` — слова, которые можно употреблять помимо поста (название дисциплины и формата каталога),
@@ -151,9 +172,20 @@ export function parseCardEnrichment(raw: unknown, sourceText: string, context = 
 
   const title = cleanTitle(org.title);
   const audience = cleanLine(org.audienceFit, 400);
-  const gearRequirements = grounded(cleanList(org.gearRequirements, 8, 160));
-  const exclusions = grounded(cleanList(org.exclusions, 12, 160)).filter(
-    (item) => !gearRequirements.some((req) => groundedInSource(item, stems(req))),
+  const rawExclusions = grounded(cleanList(org.exclusions, 12, 160));
+  const gearRequirements = uniqueByStems([
+    ...grounded(cleanList(org.gearRequirements, 8, 160)),
+    ...rawExclusions.filter((item) => REQUIREMENT_RE.test(item)),
+  ]).slice(0, 8);
+  const cancellationRules = uniqueByStems([
+    ...grounded(cleanList(org.cancellationRules, 6, 200)),
+    ...rawExclusions.filter((item) => !REQUIREMENT_RE.test(item) && TERMS_RE.test(item)),
+  ]).slice(0, 6);
+  const exclusions = rawExclusions.filter(
+    (item) =>
+      !REQUIREMENT_RE.test(item) &&
+      !TERMS_RE.test(item) &&
+      !gearRequirements.some((req) => groundedInSource(item, stems(req))),
   );
   const inclusions = grounded(cleanList(org.inclusions, 12, 160)).filter((item) => !AWARD_RE.test(item));
   return {
@@ -164,6 +196,7 @@ export function parseCardEnrichment(raw: unknown, sourceText: string, context = 
       inclusions,
       exclusions,
       gearRequirements,
+      cancellationRules,
     },
     notes: {
       general: cleanList(notes.general, 3, 200),
@@ -184,10 +217,25 @@ export type EnrichmentUpdateData = { title?: string } & Partial<
  * Обновление программы: непустые поля, кроме закреплённых админом. Поле, которое ИИ заполнял
  * раньше, а теперь по посту не подтверждается, очищается (кроме обязательного названия).
  */
+/** Обязательные для публикации поля не очищаем, даже если пост их не подтверждает. */
+const NEVER_CLEARED: ReadonlySet<EnrichableField> = new Set(["title", "cancellationRules"]);
+
+function normalizeForMatch(text: string): string {
+  return text.toLowerCase().replace(/ё/g, "е").replace(/[…]|\.{3}/g, "").replace(/\s+/g, " ").trim();
+}
+
+/** Сырой «для кого» из сбора: начало текста поста или обрывок HTML-разметки. */
+export function isRawSourceExcerpt(value: string | null | undefined, sourceText: string): boolean {
+  const text = normalizeForMatch(String(value ?? ""));
+  if (!text) return false;
+  if (/<\/?[a-z]|href=|class=|"\s*>|\/">/i.test(String(value))) return true;
+  return text.length >= 20 && normalizeForMatch(sourceText).includes(text);
+}
+
 export function buildEnrichmentUpdate(
-  program: { manualFields: readonly string[]; aiEnrichment?: unknown },
+  program: { manualFields: readonly string[]; aiEnrichment?: unknown; audienceFit?: string | null },
   result: CardEnrichmentResult,
-  meta: { model: string; sourceHash: string; now: Date },
+  meta: { model: string; sourceHash: string; now: Date; sourceText?: string },
 ): { data: EnrichmentUpdateData; stored: StoredEnrichment } {
   const locked = new Set(program.manualFields);
   const previouslyAi = new Set(readStoredEnrichment(program.aiEnrichment)?.fields ?? []);
@@ -197,6 +245,7 @@ export function buildEnrichmentUpdate(
     inclusions: result.organizer.inclusions.join("\n"),
     exclusions: result.organizer.exclusions.join("\n"),
     gearRequirements: result.organizer.gearRequirements.join("\n"),
+    cancellationRules: result.organizer.cancellationRules.join("\n"),
   };
   const data: EnrichmentUpdateData = {};
   const filled: EnrichableField[] = [];
@@ -205,9 +254,16 @@ export function buildEnrichmentUpdate(
     if (candidates[field]) {
       data[field] = candidates[field];
       filled.push(field);
-    } else if (field !== "title" && previouslyAi.has(field)) {
+    } else if (field !== "title" && !NEVER_CLEARED.has(field) && previouslyAi.has(field)) {
       data[field] = null;
     }
+  }
+  if (
+    !locked.has("audienceFit") &&
+    data.audienceFit === undefined &&
+    isRawSourceExcerpt(program.audienceFit, meta.sourceText ?? "")
+  ) {
+    data.audienceFit = null;
   }
   return {
     data,

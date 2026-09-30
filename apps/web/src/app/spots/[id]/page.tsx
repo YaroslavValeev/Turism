@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { EQUIPMENT_LABEL_RU, WATER_BODY_LABEL_RU, fetchPublicSpot, formatScore, yandexMapsUrl } from "../../../lib/spotsApi";
+import { SpotsMap } from "../SpotsMap";
 import { SpotRatingBadge } from "../SpotRatingBadge";
 
 type Props = { params: Promise<{ id: string }> };
@@ -59,6 +60,10 @@ export default async function SpotPage({ params }: Props) {
           </p>
         ) : null}
       </header>
+
+      {spot.latitude != null && spot.longitude != null ? (
+        <SpotsMap points={[{ latitude: spot.latitude, longitude: spot.longitude }]} title={`${spot.name} на карте`} height={340} />
+      ) : null}
 
       <section>
         <h2 className="mw-h2" style={{ fontSize: "1.25rem", margin: "0 0 0.75rem" }}>Услуги и оценки</h2>

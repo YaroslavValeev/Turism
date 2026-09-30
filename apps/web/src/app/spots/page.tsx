@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { connection } from "next/server";
 import { WATER_BODY_LABEL_RU, fetchPublicSpots, yandexMapsUrl } from "../../lib/spotsApi";
+import { SPOT_MAP_MAX_POINTS } from "../../lib/spotsMap";
 import { SpotRatingBadge } from "./SpotRatingBadge";
+import { SpotsMap } from "./SpotsMap";
 
 const TITLE = "Карта вейксерф-спотов — независимый рейтинг | MyWaveTour";
 const DESCRIPTION =
@@ -37,6 +39,10 @@ export default async function SpotsIndexPage() {
   // API недоступен во время docker build: пререндер «запёк» бы пустую страницу до первой ревалидации.
   await connection();
   const spots = await fetchPublicSpots();
+  const mapped = (spots ?? [])
+    .filter((s): s is typeof s & { latitude: number; longitude: number } => s.latitude != null && s.longitude != null)
+    .slice(0, SPOT_MAP_MAX_POINTS);
+  const markerNo = new Map(mapped.map((s, i) => [s.id, i + 1]));
 
   return (
     <div className="mw-container" style={{ paddingBottom: "3rem" }}>
@@ -77,6 +83,8 @@ export default async function SpotsIndexPage() {
           <Link href="/spots/methodology" className="mw-btn mw-btn--primary">Прочитать методику</Link>
         </div>
       ) : (
+        <>
+        {mapped.length > 0 ? <SpotsMap points={mapped} title="Карта вейксерф-спотов" /> : null}
         <ul
           style={{
             listStyle: "none",
@@ -92,6 +100,25 @@ export default async function SpotsIndexPage() {
               <article style={cardStyle}>
                 <div>
                   <h2 style={{ margin: "0 0 0.3rem", fontSize: "1.1rem", lineHeight: 1.3 }}>
+                    {markerNo.has(spot.id) ? (
+                      <span
+                        aria-label={`Метка ${markerNo.get(spot.id)} на карте`}
+                        style={{
+                          display: "inline-grid",
+                          placeItems: "center",
+                          minWidth: "1.6em",
+                          height: "1.6em",
+                          marginRight: "0.45rem",
+                          borderRadius: "999px",
+                          background: "#1e98ff",
+                          color: "#fff",
+                          fontSize: "0.8rem",
+                          verticalAlign: "middle",
+                        }}
+                      >
+                        {markerNo.get(spot.id)}
+                      </span>
+                    ) : null}
                     <Link href={`/spots/${spot.id}`} style={{ color: "inherit", textDecoration: "none" }}>{spot.name}</Link>
                   </h2>
                   <p style={{ margin: 0, color: "#58706d", fontSize: "0.92rem" }}>
@@ -118,6 +145,7 @@ export default async function SpotsIndexPage() {
             </li>
           ))}
         </ul>
+        </>
       )}
     </div>
   );

@@ -11,6 +11,7 @@ import {
   yandexMapsUrl,
 } from "../../components/admin/spots/spotModel";
 import type { SpotRow } from "../../components/admin/spots/spotTypes";
+import { CandidateImportCard } from "../../components/admin/spots/CandidateImportCard";
 
 const emptyForm = { name: "", region: "", address: "", coordinates: "", waterBodyType: "", relatedToMyWave: false };
 
@@ -110,6 +111,8 @@ export default function SpotsPage() {
           </div>
         </div>
       </AdminSectionCard>
+
+      <CandidateImportCard onImported={load} />
 
       <AdminSectionCard title="Реестр">
         <div className="mw-admin-inline-form" style={{ marginBottom: 12 }}>

@@ -6,6 +6,7 @@ import {
   auditReadiness,
   blockerLabel,
   criterionLabel,
+  parseCandidateTable,
   parseCoordinates,
   yandexMapsUrl,
   type AuditForReadiness,
@@ -88,5 +89,31 @@ describe("auditReadiness", () => {
     assert.equal(items.length, 7);
     assert.equal(items[5].ok, false);
     assert.equal(items[6].ok, false);
+  });
+});
+
+describe("parseCandidateTable", () => {
+  it("parses a sheet with Russian headers and tab delimiter", () => {
+    const text = "Название\tРегион\tКоординаты\tВодоём\nWake Park\tМосква\t55.75, 37.61\tозеро\nБез коорд\tТверь\t\t";
+    const { items, errors } = parseCandidateTable(text);
+    assert.deepEqual(errors, []);
+    assert.deepEqual(items, [
+      { name: "Wake Park", region: "Москва", latitude: 55.75, longitude: 37.61, waterBodyType: "lake" },
+      { name: "Без коорд", region: "Тверь" },
+    ]);
+  });
+
+  it("uses default column order without headers and reports bad rows", () => {
+    const { items, errors } = parseCandidateTable("A;R;55 37\nB;;\nC;R;abc\nD;R;;;болото");
+    assert.deepEqual(items, [{ name: "A", region: "R", latitude: 55, longitude: 37 }]);
+    assert.equal(errors.length, 3);
+    assert.match(errors[0], /Строка 2/);
+  });
+
+  it("accepts separate lat/lng columns and JSON", () => {
+    const { items } = parseCandidateTable("name;region;lat;lng\nA;R;56.1;35.2");
+    assert.deepEqual(items, [{ name: "A", region: "R", latitude: 56.1, longitude: 35.2 }]);
+    assert.equal(parseCandidateTable('[{"name":"A","region":"R"}]').items.length, 1);
+    assert.equal(parseCandidateTable("[oops").errors.length, 1);
   });
 });

@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { pickCurrentSnapshot, publicMethodology, sortPublicSpots, toPublicSpot, type SnapshotRow, type SpotRow } from "./publicView";
+import {
+  parseCompareIds,
+  pickCurrentSnapshot,
+  publicMethodology,
+  snapshotCategoryScores,
+  sortPublicSpots,
+  toPublicSpot,
+  type SnapshotRow,
+  type SpotRow,
+} from "./publicView";
 
 const now = new Date("2026-09-30T12:00:00Z");
 const future = new Date("2027-06-01T00:00:00Z");
@@ -97,5 +106,34 @@ describe("publicMethodology", () => {
     const m = publicMethodology();
     expect(m.categories.reduce((sum, c) => sum + c.weight, 0)).toBe(100);
     expect(m.mandatoryGates).toHaveLength(8);
+  });
+});
+
+describe("snapshotCategoryScores", () => {
+  const full = { infrastructure: 8, instrument: 9, waterArea: 7, personnel: 8, safety: 10, atmosphere: 6.5 };
+
+  it("exposes the complete category set from the snapshot input", () => {
+    expect(snapshotCategoryScores({ categoryScores: { ...full, extra: 1 } })).toEqual(full);
+    expect(pickCurrentSnapshot([snap({ inputJson: { categoryScores: full } })], now)?.categoryScores).toEqual(full);
+  });
+
+  it("hides incomplete or malformed scores", () => {
+    const { atmosphere: _omit, ...partial } = full;
+    expect(snapshotCategoryScores({ categoryScores: partial })).toBeNull();
+    expect(snapshotCategoryScores({ categoryScores: { ...full, safety: 11 } })).toBeNull();
+    expect(snapshotCategoryScores(null)).toBeNull();
+  });
+});
+
+describe("parseCompareIds", () => {
+  it("accepts comma and repeated params, dedupes and keeps order", () => {
+    expect(parseCompareIds(["b,a", "b", "c"])).toEqual({ ok: true, ids: ["b", "a", "c"] });
+  });
+
+  it("rejects bad counts and ids", () => {
+    expect(parseCompareIds("a").ok).toBe(false);
+    expect(parseCompareIds("a,b,c,d,e").ok).toBe(false);
+    expect(parseCompareIds("a,../b").ok).toBe(false);
+    expect(parseCompareIds(undefined).ok).toBe(false);
   });
 });

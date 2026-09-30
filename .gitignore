@@ -27,5 +27,8 @@ docs/mywave_v5_real_only.xlsx
 # Let's Encrypt tokens (писать на VPS, не в git)
 infra/certbot-webroot/.well-known/
 
+# Доказательства Spot Map в dev (на проде — volume spot_evidence)
+/var/spot-evidence/
+
 # Одноразовые PEM для scripts/verify_nginx_config.sh (локально / CI)
 .tmp-nginx-verify/

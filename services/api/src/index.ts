@@ -40,6 +40,7 @@ import { internalContentPipelineRoutes } from "./modules/content-pipeline/intern
 import { organizerOutreachRoutes } from "./modules/organizer-outreach/routes";
 import { aiPilotRoutes } from "./modules/ai-pilot/routes";
 import { campFeedRoutes } from "./modules/camp-feed/routes";
+import { spotsAdminRoutes } from "./modules/spots/adminRoutes";
 import { createAuthRateLimiter, createPublicRateLimiter, isOriginAllowed } from "./middleware/security";
 import { safeError } from "./lib/safeLogger";
 import { assertPublicBaseUrlsForProduction } from "./lib/publicBaseUrlCheck";
@@ -96,6 +97,7 @@ app.use("/sources", sourcesRoutes(env));
 app.use("/raw-items", rawItemsRoutes(env));
 app.use("/event-candidates", eventCandidatesRoutes(env));
 app.use("/jobs", jobsRoutes(env));
+app.use("/spots", spotsAdminRoutes(env));
 app.use("/internal/analytics", internalAnalyticsRoutes(env));
 app.use("/internal/content-pipeline", internalContentPipelineRoutes(env));
 app.use("/api/sources", sourcesRoutes(env));

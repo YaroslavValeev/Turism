@@ -383,7 +383,7 @@ export function ProgramCatalogTable({
                     className="mw-admin-input"
                     value={mediaDraft.url}
                     onChange={(e) => setMediaDrafts((c) => ({ ...c, [program.id]: { ...mediaDraft, url: e.target.value } }))}
-                    placeholder="Ссылка на медиа"
+                    placeholder="Ссылка https://… на фото или видео"
                   />
                   <input
                     className="mw-admin-input"

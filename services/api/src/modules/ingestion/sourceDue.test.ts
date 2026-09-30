@@ -41,6 +41,13 @@ describe("isSourceDueForCollection", () => {
     expect(isSourceDueForCollection({ ...daily, lastSuccessAt: null, lastCheckedAt: hoursAgo(3) }, now)).toBe(true);
   });
 
+  it("does not fast-retry failed Instagram sources", () => {
+    const failed = { ...daily, type: "instagram", lastSuccessAt: hoursAgo(72) };
+    expect(isSourceDueForCollection({ ...failed, lastCheckedAt: hoursAgo(3) }, now)).toBe(false);
+    expect(isSourceDueForCollection({ ...failed, lastCheckedAt: hoursAgo(24) }, now)).toBe(true);
+    expect(isSourceDueForCollection({ ...failed, type: "telegram", lastCheckedAt: hoursAgo(3) }, now)).toBe(true);
+  });
+
   it("keeps short intervals and skips inactive sources", () => {
     const checked = hoursAgo(1);
     expect(

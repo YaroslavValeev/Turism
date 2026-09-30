@@ -647,20 +647,25 @@ function getPrimarySourceDiscipline(source: SourceWithOrganizer): string | null 
   return normalizeText(fromMeta);
 }
 
-type DueSource = Pick<Source, "id" | "isActive" | "lastCheckedAt" | "lastSuccessAt" | "fetchIntervalMinutes" | "priority">;
+type DueSource = Pick<Source, "id" | "isActive" | "lastCheckedAt" | "lastSuccessAt" | "fetchIntervalMinutes" | "priority"> & {
+  type?: string;
+};
 
 /** После неудачного сбора не ждём полный интервал (часто сутки) — сетевые сбои обычно временные. */
 const FAILED_SOURCE_RETRY_MINUTES = 180;
 
 export function isSourceDueForCollection(
-  source: Pick<Source, "isActive" | "lastCheckedAt" | "lastSuccessAt" | "fetchIntervalMinutes">,
+  source: Pick<Source, "isActive" | "lastCheckedAt" | "lastSuccessAt" | "fetchIntervalMinutes"> & { type?: string },
   now = new Date(),
 ): boolean {
   if (!source.isActive) return false;
   if (!source.lastCheckedAt) return true;
   let intervalMinutes = Math.max(source.fetchIntervalMinutes, 15);
   const lastCheckFailed = !source.lastSuccessAt || source.lastSuccessAt.getTime() < source.lastCheckedAt.getTime();
-  if (lastCheckFailed) intervalMinutes = Math.min(intervalMinutes, FAILED_SOURCE_RETRY_MINUTES);
+  // Instagram отвечает 429 по IP: частые повторы продлевают бан и съедают дневной лимит источников.
+  if (lastCheckFailed && source.type !== "instagram") {
+    intervalMinutes = Math.min(intervalMinutes, FAILED_SOURCE_RETRY_MINUTES);
+  }
   return now.getTime() - source.lastCheckedAt.getTime() >= intervalMinutes * 60 * 1000;
 }
 

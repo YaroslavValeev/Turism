@@ -10,6 +10,7 @@ import type { Env } from "@mywave/config";
 const mocks = vi.hoisted(() => ({
   spotCreate: vi.fn(),
   spotFindMany: vi.fn(),
+  userFindMany: vi.fn(),
   spotAuditFindUnique: vi.fn(),
   spotAuditUpdate: vi.fn(),
   scoreUpsert: vi.fn(),
@@ -24,6 +25,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("../../lib/prisma", () => ({
   prisma: {
     spot: { create: mocks.spotCreate, findMany: mocks.spotFindMany },
+    user: { findMany: mocks.userFindMany },
     spotAudit: { findUnique: mocks.spotAuditFindUnique, update: mocks.spotAuditUpdate },
     spotAuditCategoryScore: { upsert: mocks.scoreUpsert },
     spotEvidence: { findUnique: mocks.evidenceFindUnique, create: mocks.evidenceCreate },
@@ -144,6 +146,16 @@ describe("spots admin routes: spots", () => {
     expect(mocks.writeAuditLog).toHaveBeenCalledWith(
       expect.objectContaining({ entityType: "spot", entityId: "spot-1", changedField: "created", changedBy: "admin-1" }),
     );
+  });
+});
+
+describe("spots admin routes: reviewers", () => {
+  it("lists only admin users and reports the current user", async () => {
+    mocks.userFindMany.mockResolvedValue([{ id: "admin-2", name: "Editor", email: "e@x.ru" }]);
+    const res = await call("GET", "/reviewers");
+    expect(res.status).toBe(200);
+    expect(res.json).toEqual({ items: [{ id: "admin-2", name: "Editor", email: "e@x.ru" }], currentUserId: "admin-1" });
+    expect(mocks.userFindMany.mock.calls[0][0].where).toEqual({ role: "admin" });
   });
 });
 

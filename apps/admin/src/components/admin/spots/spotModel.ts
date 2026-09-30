@@ -187,6 +187,11 @@ export function parseCandidateTable(text: string): { items: CandidateItem[]; err
   return { items, errors };
 }
 
+export function reviewerLabel(user: { name: string | null; email: string }): string {
+  const name = user.name?.trim();
+  return name ? `${name} (${user.email})` : user.email;
+}
+
 export function formatCoordinates(latitude: string | number | null, longitude: string | number | null): string {
   if (latitude == null || longitude == null) return "";
   return `${Number(latitude)}, ${Number(longitude)}`;

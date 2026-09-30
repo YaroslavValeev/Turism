@@ -12,6 +12,10 @@ export type SpotRow = {
   _count?: { serviceUnits: number };
 };
 
+export type Reviewer = { id: string; name: string | null; email: string };
+
+export type ReviewersResponse = { items: Reviewer[]; currentUserId: string | null };
+
 export type SpotSnapshot = {
   id: string;
   unitId: string;

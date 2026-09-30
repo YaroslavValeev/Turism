@@ -46,7 +46,13 @@ draft audit → оценки + гейты + evidence → подпись эксп
 ## 5. Порядок реализации (по PR)
 
 1. Миграция + модели + репозиторий сборки `SpotRatingInput` из аудита + тесты (без роутов).
-2. Admin API (CRUD спотов/единиц/аудитов, подпись, снимок, публикация, отзыв) + аудит-лог.
+2. Admin API (CRUD спотов/единиц/аудитов, подпись, снимок, публикация, отзыв) + аудит-лог. **Сделано:** `spots/adminRoutes.ts`, всё под `/spots` только для admin:
+   - `GET|POST /spots`, `GET|PATCH /spots/:id`, `POST /spots/:id/units`, `GET|PATCH /spots/units/:unitId`;
+   - `POST /spots/units/:unitId/audits`, `GET|PATCH /spots/audits/:id` (правка только в `draft`), `PUT .../scores`, `PUT .../gates`;
+   - статусы: `POST .../submit|reopen|sign|void` (подпись = текущий админ; submit/sign требуют все 6 оценок);
+   - доказательства: `POST /spots/audits/:id/evidence` (сырое тело до 25 МБ, тип по сигнатуре: jpg/png/webp/mp4/webm/pdf; `?criterion=&capturedAt=&generated=1`; только до подписи), `GET /spots/evidence/:id/file` (с проверкой sha256), `POST /spots/evidence/:id/confirm-integrity`;
+   - `POST /spots/audits/:id/remediations/g05`, `POST /spots/audits/:id/snapshots`, `POST /spots/snapshots/:id/publish|revoke`.
+   - Хранилище: `SPOT_EVIDENCE_DIR` (прод: volume `spot_evidence` → `/var/lib/mywave/spot-evidence`, смонтирован только в api).
 3. Admin UI.
 4. Public API `/spots`, `/spots/:id`, `/spots/compare`, `/spots/methodology` — без чисел, пока нет опубликованных снимков.
 5. Web `/spots`.

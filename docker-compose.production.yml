@@ -29,11 +29,15 @@ services:
     env_file:
       - .env.production
       - services/api/.env.production
+    environment:
+      # Доказательства Spot Map: только в api, в web не монтировать (web раздаёт тома публично).
+      SPOT_EVIDENCE_DIR: /var/lib/mywave/spot-evidence
     depends_on:
       postgres:
         condition: service_healthy
     volumes:
       - ingestion_media:/app/apps/web/public/ingestion-media
+      - spot_evidence:/var/lib/mywave/spot-evidence
       - ./logs/api:/var/log/mywave/api
     expose:
       - "3001"
@@ -108,3 +112,4 @@ services:
 volumes:
   postgres_data:
   ingestion_media:
+  spot_evidence:

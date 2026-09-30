@@ -3487,6 +3487,100 @@ export function parseXWatersEventCards(source: Source, html: string, pageUrl: st
   return items;
 }
 
+type EventAnchor = { url: string; text: string; start: number; end: number };
+type CardTagIndex = { tags: Array<{ key: string; pos: number }>; positionsByKey: Map<string, number[]> };
+
+const CARD_LOOKBACK_CHARS = 3000;
+const CARD_MAX_CHARS = 6000;
+
+/** Menus, headers and footers link to section pages; their surrounding text belongs to whatever program is nearby. */
+function stripPageChrome(html: string): string {
+  return html
+    .replace(/<(header|footer)\b[\s\S]*?<\/\1>/gi, (block) =>
+      /<nav\b/i.test(block) || !/<h[1-6]\b/i.test(block) ? " ".repeat(block.length) : block,
+    )
+    .replace(/<(head|script|style|noscript|nav|template)\b[\s\S]*?<\/\1>/gi, (block) => " ".repeat(block.length));
+}
+
+function samePage(a: string, b: string): boolean {
+  const key = (value: string) => {
+    const url = new URL(value);
+    return `${normalizeHost(url.hostname)}${url.pathname.replace(/\/+$/, "")}${url.search}`;
+  };
+  try {
+    return key(a) === key(b);
+  } catch {
+    return false;
+  }
+}
+
+function collectEventAnchors(body: string, pageUrl: string): EventAnchor[] {
+  const anchorPattern = /<a\b[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi;
+  const baseHost = normalizeHost(new URL(pageUrl).hostname);
+  const anchors: EventAnchor[] = [];
+  let match: RegExpExecArray | null;
+  while ((match = anchorPattern.exec(body)) !== null) {
+    const resolved = resolveUrl(match[1], pageUrl);
+    if (!resolved || isUtilityUrl(resolved) || samePage(resolved, pageUrl)) continue;
+    if (normalizeHost(new URL(resolved).hostname) !== baseHost) continue;
+    const text = stripHtmlToText(match[2]);
+    if (!hasEventSignals(text, resolved)) continue;
+    anchors.push({ url: resolved, text, start: match.index, end: anchorPattern.lastIndex });
+  }
+  return anchors;
+}
+
+/** Card containers repeat with the same tag and leading class (e.g. `div.isotope-item`, `div.cr`). */
+function indexRepeatedCardTags(body: string): CardTagIndex {
+  const pattern = /<(div|li|article|section)\b[^>]*\bclass\s*=\s*["']\s*([^"'\s]+)[^"']*["'][^>]*>/gi;
+  const tags: Array<{ key: string; pos: number }> = [];
+  const positionsByKey = new Map<string, number[]>();
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(body)) !== null) {
+    const key = `${match[1].toLowerCase()}.${match[2]}`;
+    tags.push({ key, pos: match.index });
+    const list = positionsByKey.get(key) ?? [];
+    list.push(match.index);
+    positionsByKey.set(key, list);
+  }
+  return { tags, positionsByKey };
+}
+
+/**
+ * Picks the outermost repeated container around the anchor that holds no other program link,
+ * so price/dates/level come only from this program's card.
+ */
+function findCardBlock(index: CardTagIndex, anchors: EventAnchor[], anchor: EventAnchor): { start: number; end: number } | null {
+  let best: { start: number; end: number } | null = null;
+  for (let i = index.tags.length - 1; i >= 0; i -= 1) {
+    const { key, pos } = index.tags[i];
+    if (pos >= anchor.start) continue;
+    if (pos < anchor.start - CARD_LOOKBACK_CHARS) break;
+    const positions = index.positionsByKey.get(key) ?? [];
+    if (positions.length < 3) continue;
+    const next = positions.find((value) => value > pos);
+    const end = Math.min(next ?? pos + CARD_MAX_CHARS, pos + CARD_MAX_CHARS);
+    if (end < anchor.end) continue;
+    const foreignLink = anchors.some((other) => other.url !== anchor.url && other.start >= pos && other.start < end);
+    if (!foreignLink) best = { start: pos, end };
+  }
+  return best;
+}
+
+function fallbackContextBlock(body: string, anchors: EventAnchor[], index: number): { start: number; end: number } {
+  const anchor = anchors[index];
+  const previous = anchors.slice(0, index).reverse().find((other) => other.url !== anchor.url);
+  const next = anchors.slice(index + 1).find((other) => other.url !== anchor.url);
+  return {
+    start: Math.max(0, anchor.start - 900, previous?.end ?? 0),
+    end: Math.min(body.length, anchor.end + 1800, next?.start ?? body.length),
+  };
+}
+
+function trimPartialTags(block: string): string {
+  return block.replace(/^[^<]*?>/, "").replace(/<[^>]*$/, "");
+}
+
 export function parseHtmlDiscoveryItems(source: Source, html: string, pageUrl: string): CollectedItem[] {
   // Fail closed if this site's card markup changes; generic link windows mix events.
   if (isXWatersUrl(pageUrl)) return parseXWatersEventCards(source, html, pageUrl);
@@ -3505,21 +3599,20 @@ export function parseHtmlDiscoveryItems(source: Source, html: string, pageUrl: s
     /<meta[^>]+property="og:image"[^>]+content="([^"]+)"/i.exec(html)?.[1] ??
     /<meta[^>]+name="twitter:image"[^>]+content="([^"]+)"/i.exec(html)?.[1] ??
     null;
-  const anchorPattern = /<a\b[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi;
-  const baseHost = normalizeHost(new URL(pageUrl).hostname);
+  const body = stripPageChrome(html);
+  const anchors = collectEventAnchors(body, pageUrl);
+  const cardTags = indexRepeatedCardTags(body);
   const seen = new Set<string>();
-  let match: RegExpExecArray | null;
-  while ((match = anchorPattern.exec(html)) !== null) {
-    const resolved = resolveUrl(match[1], pageUrl);
-    if (!resolved || seen.has(resolved) || isUtilityUrl(resolved)) continue;
-    if (normalizeHost(new URL(resolved).hostname) !== baseHost) continue;
-    const linkText = stripHtmlToText(match[2]);
-    if (!hasEventSignals(linkText, resolved)) continue;
-    const contextStart = Math.max(0, match.index - 900);
-    const contextEnd = Math.min(html.length, anchorPattern.lastIndex + 1800);
-    const contextBlock = html.slice(contextStart, contextEnd);
+  for (let i = 0; i < anchors.length; i += 1) {
+    const anchor = anchors[i];
+    if (seen.has(anchor.url)) continue;
+    const block =
+      findCardBlock(cardTags, anchors, anchor) ?? fallbackContextBlock(body, anchors, i);
+    const contextBlock = trimPartialTags(body.slice(block.start, block.end));
     const contextText = stripHtmlToText(contextBlock);
-    if (!hasEventSignals(contextText, resolved)) continue;
+    if (!hasEventSignals(contextText, anchor.url)) continue;
+    const resolved = anchor.url;
+    const linkText = anchor.text;
     items.push({
       externalItemId: resolved,
       sourceUrl: resolved,

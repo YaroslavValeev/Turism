@@ -171,6 +171,10 @@ model Program {
   durationDays            Int
   /// true — порядок медиа (и обложку) задал админ; витрина не переставляет их эвристиками.
   mediaOrderPinned        Boolean                @default(false)
+  /// Поля, которые админ правил вручную: повторный сбор и ИИ-автозаполнение их не перезаписывают.
+  manualFields            String[]               @default([])
+  /// Результат ИИ-автозаполнения: { generatedAt, model, fields: string[], notes: { general, accommodation, transfer, gear, cancellation } }.
+  aiEnrichment            Json?
   formatType              String? // tour | camp | clinic | training | ...
   audienceFit             String?                @db.Text
   levelRequired           String? // beginner | intermediate | advanced | expert

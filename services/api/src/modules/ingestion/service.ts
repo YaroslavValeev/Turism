@@ -16,6 +16,8 @@ import { canPublishAutopilot, programIncludeForPublishGate } from "../programs/p
 import { archiveExpiredPublishedPrograms } from "../programs/expiration";
 import { buildProgramDedupKey, pickPreferredProgram, type ProgramDedupShape } from "../programs/dedup";
 import { nextMediaPosition } from "../programs/mediaOrder";
+import { lockedProgramFields, withoutManualFields } from "../programs/manualFields";
+import { enrichProgramCardAfterIngestion } from "../programs/cardEnrichment.service";
 import { cacheExternalProgramMediaForWeb } from "./mediaCache";
 import { fetchIngestionTextWithRetry } from "./sourceFetch";
 import { applyEnduroRaceTaxonomy } from "./taxonomy";
@@ -325,6 +327,16 @@ const LOCATION_SIGNALS: Array<{
   { keywords: ["самара"], country: "Russia", region: "Самара", city: "Самара" },
   { keywords: ["завидово", "zavidovo"], country: "Russia", region: "Тверская область", city: "Завидово" },
   { keywords: ["шри-ланк", "sri lanka"], country: "Sri Lanka", region: "Sri Lanka", city: null },
+  {
+    keywords: [
+      "красном море", "красное море", "красного моря", "red sea",
+      "египет", "египте", "egypt", "хургад", "hurghada", "сафага", "safaga",
+      "эль-гуна", "эль гуна", "el gouna", "шарм-эль", "sharm el", "дахаб", "dahab", "марса-алам", "марса алам", "marsa alam",
+    ],
+    country: "Egypt",
+    region: "Red Sea",
+    city: null,
+  },
   { keywords: ["патагон", "patagonia"], country: "Chile", region: "Patagonia", city: null },
   { keywords: ["chile", "чили", "andes", "анд", "altiplanico", "andino"], country: "Chile", region: "Chile", city: null },
   { keywords: ["сочи", "rosa khutor", "роза хутор", "красная поляна"], country: "Russia", region: "Сочи", city: "Сочи" },
@@ -952,6 +964,9 @@ function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+/** Короткие ключи, которые являются началом обычных слов («чилим», «chilean»): только целым словом. */
+const WHOLE_WORD_LOCATION_KEYWORDS = new Set(["чили", "chile"]);
+
 /** Позиция ключевого слова в тексте; совпадение только с начала слова («чили» не находится в «получили»). */
 export function locationKeywordIndex(text: string, keyword: string): number {
   const normalizedKeyword = normalizeText(keyword).toLowerCase();
@@ -959,7 +974,9 @@ export function locationKeywordIndex(text: string, keyword: string): number {
   const pattern =
     normalizedKeyword === "анд"
       ? /(?:^|[^\p{L}\p{N}])(анд)(?:ы|ах|ами|ов)?(?=$|[^\p{L}\p{N}])/iu
-      : new RegExp(`(?:^|[^\\p{L}\\p{N}])(${escapeRegExp(normalizedKeyword)})`, "iu");
+      : WHOLE_WORD_LOCATION_KEYWORDS.has(normalizedKeyword)
+        ? new RegExp(`(?:^|[^\\p{L}\\p{N}])(${escapeRegExp(normalizedKeyword)})(?=$|[^\\p{L}\\p{N}])`, "iu")
+        : new RegExp(`(?:^|[^\\p{L}\\p{N}])(${escapeRegExp(normalizedKeyword)})`, "iu");
   const match = pattern.exec(text.toLowerCase());
   return match ? match.index + match[0].indexOf(match[1]) : -1;
 }
@@ -5055,10 +5072,13 @@ export async function publishCandidateToDraft(
       const raw = candidate.normalizedItem.rawItem;
       await tx.program.update({
         where: { id: duplicateProgram.id },
-        data: buildAutopilotMergeUpdate(programPayload, source, raw, {
-          id: duplicateProgram.id,
-          ingestedAt: duplicateProgram.ingestedAt,
-        }),
+        data: withoutManualFields(
+          buildAutopilotMergeUpdate(programPayload, source, raw, {
+            id: duplicateProgram.id,
+            ingestedAt: duplicateProgram.ingestedAt,
+          }),
+          lockedProgramFields(duplicateProgram),
+        ),
       });
       let appendPosition = nextMediaPosition(duplicateProgram.media);
       for (const media of mediaEntries) {
@@ -5297,6 +5317,7 @@ export async function publishCandidateToDraft(
       changedBy: actorId,
       reason: `duplicate of program ${published.programId}`,
     });
+    enrichProgramCardAfterIngestion(published.programId);
     return published;
   }
 
@@ -5310,6 +5331,7 @@ export async function publishCandidateToDraft(
     reason: published.publishStatus === "published" ? "candidate -> auto published program" : "candidate -> program draft",
   });
 
+  enrichProgramCardAfterIngestion(published.programId);
   return published;
 }
 

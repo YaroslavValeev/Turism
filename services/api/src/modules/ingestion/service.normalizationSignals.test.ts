@@ -11,6 +11,7 @@ import {
   extractExplicitRussianLocation,
   extractPrice,
   matchesLocationKeyword,
+  detectRegion,
 } from "./service";
 
 function midday(year: number, month: number, day: number): Date {
@@ -268,6 +269,26 @@ describe("ingestion semantic normalization signals", () => {
       ["Patagonia expedition", "patagonia"],
     ])("matches a real location signal in %s", (text, keyword) => {
       expect(matchesLocationKeyword(text, keyword)).toBe(true);
+    });
+
+    it.each([["Будем чилить на закате", "чили"], ["Чилим после катания", "чили"], ["chilean wine", "chile"]])(
+      "does not match Chile as a word prefix in %s",
+      (text, keyword) => {
+        expect(matchesLocationKeyword(text, keyword)).toBe(false);
+      },
+    );
+
+    it.each([["Сафари на яхте в Красном море", "красном море"], ["Кэмп в Египте", "египте"], ["Wing week in Hurghada", "hurghada"]])(
+      "matches the Red Sea signal in %s",
+      (text, keyword) => {
+        expect(matchesLocationKeyword(text, keyword)).toBe(true);
+      },
+    );
+
+    it("detects the Red Sea for a kite safari post even when the source region is Chile", () => {
+      const post =
+        "#RKN_сафари #RKN_команда ОТКРЫВАЕМ ДОПОЛНИТЕЛЬНЫЕ ДАТЫ КАЙТ | WING -САФАРИ — ОКТЯБРЬ В КРАСНОМ МОРЕ 🏝️ Будем чилить на закатах.";
+      expect(detectRegion(post, { country: "Chile", region: "Chile" })).toMatchObject({ country: "Egypt", region: "Red Sea" });
     });
 
     it("does not classify the hotel fixture as Chile through an embedded stem", () => {

@@ -131,12 +131,57 @@ export function getRecommendedFieldFallback({
   return "Рекомендуем уточнить. Дорога до места старта и локальные переезды зависят от программы.";
 }
 
-export function resolveProgramField(args: FallbackArgs & { organizerValue?: string | null | undefined }): ResolvedProgramField {
-  const confirmed = String(args.organizerValue ?? "").trim();
+/** Служебные заглушки сбора из источников: на сайте это не данные организатора. */
+const PLACEHOLDER_PATTERNS = [
+  /^требует ручного заполнения/i,
+  /^базовая программа и сопровождение организатора\.\s*детальный состав/i,
+];
+
+export function isPlaceholderProgramText(value: string | null | undefined): boolean {
+  const text = String(value ?? "").trim();
+  return text !== "" && PLACEHOLDER_PATTERNS.some((p) => p.test(text));
+}
+
+/** Текст организатора без служебных заглушек; пустое значение → null. */
+export function organizerText(value: string | null | undefined): string | null {
+  const text = String(value ?? "").trim();
+  return text && !isPlaceholderProgramText(text) ? text : null;
+}
+
+export type MyWaveNotes = {
+  general: string[];
+  accommodation: string;
+  transfer: string;
+  gear: string;
+  cancellation: string;
+};
+
+/** Примечания MyWave из ИИ-автозаполнения (aiEnrichment.notes): общая практика, не слова организатора. */
+export function readMyWaveNotes(aiEnrichment: unknown): MyWaveNotes | null {
+  if (!aiEnrichment || typeof aiEnrichment !== "object") return null;
+  const notes = (aiEnrichment as { notes?: unknown }).notes;
+  if (!notes || typeof notes !== "object") return null;
+  const n = notes as Record<string, unknown>;
+  const str = (v: unknown) => (typeof v === "string" ? v.trim() : "");
+  const general = Array.isArray(n.general) ? n.general.map(str).filter(Boolean) : [];
+  const result = {
+    general,
+    accommodation: str(n.accommodation),
+    transfer: str(n.transfer),
+    gear: str(n.gear),
+    cancellation: str(n.cancellation),
+  };
+  return general.length || result.accommodation || result.transfer || result.gear || result.cancellation ? result : null;
+}
+
+export function resolveProgramField(
+  args: FallbackArgs & { organizerValue?: string | null | undefined; myWaveNote?: string | null },
+): ResolvedProgramField {
+  const confirmed = organizerText(args.organizerValue);
   if (confirmed) return { mode: "confirmed", text: confirmed };
   return {
     mode: "recommended",
-    text: getRecommendedFieldFallback(args),
+    text: args.myWaveNote?.trim() || getRecommendedFieldFallback(args),
   };
 }
 

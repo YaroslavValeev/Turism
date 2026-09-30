@@ -18,6 +18,8 @@ import { isProgramPubliclyVisible } from "./publicVisibility";
 import { dedupeProgramsByEventKey } from "./dedup";
 import { setProgramPublishStatus } from "./publishStatus.service";
 import { validateProgramCardPatch, validateProgramMediaInput } from "./programEditValidation";
+import { changedContentFields, isProgramContentField, nextManualFields } from "./manualFields";
+import { enrichProgramCard, enrichPublishedProgramsBatch, isCardEnrichmentEnabled } from "./cardEnrichment.service";
 import { nextMediaPosition, orderedProgramMedia, validateMediaReorder } from "./mediaOrder";
 import { detectUploadedMedia, MEDIA_UPLOAD_MAX_BYTES, saveUploadedMedia } from "./mediaUpload";
 import { getCbrRates, priceInRub, type CbrRates } from "../fx/cbrRates";
@@ -311,6 +313,13 @@ export function programsRoutes(env: Env): Router {
       res.status(400).json({ error: error instanceof Error ? error.message : "invalid capacity fields" });
       return;
     }
+    const released = Array.isArray(body.releaseManualFields)
+      ? body.releaseManualFields.filter((f): f is string => typeof f === "string" && isProgramContentField(f))
+      : [];
+    const changed = changedContentFields(existing as unknown as Record<string, unknown>, data);
+    if (changed.length > 0 || released.length > 0) {
+      data.manualFields = nextManualFields(existing.manualFields, changed, released);
+    }
     const p = await prisma.program.update({
       where: { id: req.params.id },
       data,
@@ -328,6 +337,53 @@ export function programsRoutes(env: Env): Router {
       });
     }
     res.json(p);
+  });
+
+  router.post("/enrich-batch", admin, async (req: Request, res: Response) => {
+    if (!isCardEnrichmentEnabled(env)) {
+      res.status(409).json({ error: "card_enrichment_disabled" });
+      return;
+    }
+    const limit = Number((req.body as { limit?: unknown })?.limit ?? 10);
+    const results = await enrichPublishedProgramsBatch(env, limit);
+    await writeAuditLog({
+      entityType: "program",
+      entityId: "batch",
+      changedField: "aiEnrichment",
+      oldValue: null,
+      newValue: `${results.filter((r) => r.status === "enriched").length}/${results.length}`,
+      changedBy: req.adminUserId ?? null,
+      reason: "card_enrichment_batch",
+    });
+    res.json({ total: results.length, results });
+  });
+
+  router.post("/:id/enrich", admin, async (req: Request, res: Response) => {
+    if (!isCardEnrichmentEnabled(env)) {
+      res.status(409).json({ error: "card_enrichment_disabled" });
+      return;
+    }
+    const outcome = await enrichProgramCard(env, req.params.id, { force: true });
+    if (outcome.status === "skipped" && outcome.reason === "not_found") {
+      res.status(404).json({ error: "Not found" });
+      return;
+    }
+    if (outcome.status === "enriched") {
+      await writeAuditLog({
+        entityType: "program",
+        entityId: req.params.id,
+        changedField: "aiEnrichment",
+        oldValue: null,
+        newValue: outcome.fields.join(","),
+        changedBy: req.adminUserId ?? null,
+        reason: "card_enrichment_manual",
+      });
+    }
+    const program = await prisma.program.findUnique({
+      where: { id: req.params.id },
+      include: { media: orderedProgramMedia },
+    });
+    res.json({ outcome, program });
   });
 
   router.patch("/:id/publish-status", admin, async (req: Request, res: Response) => {

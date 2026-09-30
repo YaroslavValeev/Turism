@@ -1,4 +1,5 @@
 import type { Env } from "@mywave/config";
+import { proxyFetch } from "../../lib/proxyFetch";
 
 export type OpenAiJsonResult =
   | { ok: true; json: unknown; model: string }
@@ -21,20 +22,25 @@ export async function callOpenAiJson(
   const ac = new AbortController();
   const t = setTimeout(() => ac.abort(), timeoutMs);
   try {
-    const r = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      signal: ac.signal,
-      headers: {
-        Authorization: `Bearer ${env.OPENAI_API_KEY}`,
-        "Content-Type": "application/json",
+    // OpenAI недоступен с российского IP: идём через тот же SOCKS-прокси, что и Telegram, если отдельный не задан.
+    const r = await proxyFetch(
+      "https://api.openai.com/v1/chat/completions",
+      {
+        method: "POST",
+        signal: ac.signal,
+        headers: {
+          Authorization: `Bearer ${env.OPENAI_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model,
+          temperature: 0.2,
+          response_format: { type: "json_object" },
+          messages,
+        }),
       },
-      body: JSON.stringify({
-        model,
-        temperature: 0.2,
-        response_format: { type: "json_object" },
-        messages,
-      }),
-    });
+      env.OPENAI_HTTP_PROXY || env.TELEGRAM_BOT_HTTP_PROXY,
+    );
     if (!r.ok) {
       const text = await r.text();
       return { ok: false, reason: "http_error", detail: text.slice(0, 500) };

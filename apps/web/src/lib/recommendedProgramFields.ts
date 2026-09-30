@@ -150,6 +150,7 @@ export function organizerText(value: string | null | undefined): string | null {
 
 export type MyWaveNotes = {
   general: string[];
+  audience: string;
   accommodation: string;
   transfer: string;
   gear: string;
@@ -166,12 +167,14 @@ export function readMyWaveNotes(aiEnrichment: unknown): MyWaveNotes | null {
   const general = Array.isArray(n.general) ? n.general.map(str).filter(Boolean) : [];
   const result = {
     general,
+    audience: str(n.audience),
     accommodation: str(n.accommodation),
     transfer: str(n.transfer),
     gear: str(n.gear),
     cancellation: str(n.cancellation),
   };
-  return general.length || result.accommodation || result.transfer || result.gear || result.cancellation ? result : null;
+  const { general: _general, ...single } = result;
+  return general.length || Object.values(single).some(Boolean) ? result : null;
 }
 
 export function resolveProgramField(

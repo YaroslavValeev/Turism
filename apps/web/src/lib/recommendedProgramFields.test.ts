@@ -23,6 +23,7 @@ describe("readMyWaveNotes", () => {
     assert.equal(readMyWaveNotes({ notes: { general: [], accommodation: "" } }), null);
     assert.deepEqual(readMyWaveNotes({ notes: { general: [" Обычно нужен загранпаспорт. ", 5], transfer: "Уточните у организатора." } }), {
       general: ["Обычно нужен загранпаспорт."],
+      audience: "",
       accommodation: "",
       transfer: "Уточните у организатора.",
       gear: "",

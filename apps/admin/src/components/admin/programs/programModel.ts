@@ -91,9 +91,23 @@ function toDateInput(value: string): string {
   return Number.isNaN(date.getTime()) ? "" : date.toISOString().slice(0, 10);
 }
 
+/** Служебные заглушки сбора (сайт их скрывает) — в редакторе показываем как пустое поле. */
+const INGESTION_PLACEHOLDERS = [
+  /^требует ручного заполнения/i,
+  /^базовая программа и сопровождение организатора\.\s*детальный состав/i,
+];
+
+export function isIngestionPlaceholder(value: string): boolean {
+  const text = value.trim();
+  return text !== "" && INGESTION_PLACEHOLDERS.some((re) => re.test(text));
+}
+
 export function cardDraftFromProgram(p: Program): ProgramCardDraft {
   const text = Object.fromEntries(
-    PROGRAM_CARD_TEXT_FIELDS.map(({ key }) => [key, String((p as Record<string, unknown>)[key] ?? "")]),
+    PROGRAM_CARD_TEXT_FIELDS.map(({ key }) => {
+      const value = String((p as Record<string, unknown>)[key] ?? "");
+      return [key, isIngestionPlaceholder(value) ? "" : value];
+    }),
   ) as Record<ProgramCardTextKey, string>;
   return {
     ...text,

@@ -62,10 +62,19 @@ export async function enrichProgramCard(
 
   const ai = await callOpenAiJson(env, [
     { role: "system", content: CARD_ENRICHMENT_SYSTEM_PROMPT },
-    { role: "user", content: buildEnrichmentUserMessage({ ...program, text: sourceText }) },
+    {
+      role: "user",
+      content: buildEnrichmentUserMessage({
+        discipline: program.discipline,
+        formatType: program.formatType,
+        startDate: program.startDate,
+        endDate: program.endDate,
+        text: sourceText,
+      }),
+    },
   ]);
   if (!ai.ok) return { status: "failed", reason: ai.reason };
-  const parsed = parseCardEnrichment(ai.json, sourceText);
+  const parsed = parseCardEnrichment(ai.json, sourceText, `${program.discipline} ${program.formatType ?? ""}`);
   if (!parsed) return { status: "failed", reason: "invalid_json" };
 
   const { data, stored } = buildEnrichmentUpdate(program, parsed, { model: ai.model, sourceHash, now: new Date() });

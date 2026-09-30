@@ -492,6 +492,7 @@ export function ProgramPdpClient({
   const inclusions = organizerText(program.inclusions);
   const exclusions = organizerText(program.exclusions);
   const cancellationRules = organizerText(program.cancellationRules);
+  const sourcePostUrl = /^https?:\/\//i.test(program.sourceUrl ?? "") ? program.sourceUrl : null;
   const medical = mergeProgramField(
     program.medicalLimitations,
     overrides.medicalLimitations,
@@ -952,10 +953,16 @@ export function ProgramPdpClient({
             )}
           </section>
 
-          {audienceFit && (
+          {(audienceFit || myWaveNotes?.audience) && (
             <SectionBlock title="Для кого программа">
-              <OrganizerSourceCaption />
-              <Prose text={audienceFit} />
+              {audienceFit ? (
+                <>
+                  <OrganizerSourceCaption />
+                  <Prose text={audienceFit} />
+                </>
+              ) : (
+                <MyWaveNote>{myWaveNotes?.audience}</MyWaveNote>
+              )}
             </SectionBlock>
           )}
 
@@ -991,11 +998,26 @@ export function ProgramPdpClient({
             </SectionBlock>
           )}
 
-          {myWaveNotes && myWaveNotes.general.length > 0 && (
+          {myWaveNotes && (
             <SectionBlock title="Полезно знать">
               {myWaveNotes.general.map((note) => (
                 <MyWaveNote key={note}>{note}</MyWaveNote>
               ))}
+              <ul className="mw-mywave-links">
+                {sourcePostUrl && (
+                  <li>
+                    <a href={sourcePostUrl} target="_blank" rel="nofollow noopener noreferrer">
+                      Исходный пост организатора — проверьте детали в оригинале
+                    </a>
+                  </li>
+                )}
+                <li>
+                  <Link href={disciplineCatalogHref}>Другие программы по этой дисциплине в каталоге MyWave</Link>
+                </li>
+                <li>
+                  <Link href="/spots">Карта спотов MyWave с оценками условий</Link>
+                </li>
+              </ul>
             </SectionBlock>
           )}
 

@@ -186,6 +186,7 @@ export function ProgramCardEditor({ program, onChanged, onError }: Props) {
               <textarea
                 className="mw-admin-input"
                 rows={4}
+                placeholder="Организатор не указал — на сайте будет серое «Примечание MyWave»"
                 value={draft[key]}
                 onChange={(e) => setDraft((d) => ({ ...d, [key]: e.target.value }))}
               />

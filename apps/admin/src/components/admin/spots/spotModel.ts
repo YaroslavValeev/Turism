@@ -96,6 +96,97 @@ export function parseCoordinates(text: string): { latitude: number; longitude: n
   return { latitude, longitude };
 }
 
+export interface CandidateItem {
+  name: string;
+  region: string;
+  address?: string;
+  latitude?: number;
+  longitude?: number;
+  waterBodyType?: string;
+}
+
+type CandidateColumn = "name" | "region" | "coordinates" | "latitude" | "longitude" | "address" | "waterBodyType";
+
+const CANDIDATE_HEADERS: Record<string, CandidateColumn> = {
+  name: "name", "название": "name", "спот": "name",
+  region: "region", "регион": "region",
+  coordinates: "coordinates", "координаты": "coordinates",
+  lat: "latitude", latitude: "latitude", "широта": "latitude",
+  lng: "longitude", lon: "longitude", longitude: "longitude", "долгота": "longitude",
+  address: "address", "адрес": "address",
+  water: "waterBodyType", waterbodytype: "waterBodyType", "водоём": "waterBodyType", "водоем": "waterBodyType",
+};
+
+const DEFAULT_CANDIDATE_COLUMNS: CandidateColumn[] = ["name", "region", "coordinates", "address", "waterBodyType"];
+
+function waterBodyId(value: string): string | undefined | "invalid" {
+  const v = value.trim().toLowerCase().replace(/ё/g, "е");
+  if (!v) return undefined;
+  if (WATER_BODY_LABEL[v]) return v;
+  const byLabel = Object.entries(WATER_BODY_LABEL).find(([, label]) => label.toLowerCase().replace(/ё/g, "е") === v);
+  return byLabel ? byLabel[0] : "invalid";
+}
+
+/**
+ * Разбирает таблицу, вставленную из Google Sheets/Excel (табуляция) или с разделителем «;».
+ * Строка заголовков необязательна; без неё порядок: название, регион, координаты, адрес, водоём.
+ */
+export function parseCandidateTable(text: string): { items: CandidateItem[]; errors: string[] } {
+  const trimmed = text.trim();
+  if (!trimmed) return { items: [], errors: [] };
+  if (trimmed.startsWith("[")) {
+    try {
+      const parsed: unknown = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) return { items: parsed as CandidateItem[], errors: [] };
+    } catch {
+      return { items: [], errors: ["JSON не разобран: проверьте синтаксис"] };
+    }
+  }
+
+  const lines = trimmed.split(/\r?\n/).filter((l) => l.trim() !== "");
+  const delimiter = lines[0].includes("\t") ? "\t" : ";";
+  const split = (line: string) => line.split(delimiter).map((c) => c.trim());
+
+  const headerCells = split(lines[0]).map((c) => CANDIDATE_HEADERS[c.toLowerCase()]);
+  const hasHeader = headerCells.some(Boolean);
+  const columns = hasHeader ? headerCells : DEFAULT_CANDIDATE_COLUMNS;
+  const dataLines = hasHeader ? lines.slice(1) : lines;
+
+  const items: CandidateItem[] = [];
+  const errors: string[] = [];
+  dataLines.forEach((line, i) => {
+    const rowNo = i + 1 + (hasHeader ? 1 : 0);
+    const cells = split(line);
+    const row: Partial<Record<CandidateColumn, string>> = {};
+    columns.forEach((col, idx) => {
+      if (col && cells[idx] !== undefined) row[col] = cells[idx];
+    });
+    if (!row.name || !row.region) {
+      errors.push(`Строка ${rowNo}: нужны название и регион`);
+      return;
+    }
+    const item: CandidateItem = { name: row.name, region: row.region };
+    if (row.address) item.address = row.address;
+
+    const coordText = row.coordinates ?? (row.latitude || row.longitude ? `${row.latitude ?? ""} ${row.longitude ?? ""}` : "");
+    const coords = parseCoordinates(coordText);
+    if (coords === "invalid") {
+      errors.push(`Строка ${rowNo}: координаты не разобраны («${coordText}»)`);
+      return;
+    }
+    if (coords) Object.assign(item, coords);
+
+    const water = waterBodyId(row.waterBodyType ?? "");
+    if (water === "invalid") {
+      errors.push(`Строка ${rowNo}: неизвестный тип водоёма «${row.waterBodyType}»`);
+      return;
+    }
+    if (water) item.waterBodyType = water;
+    items.push(item);
+  });
+  return { items, errors };
+}
+
 export function formatCoordinates(latitude: string | number | null, longitude: string | number | null): string {
   if (latitude == null || longitude == null) return "";
   return `${Number(latitude)}, ${Number(longitude)}`;

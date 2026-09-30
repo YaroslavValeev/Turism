@@ -6,6 +6,7 @@ import { writeAuditLog } from "../../lib/audit";
 import { requireAdmin } from "../../middleware/auth";
 import { evaluateRemoteGateRemediation, evaluateSpotRating } from "./ratingEngine";
 import { buildSpotRatingInput } from "./ratingInput";
+import { planCandidateImport } from "./candidateImport";
 import {
   SPOT_EVIDENCE_MAX_BYTES,
   detectEvidence,
@@ -101,6 +102,42 @@ export function spotsAdminRoutes(env: Env): Router {
       oldValue: null, newValue: spot.name, changedBy: actor(req),
     });
     res.status(201).json(spot);
+  }));
+
+  router.post("/import", wrap(async (req, res) => {
+    const existing = await prisma.spot.findMany({ select: { name: true, region: true } });
+    const planned = planCandidateImport(req.body, existing);
+    if (!planned.ok) { res.status(400).json({ error: planned.error }); return; }
+    const plan = planned.data;
+    const summary = {
+      errors: plan.errors,
+      duplicates: plan.duplicates,
+      toCreate: plan.toCreate.map((c) => ({ index: c.index, name: c.data.name, region: c.data.region })),
+    };
+    if (plan.errors.length > 0) {
+      res.status(400).json({ error: "import has invalid rows; nothing was created", ...summary });
+      return;
+    }
+    const dryRun = typeof req.body === "object" && req.body !== null && (req.body as { dryRun?: unknown }).dryRun === true;
+    if (dryRun || plan.toCreate.length === 0) {
+      res.json({ dryRun, created: [], ...summary });
+      return;
+    }
+    const created = await prisma.$transaction(
+      plan.toCreate.map((c) =>
+        prisma.spot.create({
+          data: spotData({ ok: true, data: c.data }) as Prisma.SpotUncheckedCreateInput,
+          select: { id: true, name: true, region: true },
+        }),
+      ),
+    );
+    for (const spot of created) {
+      await writeAuditLog({
+        entityType: "spot", entityId: spot.id, changedField: "created",
+        oldValue: null, newValue: spot.name, changedBy: actor(req), reason: "candidate_import",
+      });
+    }
+    res.status(201).json({ dryRun: false, created, ...summary });
   }));
 
   router.get("/:id", wrap(async (req, res) => {

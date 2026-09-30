@@ -9,6 +9,7 @@ import type { Env } from "@mywave/config";
 
 const mocks = vi.hoisted(() => ({
   spotCreate: vi.fn(),
+  spotFindMany: vi.fn(),
   spotAuditFindUnique: vi.fn(),
   spotAuditUpdate: vi.fn(),
   scoreUpsert: vi.fn(),
@@ -22,7 +23,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("../../lib/prisma", () => ({
   prisma: {
-    spot: { create: mocks.spotCreate },
+    spot: { create: mocks.spotCreate, findMany: mocks.spotFindMany },
     spotAudit: { findUnique: mocks.spotAuditFindUnique, update: mocks.spotAuditUpdate },
     spotAuditCategoryScore: { upsert: mocks.scoreUpsert },
     spotEvidence: { findUnique: mocks.evidenceFindUnique, create: mocks.evidenceCreate },
@@ -142,6 +143,46 @@ describe("spots admin routes: spots", () => {
     expect(res.status).toBe(201);
     expect(mocks.writeAuditLog).toHaveBeenCalledWith(
       expect.objectContaining({ entityType: "spot", entityId: "spot-1", changedField: "created", changedBy: "admin-1" }),
+    );
+  });
+});
+
+describe("spots admin routes: candidate import", () => {
+  const items = [
+    { name: "Wake Park", region: "Moscow" },
+    { name: "Новый спот", region: "Тверская область", latitude: 56.8, longitude: 35.9, discoveryStatus: "listed" },
+    { name: "  новый   спот ", region: "тверская область" },
+  ];
+
+  it("creates nothing when any row is invalid", async () => {
+    mocks.spotFindMany.mockResolvedValue([]);
+    const res = await call("POST", "/import", { items: [...items, { name: "Без региона" }] });
+    expect(res.status).toBe(400);
+    expect(res.json?.errors).toEqual([expect.objectContaining({ index: 3, name: "Без региона" })]);
+    expect(mocks.spotCreate).not.toHaveBeenCalled();
+  });
+
+  it("dry run reports duplicates without writing", async () => {
+    mocks.spotFindMany.mockResolvedValue([{ name: "WAKE PARK", region: "moscow" }]);
+    const res = await call("POST", "/import", { items, dryRun: true });
+    expect(res.status).toBe(200);
+    expect(res.json?.toCreate).toEqual([{ index: 1, name: "Новый спот", region: "Тверская область" }]);
+    expect(res.json?.duplicates).toEqual([
+      expect.objectContaining({ index: 0, reason: "exists" }),
+      expect.objectContaining({ index: 2, reason: "repeated_in_batch" }),
+    ]);
+    expect(mocks.spotCreate).not.toHaveBeenCalled();
+  });
+
+  it("creates new rows only as unrated candidates and logs each one", async () => {
+    mocks.spotFindMany.mockResolvedValue([{ name: "Wake Park", region: "Moscow" }]);
+    mocks.spotCreate.mockResolvedValue({ id: "spot-2", name: "Новый спот", region: "Тверская область" });
+    const res = await call("POST", "/import", { items });
+    expect(res.status).toBe(201);
+    expect(mocks.spotCreate).toHaveBeenCalledTimes(1);
+    expect(mocks.spotCreate.mock.calls[0][0].data).toMatchObject({ name: "Новый спот", discoveryStatus: "candidate" });
+    expect(mocks.writeAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({ entityId: "spot-2", changedField: "created", reason: "candidate_import" }),
     );
   });
 });

@@ -8,6 +8,7 @@ import {
   criterionLabel,
   parseCandidateTable,
   parseCoordinates,
+  reviewerLabel,
   yandexMapsUrl,
   type AuditForReadiness,
 } from "./spotModel";
@@ -115,5 +116,13 @@ describe("parseCandidateTable", () => {
     assert.deepEqual(items, [{ name: "A", region: "R", latitude: 56.1, longitude: 35.2 }]);
     assert.equal(parseCandidateTable('[{"name":"A","region":"R"}]').items.length, 1);
     assert.equal(parseCandidateTable("[oops").errors.length, 1);
+  });
+});
+
+describe("reviewerLabel", () => {
+  it("prefers the name and falls back to email", () => {
+    assert.equal(reviewerLabel({ name: "Иван", email: "i@x.ru" }), "Иван (i@x.ru)");
+    assert.equal(reviewerLabel({ name: "  ", email: "i@x.ru" }), "i@x.ru");
+    assert.equal(reviewerLabel({ name: null, email: "i@x.ru" }), "i@x.ru");
   });
 });

@@ -13,9 +13,10 @@ import {
   SPOT_GATES,
   auditReadiness,
   criterionLabel,
+  reviewerLabel,
   type GateStatus,
 } from "../../../../components/admin/spots/spotModel";
-import type { SpotAuditDetail } from "../../../../components/admin/spots/spotTypes";
+import type { ReviewersResponse, SpotAuditDetail } from "../../../../components/admin/spots/spotTypes";
 
 const EVIDENCE_MAX_BYTES = 25 * 1024 * 1024;
 
@@ -56,6 +57,17 @@ export default function SpotAuditPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [busy, setBusy] = useState(false);
+  const [reviewers, setReviewers] = useState<ReviewersResponse>({ items: [], currentUserId: null });
+
+  useEffect(() => {
+    if (!getAdminToken()) return;
+    adminJson<ReviewersResponse>("/spots/reviewers").then(setReviewers).catch(() => undefined);
+  }, []);
+
+  const reviewerName = (id: string) => {
+    const user = reviewers.items.find((u) => u.id === id);
+    return user ? reviewerLabel(user) : id;
+  };
 
   const load = useCallback(async () => {
     try {
@@ -281,7 +293,7 @@ export default function SpotAuditPage() {
       <AdminSectionCard title="Эксперт и редактор">
         <div className="mw-admin-stack-8">
           <p className="mw-admin-caption" style={{ margin: 0 }}>
-            Эксперт: {audit.expertUserId ? `${audit.expertUserId}, подпись ${audit.expertSignedAt ? new Date(audit.expertSignedAt).toLocaleString("ru-RU") : "—"}` : "ещё не подписан"}
+            Эксперт: {audit.expertUserId ? `${reviewerName(audit.expertUserId)}, подпись ${audit.expertSignedAt ? new Date(audit.expertSignedAt).toLocaleString("ru-RU") : "—"}` : "ещё не подписан"}
           </p>
           <div className="mw-admin-inline-form">
             <label className="mw-admin-stack-6">
@@ -297,10 +309,30 @@ export default function SpotAuditPage() {
               <span className="mw-admin-caption">Внешний эксперт подтвердил результаты</span>
             </label>
             <label className="mw-admin-stack-6">
-              <span className="mw-admin-caption">ID независимого редактора (админ, не эксперт)</span>
-              <input className="mw-admin-input" disabled={!isDraft} value={meta.independentEditorUserId} onChange={(e) => setMeta({ ...meta, independentEditorUserId: e.target.value })} />
+              <span className="mw-admin-caption">Независимый редактор (админ, не эксперт)</span>
+              <select
+                className="mw-admin-input"
+                disabled={!isDraft}
+                value={meta.independentEditorUserId}
+                onChange={(e) => setMeta({ ...meta, independentEditorUserId: e.target.value })}
+              >
+                <option value="">Не назначен</option>
+                {meta.independentEditorUserId && !reviewers.items.some((u) => u.id === meta.independentEditorUserId) ? (
+                  <option value={meta.independentEditorUserId}>{meta.independentEditorUserId}</option>
+                ) : null}
+                {reviewers.items.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {reviewerLabel(u)}{u.id === reviewers.currentUserId ? " — это вы" : ""}
+                  </option>
+                ))}
+              </select>
             </label>
           </div>
+          {meta.independentEditorUserId && meta.independentEditorUserId === (audit.expertUserId ?? reviewers.currentUserId) ? (
+            <AdminMessage type="error">
+              Редактор совпадает с экспертом{audit.expertUserId ? "" : " (подписывать аудит будете вы)"}: независимой проверки не будет, а для спотов, связанных с MyWave, публикация заблокирована.
+            </AdminMessage>
+          ) : null}
           <label className="mw-admin-stack-6">
             <span className="mw-admin-caption">Заметки</span>
             <textarea className="mw-admin-input" rows={3} disabled={!isDraft} value={meta.notes} onChange={(e) => setMeta({ ...meta, notes: e.target.value })} />

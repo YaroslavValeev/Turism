@@ -104,6 +104,15 @@ export function spotsAdminRoutes(env: Env): Router {
     res.status(201).json(spot);
   }));
 
+  router.get("/reviewers", wrap(async (req, res) => {
+    const users = await prisma.user.findMany({
+      where: { role: "admin" },
+      select: { id: true, name: true, email: true },
+      orderBy: { email: "asc" },
+    });
+    res.json({ items: users, currentUserId: actor(req) });
+  }));
+
   router.post("/import", wrap(async (req, res) => {
     const existing = await prisma.spot.findMany({ select: { name: true, region: true } });
     const planned = planCandidateImport(req.body, existing);

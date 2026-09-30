@@ -50,6 +50,8 @@ const contentSecurityPolicy = [
   ])}`,
   `frame-src ${sources([
     "'self'",
+    // Виджет Яндекс Карт на /spots: iframe вместо JS API v3, которому нужен 'unsafe-eval'.
+    "https://yandex.ru",
     hasYandexMetrika && "https://mc.yandex.ru",
     hasYandexMetrika && "https://mc.yandex.com",
   ])}`,

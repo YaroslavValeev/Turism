@@ -75,6 +75,30 @@ describe("parseCardEnrichment", () => {
     expect(result?.organizer.audienceFit).toBe("");
   });
 
+  it("отбрасывает пункт, в котором большинство слов не из поста", () => {
+    const result = parseCardEnrichment(
+      { organizer: { inclusions: ["Проживание на яхте", "Проживание в пятизвёздочном отеле с бассейном"] } },
+      SOURCE,
+    );
+    expect(result?.organizer.inclusions).toEqual(["Проживание на яхте"]);
+  });
+
+  it("не принимает заголовок с местом, которого нет в посте", () => {
+    const result = parseCardEnrichment({ organizer: { title: "Кайт-сафари на Мальдивах в Индийском океане" } }, SOURCE, "kite camp");
+    expect(result?.organizer.title).toBe("");
+  });
+
+  it("разрешает в заголовке дисциплину каталога", () => {
+    const wake = "Анонс Краснодарского кэмпа. Катер centurion. Тренировки с чемпионом.";
+    const result = parseCardEnrichment({ organizer: { title: "Кэмп по вейксерфингу в Краснодаре" } }, wake, "Вейксерфинг camp");
+    expect(result?.organizer.title).toBe("Кэмп по вейксерфингу в Краснодаре");
+  });
+
+  it("вырезает ссылки из примечаний MyWave", () => {
+    const result = parseCardEnrichment({ notes: { gear: "Обычно нужен гидрокостюм, см. https://example.com/gear" } }, SOURCE);
+    expect(result?.notes.gear).toBe("Обычно нужен гидрокостюм, см.");
+  });
+
   it("возвращает null на не-объект", () => {
     expect(parseCardEnrichment("oops", SOURCE)).toBeNull();
   });
@@ -83,8 +107,22 @@ describe("parseCardEnrichment", () => {
 describe("buildEnrichmentUpdate", () => {
   const result = {
     organizer: { title: "Кайт-сафари на яхте", audienceFit: "Любой уровень", inclusions: ["Питание", "Проживание"], exclusions: [], gearRequirements: [] },
-    notes: { general: [], accommodation: "", transfer: "", gear: "", cancellation: "" },
+    notes: { general: [], audience: "", accommodation: "", transfer: "", gear: "", cancellation: "" },
   };
+
+  it("очищает поле, которое ИИ заполнял раньше, а теперь пост его не подтверждает", () => {
+    const { data } = buildEnrichmentUpdate(
+      {
+        manualFields: [],
+        aiEnrichment: { sourceHash: "x", notes: {}, fields: ["exclusions", "gearRequirements", "title"] },
+      },
+      { ...result, organizer: { ...result.organizer, title: "" } },
+      { model: "m", sourceHash: "y", now: new Date("2026-09-30T00:00:00Z") },
+    );
+    expect(data.exclusions).toBeNull();
+    expect(data.gearRequirements).toBeNull();
+    expect("title" in data).toBe(false);
+  });
 
   it("не трогает поля, которые админ правил вручную, и пропускает пустые", () => {
     const { data, stored } = buildEnrichmentUpdate({ manualFields: ["title"] }, result, {

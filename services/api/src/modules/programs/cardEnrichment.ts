@@ -6,6 +6,7 @@ export type EnrichableField = (typeof ENRICHABLE_FIELDS)[number];
 
 export interface MyWaveNotes {
   general: string[];
+  audience: string;
   accommodation: string;
   transfer: string;
   gear: string;
@@ -34,21 +35,24 @@ export interface StoredEnrichment {
 export const CARD_ENRICHMENT_SYSTEM_PROMPT = `Ты редактор каталога спортивных выездов MyWaveTour. По тексту поста организатора заполни карточку.
 
 Два слоя, их нельзя смешивать:
-1) "organizer" — только факты из текста поста, переформулированные коротко и понятно. Ничего не добавляй от себя: если факта нет в тексте, оставь пустую строку или пустой массив.
+1) "organizer" — извлечение фактов из текста поста. Бери формулировки поста как можно ближе к оригиналу: убирай эмодзи, рекламные восклицания и лишние слова, но не обобщай и не додумывай. Если факта нет в тексте — оставь пустую строку или пустой массив. Лучше пусто, чем неточно.
    - title: до 90 символов, без хэштегов, эмодзи и КАПСА; что за выезд и где (например «Кайт- и винг-сафари на яхте в Красном море»). Место бери только из текста поста; если места в посте нет — не указывай его. Даты и цены в заголовок не пиши.
    - audienceFit: 1–2 предложения, кому подходит, только из того, что сказано в посте. Уровень участников («для новичков», «для всех уровней», «для опытных») пиши, только если он прямо назван в посте.
    - inclusions: что входит в стоимость или программу по словам организатора, короткими пунктами.
    - exclusions: только то, что организатор прямо называет не включённым или оплачиваемым отдельно. Требования к участникам (страховка, справки, возраст, согласие родителей) сюда не относятся.
    - gearRequirements: снаряжение и обязательные требования к участнику (страховка, документы), только если сказано.
-2) "notes" — примечания MyWave: общая практика для такого формата и дисциплины, полезная участнику. Это НЕ слова организатора и НЕ факты о программе.
+2) "notes" — рекомендации MyWave для того, чего в посте НЕТ: общая практика для такой дисциплины и формата. Это НЕ слова организатора и НЕ факты о программе.
+   - Заполняй примечание, только если в посте нет этой информации (например, про проживание в посте ничего — пиши accommodation; если есть — оставь пусто).
+   - audience: кому обычно подходит такой формат и какая подготовка желательна, если в посте об этом не сказано.
    - Формулируй осторожно: «обычно», «как правило», «уточните у организатора».
+   - Не вставляй ссылки и адреса сайтов.
    - Не указывай цены, даты, имена, названия компаний и не противоречь посту.
    - Пиши только то, что реально помогает подготовиться к этой дисциплине и формату (снаряжение, погода, документы, физическая подготовка). Пустые советы вроде «уточните наличие мест» или «нужна предварительная бронь» не пиши — лучше оставь пусто.
-   - general: до 3 пунктов; accommodation, transfer, gear, cancellation: по одному предложению или пустая строка.
+   - general: до 3 пунктов; audience, accommodation, transfer, gear, cancellation: по одному предложению или пустая строка.
    - Каждое примечание до 200 символов.
 
 Верни ТОЛЬКО JSON:
-{"organizer":{"title":"","audienceFit":"","inclusions":[],"exclusions":[],"gearRequirements":[]},"notes":{"general":[],"accommodation":"","transfer":"","gear":"","cancellation":""}}`;
+{"organizer":{"title":"","audienceFit":"","inclusions":[],"exclusions":[],"gearRequirements":[]},"notes":{"general":[],"audience":"","accommodation":"","transfer":"","gear":"","cancellation":""}}`;
 
 /** Регион каталога сюда не передаём: он бывает определён эвристикой неверно, а модель ему доверяет. */
 export function buildEnrichmentUserMessage(input: {
@@ -73,10 +77,11 @@ export function enrichmentSourceHash(text: string): string {
 }
 
 const EMOJI_RE = /[\p{Extended_Pictographic}\u{FE0F}\u{200D}]/gu;
+const URL_RE = /(?:https?:\/\/|www\.)\S+/gi;
 
 function cleanLine(value: unknown, max: number): string {
   if (typeof value !== "string") return "";
-  const text = value.replace(EMOJI_RE, "").replace(/\s+/g, " ").trim();
+  const text = value.replace(EMOJI_RE, "").replace(URL_RE, "").replace(/\s+/g, " ").trim();
   return text.length > max ? `${text.slice(0, max - 1).trimEnd()}…` : text;
 }
 
@@ -95,19 +100,26 @@ export function cleanTitle(value: unknown): string {
   return text;
 }
 
+/** Основа слова по первым 4 буквам: терпимо к русским окончаниям («кэмп»/«кэмпа», «яхте»/«яхта»). */
 function stems(text: string): Set<string> {
   return new Set(
-    (text.toLowerCase().replace(/ё/g, "е").match(/[\p{L}\p{N}]{4,}/gu) ?? []).map((w) => w.slice(0, 5)),
+    (text.toLowerCase().replace(/ё/g, "е").match(/[\p{L}\p{N}]{4,}/gu) ?? []).map((w) => w.slice(0, 4)),
   );
 }
 
-/**
- * Защита от выдуманного «от организатора»: пункт принимается, только если хотя бы одно
- * значимое слово (по первым 5 буквам) встречается в тексте поста.
- */
-export function groundedInSource(item: string, sourceStems: Set<string>): boolean {
+/** Доля значимых слов пункта, которые есть в тексте поста. */
+export function groundingRatio(item: string, sourceStems: Set<string>): number {
   const words = [...stems(item)];
-  return words.length === 0 ? false : words.some((w) => sourceStems.has(w));
+  if (words.length === 0) return 0;
+  return words.filter((w) => sourceStems.has(w)).length / words.length;
+}
+
+/** Порог «взято из поста»: большинство значимых слов должно быть в оригинале. */
+export const GROUNDING_MIN_RATIO = 0.6;
+const TITLE_MIN_RATIO = 0.5;
+
+export function groundedInSource(item: string, sourceStems: Set<string>, minRatio = GROUNDING_MIN_RATIO): boolean {
+  return groundingRatio(item, sourceStems) >= minRatio;
 }
 
 const LEVEL_CLAIMS: ReadonlyArray<RegExp> = [
@@ -121,18 +133,24 @@ export function hasUnsupportedLevelClaim(text: string, sourceText: string): bool
   return LEVEL_CLAIMS.some((re) => re.test(text) && !re.test(sourceText));
 }
 
-export function parseCardEnrichment(raw: unknown, sourceText: string): CardEnrichmentResult | null {
+/**
+ * `context` — слова, которые можно употреблять помимо поста (название дисциплины и формата каталога),
+ * чтобы заголовок «Кэмп по вейксерфингу» не отбрасывался, если в посте только «wakesurf».
+ */
+export function parseCardEnrichment(raw: unknown, sourceText: string, context = ""): CardEnrichmentResult | null {
   if (!raw || typeof raw !== "object") return null;
   const o = raw as { organizer?: Record<string, unknown>; notes?: Record<string, unknown> };
   const org = o.organizer && typeof o.organizer === "object" ? o.organizer : {};
   const notes = o.notes && typeof o.notes === "object" ? o.notes : {};
   const source = stems(sourceText);
+  const titleSource = stems(`${sourceText} ${context} кэмп тур выезд программа школа сафари поход`);
   const grounded = (items: string[]) => items.filter((item) => groundedInSource(item, source));
 
+  const title = cleanTitle(org.title);
   const audience = cleanLine(org.audienceFit, 400);
   return {
     organizer: {
-      title: cleanTitle(org.title),
+      title: title && groundedInSource(title, titleSource, TITLE_MIN_RATIO) ? title : "",
       audienceFit:
         audience && groundedInSource(audience, source) && !hasUnsupportedLevelClaim(audience, sourceText) ? audience : "",
       inclusions: grounded(cleanList(org.inclusions, 12, 160)),
@@ -141,6 +159,7 @@ export function parseCardEnrichment(raw: unknown, sourceText: string): CardEnric
     },
     notes: {
       general: cleanList(notes.general, 3, 200),
+      audience: cleanLine(notes.audience, 200),
       accommodation: cleanLine(notes.accommodation, 200),
       transfer: cleanLine(notes.transfer, 200),
       gear: cleanLine(notes.gear, 200),
@@ -149,13 +168,21 @@ export function parseCardEnrichment(raw: unknown, sourceText: string): CardEnric
   };
 }
 
-/** Обновление программы: только непустые поля и только те, что админ не правил вручную. */
+export type EnrichmentUpdateData = { title?: string } & Partial<
+  Record<Exclude<EnrichableField, "title">, string | null>
+>;
+
+/**
+ * Обновление программы: непустые поля, кроме закреплённых админом. Поле, которое ИИ заполнял
+ * раньше, а теперь по посту не подтверждается, очищается (кроме обязательного названия).
+ */
 export function buildEnrichmentUpdate(
-  program: { manualFields: readonly string[] },
+  program: { manualFields: readonly string[]; aiEnrichment?: unknown },
   result: CardEnrichmentResult,
   meta: { model: string; sourceHash: string; now: Date },
-): { data: Partial<Record<EnrichableField, string>>; stored: StoredEnrichment } {
+): { data: EnrichmentUpdateData; stored: StoredEnrichment } {
   const locked = new Set(program.manualFields);
+  const previouslyAi = new Set(readStoredEnrichment(program.aiEnrichment)?.fields ?? []);
   const candidates: Record<EnrichableField, string> = {
     title: result.organizer.title,
     audienceFit: result.organizer.audienceFit,
@@ -163,9 +190,16 @@ export function buildEnrichmentUpdate(
     exclusions: result.organizer.exclusions.join("\n"),
     gearRequirements: result.organizer.gearRequirements.join("\n"),
   };
-  const data: Partial<Record<EnrichableField, string>> = {};
+  const data: EnrichmentUpdateData = {};
+  const filled: EnrichableField[] = [];
   for (const field of ENRICHABLE_FIELDS) {
-    if (!locked.has(field) && candidates[field]) data[field] = candidates[field];
+    if (locked.has(field)) continue;
+    if (candidates[field]) {
+      data[field] = candidates[field];
+      filled.push(field);
+    } else if (field !== "title" && previouslyAi.has(field)) {
+      data[field] = null;
+    }
   }
   return {
     data,
@@ -173,7 +207,7 @@ export function buildEnrichmentUpdate(
       generatedAt: meta.now.toISOString(),
       model: meta.model,
       sourceHash: meta.sourceHash,
-      fields: Object.keys(data) as EnrichableField[],
+      fields: filled,
       notes: result.notes,
     },
   };
@@ -183,5 +217,5 @@ export function readStoredEnrichment(value: unknown): StoredEnrichment | null {
   if (!value || typeof value !== "object") return null;
   const v = value as Partial<StoredEnrichment>;
   if (typeof v.sourceHash !== "string" || !v.notes) return null;
-  return v as StoredEnrichment;
+  return { ...(v as StoredEnrichment), fields: Array.isArray(v.fields) ? v.fields : [] };
 }

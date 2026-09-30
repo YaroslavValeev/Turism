@@ -11,6 +11,7 @@ import { AdminPageHeader } from "../../components/admin/AdminPageHeader";
 import { AdminStatCard, AdminStatGrid } from "../../components/admin/AdminStatCard";
 import { ProgramCatalogTable } from "../../components/admin/programs/ProgramCatalogTable";
 import { ProgramCreateFormCard } from "../../components/admin/programs/ProgramCreateFormCard";
+import { normalizeMediaUrl } from "../../components/admin/programs/mediaUrl";
 import {
   EMPTY_MEDIA_DRAFT,
   INITIAL_PROGRAM_FORM,
@@ -261,15 +262,20 @@ export default function AdminProgramsPage() {
   const handleAddMedia = async (programId: string) => {
     if (!getAdminToken()) return;
     const draft = mediaDrafts[programId] ?? EMPTY_MEDIA_DRAFT;
-    setSavingMediaId(programId);
     setError("");
     setMessage("");
+    const normalized = normalizeMediaUrl(draft.url);
+    if (!normalized.ok) {
+      setError(normalized.error);
+      return;
+    }
+    setSavingMediaId(programId);
     try {
       await adminJson(`/programs/${programId}/media`, {
         method: "POST",
         body: JSON.stringify({
           mediaType: draft.mediaType,
-          url: draft.url.trim(),
+          url: normalized.url,
           caption: draft.caption.trim() || undefined,
         }),
       });

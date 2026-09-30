@@ -1,5 +1,35 @@
 import { describe, expect, it } from "vitest";
-import { buildEnrichmentUpdate, cleanTitle, enrichmentSourceHash, parseCardEnrichment } from "./cardEnrichment";
+import {
+  buildEnrichmentUpdate,
+  buildEnrichmentUserMessage,
+  cleanTitle,
+  enrichmentSourceHash,
+  hasUnsupportedLevelClaim,
+  parseCardEnrichment,
+} from "./cardEnrichment";
+
+describe("hasUnsupportedLevelClaim", () => {
+  it("пропускает уровень, названный в посте", () => {
+    expect(hasUnsupportedLevelClaim("Для новичков старше 14 лет", "Классы: Новичок 14+")).toBe(false);
+  });
+
+  it("ловит уровень, которого в посте нет", () => {
+    expect(hasUnsupportedLevelClaim("Подходит для всех уровней", "Обучение кайту и вингу")).toBe(true);
+  });
+});
+
+describe("buildEnrichmentUserMessage", () => {
+  it("не передаёт модели регион каталога", () => {
+    const message = buildEnrichmentUserMessage({
+      text: "Сафари в Красном море",
+      discipline: "kite",
+      formatType: "camp",
+      startDate: new Date("2026-10-17T00:00:00Z"),
+      endDate: new Date("2026-10-24T00:00:00Z"),
+    });
+    expect(message).not.toMatch(/Регион/);
+  });
+});
 
 const SOURCE = `#RKN_команда КАЙТ И ВИНГ САФАРИ НА ЯХТЕ В КРАСНОМ МОРЕ!
 Приглашаем райдеров любого уровня. В стоимость входит проживание на яхте, трехразовое питание,
@@ -34,6 +64,15 @@ describe("parseCardEnrichment", () => {
     expect(result?.organizer.inclusions).toEqual(["Проживание на яхте", "Трехразовое питание"]);
     expect(result?.organizer.exclusions).toEqual(["Перелет"]);
     expect(result?.notes.accommodation).toBe("Как правило, каюты на двоих.");
+  });
+
+  it("убирает «для кого» с уровнем, которого нет в посте", () => {
+    const wakeSource = "Анонс Краснодарского кэмпа. 6 тренировок с Чемпионом мира. Полупансион. Проживание в особняке.";
+    const result = parseCardEnrichment(
+      { organizer: { title: "Кэмп по вейксерфингу", audienceFit: "Кэмп подходит для всех уровней, от новичков до опытных райдеров." } },
+      wakeSource,
+    );
+    expect(result?.organizer.audienceFit).toBe("");
   });
 
   it("возвращает null на не-объект", () => {

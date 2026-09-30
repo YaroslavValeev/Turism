@@ -35,31 +35,31 @@ export const CARD_ENRICHMENT_SYSTEM_PROMPT = `Ты редактор катало
 
 Два слоя, их нельзя смешивать:
 1) "organizer" — только факты из текста поста, переформулированные коротко и понятно. Ничего не добавляй от себя: если факта нет в тексте, оставь пустую строку или пустой массив.
-   - title: до 90 символов, без хэштегов, эмодзи и КАПСА; что за выезд и где (например «Кайт- и винг-сафари на яхте в Красном море»). Даты и цены в заголовок не пиши.
-   - audienceFit: 1–2 предложения, кому подходит, только из того, что сказано в посте (уровень, обучение, формат).
-   - inclusions: что включено по словам организатора, короткими пунктами.
-   - exclusions: что не включено, только если это прямо сказано.
-   - gearRequirements: снаряжение, которое нужно взять или которое предоставляется, только если сказано.
+   - title: до 90 символов, без хэштегов, эмодзи и КАПСА; что за выезд и где (например «Кайт- и винг-сафари на яхте в Красном море»). Место бери только из текста поста; если места в посте нет — не указывай его. Даты и цены в заголовок не пиши.
+   - audienceFit: 1–2 предложения, кому подходит, только из того, что сказано в посте. Уровень участников («для новичков», «для всех уровней», «для опытных») пиши, только если он прямо назван в посте.
+   - inclusions: что входит в стоимость или программу по словам организатора, короткими пунктами.
+   - exclusions: только то, что организатор прямо называет не включённым или оплачиваемым отдельно. Требования к участникам (страховка, справки, возраст, согласие родителей) сюда не относятся.
+   - gearRequirements: снаряжение и обязательные требования к участнику (страховка, документы), только если сказано.
 2) "notes" — примечания MyWave: общая практика для такого формата и дисциплины, полезная участнику. Это НЕ слова организатора и НЕ факты о программе.
    - Формулируй осторожно: «обычно», «как правило», «уточните у организатора».
    - Не указывай цены, даты, имена, названия компаний и не противоречь посту.
+   - Пиши только то, что реально помогает подготовиться к этой дисциплине и формату (снаряжение, погода, документы, физическая подготовка). Пустые советы вроде «уточните наличие мест» или «нужна предварительная бронь» не пиши — лучше оставь пусто.
    - general: до 3 пунктов; accommodation, transfer, gear, cancellation: по одному предложению или пустая строка.
    - Каждое примечание до 200 символов.
 
 Верни ТОЛЬКО JSON:
 {"organizer":{"title":"","audienceFit":"","inclusions":[],"exclusions":[],"gearRequirements":[]},"notes":{"general":[],"accommodation":"","transfer":"","gear":"","cancellation":""}}`;
 
+/** Регион каталога сюда не передаём: он бывает определён эвристикой неверно, а модель ему доверяет. */
 export function buildEnrichmentUserMessage(input: {
   text: string;
   discipline: string;
-  region: string;
   formatType: string | null;
   startDate: Date;
   endDate: Date;
 }): string {
   return [
     `Дисциплина: ${input.discipline}`,
-    `Регион: ${input.region}`,
     `Формат: ${input.formatType ?? "не указан"}`,
     `Даты: ${input.startDate.toISOString().slice(0, 10)} – ${input.endDate.toISOString().slice(0, 10)}`,
     "",
@@ -110,6 +110,17 @@ export function groundedInSource(item: string, sourceStems: Set<string>): boolea
   return words.length === 0 ? false : words.some((w) => sourceStems.has(w));
 }
 
+const LEVEL_CLAIMS: ReadonlyArray<RegExp> = [
+  /новичо?к|начинающ|с нуля|без опыта/i,
+  /всех уровн|любого уровня|любой уровень|любым уровнем|разных уровн|всем уровням/i,
+  /опытн|продвинут|профи/i,
+];
+
+/** «Для кого» с уровнем участников, которого нет в посте, — домысел модели. */
+export function hasUnsupportedLevelClaim(text: string, sourceText: string): boolean {
+  return LEVEL_CLAIMS.some((re) => re.test(text) && !re.test(sourceText));
+}
+
 export function parseCardEnrichment(raw: unknown, sourceText: string): CardEnrichmentResult | null {
   if (!raw || typeof raw !== "object") return null;
   const o = raw as { organizer?: Record<string, unknown>; notes?: Record<string, unknown> };
@@ -122,7 +133,8 @@ export function parseCardEnrichment(raw: unknown, sourceText: string): CardEnric
   return {
     organizer: {
       title: cleanTitle(org.title),
-      audienceFit: audience && groundedInSource(audience, source) ? audience : "",
+      audienceFit:
+        audience && groundedInSource(audience, source) && !hasUnsupportedLevelClaim(audience, sourceText) ? audience : "",
       inclusions: grounded(cleanList(org.inclusions, 12, 160)),
       exclusions: grounded(cleanList(org.exclusions, 12, 160)),
       gearRequirements: grounded(cleanList(org.gearRequirements, 8, 160)),

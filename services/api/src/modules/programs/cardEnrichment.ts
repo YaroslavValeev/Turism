@@ -38,7 +38,7 @@ export const CARD_ENRICHMENT_SYSTEM_PROMPT = `Ты редактор катало
 1) "organizer" — извлечение фактов из текста поста. Бери формулировки поста как можно ближе к оригиналу: убирай эмодзи, рекламные восклицания и лишние слова, но не обобщай и не додумывай. Если факта нет в тексте — оставь пустую строку или пустой массив. Лучше пусто, чем неточно.
    - title: до 90 символов, без хэштегов, эмодзи и КАПСА; что за выезд и где (например «Кайт- и винг-сафари на яхте в Красном море»). Место бери только из текста поста; если места в посте нет — не указывай его. Даты и цены в заголовок не пиши.
    - audienceFit: 1–2 предложения, кому подходит, только из того, что сказано в посте. Уровень участников («для новичков», «для всех уровней», «для опытных») пиши, только если он прямо назван в посте.
-   - inclusions: что входит в стоимость или программу по словам организатора, короткими пунктами.
+   - inclusions: что получает каждый участник за стоимость (проживание, питание, тренировки, сопровождение), по словам организатора, короткими пунктами. Призы и награждение победителей сюда не относятся.
    - exclusions: только то, что организатор прямо называет не включённым или оплачиваемым отдельно. Требования к участникам (страховка, справки, возраст, согласие родителей) сюда не относятся.
    - gearRequirements: снаряжение и обязательные требования к участнику (страховка, документы), только если сказано.
 2) "notes" — рекомендации MyWave для того, чего в посте НЕТ: общая практика для такой дисциплины и формата. Это НЕ слова организатора и НЕ факты о программе.
@@ -133,6 +133,9 @@ export function hasUnsupportedLevelClaim(text: string, sourceText: string): bool
   return LEVEL_CLAIMS.some((re) => re.test(text) && !re.test(sourceText));
 }
 
+/** Награды и призы победителям — не то, что получает каждый участник. */
+const AWARD_RE = /награ|приз|победител|кубок/i;
+
 /**
  * `context` — слова, которые можно употреблять помимо поста (название дисциплины и формата каталога),
  * чтобы заголовок «Кэмп по вейксерфингу» не отбрасывался, если в посте только «wakesurf».
@@ -148,14 +151,19 @@ export function parseCardEnrichment(raw: unknown, sourceText: string, context = 
 
   const title = cleanTitle(org.title);
   const audience = cleanLine(org.audienceFit, 400);
+  const gearRequirements = grounded(cleanList(org.gearRequirements, 8, 160));
+  const exclusions = grounded(cleanList(org.exclusions, 12, 160)).filter(
+    (item) => !gearRequirements.some((req) => groundedInSource(item, stems(req))),
+  );
+  const inclusions = grounded(cleanList(org.inclusions, 12, 160)).filter((item) => !AWARD_RE.test(item));
   return {
     organizer: {
       title: title && groundedInSource(title, titleSource, TITLE_MIN_RATIO) ? title : "",
       audienceFit:
         audience && groundedInSource(audience, source) && !hasUnsupportedLevelClaim(audience, sourceText) ? audience : "",
-      inclusions: grounded(cleanList(org.inclusions, 12, 160)),
-      exclusions: grounded(cleanList(org.exclusions, 12, 160)),
-      gearRequirements: grounded(cleanList(org.gearRequirements, 8, 160)),
+      inclusions,
+      exclusions,
+      gearRequirements,
     },
     notes: {
       general: cleanList(notes.general, 3, 200),

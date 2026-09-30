@@ -3,6 +3,7 @@
  * Expanded: title, organizer, category/discipline, location, date/format, level, risk, gear, medical, cancellation, summary/structure, at least 1 media.
  */
 import { Program, ProgramMedia } from "@prisma/client";
+import { containsSyntheticMarker } from "./syntheticMarker";
 
 export type ProgramWithMedia = Program & {
   media: ProgramMedia[];
@@ -20,12 +21,6 @@ export const programIncludeForPublishGate = {
 
 function filled(s: string | null | undefined): boolean {
   return s != null && String(s).trim() !== "";
-}
-
-function containsSyntheticMarker(value: string | null | undefined): boolean {
-  const v = String(value ?? "").trim().toLowerCase();
-  if (!v) return false;
-  return /\b(e2e|test|demo|seed|synthetic)\b|тест|синтет|cmof/.test(v);
 }
 
 function hasSyntheticSignals(program: ProgramWithMedia): boolean {

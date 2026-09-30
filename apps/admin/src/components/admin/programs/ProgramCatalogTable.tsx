@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useState, type Dispatch, type SetStateAction } from "react";
+import { Fragment, useEffect, useState, type Dispatch, type SetStateAction } from "react";
 import Link from "next/link";
 import {
   PROGRAM_INTAKE_SOURCES,
@@ -59,6 +59,7 @@ type Props = {
   onSavePrice: (programId: string) => void;
   onCardChanged: (message: string) => Promise<void> | void;
   onCardError: (message: string) => void;
+  initialEditingProgramId?: string | null;
 };
 
 const PROGRAM_TABLE_COLUMNS = 10;
@@ -99,8 +100,12 @@ export function ProgramCatalogTable({
   onSavePrice,
   onCardChanged,
   onCardError,
+  initialEditingProgramId = null,
 }: Props) {
-  const [editingProgramId, setEditingProgramId] = useState<string | null>(null);
+  const [editingProgramId, setEditingProgramId] = useState<string | null>(initialEditingProgramId);
+  useEffect(() => {
+    if (initialEditingProgramId) setEditingProgramId(initialEditingProgramId);
+  }, [initialEditingProgramId]);
   return (
     <table className="mw-admin-table mw-admin-table--programs">
       <colgroup>
@@ -164,7 +169,14 @@ export function ProgramCatalogTable({
                   {program.isStarred ? "⭐ " : ""}
                   {program.title}
                 </strong>
-                <div className="mw-admin-caption">{program.organizer?.displayName ?? "—"} · {program.discipline}</div>
+                <div className="mw-admin-caption">
+                  {program.organizer ? (
+                    <Link href={`/organizers/${program.organizer.id}`}>{program.organizer.displayName}</Link>
+                  ) : (
+                    "—"
+                  )}{" "}
+                  · {program.discipline}
+                </div>
                 <button
                   type="button"
                   className="mw-admin-btn mw-admin-btn--ghost mw-admin-mt-8"

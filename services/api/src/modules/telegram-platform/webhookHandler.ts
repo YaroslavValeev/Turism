@@ -264,7 +264,7 @@ async function handleMessage(env: Env, msg: Message) {
     // Required consents from real program risk + kids heuristic.
     const program = await prisma.program.findUnique({
       where: { id: session.programId ?? "" },
-      select: { publishStatus: true, riskLevel: true, audienceFit: true },
+      select: { publishStatus: true, riskLevel: true, audienceFit: true, organizer: { select: { verificationStatus: true } } },
     });
     if (!program || !isProgramPubliclyVisible(program)) {
       await callTelegramJson(env, "sendMessage", { chat_id: chatId, text: "Программа недоступна." });

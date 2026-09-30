@@ -159,6 +159,20 @@ describe("organizer routes access control", () => {
     expect(mocks.organizerFindMany).toHaveBeenCalledWith(expect.not.objectContaining({ select: expect.anything() }));
   });
 
+  it("adds program/source counters and the ingestion-stub flag for admins", async () => {
+    mocks.organizerFindMany.mockResolvedValueOnce([{
+      ...privateOrganizer,
+      contactEmail: "ingestion+cm1@mywave.local",
+      _count: { programs: 3, sources: 1, verificationEvidence: 0 },
+      programs: [{ id: "p1" }, { id: "p2" }],
+    }]);
+    const response = await request("/organizers", adminToken());
+
+    expect(response.status).toBe(200);
+    expect(response.body[0]).toMatchObject({ publishedProgramCount: 2, isIngestionStub: true, _count: { programs: 3 } });
+    expect(response.body[0].programs).toBeUndefined();
+  });
+
   it("rejects an invalid bearer token instead of downgrading to the public list", async () => {
     const response = await request("/organizers", "invalid-token");
 

@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { adminJson } from "../../lib/admin";
+import { verificationTone } from "../../components/admin/organizers/organizerModel";
 import { AdminEmptyState } from "../../components/admin/AdminEmptyState";
 import { AdminFilterField, AdminFiltersBar } from "../../components/admin/AdminFiltersBar";
 import { AdminLoadingState } from "../../components/admin/AdminLoadingState";
@@ -31,6 +33,10 @@ type Organizer = {
   billingStatus: string;
   privilegeStatus: string;
   createdAt: string;
+  autoPublishApprovedAt?: string | null;
+  isIngestionStub?: boolean;
+  publishedProgramCount?: number;
+  _count?: { programs: number; sources: number; verificationEvidence: number };
 };
 
 type OrganizerScoreRow = {
@@ -78,7 +84,7 @@ function organizerHints(o: Organizer, score: OrganizerScoreRow | undefined): str
   if (Number(c.refund_penalty ?? 0) > 12) hints.push("Высокий refund penalty: сверить причины отмен и billing policy.");
   if (Number(c.complaint_penalty ?? 0) > 10) hints.push("Высокий complaint penalty: вынести в trust/moderation разбор.");
   if (o.verificationStatus !== "verified" && o.verificationStatus !== "trusted_by_platform") {
-    hints.push("Довести верификацию до «Проверен»/«Доверенный» для снижения операционных рисков.");
+    hints.push("Довести верификацию до «Верифицирован»/«Доверенный» для снижения операционных рисков.");
   }
   return hints.slice(0, 3);
 }
@@ -87,7 +93,7 @@ function moderationPriority(o: Organizer, score: OrganizerScoreRow | undefined):
   if (!score) return { label: "P3 · ждём snapshot", color: "#666" };
   if (score.scoreBand === "low") return { label: "P1 · manual moderation", color: "#9f1d1d" };
   if (score.scoreBand === "unknown") return { label: "P2 · data follow-up", color: "#364fc7" };
-  if (o.verificationStatus !== "trusted") return { label: "P2 · verify before scale", color: "#8a5800" };
+  if (o.verificationStatus !== "trusted_by_platform") return { label: "P2 · verify before scale", color: "#8a5800" };
   return { label: "P3 · monitor", color: "#1d6f42" };
 }
 
@@ -97,8 +103,7 @@ export default function OrganizersQueuePage() {
   const [filter, setFilter] = useState<string>("");
   const [search, setSearch] = useState<string>("");
   const [loading, setLoading] = useState(true);
-  const [savingOrganizerId, setSavingOrganizerId] = useState<string>("");
-  const [draftStatusByOrganizerId, setDraftStatusByOrganizerId] = useState<Record<string, string>>({});
+  const [stubsOnly, setStubsOnly] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -120,15 +125,7 @@ export default function OrganizersQueuePage() {
         return res.json();
       })
       .then((data) => {
-        const list = Array.isArray(data) ? data : [];
-        setOrganizers(list);
-        setDraftStatusByOrganizerId((prev) => {
-          const next = { ...prev };
-          for (const o of list) {
-            if (!next[o.id]) next[o.id] = o.verificationStatus;
-          }
-          return next;
-        });
+        setOrganizers(Array.isArray(data) ? data : []);
       })
       .catch((e) => setError(String(e)))
       .finally(() => setLoading(false));
@@ -154,13 +151,14 @@ export default function OrganizersQueuePage() {
 
   const visibleOrganizers = useMemo(() => {
     const needle = search.trim().toLocaleLowerCase();
-    if (!needle) return organizers;
-    return organizers.filter((organizer) =>
+    const scoped = stubsOnly ? organizers.filter((o) => o.isIngestionStub) : organizers;
+    if (!needle) return scoped;
+    return scoped.filter((organizer) =>
       [organizer.displayName, organizer.contactEmail, organizer.contactPhone, organizer.legalStatus]
         .filter((value): value is string => Boolean(value))
         .some((value) => value.toLocaleLowerCase().includes(needle)),
     );
-  }, [organizers, search]);
+  }, [organizers, search, stubsOnly]);
 
   const stats = useMemo(() => {
     const withScore = visibleOrganizers.filter((o) => scoreByOrganizerId[o.id]).length;
@@ -170,37 +168,11 @@ export default function OrganizersQueuePage() {
     return { total: visibleOrganizers.length, withScore, trustedVerified };
   }, [visibleOrganizers, scoreByOrganizerId]);
 
-  function verificationBadgeTone(status: string): "ok" | "warn" | "danger" | "muted" {
-    if (status === "trusted_by_platform" || status === "verified") return "ok";
-    if (status === "rejected" || status === "blocked") return "danger";
-    if (status === "listed" || status === "checked" || status === "evidence") return "warn";
-    return "muted";
-  }
-
-  async function saveVerificationStatus(organizerId: string) {
-    const status = draftStatusByOrganizerId[organizerId];
-    if (!status) return;
-    setSavingOrganizerId(organizerId);
-    setError("");
-    try {
-      const updated = await adminJson<Organizer>(`/organizers/${organizerId}/verification-status`, {
-        method: "PATCH",
-        body: JSON.stringify({ verificationStatus: status }),
-      });
-      setOrganizers((prev) => prev.map((o) => (o.id === organizerId ? { ...o, verificationStatus: updated.verificationStatus } : o)));
-      setDraftStatusByOrganizerId((prev) => ({ ...prev, [organizerId]: updated.verificationStatus }));
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setSavingOrganizerId("");
-    }
-  }
-
   return (
     <main className="mw-admin-page">
       <AdminPageHeader
         title="Организаторы"
-        description="Верификация по внутренним runbook. Порядок статусов: listed → checked → verified → trusted_by_platform."
+        description="Откройте организатора, чтобы проверить, отредактировать, привязать источники, управлять автопубликацией и объединить дубли. Ступени: В листинге → Проверен → Верифицирован → Доверенный."
       />
       {error ? <AdminMessage type="error">{error}</AdminMessage> : null}
       {loading ? (
@@ -238,6 +210,12 @@ export default function OrganizersQueuePage() {
                 ))}
               </select>
             </AdminFilterField>
+            <AdminFilterField label="Дубли">
+              <label className="mw-admin-inline-form">
+                <input type="checkbox" checked={stubsOnly} onChange={(e) => setStubsOnly(e.target.checked)} />
+                Только созданные автосбором
+              </label>
+            </AdminFilterField>
           </AdminFiltersBar>
 
           {visibleOrganizers.length === 0 ? (
@@ -252,6 +230,9 @@ export default function OrganizersQueuePage() {
                   <tr>
                     <th>Название</th>
                     <th>Статус верификации</th>
+                    <th>Программы (на сайте / всего)</th>
+                    <th>Источники</th>
+                    <th>Автопубликация</th>
                     <th>Email</th>
                     <th>Onboarding</th>
                     <th>Billing</th>
@@ -269,41 +250,28 @@ export default function OrganizersQueuePage() {
                     const hints = organizerHints(o, score);
                     return (
                       <tr key={o.id}>
-                        <td>{o.displayName}</td>
-                        <td style={{ minWidth: 220 }}>
-                          <AdminStatusBadge tone={verificationBadgeTone(o.verificationStatus)}>
-                            {getOrganizerVerificationStatusLabel(o.verificationStatus)}
-                          </AdminStatusBadge>
-                          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                            <select
-                              className="mw-admin-input"
-                              value={draftStatusByOrganizerId[o.id] ?? o.verificationStatus}
-                              onChange={(e) =>
-                                setDraftStatusByOrganizerId((prev) => ({
-                                  ...prev,
-                                  [o.id]: e.target.value,
-                                }))
-                              }
-                              style={{ minWidth: 140 }}
-                            >
-                              {ORGANIZER_VERIFICATION_STATUSES.map((s) => (
-                                <option key={s} value={s}>
-                                  {getOrganizerVerificationStatusLabel(s)}
-                                </option>
-                              ))}
-                            </select>
-                            <button
-                              type="button"
-                              className="mw-admin-btn mw-admin-btn--ghost"
-                              onClick={() => void saveVerificationStatus(o.id)}
-                              disabled={savingOrganizerId === o.id || (draftStatusByOrganizerId[o.id] ?? o.verificationStatus) === o.verificationStatus}
-                              style={{ whiteSpace: "nowrap" }}
-                            >
-                              {savingOrganizerId === o.id ? "Сохраняем…" : "Сохранить"}
-                            </button>
+                        <td>
+                          <Link href={`/organizers/${o.id}`}>
+                            <strong>{o.displayName}</strong>
+                          </Link>
+                          {o.isIngestionStub ? <div className="mw-admin-caption">создан автосбором</div> : null}
+                          <div className="mw-admin-mt-8">
+                            <Link className="mw-admin-btn mw-admin-btn--ghost" href={`/organizers/${o.id}`}>
+                              Открыть
+                            </Link>
                           </div>
                         </td>
-                        <td>{o.contactEmail}</td>
+                        <td>
+                          <AdminStatusBadge tone={verificationTone(o.verificationStatus)}>
+                            {getOrganizerVerificationStatusLabel(o.verificationStatus)}
+                          </AdminStatusBadge>
+                        </td>
+                        <td>
+                          {o.publishedProgramCount ?? 0} / {o._count?.programs ?? 0}
+                        </td>
+                        <td>{o._count?.sources ?? 0}</td>
+                        <td>{o.autoPublishApprovedAt ? "разрешена" : "нет"}</td>
+                        <td className="mw-admin-muted">{o.isIngestionStub ? "заглушка" : o.contactEmail}</td>
                         <td className="mw-admin-muted">{getOrganizerOnboardingStatusLabel(o.onboardingStatus)}</td>
                         <td className="mw-admin-muted">{getOrganizerBillingStatusLabel(o.billingStatus)}</td>
                         <td className="mw-admin-muted">{getOrganizerPrivilegeStatusLabel(o.privilegeStatus)}</td>

@@ -353,6 +353,38 @@ export function programsRoutes(env: Env): Router {
     res.json({ total: results.length, results });
   });
 
+  /** Re-links the program to another organizer; the display copy of the name follows the organizer. */
+  router.put("/:id/organizer", admin, async (req: Request, res: Response) => {
+    const organizerId = String((req.body as { organizerId?: unknown }).organizerId ?? "");
+    const [program, organizer] = await Promise.all([
+      prisma.program.findUnique({ where: { id: req.params.id }, select: { id: true, organizerId: true, organizerName: true } }),
+      organizerId ? prisma.organizer.findUnique({ where: { id: organizerId }, select: { id: true, displayName: true } }) : null,
+    ]);
+    if (!program) {
+      res.status(404).json({ error: "Not found" });
+      return;
+    }
+    if (!organizer) {
+      res.status(400).json({ error: "Организатор не найден" });
+      return;
+    }
+    const updated = await prisma.program.update({
+      where: { id: program.id },
+      data: { organizerId: organizer.id, organizerName: organizer.displayName },
+      include: { media: orderedProgramMedia, organizer: { select: { id: true, displayName: true, verificationStatus: true } } },
+    });
+    await writeAuditLog({
+      entityType: "program",
+      entityId: program.id,
+      changedField: "organizerId",
+      oldValue: program.organizerId,
+      newValue: organizer.id,
+      changedBy: req.adminUserId ?? null,
+      reason: "organizer reassigned in admin",
+    });
+    res.json(updated);
+  });
+
   router.post("/:id/enrich", admin, async (req: Request, res: Response) => {
     if (!isCardEnrichmentEnabled(env)) {
       res.status(409).json({ error: "card_enrichment_disabled" });

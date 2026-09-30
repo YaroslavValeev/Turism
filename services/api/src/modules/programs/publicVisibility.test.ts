@@ -35,6 +35,14 @@ describe("isProgramPubliclyVisible", () => {
     }, now)).toBe(true);
   });
 
+  it("hides programs of paused or rejected organizers", () => {
+    const base = { publishStatus: "published", endDate: "2026-07-21T00:00:00.000Z" };
+    expect(isProgramPubliclyVisible({ ...base, organizer: { verificationStatus: "paused" } }, now)).toBe(false);
+    expect(isProgramPubliclyVisible({ ...base, organizer: { verificationStatus: "rejected" } }, now)).toBe(false);
+    expect(isProgramPubliclyVisible({ ...base, organizer: { verificationStatus: "listed" } }, now)).toBe(true);
+    expect(isProgramPubliclyVisible({ ...base, organizer: null }, now)).toBe(true);
+  });
+
   it("keeps legacy published programs visible when availability is unknown", () => {
     expect(isProgramPubliclyVisible({ publishStatus: "published", endDate: null, spotsAvailable: null }, now)).toBe(true);
   });

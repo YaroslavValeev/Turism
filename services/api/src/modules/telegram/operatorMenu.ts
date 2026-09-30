@@ -9,6 +9,8 @@ import { runDedupJob, runNormalizationJob, runSourceCollection } from "../ingest
 import { emitBackendAnalyticsEventBestEffort } from "../analytics/service";
 import { callTelegramJson } from "./telegramApi";
 import { safeError } from "../../lib/safeLogger";
+import { AUTOPUBLISH_ELIGIBLE_STATUSES, checkVerificationTransition } from "../organizers/workflow";
+import { isOrganizerHiddenFromStorefront } from "../programs/publicVisibility";
 
 type TelegramChat = { id: number };
 
@@ -299,17 +301,22 @@ async function changeOrganizerStatus(env: Env, chatId: number, organizerId: stri
     await sendMessage(env, chatId, "Организатор не найден.");
     return;
   }
-  if (existing.verificationStatus === status) {
-    await sendMessage(env, chatId, "Этот статус уже установлен.");
+  const evidenceCount = await prisma.organizerVerificationEvidence.count({ where: { organizerId } });
+  const transitionError = checkVerificationTransition(existing.verificationStatus, status, evidenceCount > 0);
+  if (transitionError) {
+    await sendMessage(env, chatId, `${transitionError}\nДоказательства добавляются в админке на странице организатора.`);
     return;
   }
-  const grantsAutoPublish = status === "verified" || status === "trusted_by_platform";
+  const grantsAutoPublish = AUTOPUBLISH_ELIGIBLE_STATUSES.includes(status);
+  const revokesAutoPublish = isOrganizerHiddenFromStorefront(status);
   const organizer = await prisma.organizer.update({
     where: { id: organizerId },
     data: {
       verificationStatus: status,
-      autoPublishApprovedAt: grantsAutoPublish ? (existing.autoPublishApprovedAt ?? new Date()) : undefined,
-      autoPublishApprovedBy: grantsAutoPublish ? (existing.autoPublishApprovedBy ?? actorId) : undefined,
+      ...(grantsAutoPublish && !existing.autoPublishApprovedAt
+        ? { autoPublishApprovedAt: new Date(), autoPublishApprovedBy: actorId }
+        : {}),
+      ...(revokesAutoPublish ? { autoPublishApprovedAt: null, autoPublishApprovedBy: null } : {}),
     },
   });
   await writeAuditLog({

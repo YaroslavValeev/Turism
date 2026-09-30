@@ -12,6 +12,7 @@ import {
   type Program,
   type ProgramCardDraft,
 } from "./programModel";
+import { ProgramOrganizerRow } from "./ProgramOrganizerRow";
 
 const WEB_BASE = (process.env.NEXT_PUBLIC_WEB_URL ?? "").replace(/\/+$/, "");
 /** Совпадает с MEDIA_UPLOAD_MAX_BYTES в API и client_max_body_size в nginx. */
@@ -157,6 +158,7 @@ export function ProgramCardEditor({ program, onChanged, onError }: Props) {
 
   return (
     <div className="mw-admin-stack-8" style={{ padding: "12px 4px" }}>
+      <ProgramOrganizerRow program={program} onChanged={onChanged} onError={onError} />
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 12 }}>
         {PROGRAM_CARD_TEXT_FIELDS.map(({ key, label, multiline }) => (
           <label key={key} className="mw-admin-stack-6">

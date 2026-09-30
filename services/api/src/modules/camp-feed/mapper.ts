@@ -211,8 +211,12 @@ export function mapProgramToCamp(row: CampProgramRow, env: Env): CampContract | 
   const sport = normalizeSports(row);
   if (sport.length === 0) return null;
 
-  const publicationStatus = normalizePublicationStatus(row.publishStatus);
-  if (!publicationStatus) return null;
+  const normalizedStatus = normalizePublicationStatus(row.publishStatus);
+  if (!normalizedStatus) return null;
+  // Kept inline (not imported from programs/) because the camp feed ships as a standalone release bundle.
+  const organizerHidden = row.organizer.verificationStatus === "paused" || row.organizer.verificationStatus === "rejected";
+  const publicationStatus: CampPublicationStatus =
+    organizerHidden && normalizedStatus === "published" ? "hidden" : normalizedStatus;
 
   const country = resolveCountry(row);
   const organizerName = normalizeText(row.organizerName) || normalizeText(row.organizer.displayName);

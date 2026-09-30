@@ -58,6 +58,8 @@ export default function AdminProgramsPage() {
   const [spotlightDrafts, setSpotlightDrafts] = useState<Record<string, SpotlightDraft>>({});
   const [savingSpotlightId, setSavingSpotlightId] = useState<string | null>(null);
   const [createForm, setCreateForm] = useState<ProgramForm>(INITIAL_PROGRAM_FORM);
+  /** `/programs?edit=<id>` deep link from the organizer page: show that card with its editor open. */
+  const [focusProgramId, setFocusProgramId] = useState<string | null>(null);
 
   const loadOrganizers = async () => {
     if (!getAdminToken()) return;
@@ -119,7 +121,19 @@ export default function AdminProgramsPage() {
       return;
     }
     void loadOrganizers();
+    const editId = new URLSearchParams(window.location.search).get("edit");
+    if (editId) {
+      setFocusProgramId(editId);
+      setFilter("");
+    }
   }, []);
+
+  function clearFocus() {
+    setFocusProgramId(null);
+    window.history.replaceState(null, "", "/programs");
+  }
+
+  const displayedPrograms = focusProgramId ? programs.filter((p) => p.id === focusProgramId) : programs;
 
   useEffect(() => {
     void loadPrograms();
@@ -459,9 +473,18 @@ export default function AdminProgramsPage() {
         </AdminFilterField>
       </AdminFiltersBar>
 
+      {focusProgramId ? (
+        <AdminMessage type="success">
+          Показана одна программа.{" "}
+          <button type="button" className="mw-admin-btn mw-admin-btn--ghost" onClick={clearFocus}>
+            Показать все
+          </button>
+        </AdminMessage>
+      ) : null}
+
       {loading ? (
         <AdminLoadingState label="Загружаем программы…" />
-      ) : programs.length === 0 ? (
+      ) : displayedPrograms.length === 0 ? (
         <AdminEmptyState
           title="В очереди пусто"
           description="Нет программ в статусах черновик / проверка / доработка / одобрена. Откройте «На сайте» или «Архив», либо создайте черновик выше."
@@ -469,7 +492,8 @@ export default function AdminProgramsPage() {
       ) : (
         <div className="mw-admin-table-outer">
           <ProgramCatalogTable
-            programs={programs}
+            programs={displayedPrograms}
+            initialEditingProgramId={focusProgramId}
             programScores={programScores}
             mediaDrafts={mediaDrafts}
             setMediaDrafts={setMediaDrafts}

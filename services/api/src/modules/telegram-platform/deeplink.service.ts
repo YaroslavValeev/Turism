@@ -21,7 +21,7 @@ export async function validateAndRecordDeeplink(input: {
     if (!pid) return { ok: false, parsed };
     const program = await prisma.program.findUnique({
       where: { id: pid },
-      select: { id: true, publishStatus: true },
+      select: { id: true, publishStatus: true, organizer: { select: { verificationStatus: true } } },
     });
     if (!program || !isProgramPubliclyVisible(program)) {
       return { ok: false, parsed };

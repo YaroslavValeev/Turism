@@ -33,7 +33,7 @@ export async function startLeadAttempt(input: {
 }) {
   const program = await prisma.program.findUnique({
     where: { id: input.programId },
-    select: { id: true, organizerId: true, publishStatus: true },
+    select: { id: true, organizerId: true, publishStatus: true, organizer: { select: { verificationStatus: true } } },
   });
   if (!program || !isProgramPubliclyVisible(program)) {
     return { ok: false as const, error: "program_not_found" };

@@ -4,7 +4,15 @@ type PublicProgramVisibilityShape = {
   spotsAvailable?: number | null;
   autoPublished?: boolean | null;
   reviewStatus?: string | null;
+  organizer?: { verificationStatus?: string | null } | null;
 };
+
+/** Paused or rejected organizers must not sell through the storefront, whatever the program status. */
+export const HIDDEN_ORGANIZER_STATUSES: readonly string[] = ["paused", "rejected"];
+
+export function isOrganizerHiddenFromStorefront(verificationStatus: string | null | undefined): boolean {
+  return verificationStatus != null && HIDDEN_ORGANIZER_STATUSES.includes(verificationStatus);
+}
 
 function startOfUtcDay(value: Date): number {
   return Date.UTC(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate());
@@ -12,6 +20,7 @@ function startOfUtcDay(value: Date): number {
 
 export function isProgramPubliclyVisible(program: PublicProgramVisibilityShape, now = new Date()): boolean {
   if (program.publishStatus !== "published") return false;
+  if (isOrganizerHiddenFromStorefront(program.organizer?.verificationStatus)) return false;
   // Ingestion may create a complete-looking record from untrusted source markup.
   // It becomes public only after an operator has explicitly passed review.
   if (program.autoPublished && program.reviewStatus !== "ok") return false;

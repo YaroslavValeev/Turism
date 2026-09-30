@@ -49,7 +49,14 @@ export function bookingsRoutes(env: Env): Router {
     const legalVersion = (process.env.LEGAL_CONSENT_POLICY_VERSION || "").trim() || "pilot-v1";
     const program = await prisma.program.findUnique({
       where: { id: body.programId },
-      select: { id: true, organizerId: true, publishStatus: true, endDate: true, spotsAvailable: true },
+      select: {
+        id: true,
+        organizerId: true,
+        publishStatus: true,
+        endDate: true,
+        spotsAvailable: true,
+        organizer: { select: { verificationStatus: true } },
+      },
     });
     if (!program || !isProgramPubliclyVisible(program)) {
       res.status(404).json({ error: "Program not found or unavailable" });

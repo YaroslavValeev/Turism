@@ -17,6 +17,14 @@ import {
 } from "@mywave/shared-types";
 import { deriveOrganizerPrivileges } from "../billing/service";
 import { emitBackendAnalyticsEventBestEffort } from "../analytics/service";
+import { isOrganizerHiddenFromStorefront } from "../programs/publicVisibility";
+import {
+  AUTOPUBLISH_ELIGIBLE_STATUSES,
+  checkVerificationTransition,
+  describeMergeBlockers,
+  findSimilarOrganizers,
+  isIngestionStubOrganizer,
+} from "./workflow";
 
 export function organizersRoutes(env: Env): Router {
   const router = Router();
@@ -38,8 +46,16 @@ export function organizersRoutes(env: Env): Router {
       const list = await prisma.organizer.findMany({
         where,
         orderBy: { createdAt: "desc" },
+        include: {
+          _count: { select: { programs: true, sources: true, verificationEvidence: true } },
+          programs: { where: { publishStatus: "published" }, select: { id: true } },
+        },
       });
-      res.json(list);
+      res.json(list.map(({ programs, ...organizer }) => ({
+        ...organizer,
+        publishedProgramCount: programs?.length ?? 0,
+        isIngestionStub: isIngestionStubOrganizer(organizer.contactEmail),
+      })));
       return;
     }
     const list = await prisma.organizer.findMany({
@@ -106,14 +122,39 @@ export function organizersRoutes(env: Env): Router {
     }
     const { displayName, legalStatus, contactEmail, contactPhone, responseScore } = req.body;
     const data: Record<string, unknown> = {};
-    if (displayName !== undefined) data.displayName = displayName;
-    if (legalStatus !== undefined) data.legalStatus = legalStatus;
-    if (contactEmail !== undefined) data.contactEmail = contactEmail;
-    if (contactPhone !== undefined) data.contactPhone = contactPhone;
-    if (responseScore !== undefined) data.responseScore = Number(responseScore);
-    const o = await prisma.organizer.update({
-      where: { id: req.params.id },
-      data,
+    if (displayName !== undefined) {
+      const trimmed = String(displayName ?? "").trim();
+      if (!trimmed) {
+        res.status(400).json({ error: "Название организатора не может быть пустым" });
+        return;
+      }
+      data.displayName = trimmed;
+    }
+    if (legalStatus !== undefined) data.legalStatus = legalStatus || null;
+    if (contactEmail !== undefined) {
+      const email = String(contactEmail ?? "").trim();
+      if (!email) {
+        res.status(400).json({ error: "Email организатора не может быть пустым" });
+        return;
+      }
+      data.contactEmail = email;
+    }
+    if (contactPhone !== undefined) data.contactPhone = contactPhone || null;
+    if (responseScore !== undefined) data.responseScore = responseScore === null || responseScore === "" ? null : Number(responseScore);
+    for (const key of Object.keys(data)) {
+      if (String(data[key] ?? "") === String(existing[key as keyof typeof existing] ?? "")) delete data[key];
+    }
+    const renamed = typeof data.displayName === "string" ? data.displayName : null;
+    const o = await prisma.$transaction(async (tx) => {
+      const updated = await tx.organizer.update({ where: { id: req.params.id }, data });
+      if (renamed) {
+        // Program.organizerName is a display copy; keep copies that still mirror the old name in sync.
+        await tx.program.updateMany({
+          where: { organizerId: updated.id, OR: [{ organizerName: null }, { organizerName: existing.displayName }] },
+          data: { organizerName: renamed },
+        });
+      }
+      return updated;
     });
     for (const [field, newVal] of Object.entries(data)) {
       const oldVal = existing[field as keyof typeof existing];
@@ -165,19 +206,47 @@ export function organizersRoutes(env: Env): Router {
       res.status(404).json({ error: "Not found" });
       return;
     }
-    const { verificationStatus } = req.body as { verificationStatus?: string };
+    const { verificationStatus, evidence } = req.body as {
+      verificationStatus?: string;
+      evidence?: { evidenceType?: string; evidenceUrl?: string; notes?: string } | null;
+    };
     if (!verificationStatus || !isOrganizerVerificationStatus(verificationStatus)) {
       res.status(400).json({ error: "valid verificationStatus required", allowed: "listed,checked,verified,trusted_by_platform,paused,rejected" });
       return;
     }
-    const grantsAutoPublish = verificationStatus === "verified" || verificationStatus === "trusted_by_platform";
-    const o = await prisma.organizer.update({
-      where: { id: req.params.id },
-      data: {
-        verificationStatus: verificationStatus as OrganizerVerificationStatus,
-        autoPublishApprovedAt: grantsAutoPublish ? (existing.autoPublishApprovedAt ?? new Date()) : undefined,
-        autoPublishApprovedBy: grantsAutoPublish ? (existing.autoPublishApprovedBy ?? req.adminUserId ?? "system:organizer-verification") : undefined,
-      },
+    const newEvidence = evidence && (evidence.evidenceUrl?.trim() || evidence.notes?.trim())
+      ? {
+          evidenceType: evidence.evidenceType?.trim() || "operator_check",
+          evidenceUrl: evidence.evidenceUrl?.trim() || null,
+          notes: evidence.notes?.trim() || null,
+        }
+      : null;
+    const evidenceCount = await prisma.organizerVerificationEvidence.count({ where: { organizerId: existing.id } });
+    const transitionError = checkVerificationTransition(
+      existing.verificationStatus,
+      verificationStatus,
+      evidenceCount > 0 || newEvidence !== null,
+    );
+    if (transitionError) {
+      res.status(400).json({ error: transitionError });
+      return;
+    }
+    const grantsAutoPublish = AUTOPUBLISH_ELIGIBLE_STATUSES.includes(verificationStatus);
+    const revokesAutoPublish = isOrganizerHiddenFromStorefront(verificationStatus);
+    const o = await prisma.$transaction(async (tx) => {
+      if (newEvidence) {
+        await tx.organizerVerificationEvidence.create({ data: { organizerId: existing.id, ...newEvidence } });
+      }
+      return tx.organizer.update({
+        where: { id: req.params.id },
+        data: {
+          verificationStatus: verificationStatus as OrganizerVerificationStatus,
+          ...(grantsAutoPublish && !existing.autoPublishApprovedAt
+            ? { autoPublishApprovedAt: new Date(), autoPublishApprovedBy: req.adminUserId ?? "system:organizer-verification" }
+            : {}),
+          ...(revokesAutoPublish ? { autoPublishApprovedAt: null, autoPublishApprovedBy: null } : {}),
+        },
+      });
     });
     await writeAuditLog({
       entityType: "organizer",
@@ -214,6 +283,147 @@ export function organizersRoutes(env: Env): Router {
       });
     }
     res.json(o);
+  });
+
+  /** One-screen organizer workspace: profile, verification evidence, sources, programs, merge candidates. */
+  router.get("/:id/overview", admin, async (req: Request, res: Response) => {
+    const organizer = await prisma.organizer.findUnique({
+      where: { id: req.params.id },
+      include: {
+        verificationEvidence: { orderBy: { createdAt: "desc" } },
+        sources: {
+          select: { id: true, name: true, type: true, urlOrHandle: true, isActive: true, lastSuccessAt: true, metaJson: true },
+          orderBy: { name: "asc" },
+        },
+        programs: {
+          select: {
+            id: true, title: true, publishStatus: true, reviewStatus: true, autoPublished: true,
+            startDate: true, endDate: true, discipline: true, region: true, organizerName: true,
+          },
+          orderBy: [{ startDate: "desc" }],
+        },
+      },
+    });
+    if (!organizer) {
+      res.status(404).json({ error: "Not found" });
+      return;
+    }
+    const all = await prisma.organizer.findMany({
+      select: { id: true, displayName: true, verificationStatus: true, contactEmail: true, _count: { select: { programs: true } } },
+    });
+    const similar = findSimilarOrganizers(organizer, all).map((other) => ({
+      id: other.id,
+      displayName: other.displayName,
+      verificationStatus: other.verificationStatus,
+      isIngestionStub: isIngestionStubOrganizer(other.contactEmail),
+      programCount: other._count.programs,
+    }));
+    const { verificationEvidence, sources, programs, ...profile } = organizer;
+    res.json({
+      organizer: { ...profile, isIngestionStub: isIngestionStubOrganizer(profile.contactEmail) },
+      evidence: verificationEvidence,
+      sources: sources.map(({ metaJson, ...source }) => ({
+        ...source,
+        autoPublishOptOut: Boolean(metaJson && typeof metaJson === "object" && (metaJson as Record<string, unknown>).autoPublish === false),
+      })),
+      programs,
+      similar,
+      storefrontHidden: isOrganizerHiddenFromStorefront(profile.verificationStatus),
+    });
+  });
+
+  router.put("/:id/autopublish", admin, async (req: Request, res: Response) => {
+    const existing = await prisma.organizer.findUnique({ where: { id: req.params.id } });
+    if (!existing) {
+      res.status(404).json({ error: "Not found" });
+      return;
+    }
+    const enabled = (req.body as { enabled?: unknown }).enabled === true;
+    if (enabled && !AUTOPUBLISH_ELIGIBLE_STATUSES.includes(existing.verificationStatus)) {
+      res.status(400).json({ error: "Автопубликацию можно разрешить только организатору со статусом «Верифицирован» или «Доверенный»." });
+      return;
+    }
+    const o = await prisma.organizer.update({
+      where: { id: existing.id },
+      data: enabled
+        ? { autoPublishApprovedAt: existing.autoPublishApprovedAt ?? new Date(), autoPublishApprovedBy: existing.autoPublishApprovedBy ?? req.adminUserId ?? "admin" }
+        : { autoPublishApprovedAt: null, autoPublishApprovedBy: null },
+    });
+    await writeAuditLog({
+      entityType: "organizer",
+      entityId: o.id,
+      changedField: "auto_publish_approval",
+      oldValue: existing.autoPublishApprovedAt ? "approved" : "none",
+      newValue: enabled ? "approved" : "none",
+      changedBy: req.adminUserId ?? null,
+      reason: enabled ? "autopublish approved in admin" : "autopublish revoked in admin",
+    });
+    res.json(o);
+  });
+
+  /** Moves programs, sources and operational links of a duplicate (usually an ingestion stub) to the target organizer. */
+  router.post("/:id/merge-into", admin, async (req: Request, res: Response) => {
+    const targetId = String((req.body as { targetId?: unknown }).targetId ?? "");
+    if (!targetId || targetId === req.params.id) {
+      res.status(400).json({ error: "Укажите другого организатора, с которым объединить" });
+      return;
+    }
+    const [from, target] = await Promise.all([
+      prisma.organizer.findUnique({
+        where: { id: req.params.id },
+        include: {
+          billingProfile: { select: { id: true } },
+          _count: {
+            select: {
+              bookings: true, payments: true, refunds: true, commissions: true, contracts: true,
+              billingStatements: true, telegramAccounts: true, outreachCampaigns: true,
+            },
+          },
+        },
+      }),
+      prisma.organizer.findUnique({ where: { id: targetId } }),
+    ]);
+    if (!from || !target) {
+      res.status(404).json({ error: "Организатор не найден" });
+      return;
+    }
+    const blockers = describeMergeBlockers({ ...from._count, billingProfile: from.billingProfile ? 1 : 0 });
+    if (blockers) {
+      res.status(409).json({ error: blockers });
+      return;
+    }
+    const moved = await prisma.$transaction(async (tx) => {
+      const where = { organizerId: from.id };
+      const data = { organizerId: target.id };
+      const programs = await tx.program.updateMany({ where, data: { ...data, organizerName: target.displayName } });
+      const sources = await tx.source.updateMany({ where, data });
+      await tx.organizerVerificationEvidence.updateMany({ where, data });
+      await tx.lead.updateMany({ where, data });
+      await tx.review.updateMany({ where, data });
+      await tx.reviewRequest.updateMany({ where, data });
+      await tx.incident.updateMany({ where, data });
+      await tx.telegramLeadAttempt.updateMany({ where, data });
+      await tx.organizerContactChannel.updateMany({ where, data });
+      await tx.organizerLeadStatusEvent.updateMany({ where, data });
+      await tx.telegramReconciliationTask.updateMany({ where, data });
+      await tx.spot.updateMany({ where, data });
+      await tx.organizerScoreSnapshot.deleteMany({ where });
+      await tx.organizer.update({
+        where: { id: from.id },
+        data: { verificationStatus: "rejected", autoPublishApprovedAt: null, autoPublishApprovedBy: null },
+      });
+      return { programs: programs.count, sources: sources.count };
+    });
+    await writeAuditLog({
+      entityType: "organizer",
+      entityId: from.id,
+      changedField: "merged_into",
+      oldValue: from.displayName,
+      newValue: target.id,
+      changedBy: req.adminUserId ?? null,
+      reason: `merged into ${target.displayName}: programs ${moved.programs}, sources ${moved.sources}`,
+    });
+    res.json({ ok: true, targetId: target.id, moved });
   });
 
   router.get("/:id/billing-profile", admin, async (req: Request, res: Response) => {

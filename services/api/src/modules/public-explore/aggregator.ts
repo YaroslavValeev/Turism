@@ -56,7 +56,14 @@ async function getDistinctRawsForType(t: ExploreHubType): Promise<string[]> {
     }),
     prisma.program.findMany({
       where: { publishStatus: "published" },
-      select: { discipline: true, region: true, endDate: true, spotsAvailable: true, publishStatus: true },
+      select: {
+        discipline: true,
+        region: true,
+        endDate: true,
+        spotsAvailable: true,
+        publishStatus: true,
+        organizer: { select: { verificationStatus: true } },
+      },
     }),
     prisma.contentCollection.findMany({
       where: publicCollectionVisibilityWhere(),
@@ -209,7 +216,13 @@ export async function loadExploreIndex(): Promise<ExploreListItem[]> {
           ? []
           : prisma.program.findMany({
               where: { ...orF, publishStatus: "published" },
-              select: { endDate: true, spotsAvailable: true, publishStatus: true, updatedAt: true },
+              select: {
+                endDate: true,
+                spotsAvailable: true,
+                publishStatus: true,
+                updatedAt: true,
+                organizer: { select: { verificationStatus: true } },
+              },
             }),
         prisma.contentCollection.count({
           where: { AND: [publicCollectionVisibilityWhere(now), { ...orF }] },

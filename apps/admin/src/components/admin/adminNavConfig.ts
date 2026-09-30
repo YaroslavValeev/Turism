@@ -37,6 +37,7 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
     items: [
       { href: "/organizers", label: "Организаторы", icon: "users" },
       { href: "/programs", label: "Программы", icon: "calendar" },
+      { href: "/spots", label: "Spot Map", icon: "star" },
       { href: "/bookings", label: "Заявки", icon: "inbox" },
       { href: "/organizer-outreach", label: "Outreach писем", icon: "file" },
       { href: "/reviews", label: "Отзывы", icon: "star" },

@@ -53,7 +53,7 @@ draft audit → оценки + гейты + evidence → подпись эксп
    - доказательства: `POST /spots/audits/:id/evidence` (сырое тело до 25 МБ, тип по сигнатуре: jpg/png/webp/mp4/webm/pdf; `?criterion=&capturedAt=&generated=1`; только до подписи), `GET /spots/evidence/:id/file` (с проверкой sha256), `POST /spots/evidence/:id/confirm-integrity`;
    - `POST /spots/audits/:id/remediations/g05`, `POST /spots/audits/:id/snapshots`, `POST /spots/snapshots/:id/publish|revoke`.
    - Хранилище: `SPOT_EVIDENCE_DIR` (прод: volume `spot_evidence` → `/var/lib/mywave/spot-evidence`, смонтирован только в api).
-3. Admin UI.
+3. Admin UI. **Сделано:** `/spots` (реестр + создание, координаты в формате Яндекс Карт), `/spots/[id]` (данные спота, услуги с конфигурацией лодки, аудиты, снимки), `/spots/audits/[auditId]` (чек-лист готовности, оценки, гейты, эксперт/редактор, доказательства с просмотром и подтверждением целостности, G05, расчёт/публикация/отзыв снимка). Независимый редактор пока вводится как ID пользователя-админа.
 4. Public API `/spots`, `/spots/:id`, `/spots/compare`, `/spots/methodology` — без чисел, пока нет опубликованных снимков.
 5. Web `/spots`.
 6. Импорт реестра кандидатов как `discoveryStatus=candidate` без рейтинга.

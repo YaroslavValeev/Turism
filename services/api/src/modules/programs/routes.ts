@@ -19,6 +19,7 @@ import { dedupeProgramsByEventKey } from "./dedup";
 import { setProgramPublishStatus } from "./publishStatus.service";
 import { validateProgramCardPatch, validateProgramMediaInput } from "./programEditValidation";
 import { changedContentFields, isProgramContentField, nextManualFields } from "./manualFields";
+import { containsSyntheticMarker } from "./syntheticMarker";
 import { enrichProgramCard, enrichPublishedProgramsBatch, isCardEnrichmentEnabled } from "./cardEnrichment.service";
 import { nextMediaPosition, orderedProgramMedia, validateMediaReorder } from "./mediaOrder";
 import { detectUploadedMedia, MEDIA_UPLOAD_MAX_BYTES, saveUploadedMedia } from "./mediaUpload";
@@ -47,12 +48,6 @@ function toPublicProgram<P extends { intakeSource?: string | null; priceFromRub?
   const { intakeSource: _omit, ...rest } = p;
   const priceRubApprox = priceInRub(p.priceFromRub, p.currency, rates);
   return { ...rest, priceRubApprox, priceRubRateDate: priceRubApprox != null ? rates?.date ?? null : null };
-}
-
-function containsSyntheticMarker(value: string | null | undefined): boolean {
-  const v = String(value ?? "").trim().toLowerCase();
-  if (!v) return false;
-  return /\b(e2e|test|demo|seed|synthetic)\b|тест|синтет|cmof/.test(v);
 }
 
 function isSyntheticPublicProgram(

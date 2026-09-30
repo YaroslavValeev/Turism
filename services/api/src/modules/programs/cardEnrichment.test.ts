@@ -99,6 +99,23 @@ describe("parseCardEnrichment", () => {
     expect(result?.notes.gear).toBe("Обычно нужен гидрокостюм, см.");
   });
 
+  it("не дублирует требования в «Не включено» и убирает награды из «Включено»", () => {
+    const moto = "Открытая тренировка, брифинг, заезды. Награждение победителей. Требования: страховка не менее 100 000 р.";
+    const result = parseCardEnrichment(
+      {
+        organizer: {
+          inclusions: ["Открытая тренировка", "Брифинг", "Награждение победителей"],
+          exclusions: ["Страховка"],
+          gearRequirements: ["Страховка не менее 100 000 р."],
+        },
+      },
+      moto,
+    );
+    expect(result?.organizer.inclusions).toEqual(["Открытая тренировка", "Брифинг"]);
+    expect(result?.organizer.exclusions).toEqual([]);
+    expect(result?.organizer.gearRequirements).toEqual(["Страховка не менее 100 000 р."]);
+  });
+
   it("возвращает null на не-объект", () => {
     expect(parseCardEnrichment("oops", SOURCE)).toBeNull();
   });

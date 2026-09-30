@@ -41,6 +41,7 @@ export async function enrichProgramCard(
       startDate: true,
       endDate: true,
       itineraryDayByDay: true,
+      audienceFit: true,
       manualFields: true,
       aiEnrichment: true,
       publishedPrograms: {
@@ -77,7 +78,12 @@ export async function enrichProgramCard(
   const parsed = parseCardEnrichment(ai.json, sourceText, `${program.discipline} ${program.formatType ?? ""}`);
   if (!parsed) return { status: "failed", reason: "invalid_json" };
 
-  const { data, stored } = buildEnrichmentUpdate(program, parsed, { model: ai.model, sourceHash, now: new Date() });
+  const { data, stored } = buildEnrichmentUpdate(program, parsed, {
+    model: ai.model,
+    sourceHash,
+    now: new Date(),
+    sourceText: `${sourceText}\n${program.itineraryDayByDay ?? ""}`,
+  });
   await prisma.program.update({
     where: { id: program.id },
     data: { ...data, aiEnrichment: stored as unknown as Prisma.InputJsonValue },
@@ -110,17 +116,38 @@ export function enrichProgramCardAfterIngestion(programId: string): void {
 export const ENRICH_BATCH_MAX = 50;
 
 /** Пакетный прогон по опубликованным карточкам без автозаполнения (последовательно, чтобы не упереться в лимиты OpenAI). */
-export async function enrichPublishedProgramsBatch(env: Env, limit: number) {
+export async function enrichPublishedProgramsBatch(
+  env: Env,
+  limit: number,
+  options: { regenerateBefore?: Date } = {},
+) {
   const take = Math.max(1, Math.min(ENRICH_BATCH_MAX, Math.floor(limit) || 10));
-  const programs = await prisma.program.findMany({
-    where: { publishStatus: "published", aiEnrichment: { equals: Prisma.AnyNull } },
-    select: { id: true },
-    orderBy: { startDate: "asc" },
-    take,
-  });
+  const cutoff = options.regenerateBefore;
+  const ids = cutoff
+    ? (
+        await prisma.program.findMany({
+          where: { publishStatus: "published" },
+          select: { id: true, aiEnrichment: true },
+          orderBy: { startDate: "asc" },
+        })
+      )
+        .filter(({ aiEnrichment }) => {
+          const generatedAt = readStoredEnrichment(aiEnrichment)?.generatedAt;
+          return !generatedAt || new Date(generatedAt) < cutoff;
+        })
+        .slice(0, take)
+        .map(({ id }) => id)
+    : (
+        await prisma.program.findMany({
+          where: { publishStatus: "published", aiEnrichment: { equals: Prisma.AnyNull } },
+          select: { id: true },
+          orderBy: { startDate: "asc" },
+          take,
+        })
+      ).map(({ id }) => id);
   const results: Array<{ id: string } & EnrichProgramOutcome> = [];
-  for (const { id } of programs) {
-    results.push({ id, ...(await enrichProgramCard(env, id)) });
+  for (const id of ids) {
+    results.push({ id, ...(await enrichProgramCard(env, id, { force: Boolean(cutoff) })) });
   }
   return results;
 }

@@ -3,6 +3,8 @@ import {
   buildEnrichmentUpdate,
   buildEnrichmentUserMessage,
   cleanTitle,
+  DEFAULT_CANCELLATION_NOTE,
+  DEFAULT_GEAR_NOTE,
   enrichmentSourceHash,
   hasUnsupportedLevelClaim,
   parseCardEnrichment,
@@ -92,6 +94,19 @@ describe("parseCardEnrichment", () => {
     const wake = "Анонс Краснодарского кэмпа. Катер centurion. Тренировки с чемпионом.";
     const result = parseCardEnrichment({ organizer: { title: "Кэмп по вейксерфингу в Краснодаре" } }, wake, "Вейксерфинг camp");
     expect(result?.organizer.title).toBe("Кэмп по вейксерфингу в Краснодаре");
+  });
+
+  it("подставляет стандартное примечание, если об отмене и снаряжении молчат и пост, и ИИ", () => {
+    const empty = parseCardEnrichment({ organizer: {}, notes: { gear: "", cancellation: "" } }, SOURCE);
+    expect(empty?.notes.cancellation).toBe(DEFAULT_CANCELLATION_NOTE);
+    expect(empty?.notes.gear).toBe(DEFAULT_GEAR_NOTE);
+    const moto = "Регистрация на гонку. Предоплата не возвращается. Обязателен шлем.";
+    const filled = parseCardEnrichment(
+      { organizer: { cancellationRules: ["Предоплата не возвращается"], gearRequirements: ["Обязателен шлем"] } },
+      moto,
+    );
+    expect(filled?.notes.cancellation).toBe("");
+    expect(filled?.notes.gear).toBe("");
   });
 
   it("вырезает ссылки из примечаний MyWave", () => {

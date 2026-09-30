@@ -188,6 +188,8 @@ export function parseCardEnrichment(raw: unknown, sourceText: string, context = 
       !gearRequirements.some((req) => groundedInSource(item, stems(req))),
   );
   const inclusions = grounded(cleanList(org.inclusions, 12, 160)).filter((item) => !AWARD_RE.test(item));
+  const gearNote = cleanLine(notes.gear, 200);
+  const cancellationNote = cleanLine(notes.cancellation, 200);
   return {
     organizer: {
       title: title && groundedInSource(title, titleSource, TITLE_MIN_RATIO) ? title : "",
@@ -203,11 +205,20 @@ export function parseCardEnrichment(raw: unknown, sourceText: string, context = 
       audience: cleanLine(notes.audience, 200),
       accommodation: cleanLine(notes.accommodation, 200),
       transfer: cleanLine(notes.transfer, 200),
-      gear: cleanLine(notes.gear, 200),
-      cancellation: cleanLine(notes.cancellation, 200),
+      gear: gearNote || (gearRequirements.length ? "" : DEFAULT_GEAR_NOTE),
+      cancellation: cancellationNote || (cancellationRules.length ? "" : DEFAULT_CANCELLATION_NOTE),
     },
   };
 }
+
+/**
+ * The model leaves these notes empty when it has nothing discipline-specific to say, yet a
+ * visitor still needs to know what to ask; the text claims nothing about the organizer.
+ */
+export const DEFAULT_CANCELLATION_NOTE =
+  "Организатор не указал условия отмены. До оплаты запросите письменно: размер предоплаты, сроки возврата и что будет при переносе из-за погоды.";
+export const DEFAULT_GEAR_NOTE =
+  "Организатор не указал список снаряжения. Запросите его до поездки и уточните, что можно взять в прокат на месте.";
 
 export type EnrichmentUpdateData = { title?: string } & Partial<
   Record<Exclude<EnrichableField, "title">, string | null>

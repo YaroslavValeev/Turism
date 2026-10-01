@@ -191,27 +191,39 @@ export const TELEGRAM_CHANNEL_HOW_TO_BOOK =
   "С вами свяжется организатор (или команда MyWaveTour, если организатор ещё не подключён), чтобы подтвердить даты и условия. " +
   "Оплата — напрямую организатору, на сайте платить не нужно.";
 
-/** Telegram: HTML + короткая продуктовая структура. */
+/** Для подписи к фото (лимит Telegram 1024 символа). */
+export const TELEGRAM_CHANNEL_HOW_TO_BOOK_SHORT =
+  "<b>Как записаться</b>\n«Открыть программу» → «Оставить заявку». Ответит организатор или команда MyWaveTour, оплата — напрямую организатору.";
+
+/** Telegram: HTML + короткая продуктовая структура. `compact` — вариант, помещающийся в подпись к фото. */
 export function buildTelegramProgramNotifyHtml(
   src: ProgramNotifySource,
   programUrl: string | null,
-  options?: { hideLinkFallbackHint?: boolean; includeCtaLinkInBody?: boolean },
+  options?: { hideLinkFallbackHint?: boolean; includeCtaLinkInBody?: boolean; compact?: boolean },
 ): string {
+  const compact = options?.compact ?? false;
   const title = escapeTelegramHtml(truncateOneLine(src.title, 180));
   const duration = durationLabel(src.startDate, src.endDate);
   const dateLine = `📅 <b>${escapeTelegramHtml(formatDateRangeRu(src.startDate, src.endDate))}</b>${duration ? ` · ${duration}` : ""}`;
   const place = placeLine(src);
   const placeRow = place ? `\n📍 ${escapeTelegramHtml(place)}` : "";
-  const forWho = buildForWhoBullets(src).map((b) => `• ${escapeTelegramHtml(b)}`).join("\n");
-  const benefits = buildBenefitBullets(src).map((b) => `• ${escapeTelegramHtml(b)}`).join("\n");
+  const forWhoItems = compact ? buildForWhoBullets(src).slice(0, 2).map((b) => truncateOneLine(b, 150)) : buildForWhoBullets(src);
+  const benefitItems = compact ? buildBenefitBullets(src).map((b) => truncateOneLine(b, 100)) : buildBenefitBullets(src);
+  const forWho = forWhoItems.map((b) => `• ${escapeTelegramHtml(b)}`).join("\n");
+  const benefits = benefitItems.map((b) => `• ${escapeTelegramHtml(b)}`).join("\n");
   const org = organizerLine(src);
-  const orgBlock = org
-    ? `<b>Организатор</b>\n${escapeTelegramHtml(truncateOneLine(org, 120))}`
-    : `<b>Организатор</b>\n${escapeTelegramHtml(FB.organizer)}`;
+  // В компактном виде имя организатора уже есть в первой строке, а заглушки только занимают место.
+  const orgBlock = compact
+    ? ""
+    : org
+      ? `<b>Организатор</b>\n${escapeTelegramHtml(truncateOneLine(org, 120))}\n\n`
+      : `<b>Организатор</b>\n${escapeTelegramHtml(FB.organizer)}\n\n`;
   const impRaw = buildImportantBlock(src);
   const impBlock = impRaw
     ? `<b>Перед бронированием</b>\n${escapeTelegramHtml(impRaw)}`
-    : `<b>Перед бронированием</b>\n${escapeTelegramHtml(FB.important)}`;
+    : compact
+      ? ""
+      : `<b>Перед бронированием</b>\n${escapeTelegramHtml(FB.important)}`;
 
   const includeCtaLinkInBody = options?.includeCtaLinkInBody ?? true;
   const urlLine =
@@ -225,7 +237,7 @@ export function buildTelegramProgramNotifyHtml(
     ? `<i>Новый вызов от ${escapeTelegramHtml(truncateOneLine(org, 80))}</i>`
     : `<i>Новый вызов в MyWaveTour</i>`;
 
-  return (
+  const body =
     `${header}\n\n` +
     `<b>${title}</b>\n\n` +
     `${dateLine}${placeRow}\n\n` +
@@ -233,10 +245,23 @@ export function buildTelegramProgramNotifyHtml(
     `${forWho}\n\n` +
     `<b>Что входит</b>\n` +
     `${benefits}\n\n` +
-    `${orgBlock}\n\n` +
-    `${impBlock}` +
-    urlLine
-  );
+    `${orgBlock}` +
+    `${impBlock}`;
+  return body.trimEnd() + urlLine;
+}
+
+/**
+ * Пост в канал. С фото текст обязан уместиться в подпись (`captionLimit`), иначе фото и текст
+ * уходят разными сообщениями — поэтому при переполнении берём компактный вариант.
+ */
+export function buildTelegramChannelPostHtml(
+  src: ProgramNotifySource,
+  fit?: { captionLimit: number; measure: (html: string) => number },
+): string {
+  const opts = { hideLinkFallbackHint: true, includeCtaLinkInBody: false };
+  const full = `${buildTelegramProgramNotifyHtml(src, null, opts)}\n\n${TELEGRAM_CHANNEL_HOW_TO_BOOK}`;
+  if (!fit || fit.measure(full) <= fit.captionLimit) return full;
+  return `${buildTelegramProgramNotifyHtml(src, null, { ...opts, compact: true })}\n\n${TELEGRAM_CHANNEL_HOW_TO_BOOK_SHORT}`;
 }
 
 function emailSection(title: string, bodyHtml: string): string {

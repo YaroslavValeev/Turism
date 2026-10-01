@@ -42,6 +42,7 @@ export async function enrichProgramCard(
       endDate: true,
       itineraryDayByDay: true,
       audienceFit: true,
+      cancellationRules: true,
       manualFields: true,
       aiEnrichment: true,
       publishedPrograms: {

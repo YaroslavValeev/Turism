@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildEmailProgramNotifyHtml,
   buildEmailProgramNotifyText,
+  buildTelegramChannelPostHtml,
   buildTelegramProgramNotifyHtml,
   bulletsFromFreeText,
   durationLabel,
@@ -60,6 +61,24 @@ describe("programNotifyTemplates", () => {
     expect(html).not.toContain("Unknown");
     expect(html).toContain("📅 <b>27 сентября — 3 октября 2026</b> · 7 дней");
     expect(html).toContain("📍 Алматы, Russia");
+  });
+
+  it("channel post switches to compact variant to fit a photo caption", () => {
+    const long = {
+      ...baseSrc(),
+      audienceFit: `${"Новичкам — база и первые трюки. ".repeat(6)}\n${"Продвинутым — соревновательная программа. ".repeat(6)}`,
+      inclusions: `${"Проживание в гостинице в центре города на 6 ночей с завтраками. ".repeat(3)}\nТренировки\nТрансфер`,
+      cancellationRules: null,
+    };
+    const measure = (html: string) => html.replace(/<[^>]+>/g, "").length;
+    const full = buildTelegramChannelPostHtml(long);
+    expect(measure(full)).toBeGreaterThan(1024);
+    expect(full).toContain("С вами свяжется организатор");
+    const fitted = buildTelegramChannelPostHtml(long, { captionLimit: 1024, measure });
+    expect(measure(fitted)).toBeLessThanOrEqual(1024);
+    expect(fitted).toContain("<b>Лагерь на Волге</b>");
+    expect(fitted).toContain("Оставить заявку");
+    expect(fitted).not.toContain("<b>Организатор</b>");
   });
 
   it("formatDateRangeRu covers single day and year boundary", () => {

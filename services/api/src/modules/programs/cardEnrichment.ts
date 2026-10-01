@@ -46,7 +46,7 @@ export const CARD_ENRICHMENT_SYSTEM_PROMPT = `Ты редактор катало
 1) "organizer" — извлечение фактов из текста поста. Бери формулировки поста как можно ближе к оригиналу: убирай эмодзи, рекламные восклицания и лишние слова, но не обобщай и не додумывай. Если факта нет в тексте — оставь пустую строку или пустой массив. Лучше пусто, чем неточно.
    - title: до 90 символов, без хэштегов, эмодзи и КАПСА; что за выезд и где (например «Кайт- и винг-сафари на яхте в Красном море»). Место бери только из текста поста; если места в посте нет — не указывай его. Даты и цены в заголовок не пиши.
    - audienceFit: 1–3 предложения, кому подходит, только из того, что сказано в посте. Если пост различает группы участников и говорит, что каждая получит (новичкам — одно, продвинутым — другое, тем, кто готовится к конкретному старту, — третье), перескажи это по группам, каждую с новой строки. Уровень участников («для новичков», «для всех уровней», «для опытных») пиши, только если он прямо назван в посте.
-   - inclusions: что получает каждый участник за стоимость (проживание, питание, тренировки, сопровождение), по словам организатора, короткими пунктами с конкретикой из поста: число ночей и дней, что за тренировки и на чём (модели катеров, инвентарь), сколько сетов. Призы и награждение победителей сюда не относятся.
+   - inclusions: что получает каждый участник за стоимость (проживание, питание, тренировки, сопровождение), по словам организатора, короткими пунктами с конкретикой из поста: число ночей и дней, что за тренировки и на чём (например, «5 дней тренировок на катерах Centurion Ri245 и Nautique G23»). Если есть несколько тарифов на выбор, объедини их в один пункт без цен («5 или 10 сетов по 25 минут — на выбор»), а не перечисляй каждый тариф отдельным пунктом. Призы и награждение победителей сюда не относятся.
    - exclusions: то, что организатор прямо называет не включённым или оплачиваемым отдельно: доплаты (например, за одноместное размещение — с суммой), а также дорога и билеты, если организатор пишет о них как о расходе участника (например, «билеты из Москвы от …»). Требования к участникам (страховка, справки, возраст, согласие родителей) сюда не относятся.
    - gearRequirements: снаряжение и обязательные требования к участнику (страховка, документы, возраст, расписка родителей), только если сказано.
    - cancellationRules: только условия записи, предоплаты, брони, возврата и отмены, если они сказаны. Цены, тарифы и доплаты сюда не пиши — «доплата за одноместное размещение» это не условие отмены. Призыв «бронируйте, мест мало» — не условие.
@@ -258,8 +258,22 @@ export function isRawSourceExcerpt(value: string | null | undefined, sourceText:
   return text.length >= 20 && normalizeForMatch(sourceText).includes(text);
 }
 
+/** Условия отмены, в которых только доплаты — след старого разбора, а не условия. */
+function isSurchargeOnly(value: string | null | undefined): boolean {
+  const lines = String(value ?? "")
+    .split(/\n+/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  return lines.length > 0 && lines.every((line) => SURCHARGE_RE.test(line) && !TERMS_RE.test(line));
+}
+
 export function buildEnrichmentUpdate(
-  program: { manualFields: readonly string[]; aiEnrichment?: unknown; audienceFit?: string | null },
+  program: {
+    manualFields: readonly string[];
+    aiEnrichment?: unknown;
+    audienceFit?: string | null;
+    cancellationRules?: string | null;
+  },
   result: CardEnrichmentResult,
   meta: { model: string; sourceHash: string; now: Date; sourceText?: string },
 ): { data: EnrichmentUpdateData; stored: StoredEnrichment } {
@@ -283,6 +297,15 @@ export function buildEnrichmentUpdate(
     } else if (field !== "title" && !NEVER_CLEARED.has(field) && previouslyAi.has(field)) {
       data[field] = null;
     }
+  }
+  // Пустые условия отмены допустимы, только когда их закрывает примечание MyWave (ворота публикации).
+  if (
+    !locked.has("cancellationRules") &&
+    data.cancellationRules === undefined &&
+    result.notes.cancellation &&
+    (previouslyAi.has("cancellationRules") || isSurchargeOnly(program.cancellationRules))
+  ) {
+    data.cancellationRules = null;
   }
   if (
     !locked.has("audienceFit") &&

@@ -13,10 +13,10 @@ import {
 import {
   buildEmailProgramNotifyHtml,
   buildEmailProgramNotifyText,
+  buildTelegramChannelPostHtml,
   buildTelegramProgramNotifyHtml,
   escapeTelegramHtml,
   programRowToNotifySource,
-  TELEGRAM_CHANNEL_HOW_TO_BOOK,
   type ProgramNotifySource,
 } from "./programNotifyTemplates";
 
@@ -261,10 +261,9 @@ export async function notifySubscribersOnProgramPublished(env: Env, program: Pub
   const sentIds: string[] = [];
   const emailAllow = parseEmailAllowlist(env.EMAIL_STAGING_ALLOWLIST);
 
-  const tgChannelHtml = buildTelegramProgramNotifyHtml(
+  const channelBody = buildTelegramChannelPostHtml(
     notifySrc,
-    isPublicHttpUrl(programUrlTelegramChannel) ? programUrlTelegramChannel : null,
-    { hideLinkFallbackHint: true, includeCtaLinkInBody: false },
+    mediaUrl ? { captionLimit: TELEGRAM_CAPTION_LIMIT, measure: visibleCaptionLength } : undefined,
   );
 
   for (const sub of subs) {
@@ -323,7 +322,6 @@ export async function notifySubscribersOnProgramPublished(env: Env, program: Pub
   if (emailAllow) {
     console.log("[subscriptions] telegram channel publish skipped (EMAIL_STAGING_ALLOWLIST is set)");
   } else if (tgQuality.ok) {
-    const channelBody = `${tgChannelHtml}\n\n${TELEGRAM_CHANNEL_HOW_TO_BOOK}`;
     const channelOk = await sendTelegramChannelUpdate(
       env,
       channelBody,

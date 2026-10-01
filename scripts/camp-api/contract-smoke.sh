@@ -8,9 +8,9 @@
 #   source scripts/camp-api/contract-smoke.sh
 #   prepare_camp_api_auth "$TOKEN"; assert_single_api_dns; assert_camp_api_contract
 #
-# Pagination contract is row-based (see services/api/src/modules/camp-feed/routes.ts):
-# limit=5 may return fewer than 5 camps when the mapper rejects rows, so the smoke checks
-# prefix consistency against limit=100 instead of exact page sizes.
+# Pagination contract is camp-based (collectCampListPage in services/api/src/modules/camp-feed/routes.ts):
+# offset/limit apply to valid camps after the mapper, so limit=5 returns exactly min(5, total) camps
+# and offset=5 continues right after them.
 
 CAMP_API_DC="${CAMP_API_DC:-docker compose --env-file ${ENV_FILE:-.env.production} -f ${COMPOSE_FILE:-docker-compose.production.yml}}"
 CAMP_API_HOST="${CAMP_API_HOST:-api.mywavetour.ru}"
@@ -113,13 +113,10 @@ five_ids, page2_ids, hundred_ids, default_ids = ids(five), ids(page2), ids(hundr
 assert all(isinstance(i, str) and i for i in hundred_ids), hundred_ids
 assert len(hundred_ids) == len(set(hundred_ids)), "duplicate camp ids in limit=100"
 assert default_ids == hundred_ids, {"default": len(default_ids), "limit100": len(hundred_ids)}
-assert len(five_ids) <= 5, len(five_ids)
-assert five_ids == hundred_ids[: len(five_ids)], {"limit5": five_ids, "limit100_head": hundred_ids[:5]}
-assert five.get("next_offset") in (None, 5), five.get("next_offset")
+assert five_ids == hundred_ids[:5], {"limit5": five_ids, "limit100_head": hundred_ids[:5]}
+assert page2_ids == hundred_ids[5:10], {"page2": page2_ids, "limit100_next": hundred_ids[5:10]}
+assert five.get("next_offset") == (5 if len(hundred_ids) > 5 else None), five.get("next_offset")
 assert hundred.get("next_offset") in (None, 100), hundred.get("next_offset")
-if five.get("next_offset") == 5:
-    start = len(five_ids)
-    assert page2_ids == hundred_ids[start : start + len(page2_ids)], {"page2": page2_ids}
 assert not set(five_ids) & set(page2_ids), "pages overlap"
 
 with open(os.path.join(d, "ids.txt"), "w", encoding="utf-8") as target:

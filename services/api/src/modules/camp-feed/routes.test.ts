@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Request } from "express";
-import { buildCampListResponse, buildCampWhere, parseCampListQuery } from "./routes";
+import { buildCampWhere, collectCampListPage, parseCampListQuery } from "./routes";
 
 function req(query: Record<string, string | undefined>): Request {
   return { query } as unknown as Request;
@@ -55,30 +55,39 @@ describe("camp feed routes helpers", () => {
     });
   });
 
-  it("wraps list responses in the canonical items envelope", () => {
-    const one = { id: "tour_1" };
-    const two = { id: "tour_2" };
-    const three = { id: "tour_3" };
+  describe("collectCampListPage", () => {
+    // 12 строк БД, маппер отбрасывает каждую третью (i % 3 === 0) → 8 валидных кемпов.
+    const rows = Array.from({ length: 12 }, (_, i) => i);
+    const map = (i: number) => (i % 3 === 0 ? null : ({ id: `tour_${i}` } as never));
+    const fetchBatch = (skip: number, take: number) => Promise.resolve(rows.slice(skip, skip + take));
+    const ids = (page: { items: { id: string }[] }) => page.items.map((c) => c.id);
 
-    expect(buildCampListResponse([one, two] as never, false, { limit: 2, offset: 0 })).toEqual({
-      items: [one, two],
-      next_offset: null,
+    it("fills limit with valid camps even when the mapper drops rows", async () => {
+      const page = await collectCampListPage(fetchBatch, map, { limit: 5, offset: 0 }, 4);
+      expect(ids(page)).toEqual(["tour_1", "tour_2", "tour_4", "tour_5", "tour_7"]);
+      expect(page.next_offset).toBe(5);
     });
 
-    expect(buildCampListResponse([one, two, three] as never, true, { limit: 2, offset: 10 })).toEqual({
-      items: [one, two],
-      next_offset: 12,
+    it("applies offset to camps, not to raw rows, and stops at the end", async () => {
+      const page = await collectCampListPage(fetchBatch, map, { limit: 5, offset: 5 }, 4);
+      expect(ids(page)).toEqual(["tour_8", "tour_10", "tour_11"]);
+      expect(page.next_offset).toBeNull();
     });
 
-    // Часть строк страницы отсеяна маппером, но в БД есть ещё строки — листаем дальше.
-    expect(buildCampListResponse([one] as never, true, { limit: 5, offset: 0 })).toEqual({
-      items: [one],
-      next_offset: 5,
+    it("pages are consecutive and never repeat ids", async () => {
+      const seen: string[] = [];
+      let offset: number | null = 0;
+      while (offset !== null) {
+        const page = await collectCampListPage(fetchBatch, map, { limit: 3, offset }, 5);
+        seen.push(...ids(page));
+        offset = page.next_offset;
+      }
+      expect(seen).toEqual(["tour_1", "tour_2", "tour_4", "tour_5", "tour_7", "tour_8", "tour_10", "tour_11"]);
+      expect(new Set(seen).size).toBe(seen.length);
     });
 
-    expect(buildCampListResponse([one] as never, true, { limit: 0, offset: 10 })).toEqual({
-      items: [],
-      next_offset: null,
+    it("limit=0 returns an empty page", async () => {
+      expect(await collectCampListPage(fetchBatch, map, { limit: 0, offset: 10 })).toEqual({ items: [], next_offset: null });
     });
   });
 });

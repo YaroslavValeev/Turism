@@ -143,42 +143,52 @@ export function buildCampWhere(query: CampListQuery): Prisma.ProgramWhereInput {
   return { AND: and };
 }
 
+const CAMP_SCAN_BATCH = 200;
+
 /**
- * offset/next_offset считаются по строкам БД, а не по кемпам после маппинга:
- * часть программ отсеивается mapProgramToCamp, и иначе клиент прекращал листать раньше времени.
+ * offset/limit применяются к уже валидным кемпам (после mapProgramToCamp), а не к строкам БД:
+ * иначе отсеянные маппером строки съедали место на странице и `limit=5` возвращал меньше пяти.
+ * Строки читаются пачками в стабильном порядке, пока не набрано offset + limit + 1 валидных кемпов.
  */
-export function buildCampListResponse(
-  pageCamps: CampContract[],
-  hasMoreRows: boolean,
+export async function collectCampListPage<Row>(
+  fetchBatch: (skip: number, take: number) => Promise<Row[]>,
+  map: (row: Row) => CampContract | null,
   query: Pick<CampListQuery, "limit" | "offset">,
-): CampListResponse {
+  batchSize = CAMP_SCAN_BATCH,
+): Promise<CampListResponse> {
   if (query.limit <= 0) return { items: [], next_offset: null };
+  const needed = query.offset + query.limit + 1;
+  const valid: CampContract[] = [];
+  for (let skip = 0; valid.length < needed; skip += batchSize) {
+    const rows = await fetchBatch(skip, batchSize);
+    for (const row of rows) {
+      const camp = map(row);
+      if (camp) valid.push(camp);
+      if (valid.length >= needed) break;
+    }
+    if (rows.length < batchSize) break;
+  }
+  const items = valid.slice(query.offset, query.offset + query.limit);
   return {
-    items: pageCamps.slice(0, query.limit),
-    next_offset: hasMoreRows ? query.offset + query.limit : null,
+    items,
+    next_offset: valid.length > query.offset + query.limit ? query.offset + query.limit : null,
   };
 }
 
 async function listCamps(query: CampListQuery, env: Env): Promise<CampListResponse> {
-  if (query.limit === 0) {
-    const empty = buildCampListResponse([], false, query);
-    recordCampApiFeedSuccess(empty.items.length, empty.next_offset);
-    return empty;
-  }
-
-  const rows = await prisma.program.findMany({
-    where: buildCampWhere(query),
-    include: campProgramInclude,
-    orderBy: [{ updatedFromSourceAt: "asc" }, { updatedAt: "asc" }, { id: "asc" }],
-    take: query.limit + 1,
-    skip: query.offset,
-  });
-
-  const camps = rows
-    .slice(0, query.limit)
-    .map((row) => mapProgramToCamp(row, env))
-    .filter((camp): camp is CampContract => Boolean(camp));
-  const payload = buildCampListResponse(camps, rows.length > query.limit, query);
+  const where = buildCampWhere(query);
+  const payload = await collectCampListPage(
+    (skip, take) =>
+      prisma.program.findMany({
+        where,
+        include: campProgramInclude,
+        orderBy: [{ updatedFromSourceAt: "asc" }, { updatedAt: "asc" }, { id: "asc" }],
+        skip,
+        take,
+      }),
+    (row) => mapProgramToCamp(row, env),
+    query,
+  );
   recordCampApiFeedSuccess(payload.items.length, payload.next_offset);
   return payload;
 }

@@ -109,6 +109,37 @@ describe("parseCardEnrichment", () => {
     expect(filled?.notes.gear).toBe("");
   });
 
+  it("держит доплату в «Не включено», а не в условиях отмены, и сохраняет «для кого» по группам", () => {
+    const kapchagay =
+      "Кемп будет полезен спортсменам с любым уровнем подготовки: от новичка до участника чемпионата мира. " +
+      "С новичками мы подчистим базу и освоим новые трюки, а с более продвинутыми спортсменами отточим соревновательную программу. " +
+      "Включено двухместное проживание в гостинице в центре Алматы на 6 ночей с завтраками. Доплата за одноместное размещение 250$. " +
+      "Прямые билеты из Москвы сейчас стоят от 39000 руб. туда-обратно. Бронируйте прямо сейчас, количество мест ограничено!";
+    const fromExclusions = parseCardEnrichment(
+      { organizer: { exclusions: ["Доплата за одноместное размещение 250$", "Билеты из Москвы от 39000 руб. туда-обратно"] } },
+      kapchagay,
+    );
+    expect(fromExclusions?.organizer.exclusions).toEqual([
+      "Доплата за одноместное размещение 250$",
+      "Билеты из Москвы от 39000 руб. туда-обратно",
+    ]);
+    expect(fromExclusions?.organizer.cancellationRules).toEqual([]);
+
+    const fromTerms = parseCardEnrichment(
+      {
+        organizer: {
+          audienceFit:
+            "Спортсменам с любым уровнем подготовки: от новичка до участника чемпионата мира.\nНовичкам — подчистить базу и освоить новые трюки.\nПродвинутым — отточить соревновательную программу.",
+          cancellationRules: ["Доплата за одноместное размещение 250$"],
+        },
+      },
+      kapchagay,
+    );
+    expect(fromTerms?.organizer.cancellationRules).toEqual([]);
+    expect(fromTerms?.organizer.exclusions).toEqual(["Доплата за одноместное размещение 250$"]);
+    expect(fromTerms?.organizer.audienceFit.split("\n")).toHaveLength(3);
+  });
+
   it("вырезает ссылки из примечаний MyWave", () => {
     const result = parseCardEnrichment({ notes: { gear: "Обычно нужен гидрокостюм, см. https://example.com/gear" } }, SOURCE);
     expect(result?.notes.gear).toBe("Обычно нужен гидрокостюм, см.");

@@ -16,6 +16,7 @@ import {
   buildTelegramProgramNotifyHtml,
   escapeTelegramHtml,
   programRowToNotifySource,
+  TELEGRAM_CHANNEL_HOW_TO_BOOK,
   type ProgramNotifySource,
 } from "./programNotifyTemplates";
 
@@ -171,20 +172,13 @@ function isPublicHttpUrl(value: string): boolean {
   }
 }
 
-function buildTelegramInlineKeyboard(
-  programUrl: string,
-  webBase: string,
-  inviteLink?: string,
-): Record<string, unknown> | undefined {
+function buildTelegramInlineKeyboard(programUrl: string, webBase: string): Record<string, unknown> | undefined {
   const inline_keyboard: Array<Array<{ text: string; url: string }>> = [];
   if (isPublicHttpUrl(programUrl)) {
     inline_keyboard.push([{ text: "Открыть программу", url: programUrl }]);
   }
   if (isPublicHttpUrl(webBase)) {
-    inline_keyboard.push([{ text: "Перейти на сайт", url: webBase }]);
-  }
-  if (inviteLink && isPublicHttpUrl(inviteLink)) {
-    inline_keyboard.push([{ text: "Связаться с организатором", url: inviteLink }]);
+    inline_keyboard.push([{ text: "Все программы на сайте", url: webBase }]);
   }
   if (!inline_keyboard.length) return undefined;
   return { inline_keyboard };
@@ -259,6 +253,7 @@ export async function notifySubscribersOnProgramPublished(env: Env, program: Pub
   const webBase = env.PUBLIC_WEB_BASE_URL.replace(/\/+$/, "");
   const apiBase = env.PUBLIC_API_BASE_URL.replace(/\/+$/, "");
   const mediaUrl = await loadProgramPrimaryMediaUrl(program.id);
+  if (!mediaUrl) console.log("[subscriptions] no telegram-ready image", { programId: program.id });
   const baseProgramUrl = `${webBase}/program/${program.id}`;
   const programUrlEmail = addUtm(baseProgramUrl, "email");
   const programUrlTelegramChannel = addUtm(baseProgramUrl, "telegram_channel");
@@ -328,11 +323,11 @@ export async function notifySubscribersOnProgramPublished(env: Env, program: Pub
   if (emailAllow) {
     console.log("[subscriptions] telegram channel publish skipped (EMAIL_STAGING_ALLOWLIST is set)");
   } else if (tgQuality.ok) {
-    const channelBody = `${tgChannelHtml}\n\nНужен подбор под ваш уровень и даты? Напишите в чат — поможем выбрать.`;
+    const channelBody = `${tgChannelHtml}\n\n${TELEGRAM_CHANNEL_HOW_TO_BOOK}`;
     const channelOk = await sendTelegramChannelUpdate(
       env,
       channelBody,
-      buildTelegramInlineKeyboard(programUrlTelegramChannel, webBase, env.TELEGRAM_UPDATES_INVITE_LINK),
+      buildTelegramInlineKeyboard(programUrlTelegramChannel, webBase),
       {
         parseMode: "HTML",
         mediaUrl: mediaUrl ?? undefined,

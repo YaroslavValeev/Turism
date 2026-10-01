@@ -5,7 +5,6 @@ import {
   useMemo,
   useState,
   type FormEvent,
-  type ReactNode,
 } from "react";
 import Link from "next/link";
 import { exploreNavLinkFromRaw } from "@mywave/explore-links";
@@ -17,10 +16,7 @@ import {
 import { getDisciplineDisplay } from "../../../lib/disciplineLabels";
 import { buildInternalContentQuery } from "../../../lib/internalContentUtm";
 import { validExploreMainLinks } from "../../../lib/exploreNavWeb";
-import {
-  orderProgramMediaForDisplay,
-  presentProgramMediaUrl,
-} from "../../../lib/programCardCover";
+import { orderProgramMediaForDisplay } from "../../../lib/programCardCover";
 import {
   extractLabeledFieldValue,
   organizerText,
@@ -28,7 +24,6 @@ import {
   resolveProgramField,
 } from "../../../lib/recommendedProgramFields";
 import { trackProductEvent } from "../../../lib/analytics/client";
-import { ProgramPrice } from "../../../components/ProgramPrice";
 
 import { getPublicApiBase } from "../../../lib/publicApiBase";
 import { contactError, bookingFeedback } from "../../../lib/bookingFeedback";
@@ -40,6 +35,39 @@ import {
   safeCatalogReturn,
 } from "../../../lib/catalog";
 import { isOnRequestProgram, onRequestLabel } from "../../../lib/programSchedule";
+import {
+  displayValue,
+  durationDaysLabel,
+  formatDateRangeRu,
+  humanLabel,
+  summarizeLines,
+} from "../../../lib/programDisplay";
+import { ProgramHero, type ProgramStatusChip } from "../../../components/program-pdp/ProgramHero";
+import { ProgramGallery, ProgramHeroMedia, isVideoMedia } from "../../../components/program-pdp/ProgramMedia";
+import { ProgramDecisionPanel } from "../../../components/program-pdp/ProgramDecisionPanel";
+import { ProgramQuickFacts, type QuickFact } from "../../../components/program-pdp/ProgramQuickFacts";
+import { ProgramSection } from "../../../components/program-pdp/ProgramSection";
+import {
+  BulletList,
+  MyWaveNote,
+  ProgramInfoField,
+  Prose,
+  SourceCaption,
+  linesToBullets,
+} from "../../../components/program-pdp/ProgramText";
+import { ProgramReviews } from "../../../components/program-pdp/ProgramReviews";
+import { ProgramProvenance } from "../../../components/program-pdp/ProgramProvenance";
+import { ProgramApplicationForm } from "../../../components/program-pdp/ProgramApplicationForm";
+import { ProgramRelated } from "../../../components/program-pdp/ProgramRelated";
+import { ProgramMobileCta } from "../../../components/program-pdp/ProgramMobileCta";
+import {
+  IconCalendar,
+  IconCompass,
+  IconLevel,
+  IconShield,
+  IconSun,
+  IconWave,
+} from "../../../components/program-pdp/icons";
 
 export type Program = {
   id: string;
@@ -95,7 +123,7 @@ function sourceTypeLabelRuPdp(t: string | null | undefined): string {
   if (k === "telegram") return "Telegram";
   if (k === "rss") return "RSS";
   if (k === "site" || k === "website") return "сайт-источник";
-  return t ? t : "источник";
+  return displayValue(t) ?? "источник";
 }
 
 export type PublicReview = {
@@ -114,164 +142,6 @@ function buildCatalogHref(next: {
   if (next.region?.trim()) params.set("region", next.region.trim());
   const qs = params.toString();
   return qs ? `/?${qs}#programs` : "/#programs";
-}
-
-function SectionBlock({
-  title,
-  children,
-}: {
-  title: string;
-  children: ReactNode;
-}) {
-  return (
-    <section className="mw-content-section">
-      <h2 className="mw-h2">{title}</h2>
-      {children}
-    </section>
-  );
-}
-
-const URL_PATTERN = /(https?:\/\/[^\s]+)/gi;
-
-function linkLabelForUrl(url: string): string {
-  try {
-    const parsed = new URL(url);
-    const host = parsed.hostname.replace(/^www\./i, "");
-    return `Открыть источник (${host})`;
-  } catch {
-    return "Открыть источник";
-  }
-}
-
-function sanitizeScrapedProgramText(text: string): string {
-  const cleaned = String(text ?? "")
-    .replace(/&nbsp;/gi, " ")
-    .replace(/\(\s*min-width:[^>]+type=["']text\/css["']>\s*/gi, " ")
-    .replace(
-      /(?:https?:)?\/\/(?:static|thb)\.tildacdn\.com\/[^\s"'`<>]+/gi,
-      " ",
-    )
-    .replace(
-      /\b(?:src|href|role|type|style|class|data-[\w-]+)=["'][^"']*["']/gi,
-      " ",
-    )
-    .replace(/<\/?(?:style|script|link|img|source)[^>]*>/gi, " ")
-    .replace(/<\/?[^>]+>/g, " ");
-
-  return cleaned
-    .split(/\r?\n/)
-    .map((line) =>
-      line
-        .replace(/\s+/g, " ")
-        .replace(/^[\s"'`;:.,)\]}>/\\-]+/, "")
-        .trim(),
-    )
-    .filter(Boolean)
-    .join("\n");
-}
-
-function renderTextWithLinks(text: string): ReactNode[] {
-  const lines = sanitizeScrapedProgramText(text).split(/\r?\n/);
-  const nodes: ReactNode[] = [];
-
-  lines.forEach((line, lineIndex) => {
-    const parts = line.split(URL_PATTERN);
-    parts.forEach((part, partIndex) => {
-      if (!part) return;
-      if (/^https?:\/\/[^\s]+$/i.test(part)) {
-        nodes.push(
-          <a
-            key={`lnk-${lineIndex}-${partIndex}`}
-            href={part}
-            target="_blank"
-            rel="nofollow noopener noreferrer"
-            title={part}
-            style={{ color: "var(--mw-accent)", textDecoration: "underline", overflowWrap: "anywhere", wordBreak: "break-word" }}
-          >
-            {linkLabelForUrl(part)}
-          </a>,
-        );
-      } else {
-        nodes.push(<span key={`txt-${lineIndex}-${partIndex}`}>{part}</span>);
-      }
-    });
-    if (lineIndex < lines.length - 1)
-      nodes.push(<br key={`br-${lineIndex}`} />);
-  });
-
-  return nodes;
-}
-
-function Prose({ text }: { text: string }) {
-  return (
-    <p style={{ whiteSpace: "pre-wrap", margin: 0, color: "var(--mw-muted)", lineHeight: 1.65, overflowWrap: "anywhere", wordBreak: "break-word" }}>
-      {renderTextWithLinks(text)}
-    </p>
-  );
-}
-
-function ProgramInfoField({
-  label,
-  value,
-}: {
-  label: string;
-  value: { mode: "confirmed" | "recommended"; text: string };
-}) {
-  if (value.mode === "recommended") {
-    return (
-      <div>
-        <h3 className="mw-h3">{label}</h3>
-        <MyWaveNote>{value.text}</MyWaveNote>
-      </div>
-    );
-  }
-  return (
-    <div>
-      <h3 className="mw-h3">{label}</h3>
-      <p style={{ whiteSpace: "pre-wrap", margin: 0, color: "var(--mw-muted)", lineHeight: 1.65, overflowWrap: "anywhere", wordBreak: "break-word" }}>
-        {renderTextWithLinks(value.text)}
-      </p>
-    </div>
-  );
-}
-
-/** Подсказка MyWave: общая практика для формата, не слова организатора — тонким серым шрифтом. */
-function MyWaveNote({ children }: { children: ReactNode }) {
-  return (
-    <p className="mw-mywave-note">
-      <span className="mw-mywave-note__label">Примечание MyWave — не от организатора. </span>
-      {children}
-    </p>
-  );
-}
-
-function OrganizerSourceCaption() {
-  return <p className="mw-organizer-caption">По данным организатора</p>;
-}
-
-function linesToBullets(text: string): string[] {
-  return sanitizeScrapedProgramText(text)
-    .split(/\r?\n/)
-    .map((l) => l.replace(/^[-•*]\s*/, "").trim())
-    .filter(Boolean);
-}
-
-function BulletList({ items }: { items: string[] }) {
-  if (items.length === 0) return null;
-  return (
-    <ul
-      style={{
-        margin: "8px 0 0",
-        paddingLeft: "1.2rem",
-        color: "var(--mw-muted)",
-        lineHeight: 1.55,
-      }}
-    >
-      {items.map((line) => (
-        <li key={line}>{line}</li>
-      ))}
-    </ul>
-  );
 }
 
 function organizerVerificationLabelRu(
@@ -453,20 +323,24 @@ export function ProgramPdpClient({
 
   if (loading) {
     return (
-      <main className="mw-container" style={{ padding: "3rem 0" }}>
-        <p style={{ color: "var(--mw-muted)" }}>Загрузка…</p>
+      <main className="mw-pdp-root">
+        <div className="mw-container mw-pdp-state" aria-busy="true">
+          <p role="status">Загрузка…</p>
+        </div>
       </main>
     );
   }
   if (!program) {
     return (
-      <main className="mw-container" style={{ padding: "3rem 0" }}>
-        <p role={loadError ? "alert" : undefined}>
-          {loadError || "Программа не найдена."}
-        </p>
-        <Link href={returnTo} className="mw-page-back">
-          ← К результатам поиска
-        </Link>
+      <main className="mw-pdp-root">
+        <div className="mw-container mw-pdp-state">
+          <p role={loadError ? "alert" : undefined}>
+            {loadError || "Программа не найдена."}
+          </p>
+          <Link href={returnTo} className="mw-page-back">
+            ← К результатам поиска
+          </Link>
+        </div>
       </main>
     );
   }
@@ -495,7 +369,7 @@ export function ProgramPdpClient({
   const inclusions = organizerText(program.inclusions);
   const exclusions = organizerText(program.exclusions);
   const cancellationRules = organizerText(program.cancellationRules);
-  const sourcePostUrl = /^https?:\/\//i.test(program.sourceUrl ?? "") ? program.sourceUrl : null;
+  const sourcePostUrl = /^https?:\/\//i.test(program.sourceUrl ?? "") ? program.sourceUrl ?? null : null;
   const medical = mergeProgramField(
     program.medicalLimitations,
     overrides.medicalLimitations,
@@ -640,9 +514,13 @@ export function ProgramPdpClient({
     }
   };
 
-  const datesLine = isOnRequestProgram(program)
+  const onRequest = isOnRequestProgram(program);
+  const datesLabel = onRequest
     ? onRequestLabel(program)
-    : `${new Date(program.startDate).toLocaleDateString("ru-RU")} – ${new Date(program.endDate).toLocaleDateString("ru-RU")}`;
+    : formatDateRangeRu(program.startDate, program.endDate);
+  const datesShortLabel = onRequest
+    ? onRequestLabel(program)
+    : formatDateRangeRu(program.startDate, program.endDate, { short: true });
   const seasonRu =
     seasonOfProgramStart(program) === "winter"
       ? "Зима"
@@ -665,346 +543,202 @@ export function ProgramPdpClient({
     validHubKeys,
   );
 
+  const disciplineLabel = displayValue(program.discipline)
+    ? discipline.translation || discipline.original
+    : null;
+  const regionLabel = displayValue(program.region);
+  const exactLocationLabel = displayValue(program.exactLocation);
+  const formatLabel = displayValue(program.formatType)
+    ? displayValue(programFormatLabel(program.formatType))
+    : null;
+  const shownFormatLabel = formatLabel === "Формат уточняется" ? null : formatLabel;
+  const durationLabel = durationDaysLabel(program.durationDays);
+  const levelLabel = displayValue(
+    participantLevel(program, humanLabel(program.levelRequired, getProgramLevelLabel) ?? "Требования уточняются"),
+  );
+  const riskLabel = humanLabel(program.riskLevel, getSeverityLabel);
+  const riskSourceKind = program.autoPublished ? "mywave" : "organizer";
+  const organizerLabel =
+    displayValue(program.organizerName) ?? displayValue(program.organizer?.displayName);
+  const showVerification = !program.autoPublished && Boolean(program.organizer?.verificationStatus);
+
+  const statusChip: ProgramStatusChip | null = ended
+    ? { label: "Завершён", tone: "neutral" }
+    : null;
+
+  const quickFactCandidates: (QuickFact | null)[] = [
+    durationLabel
+      ? { key: "duration", icon: <IconCalendar />, label: "длительность", value: durationLabel }
+      : null,
+    disciplineLabel
+      ? {
+          key: "discipline",
+          icon: <IconWave />,
+          label: "дисциплина",
+          value: disciplineLabel,
+          href: disciplineCatalogHref,
+        }
+      : null,
+    levelLabel ? { key: "level", icon: <IconLevel />, label: "уровень", value: levelLabel } : null,
+    shownFormatLabel
+      ? { key: "format", icon: <IconCompass />, label: "тип программы", value: shownFormatLabel }
+      : null,
+    { key: "season", icon: <IconSun />, label: "сезон старта", value: seasonRu },
+    riskLabel
+      ? {
+          key: "risk",
+          icon: <IconShield />,
+          label: "риск / интенсивность",
+          value: riskLabel,
+          note: riskSourceKind === "mywave" ? "Оценка MyWaveTour" : undefined,
+        }
+      : null,
+  ];
+  const quickFacts = quickFactCandidates.filter((fact): fact is QuickFact => fact !== null);
+
+  const heroImage = displayMedia.find((m) => !isVideoMedia(m)) ?? null;
+  const galleryItems = displayMedia.filter((m) => m !== heroImage);
+  const imageCount = displayMedia.filter((m) => !isVideoMedia(m)).length;
+  const priceFields = {
+    priceFromRub: program.priceFromRub,
+    currency: program.currency,
+    priceRubApprox: program.priceRubApprox,
+    priceRubRateDate: program.priceRubRateDate,
+  };
+
   return (
     <main className="mw-pdp-root">
       <div className="mw-container mw-pdp-layout">
-        <div className="mw-pdp-main">
-          <Link
-            href={returnTo}
-            className="mw-page-back"
-            style={{ color: "var(--mw-accent)" }}
-          >
-            ← К результатам поиска
-          </Link>
-
-          <header className="mw-program-hero">
-            <div
-              style={{
-                display: "flex",
-                flexWrap: "wrap",
-                gap: 8,
-                marginBottom: 14,
-              }}
-            >
-              <Link
-                href={disciplineCatalogHref}
-                className="mw-badge mw-badge--pilot mw-discipline-badge"
-              >
-                <span>{discipline.translation || discipline.original}</span>
-              </Link>
-              <Link
-                href={regionCatalogHref}
-                className="mw-badge mw-badge--pilot"
-              >
-                {program.region}
-              </Link>
-              {program.levelRequired && (
-                <span className="mw-badge mw-badge--soon">
-                  Уровень:{" "}
-                  {participantLevel(
-                    program,
-                    getProgramLevelLabel(program.levelRequired),
-                  )}
-                </span>
-              )}
-              {program.formatType && (
-                <span className="mw-badge mw-badge--soon">
-                  Формат: {programFormatLabel(program.formatType)}
-                </span>
-              )}
-            </div>
-            <h1 className="mw-h1" style={{ maxWidth: "none" }}>
-              {program.title}
-            </h1>
-            <p
-              style={{
-                color: "var(--mw-muted)",
-                margin: "0 0 12px",
-                fontSize: "1.02rem",
-              }}
-            >
-              {discipline.translation || discipline.original} · {program.region}
-              {program.exactLocation && ` · ${program.exactLocation}`}
-            </p>
-            <div
-              style={{
-                display: "flex",
-                flexWrap: "wrap",
-                gap: "12px 20px",
-                alignItems: "baseline",
-                marginBottom: 12,
-              }}
-            >
-              {program.priceFromRub == null && (
-                <p className="mw-price">Стоимость уточняется</p>
-              )}
-              {program.priceFromRub != null && (
-                <span
-                  style={{
-                    fontSize: "1.5rem",
-                    fontWeight: 700,
-                    letterSpacing: "-0.02em",
-                  }}
-                >
-                  <ProgramPrice program={program} />
-                </span>
-              )}
-              <span style={{ color: "var(--mw-muted)", fontSize: "0.95rem" }}>
-                {datesLine} · {program.durationDays} дн.
-              </span>
-            </div>
-            {reviewStats.count > 0 && reviewStats.avg != null && (
-              <p
-                style={{
-                  margin: "0 0 12px",
-                  color: "var(--mw-muted)",
-                  fontSize: "0.95rem",
-                }}
-              >
-                Отзывы участников: {reviewStats.avg.toFixed(1)} ★ (
-                {reviewStats.count}{" "}
-                {reviewStats.count === 1
-                  ? "отзыв"
-                  : reviewStats.count < 5
-                    ? "отзыва"
-                    : "отзывов"}
-                )
-              </p>
-            )}
-            {reviewStats.count === 0 && (
-              <p
-                style={{
-                  margin: "0 0 12px",
-                  color: "var(--mw-muted)",
-                  fontSize: "0.95rem",
-                }}
-              >
-                Пока нет отзывов по этой программе в MyWaveTour.
-              </p>
-            )}
-            <a href="#request" className="mw-btn mw-btn--primary">
-              {ended ? "Выезд завершён" : "Оставить заявку"}
-            </a>
-            <p
-              className="mw-pdp-cta-note"
-              style={{
-                margin: "12px 0 0",
-                fontSize: "0.92rem",
-                color: "var(--mw-muted)",
-                maxWidth: "52ch",
-                lineHeight: 1.55,
-              }}
-            >
-              После регистрации заявки необходимо отдельно подтвердить наличие
-              мест, стоимость и условия участия.
-            </p>
-          </header>
-
-          {program.autoPublished && (
-            <div
-              className="mw-card"
-              style={{
-                marginBottom: 24,
-                borderColor: "var(--mw-border)",
-                background: "var(--mw-bg-warm)",
-              }}
-            >
-              <p
-                style={{
-                  margin: 0,
-                  lineHeight: 1.55,
-                  fontSize: "0.95rem",
-                  color: "var(--mw-muted)",
-                }}
-              >
-                <span
-                  className="mw-badge mw-badge--soon"
-                  style={{ marginRight: 8 }}
-                >
-                  Из открытого источника
-                </span>
-                Карточка собрана из открытого источника (
-                {sourceTypeLabelRuPdp(program.sourceType)}).
-                {program.reviewStatus === "auto_pending" &&
-                  " Сейчас на лёгкой проверке редактором."}
-                {program.sourceUrl && (
-                  <>
-                    {" "}
-                    <a
-                      href={program.sourceUrl}
-                      rel="nofollow noopener noreferrer"
-                      target="_blank"
-                      style={{ color: "var(--mw-accent)" }}
-                    >
-                      Перейти к источнику
-                    </a>
-                    .
-                  </>
-                )}
-                {program.updatedFromSourceAt && (
-                  <span
-                    style={{
-                      display: "block",
-                      marginTop: 6,
-                      fontSize: "0.88rem",
-                      color: "var(--mw-muted2)",
-                    }}
-                  >
-                    Обновлено с источника:{" "}
-                    {new Date(program.updatedFromSourceAt).toLocaleString(
-                      "ru-RU",
-                    )}
-                  </span>
-                )}
-              </p>
-            </div>
+        <div className="mw-pdp-head">
+          <ProgramHero
+            returnTo={returnTo}
+            title={program.title}
+            metaParts={[shownFormatLabel, durationLabel].filter((p): p is string => Boolean(p))}
+            status={statusChip}
+            region={regionLabel ? { label: regionLabel, href: regionCatalogHref } : null}
+            exactLocation={
+              exactLocationLabel && exactLocationLabel.toLowerCase() !== regionLabel?.toLowerCase()
+                ? exactLocationLabel
+                : null
+            }
+          />
+          {heroImage && (
+            <ProgramHeroMedia
+              item={heroImage}
+              title={program.title}
+              imageCount={imageCount}
+              galleryAnchor={galleryItems.length > 0 ? "media" : null}
+            />
           )}
+        </div>
 
-          <SectionBlock title="Ключевые детали">
-            <div className="mw-pdp-details-grid">
-              <div>
-                <strong>Длительность</strong>
-                <div>{program.durationDays} дн.</div>
-              </div>
-              <div>
-                <strong>Дисциплина</strong>
-                <div>
-                  <Link
-                    href={disciplineCatalogHref}
-                    style={{ color: "var(--mw-accent)" }}
-                  >
-                    {discipline.translation || discipline.original}
-                  </Link>
-                </div>
-              </div>
-              <div>
-                <strong>Регион</strong>
-                <div>
-                  <Link
-                    href={regionCatalogHref}
-                    style={{ color: "var(--mw-accent)" }}
-                  >
-                    {program.exactLocation?.trim()
-                      ? `${program.region} · ${program.exactLocation}`
-                      : program.region}
-                  </Link>
-                </div>
-              </div>
-              <div>
-                <strong>Сезон старта</strong>
-                <div>{seasonRu}</div>
-              </div>
-              <div>
-                <strong>Уровень</strong>
-                <div>
-                  {participantLevel(
-                    program,
-                    getProgramLevelLabel(program.levelRequired),
-                  )}
-                </div>
-              </div>
-              {program.formatType && (
-                <div>
-                  <strong>Тип программы</strong>
-                  <div>{programFormatLabel(program.formatType)}</div>
-                </div>
-              )}
-              {program.riskLevel && (
-                <div>
-                  <strong>Уровень риска / интенсивности</strong>
-                  <div>{getSeverityLabel(program.riskLevel)}</div>
-                </div>
-              )}
-            </div>
-          </SectionBlock>
+        <div className="mw-pdp-facts-area">
+          <ProgramQuickFacts facts={quickFacts} />
+        </div>
 
-          <section className="mw-content-section">
-            <h2 className="mw-h2">Отзывы участников</h2>
-            {reviews.length === 0 ? (
-              <p
-                style={{
-                  color: "var(--mw-muted)",
-                  margin: 0,
-                  lineHeight: 1.55,
-                }}
-              >
-                Пока нет одобренных отзывов для этой программы. Отзывы
-                публикуются после завершённой поездки и модерации.
-              </p>
-            ) : (
-              <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-                {reviews.map((r) => (
-                  <li
-                    key={r.id}
-                    className="mw-card"
-                    style={{ marginBottom: 12 }}
-                  >
-                    <p style={{ margin: "0 0 6px", fontWeight: 650 }}>
-                      {"★".repeat(r.rating)}
-                      <span
-                        style={{
-                          fontWeight: 500,
-                          color: "var(--mw-muted)",
-                          marginLeft: 8,
-                        }}
-                      >
-                        {new Date(r.createdAt).toLocaleDateString("ru-RU")}
-                      </span>
-                    </p>
-                    {r.comment && <Prose text={r.comment} />}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
+        <aside className="mw-pdp-aside" aria-label="Заявка на программу">
+          <ProgramDecisionPanel
+            price={priceFields}
+            datesLabel={datesLabel}
+            durationLabel={durationLabel}
+            included={inclusionLines.length > 0 ? summarizeLines(inclusionLines, 3) : null}
+            rating={
+              reviewStats.count > 0 && reviewStats.avg != null
+                ? { avg: reviewStats.avg, count: reviewStats.count }
+                : null
+            }
+            ended={ended}
+          />
+        </aside>
 
+        <div className="mw-pdp-body">
           {(audienceFit || myWaveNotes?.audience) && (
-            <SectionBlock title="Для кого программа">
+            <ProgramSection id="audience" title="Для кого программа">
               {audienceFit ? (
                 <>
-                  <OrganizerSourceCaption />
+                  <SourceCaption kind="organizer" />
                   <Prose text={audienceFit} />
                 </>
               ) : (
                 <MyWaveNote>{myWaveNotes?.audience}</MyWaveNote>
               )}
-            </SectionBlock>
+            </ProgramSection>
+          )}
+
+          {itinerary && !program.autoPublished && (
+            <ProgramSection id="itinerary" title="Программа выезда">
+              <details className="mw-source-description">
+                <summary>Читать полное описание</summary>
+                <Prose text={itinerary} />
+              </details>
+            </ProgramSection>
+          )}
+
+          {galleryItems.length > 0 && (
+            <ProgramSection id="media" title="Фото и видео">
+              <ProgramGallery items={galleryItems} title={program.title} />
+            </ProgramSection>
           )}
 
           {(inclusions || exclusions) && (
-            <SectionBlock title="Включено и не включено">
-              <OrganizerSourceCaption />
+            <ProgramSection id="inclusions" title="Включено и не включено">
+              <SourceCaption kind="organizer" />
               <div className="mw-pdp-two-col">
                 <div>
-                  <h3 className="mw-h3">Включено</h3>
+                  <h3 className="mw-pdp-h3">Включено</h3>
                   {inclusionLines.length > 0 ? (
                     <BulletList items={inclusionLines} />
                   ) : inclusions ? (
                     <Prose text={inclusions} />
                   ) : (
-                    <p style={{ color: "var(--mw-muted)", margin: 0 }}>
-                      Организатор не указал отдельным списком.
-                    </p>
+                    <p className="mw-pdp-empty">Организатор не указал отдельным списком.</p>
                   )}
                 </div>
                 <div>
-                  <h3 className="mw-h3">Не включено</h3>
+                  <h3 className="mw-pdp-h3">Не включено</h3>
                   {exclusionLines.length > 0 ? (
                     <BulletList items={exclusionLines} />
                   ) : exclusions ? (
                     <Prose text={exclusions} />
                   ) : (
-                    <p style={{ color: "var(--mw-muted)", margin: 0 }}>
-                      Организатор не указал отдельным списком.
-                    </p>
+                    <p className="mw-pdp-empty">Организатор не указал отдельным списком.</p>
                   )}
                 </div>
               </div>
-            </SectionBlock>
+            </ProgramSection>
+          )}
+
+          <ProgramSection id="logistics" title="Проживание, трансфер и экипировка">
+            <div className="mw-pdp-two-col">
+              <ProgramInfoField label="Тип размещения" value={accommodationField} />
+              <ProgramInfoField label="Трансфер" value={transferField} />
+            </div>
+            <div className="mw-pdp-subsection">
+              <ProgramInfoField label="Экипировка" value={equipmentField} />
+            </div>
+          </ProgramSection>
+
+          {(riskLabel || medical) && (
+            <ProgramSection id="risk" title="Риск, требования и ограничения">
+              {riskLabel && (
+                <div className="mw-pdp-risk">
+                  <SourceCaption kind={riskSourceKind} />
+                  <p className="mw-pdp-risk__value">
+                    <strong>Оценка риска / интенсивности:</strong> {riskLabel}
+                  </p>
+                </div>
+              )}
+              {medical && (
+                <div className="mw-pdp-subsection">
+                  <h3 className="mw-pdp-h3">Медицинские и прочие ограничения</h3>
+                  <Prose text={medical} />
+                </div>
+              )}
+            </ProgramSection>
           )}
 
           {myWaveNotes && (
-            <SectionBlock title="Полезно знать">
+            <ProgramSection id="notes" title="Полезно знать">
               {myWaveNotes.general.map((note) => (
                 <MyWaveNote key={note}>{note}</MyWaveNote>
               ))}
@@ -1016,483 +750,96 @@ export function ProgramPdpClient({
                     </a>
                   </li>
                 )}
-                <li>
-                  <Link href={disciplineCatalogHref}>Другие программы по этой дисциплине в каталоге MyWave</Link>
-                </li>
+                {disciplineLabel && (
+                  <li>
+                    <Link href={disciplineCatalogHref}>Другие программы по этой дисциплине в каталоге MyWave</Link>
+                  </li>
+                )}
                 <li>
                   <Link href="/spots">Карта спотов MyWave с оценками условий</Link>
                 </li>
               </ul>
-            </SectionBlock>
+            </ProgramSection>
           )}
 
-          {itinerary && (
-            <SectionBlock
-              title={
-                program.autoPublished
-                  ? "Описание из источника"
-                  : "Программа выезда"
-              }
+          {(organizerLabel || showVerification) && (
+            <ProgramSection
+              id="organizer"
+              title={program.autoPublished ? "Источник сведений" : "Об организаторе"}
             >
-              {program.autoPublished && (
-                <p className="mw-source-note">
-                  Описание сохраняет сведения на дату публикации. Упомянутые
-                  скидки и сроки регистрации могут быть неактуальны — уточните
-                  их перед участием.
+              {organizerLabel && <p className="mw-pdp-organizer__name">{organizerLabel}</p>}
+              {showVerification && (
+                <p className="mw-pdp-organizer__status">
+                  {organizerVerificationLabelRu(program.organizer?.verificationStatus)}
                 </p>
               )}
-              <details className="mw-source-description">
-                <summary>Читать полное описание</summary>
-                <Prose text={itinerary} />
-              </details>
-            </SectionBlock>
-          )}
-
-          {(program.riskLevel || medical) && (
-            <SectionBlock title="Риск, требования и ограничения">
-              {program.riskLevel && (
-                <p style={{ margin: "0 0 10px", color: "var(--mw-muted)" }}>
-                  <strong style={{ color: "var(--mw-text)" }}>
-                    Оценка риска / интенсивности:
-                  </strong>{" "}
-                  {getSeverityLabel(program.riskLevel)}
+              {disciplineLabel && (
+                <p className="mw-pdp-organizer__more">
+                  <Link href={disciplineCatalogHref}>Все программы с этой дисциплиной в каталоге</Link>
                 </p>
               )}
-              {medical && (
-                <>
-                  <h3 className="mw-h3" style={{ marginTop: 0 }}>
-                    Медицинские и прочие ограничения
-                  </h3>
-                  <Prose text={medical} />
-                </>
-              )}
-            </SectionBlock>
+            </ProgramSection>
           )}
 
-          <SectionBlock title="Организационные условия">
-            <div className="mw-pdp-two-col">
-              <ProgramInfoField label="Экипировка" value={equipmentField} />
-              <ProgramInfoField
-                label="Тип размещения"
-                value={accommodationField}
-              />
-            </div>
-            <div style={{ marginTop: 16 }}>
-              <ProgramInfoField label="Трансфер" value={transferField} />
-            </div>
-          </SectionBlock>
-
-          {(program.organizerName || program.organizer) && (
-            <SectionBlock
-              title={
-                program.autoPublished ? "Источник сведений" : "Об организаторе"
-              }
-            >
-              <p
-                style={{
-                  margin: 0,
-                  color: "var(--mw-muted)",
-                  lineHeight: 1.55,
-                  fontWeight: 650,
-                }}
-              >
-                {program.organizerName ?? program.organizer?.displayName}
-              </p>
-              {!program.autoPublished &&
-                program.organizer?.verificationStatus && (
-                  <p
-                    style={{
-                      margin: "10px 0 0",
-                      color: "var(--mw-muted)",
-                      lineHeight: 1.55,
-                      fontSize: "0.95rem",
-                    }}
-                  >
-                    {organizerVerificationLabelRu(
-                      program.organizer.verificationStatus,
-                    )}
-                  </p>
-                )}
-              <p
-                style={{
-                  margin: "12px 0 0",
-                  fontSize: "0.92rem",
-                  color: "var(--mw-muted)",
-                }}
-              >
-                <Link href={disciplineCatalogHref}>
-                  Все программы с этой дисциплиной в каталоге
-                </Link>
-              </p>
-            </SectionBlock>
-          )}
+          <ProgramReviews reviews={reviews} stats={reviewStats} />
 
           {(cancellationRules || myWaveNotes?.cancellation) && (
-            <SectionBlock title="Условия участия и отмены">
+            <ProgramSection id="cancellation" title="Условия участия и отмены">
               {cancellationRules ? (
                 <Prose text={cancellationRules} />
               ) : (
                 <MyWaveNote>{myWaveNotes?.cancellation}</MyWaveNote>
               )}
-            </SectionBlock>
+            </ProgramSection>
           )}
 
-          <SectionBlock title="Что произойдёт после заявки">
-            <ol
-              style={{
-                margin: "8px 0 0",
-                paddingLeft: "1.2rem",
-                color: "var(--mw-muted)",
-                lineHeight: 1.65,
-              }}
-            >
+          <ProgramSection id="after-request" title="Что произойдёт после заявки">
+            <ol className="mw-pdp-steps">
               {DEFAULT_AFTER_STEPS.map((step) => (
                 <li key={step}>{step}</li>
               ))}
             </ol>
             {afterBooking && (
-              <div style={{ marginTop: 16 }}>
-                <h3 className="mw-h3">Дополнительные сведения</h3>
+              <div className="mw-pdp-subsection">
+                <h3 className="mw-pdp-h3">Дополнительные сведения</h3>
                 <Prose text={afterBooking} />
               </div>
             )}
-          </SectionBlock>
+          </ProgramSection>
 
-          {trustReason && (
-            <SectionBlock title="Описание и факты в карточке">
-              <Prose text={trustReason} />
-            </SectionBlock>
-          )}
+          <ProgramProvenance
+            autoPublished={Boolean(program.autoPublished)}
+            sourceTypeLabel={sourceTypeLabelRuPdp(program.sourceType)}
+            reviewPending={program.reviewStatus === "auto_pending"}
+            sourceUrl={sourcePostUrl}
+            ingestedAt={program.ingestedAt}
+            updatedFromSourceAt={program.updatedFromSourceAt}
+            trustReason={trustReason ?? null}
+            originalDescription={program.autoPublished ? itinerary ?? null : null}
+          />
 
-          {displayMedia.length > 0 && (
-            <SectionBlock title="Медиа">
-              <div className="mw-program-media-gallery">
-                {displayMedia.map((m) => {
-                  const src = presentProgramMediaUrl(m.url) ?? m.url;
-                  return (
-                    <div key={m.id} className="mw-program-media-item">
-                      {m.mediaType === "video" || /\.(mp4|webm|mov)(\?|#|$)/i.test(m.url) ? (
-                        <video
-                          src={src}
-                          controls
-                          playsInline
-                          preload="metadata"
-                          style={{ width: "100%", maxHeight: 520, borderRadius: 12, background: "#0f172a" }}
-                        >
-                          <a href={src} target="_blank" rel="noreferrer">
-                            {m.caption?.trim() || "Открыть видео"}
-                          </a>
-                        </video>
-                      ) : (
-                        <img
-                          src={src}
-                          loading="lazy"
-                          alt={m.caption?.trim() || `${program.title} — фото программы`}
-                          style={{ maxWidth: "100%", height: "auto", borderRadius: 12 }}
-                        />
-                      )}
-                      {m.caption?.trim() ? (
-                        <p className="mw-muted" style={{ marginTop: 8, fontSize: 14 }}>
-                          {m.caption}
-                        </p>
-                      ) : null}
-                    </div>
-                  );
-                })}
-              </div>
-            </SectionBlock>
-          )}
+          <ProgramApplicationForm
+            ended={ended}
+            returnTo={returnTo}
+            guestContact={guestContact}
+            onGuestContactChange={setGuestContact}
+            notes={notes}
+            onNotesChange={setNotes}
+            consentTransfer={consentTransfer}
+            onConsentTransferChange={setConsentTransfer}
+            consentPrivacy={consentPrivacy}
+            onConsentPrivacyChange={setConsentPrivacy}
+            submitting={submitting}
+            submitError={submitError}
+            submitSuccess={submitSuccess}
+            onSubmit={handleSubmit}
+          />
 
-          <section id="request" className="mw-form-card">
-            <h2 className="mw-h2">
-              {ended ? "Выезд завершён" : "Оставить заявку на участие"}
-            </h2>
-            {ended && (
-              <p role="status">
-                Эти даты уже прошли.{" "}
-                <Link href={returnTo}>
-                  Выберите актуальный выезд в каталоге
-                </Link>
-                .
-              </p>
-            )}
-            <p className="mw-form-hint">
-              Укажите контакт для ответа. Заявка не бронирует место и не требует
-              оплаты на сайте.
-            </p>
-            {submitError && (
-              <p
-                id="program-request-feedback"
-                tabIndex={-1}
-                role="alert"
-                style={{ color: "#b00020", marginBottom: 12 }}
-              >
-                {submitError}
-              </p>
-            )}
-            {submitSuccess && (
-              <div className="mw-success-panel">
-                <p
-                  id="program-request-feedback"
-                  tabIndex={-1}
-                  role="status"
-                  aria-live="polite"
-                >
-                  {submitSuccess}
-                </p>
-                <Link href={returnTo}>Вернуться к результатам поиска</Link>
-              </div>
-            )}
-            {!submitSuccess && (
-              <form onSubmit={handleSubmit} noValidate aria-busy={submitting}>
-                <div className="mw-field" style={{ marginBottom: 16 }}>
-                  <label htmlFor="guestContact">
-                    Телефон, Telegram или email
-                  </label>
-                  <input
-                    id="guestContact"
-                    className="mw-input"
-                    style={{ width: "100%", minWidth: 0 }}
-                    value={guestContact}
-                    onChange={(e) => setGuestContact(e.target.value)}
-                    placeholder="+7…, @telegram или почта"
-                    disabled={submitting}
-                    autoComplete="off"
-                    maxLength={254}
-                    required
-                    aria-describedby={
-                      submitError || submitSuccess
-                        ? "program-request-feedback"
-                        : undefined
-                    }
-                    aria-invalid={Boolean(
-                      submitError && contactError(guestContact),
-                    )}
-                  />
-                </div>
-                <div className="mw-field" style={{ marginBottom: 20 }}>
-                  <label htmlFor="notes">
-                    Что важно для тебя в этом выезде
-                  </label>
-                  <textarea
-                    id="notes"
-                    className="mw-textarea"
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    placeholder="Ваш уровень, желаемые даты, кто едет, что важно по поездке"
-                    rows={4}
-                    disabled={submitting}
-                  />
-                </div>
-                <div
-                  className="mw-field"
-                  style={{
-                    marginBottom: 14,
-                    fontSize: "0.9rem",
-                    lineHeight: 1.5,
-                  }}
-                >
-                  <label
-                    style={{
-                      display: "flex",
-                      alignItems: "flex-start",
-                      gap: 8,
-                      cursor: "pointer",
-                    }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={consentTransfer}
-                      onChange={(e) => setConsentTransfer(e.target.checked)}
-                      disabled={submitting}
-                      style={{ marginTop: 3 }}
-                    />
-                    <span>
-                      Соглашаюсь на передачу контакта организатору этой
-                      программы для ответа по заявке.
-                    </span>
-                  </label>
-                </div>
-                <div
-                  className="mw-field"
-                  style={{
-                    marginBottom: 16,
-                    fontSize: "0.9rem",
-                    lineHeight: 1.5,
-                  }}
-                >
-                  <label
-                    style={{
-                      display: "flex",
-                      alignItems: "flex-start",
-                      gap: 8,
-                      cursor: "pointer",
-                    }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={consentPrivacy}
-                      onChange={(e) => setConsentPrivacy(e.target.checked)}
-                      disabled={submitting}
-                      style={{ marginTop: 3 }}
-                    />
-                    <span>
-                      Ознакомился с{" "}
-                      <Link
-                        href="/privacy-and-consent"
-                        className="mw-link"
-                        prefetch={false}
-                      >
-                        политикой и согласием
-                      </Link>{" "}
-                      (в т.ч. обработка данных в рамках заявки).
-                    </span>
-                  </label>
-                </div>
-                <button
-                  type="submit"
-                  disabled={submitting || ended}
-                  className="mw-btn mw-btn--primary"
-                >
-                  {ended
-                    ? "Выезд завершён"
-                    : submitting
-                      ? "Отправляем…"
-                      : "Оставить заявку"}
-                </button>
-                <p className="mw-form-note" style={{ marginTop: 12 }}>
-                  Срок ответа зависит от организатора. Оплата на сайте не
-                  производится.
-                </p>
-                <p className="mw-form-note" style={{ marginTop: 8 }}>
-                  Финальные условия подтвердит организатор.
-                </p>
-              </form>
-            )}
-          </section>
-          {exploreHubLinks.length > 0 && (
-            <div
-              className="mw-card"
-              style={{ marginBottom: 24, borderColor: "var(--mw-border)" }}
-            >
-              <h2
-                className="mw-h2"
-                style={{ fontSize: "1.1rem", marginTop: 0, marginBottom: 12 }}
-              >
-                Смотреть ещё по теме
-              </h2>
-              <p
-                style={{
-                  margin: "0 0 0.75rem",
-                  fontSize: "0.92rem",
-                  color: "var(--mw-muted)",
-                }}
-              >
-                Если этот формат не подходит - вот похожие варианты:
-              </p>
-              <ul
-                style={{
-                  listStyle: "none",
-                  padding: 0,
-                  margin: 0,
-                  display: "grid",
-                  gap: 8,
-                }}
-              >
-                {exploreHubLinks.map((l) => (
-                  <li key={`${l.type}-${l.slug}`}>
-                    <Link
-                      href={`${l.path}?${programEntryQuery}`}
-                      style={{ color: "var(--mw-accent)", fontWeight: 600 }}
-                    >
-                      {l.type === "discipline" && "Дисциплина: "}
-                      {l.type === "region" && "Регион: "}
-                      {l.type === "season" && "Сезон: "}
-                      {l.label}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </div>
-
-        <aside className="mw-pdp-sticky" aria-label="Заявка на программу">
-          <div className="mw-card mw-pdp-sticky-card">
-            {program.priceFromRub == null && (
-              <p className="mw-price">Стоимость уточняется</p>
-            )}
-            {program.priceFromRub != null && (
-              <p
-                style={{
-                  margin: "0 0 6px",
-                  fontSize: "1.35rem",
-                  fontWeight: 700,
-                }}
-              >
-                <ProgramPrice program={program} />
-              </p>
-            )}
-            <p
-              style={{
-                margin: "0 0 12px",
-                color: "var(--mw-muted)",
-                fontSize: "0.92rem",
-              }}
-            >
-              Даты выезда: {datesLine}
-            </p>
-            <a
-              href="#request"
-              className="mw-btn mw-btn--primary"
-              style={{ width: "100%", textAlign: "center" }}
-            >
-              {ended ? "Выезд завершён" : "Оставить заявку"}
-            </a>
-            <p
-              style={{
-                margin: "10px 0 0",
-                fontSize: "0.82rem",
-                color: "var(--mw-muted)",
-                lineHeight: 1.45,
-              }}
-            >
-              Ответ организатора после подтверждения наличия мест.
-            </p>
-          </div>
-        </aside>
-      </div>
-
-      <div
-        className="mw-pdp-mobile-cta"
-        role="region"
-        aria-label="Быстрая заявка"
-      >
-        <div className="mw-pdp-mobile-cta__inner">
-          <div>
-            {program.priceFromRub == null && (
-              <p className="mw-price">Стоимость уточняется</p>
-            )}
-            {program.priceFromRub != null && (
-              <span style={{ fontWeight: 700 }}>
-                <ProgramPrice program={program} />
-              </span>
-            )}
-            <span
-              style={{
-                display: "block",
-                fontSize: "0.8rem",
-                color: "var(--mw-muted)",
-              }}
-            >
-              {datesLine}
-            </span>
-          </div>
-          <a href="#request" className="mw-btn mw-btn--primary">
-            Оставить заявку
-          </a>
+          <ProgramRelated links={exploreHubLinks} entryQuery={programEntryQuery} />
         </div>
       </div>
+
+      <ProgramMobileCta price={priceFields} datesLabel={datesShortLabel} ended={ended} />
     </main>
   );
 }

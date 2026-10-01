@@ -89,7 +89,7 @@ export async function setProgramPublishStatus(
   });
 
   let notified = false;
-  const visibleFrom = storefrontVisibleFrom(program.startDate);
+  const visibleFrom = program.scheduleType === "on_request" ? null : storefrontVisibleFrom(program.startDate);
   if (existing.publishStatus !== "published" && program.publishStatus === "published" && !visibleFrom) {
     void notifySubscribersOnProgramPublished(env, {
       id: program.id,

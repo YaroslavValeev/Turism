@@ -54,6 +54,17 @@ describe("isProgramPubliclyVisible", () => {
     expect(isProgramPubliclyVisible({ ...base, startDate: null }, now)).toBe(true);
   });
 
+  it("shows on-request tours whose season window is beyond the horizon", () => {
+    const tour = {
+      publishStatus: "published",
+      scheduleType: "on_request",
+      startDate: "2027-06-01T00:00:00.000Z",
+      endDate: "2027-09-30T00:00:00.000Z",
+    };
+    expect(isProgramPubliclyVisible(tour, now)).toBe(true);
+    expect(isProgramPubliclyVisible({ ...tour, scheduleType: "fixed" }, now)).toBe(false);
+  });
+
   it("keeps legacy published programs visible when availability is unknown", () => {
     expect(isProgramPubliclyVisible({ publishStatus: "published", endDate: null, spotsAvailable: null }, now)).toBe(true);
   });

@@ -5,6 +5,7 @@ import {
   extractPageImage,
   extractSameSiteLinks,
   htmlToPlainText,
+  isLikelySameTour,
   parseExtractedTour,
   parsePickedLinks,
   titleSimilarity,
@@ -60,6 +61,15 @@ describe("page helpers", () => {
 
   it("resolves og:image against the page url", () => {
     expect(extractPageImage('<meta property="og:image" content="/img/a.jpg">', "https://t.ru/tours/x")).toBe("https://t.ru/img/a.jpg");
+  });
+
+  it("falls back to the first content image, skipping logos, icons and header images", () => {
+    const html = `
+      <header><img src="/upload/hero-header.jpg"></header>
+      <img src="/images/logo.png"><img src="/icons/arrow.svg">
+      <img data-src="/upload/tours/avacha-1.jpg?w=800" src="data:image/gif;base64,R0lG">`;
+    expect(extractPageImage(html, "https://t.ru/tours/x")).toBe("https://t.ru/upload/tours/avacha-1.jpg?w=800");
+    expect(extractPageImage("<p>без картинок</p>", "https://t.ru/tours/x")).toBeNull();
   });
 });
 
@@ -128,6 +138,32 @@ describe("aiTourToNormalizedFields", () => {
     expect(f.durationDays).toBe(3);
   });
 
+  it("past fixed dates become the season of the same months", () => {
+    const f = aiTourToNormalizedFields(
+      parseExtractedTour({ ...baseTour, scheduleType: "fixed", startDate: "2026-05-28", endDate: "2026-06-06", durationDays: 10 })!,
+      now,
+    );
+    expect(f.scheduleType).toBe("on_request");
+    expect(f.seasonLabel).toBe("май–июнь");
+    expect(f.startDate.toISOString().slice(0, 10)).toBe("2027-05-01");
+    expect(f.durationDays).toBe(10);
+  });
+
+  it("a season-long fixed range is a season, not tour dates", () => {
+    const f = aiTourToNormalizedFields(
+      parseExtractedTour({ ...baseTour, scheduleType: "fixed", startDate: "2027-01-01", endDate: "2027-04-30", durationDays: 7 })!,
+      now,
+    );
+    expect(f.scheduleType).toBe("on_request");
+    expect(f.seasonLabel).toBe("январь–апрель");
+    expect(f.durationDays).toBe(7);
+  });
+
+  it("a twelve-month season is year-round", () => {
+    const f = aiTourToNormalizedFields(parseExtractedTour({ ...baseTour, seasonFromMonth: 1, seasonToMonth: 12 })!, now);
+    expect(f.seasonLabel).toBe("круглый год");
+  });
+
   it("raw text is built only from extracted facts", () => {
     const text = aiTourRawText(parseExtractedTour(baseTour)!);
     expect(text).toContain("Входит:\n- Гид\n- Палатки");
@@ -139,5 +175,24 @@ describe("titleSimilarity", () => {
   it("matches reordered titles and separates different tours", () => {
     expect(titleSimilarity("Восхождение на Авачинский вулкан", "Авачинский вулкан: восхождение за 1 день")).toBeGreaterThanOrEqual(0.75);
     expect(titleSimilarity("Восхождение на Авачинский вулкан", "Сплав по реке Быстрая")).toBe(0);
+  });
+});
+
+describe("isLikelySameTour", () => {
+  it("does not merge tours that differ by one key word", () => {
+    const a = { title: "Заброски на Мутновский вулкан на снегоходах", durationDays: null };
+    const b = { title: "Заброски на Горелый вулкан на снегоходах", durationDays: null };
+    expect(isLikelySameTour(a, b)).toBe(false);
+    expect(
+      isLikelySameTour(
+        { title: "Маячный на снегоходах", durationDays: 1 },
+        { title: "Маячный на джипах", durationDays: 1 },
+      ),
+    ).toBe(false);
+  });
+
+  it("treats different durations as different tours", () => {
+    expect(isLikelySameTour({ title: "Толбачик", durationDays: 4 }, { title: "Толбачик", durationDays: 6 })).toBe(false);
+    expect(isLikelySameTour({ title: "Восхождение на Авачинский вулкан", durationDays: 1 }, { title: "Авачинский вулкан: восхождение", durationDays: null })).toBe(true);
   });
 });

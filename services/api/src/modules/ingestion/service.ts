@@ -22,6 +22,7 @@ import { pickOrganizerByName, shouldLinkSourceToResolvedOrganizer } from "../org
 import { toSafeDbText, toSafeDbValue } from "./safeDbText";
 import { cacheExternalProgramMediaForWeb } from "./mediaCache";
 import { fetchIngestionTextWithRetry } from "./sourceFetch";
+import { AI_TOUR_PAYLOAD_MODE, aiTourToNormalizedFields, parseExtractedTour } from "./tourCatalog";
 import { applyEnduroRaceTaxonomy } from "./taxonomy";
 import {
   EXPLICIT_CANCELLATION_ROUTING_REASON,
@@ -147,7 +148,7 @@ export type AutopilotBatchStats = {
   publishFailed: number;
 };
 
-type CollectedItem = {
+export type CollectedItem = {
   externalItemId?: string | null;
   sourceUrl?: string | null;
   authorName?: string | null;
@@ -2920,8 +2921,45 @@ export function buildNormalizedDraft(rawItem: RawItemWithSource): NormalizedDraf
       parseVersion: "v1_xwaters_event_card",
     };
   }
+  const aiTour =
+    payload?.mode === AI_TOUR_PAYLOAD_MODE && payload.tour && typeof payload.tour === "object"
+      ? parseExtractedTour({ ...(payload.tour as Record<string, unknown>), isTour: true })
+      : null;
+  if (aiTour) {
+    // Поля уже извлечены ИИ со страницы тура — эвристики по тексту и переопределения источников не применяем.
+    const f = aiTourToNormalizedFields(aiTour);
+    normalizedWithOverrides = {
+      ...normalizedWithOverrides,
+      eventType: f.discipline === "expedition" ? "expedition" : "trip",
+      discipline: f.discipline,
+      title: f.title,
+      descriptionShort: f.descriptionShort,
+      descriptionFull: f.descriptionFull,
+      country: null,
+      region: f.region,
+      city: f.city,
+      startDate: f.startDate,
+      endDate: f.endDate,
+      durationDays: f.durationDays,
+      level: f.level,
+      priceFrom: f.priceFrom,
+      currency: f.currency,
+      bookingUrl: rawItem.sourceUrl,
+      parseVersion: "v1_ai_tour",
+      extractedJson: {
+        ...(typeof normalizedWithOverrides.extractedJson === "object" && normalizedWithOverrides.extractedJson
+          ? (normalizedWithOverrides.extractedJson as Record<string, unknown>)
+          : {}),
+        hasExplicitDateSignal: true,
+        scheduleType: f.scheduleType,
+        seasonLabel: f.seasonLabel,
+        suggestedInclusions: f.suggestedInclusions,
+        exclusions: aiTour.exclusions.join("\n") || null,
+      } as Prisma.InputJsonValue,
+    };
+  }
   const scores = scoreNormalizedItem(rawItem.source, normalizedWithOverrides);
-  if (isXWatersCard) scores.routedStatus = "needs_review";
+  if (isXWatersCard || aiTour) scores.routedStatus = "needs_review";
   return {
     ...normalizedWithOverrides,
     confidenceScore: scores.confidenceScore,
@@ -2955,6 +2993,8 @@ function createDraftProgramPayload(candidate: CandidateWithRelations, organizerI
       ? (normalized.extractedJson as Record<string, unknown>)
       : {};
   const suggestedInclusions = typeof extractedJson.suggestedInclusions === "string" ? extractedJson.suggestedInclusions.trim() : "";
+  const suggestedExclusions = typeof extractedJson.suggestedExclusions === "string" ? extractedJson.suggestedExclusions.trim() : "";
+  const onRequest = extractedJson.scheduleType === "on_request";
   const now = new Date();
   const sourceUrl = firstNonEmpty(raw.sourceUrl, src.urlOrHandle, null);
 
@@ -2972,7 +3012,14 @@ function createDraftProgramPayload(candidate: CandidateWithRelations, organizerI
     exactLocation: firstNonEmpty(normalized.city, normalized.venue),
     startDate,
     endDate,
-    durationDays: normalized.durationDays ?? computeDurationDays(startDate, endDate) ?? 1,
+    // У тура по запросу даты — окно сезона, поэтому его длину нельзя брать за длительность тура.
+    durationDays: normalized.durationDays ?? (onRequest ? 1 : computeDurationDays(startDate, endDate) ?? 1),
+    ...(onRequest
+      ? {
+          scheduleType: "on_request",
+          seasonLabel: typeof extractedJson.seasonLabel === "string" ? extractedJson.seasonLabel : null,
+        }
+      : {}),
     formatType: normalized.eventType ?? "camp",
     audienceFit: programCardText(normalized.descriptionShort ?? normalized.descriptionFull, "Требует ручной нормализации оператором."),
     levelRequired: normalized.level ?? "all_levels",
@@ -2981,7 +3028,7 @@ function createDraftProgramPayload(candidate: CandidateWithRelations, organizerI
     priceFromRub: normalized.priceFrom,
     currency: normalized.currency ?? "RUB",
     inclusions: programCardText(suggestedInclusions, "Базовая программа и сопровождение организатора. Детальный состав включенного оператор уточняет по источнику перед передачей заявки."),
-    exclusions: null,
+    exclusions: suggestedExclusions || null,
     gearRequirements: "Требует ручного заполнения оператором.",
     medicalLimitations: "",
     itineraryDayByDay: programCardText(normalized.descriptionFull, "Требует ручного заполнения оператором."),
@@ -3010,6 +3057,8 @@ function buildAutopilotMergeUpdate(
     startDate: programPayload.startDate as Date,
     endDate: programPayload.endDate as Date,
     durationDays: programPayload.durationDays as number,
+    scheduleType: programPayload.scheduleType ?? undefined,
+    seasonLabel: programPayload.scheduleType ? programPayload.seasonLabel ?? null : undefined,
     formatType: (programPayload.formatType as string | null | undefined) ?? undefined,
     audienceFit: (programPayload.audienceFit as string | null | undefined) ?? undefined,
     levelRequired: (programPayload.levelRequired as string | null | undefined) ?? undefined,
@@ -4160,7 +4209,7 @@ async function collectItemsForSource(source: Source): Promise<CollectedItem[]> {
   return collected;
 }
 
-async function createSourceRun(sourceId: string, runType: string): Promise<string> {
+export async function createSourceRun(sourceId: string, runType: string): Promise<string> {
   const run = await prisma.sourceRun.create({
     data: {
       sourceId,
@@ -4171,7 +4220,7 @@ async function createSourceRun(sourceId: string, runType: string): Promise<strin
   return run.id;
 }
 
-async function finalizeSourceRun(
+export async function finalizeSourceRun(
   runId: string,
   status: (typeof SOURCE_RUN_STATUSES)[number],
   data: { itemsFound?: number; itemsCreated?: number; errorMessage?: string | null; metaJson?: Prisma.InputJsonValue } = {},
@@ -4224,7 +4273,7 @@ async function refreshExistingSignedRawMedia(
   }
 }
 
-async function persistCollectedItems(source: Source, sourceRunId: string, items: CollectedItem[], actorId: string | null): Promise<number> {
+export async function persistCollectedItems(source: Source, sourceRunId: string, items: CollectedItem[], actorId: string | null): Promise<number> {
   let created = 0;
   for (const item of items) {
     const contentHash = makeHash(item.externalItemId, item.sourceUrl, item.rawTitle, item.rawText);

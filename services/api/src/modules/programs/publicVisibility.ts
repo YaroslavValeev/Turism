@@ -2,6 +2,7 @@ type PublicProgramVisibilityShape = {
   publishStatus: string;
   startDate: Date | string | null;
   endDate?: Date | string | null;
+  scheduleType?: string | null;
   spotsAvailable?: number | null;
   autoPublished?: boolean | null;
   reviewStatus?: string | null;
@@ -13,6 +14,7 @@ export const PUBLIC_VISIBILITY_SELECT = {
   publishStatus: true,
   startDate: true,
   endDate: true,
+  scheduleType: true,
   spotsAvailable: true,
   autoPublished: true,
   reviewStatus: true,
@@ -58,7 +60,8 @@ export function isProgramPubliclyVisible(program: PublicProgramVisibilityShape, 
   // It becomes public only after an operator has explicitly passed review.
   if (program.autoPublished && program.reviewStatus !== "ok") return false;
   if (program.spotsAvailable != null && program.spotsAvailable <= 0) return false;
-  if (storefrontVisibleFrom(program.startDate, now)) return false;
+  // У тура «по запросу» в датах окно сезона, а не заезд: его бронируют заранее, горизонт витрины не применяется.
+  if (program.scheduleType !== "on_request" && storefrontVisibleFrom(program.startDate, now)) return false;
   if (program.endDate != null) {
     const endDate = program.endDate instanceof Date ? program.endDate : new Date(program.endDate);
     if (!Number.isFinite(endDate.getTime())) return false;

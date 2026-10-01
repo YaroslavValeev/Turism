@@ -333,7 +333,10 @@ export async function resyncTourCatalogDrafts(sourceId: string, now = new Date()
     try {
       const rawItem = p.publishedPrograms[0]?.candidate.normalizedItem.rawItem;
       const payload = rawItem?.rawPayloadJson as { mode?: string; tour?: unknown } | null | undefined;
-      const tour = payload?.mode === AI_TOUR_PAYLOAD_MODE ? parseExtractedTour(payload.tour) : null;
+      const tour =
+        payload?.mode === AI_TOUR_PAYLOAD_MODE && payload.tour && typeof payload.tour === "object"
+          ? parseExtractedTour({ ...(payload.tour as Record<string, unknown>), isTour: true })
+          : null;
       if (tour && !["startDate", "endDate", "scheduleType", "seasonLabel"].some((f) => p.manualFields.includes(f))) {
         const fields = aiTourToNormalizedFields(tour, now);
         const next = {

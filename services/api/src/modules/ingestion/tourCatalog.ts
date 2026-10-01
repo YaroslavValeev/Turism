@@ -327,7 +327,9 @@ export function aiTourToNormalizedFields(tour: ExtractedTour, now = new Date()):
     if (fixedEnd < fixedStart) fixedEnd = fixedStart;
     const today = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
     // Прошедший заезд или диапазон длиной в сезон — это расписание сезона, а не ближайшая дата.
-    if (fixedEnd.getTime() < today || dayDiff(fixedStart, fixedEnd) > MAX_FIXED_SPAN_DAYS) {
+    // Одиночная дата 1-го числа — модель так записывает «с декабря», это не дата заезда.
+    const monthMarker = fixedStart.getUTCDate() === 1 && fixedEnd.getTime() === fixedStart.getTime();
+    if (fixedEnd.getTime() < today || dayDiff(fixedStart, fixedEnd) > MAX_FIXED_SPAN_DAYS || monthMarker) {
       seasonFrom = fixedStart.getUTCMonth() + 1;
       seasonTo = fixedEnd.getUTCMonth() + 1;
       fixedStart = null;

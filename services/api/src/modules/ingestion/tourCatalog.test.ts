@@ -159,6 +159,15 @@ describe("aiTourToNormalizedFields", () => {
     expect(f.durationDays).toBe(7);
   });
 
+  it("a single first-of-month date is a month marker, not a departure", () => {
+    const f = aiTourToNormalizedFields(
+      parseExtractedTour({ ...baseTour, scheduleType: "fixed", startDate: "2026-12-01", endDate: "2026-12-01", durationDays: 1 })!,
+      now,
+    );
+    expect(f.scheduleType).toBe("on_request");
+    expect(f.seasonLabel).toBe("декабрь");
+  });
+
   it("a twelve-month season is year-round", () => {
     const f = aiTourToNormalizedFields(parseExtractedTour({ ...baseTour, seasonFromMonth: 1, seasonToMonth: 12 })!, now);
     expect(f.seasonLabel).toBe("круглый год");

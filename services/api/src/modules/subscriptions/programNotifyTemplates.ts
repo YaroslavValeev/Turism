@@ -8,6 +8,7 @@ export type ProgramNotifySource = {
   title: string;
   discipline: string;
   region: string;
+  location?: string | null;
   startDate: Date;
   endDate?: Date | null;
   audienceFit?: string | null;
@@ -70,6 +71,72 @@ export function escapeHtml(s: string): string {
     .replace(/"/g, "&quot;");
 }
 
+const MONTHS_GENITIVE = [
+  "января",
+  "февраля",
+  "марта",
+  "апреля",
+  "мая",
+  "июня",
+  "июля",
+  "августа",
+  "сентября",
+  "октября",
+  "ноября",
+  "декабря",
+];
+
+/** «27 сентября — 3 октября 2026», «1–10 октября 2026», «28 декабря 2026 — 4 января 2027». Даты в UTC, как в каталоге. */
+export function formatDateRangeRu(startDate: Date, endDate?: Date | null): string {
+  const s = new Date(startDate);
+  const e = endDate ? new Date(endDate) : null;
+  const day = (d: Date) => d.getUTCDate();
+  const month = (d: Date) => MONTHS_GENITIVE[d.getUTCMonth()];
+  const year = (d: Date) => d.getUTCFullYear();
+  if (!e || e.toISOString().slice(0, 10) === s.toISOString().slice(0, 10)) {
+    return `${day(s)} ${month(s)} ${year(s)}`;
+  }
+  if (year(s) !== year(e)) return `${day(s)} ${month(s)} ${year(s)} — ${day(e)} ${month(e)} ${year(e)}`;
+  if (s.getUTCMonth() !== e.getUTCMonth()) return `${day(s)} ${month(s)} — ${day(e)} ${month(e)} ${year(e)}`;
+  return `${day(s)}–${day(e)} ${month(e)} ${year(e)}`;
+}
+
+function daysWord(n: number): string {
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod10 === 1 && mod100 !== 11) return "день";
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return "дня";
+  return "дней";
+}
+
+export function durationLabel(startDate: Date, endDate?: Date | null): string | null {
+  if (!endDate) return null;
+  const days = Math.round((new Date(endDate).getTime() - new Date(startDate).getTime()) / 86_400_000) + 1;
+  return days > 1 ? `${days} ${daysWord(days)}` : null;
+}
+
+function meaningful(value: string | null | undefined): string | null {
+  const v = value?.trim();
+  if (!v || /^(unknown|n\/a|none|null|—|-)$/i.test(v)) return null;
+  return v;
+}
+
+/** Служебные организаторы-заготовки («Ручной ввод (бот владельца)») — не имя, которое можно показать гостю. */
+export function isPlaceholderOrganizerName(name: string | null | undefined): boolean {
+  const v = meaningful(name);
+  return !v || /^ручной ввод/i.test(v);
+}
+
+function placeLine(src: ProgramNotifySource): string | null {
+  const parts: string[] = [];
+  for (const p of [meaningful(src.location), meaningful(src.region)]) {
+    if (p && !parts.some((kept) => kept.toLowerCase() === p.toLowerCase())) parts.push(p);
+  }
+  const discipline = meaningful(src.discipline);
+  const place = parts.join(", ");
+  return [place, discipline].filter(Boolean).join(" · ") || null;
+}
+
 export function formatProgramContextLine(src: ProgramNotifySource, locale = "ru-RU"): string {
   const start = new Date(src.startDate).toLocaleDateString(locale);
   const end = src.endDate ? new Date(src.endDate).toLocaleDateString(locale) : null;
@@ -84,7 +151,7 @@ function levelHint(src: ProgramNotifySource): string | null {
 }
 
 function buildForWhoBullets(src: ProgramNotifySource): string[] {
-  const fromAudience = bulletsFromFreeText(src.audienceFit, 3, 120);
+  const fromAudience = bulletsFromFreeText(src.audienceFit, 3, 200);
   if (fromAudience.length) return fromAudience;
   const out: string[] = [];
   const fmt = src.formatType?.trim();
@@ -96,7 +163,7 @@ function buildForWhoBullets(src: ProgramNotifySource): string[] {
 }
 
 function buildBenefitBullets(src: ProgramNotifySource): string[] {
-  const fromInc = bulletsFromFreeText(src.inclusions, 3, 120);
+  const fromInc = bulletsFromFreeText(src.inclusions, 3, 160);
   if (fromInc.length) return fromInc;
   const wh = bulletsFromFreeText(src.whatHappensAfterBooking, 2, 120);
   if (wh.length) return wh;
@@ -113,8 +180,16 @@ function buildImportantBlock(src: ProgramNotifySource): string | null {
 }
 
 function organizerLine(src: ProgramNotifySource): string | null {
-  return pickFirstNonempty(src.organizerDisplayName, src.organizerName);
+  const name = pickFirstNonempty(src.organizerDisplayName, src.organizerName);
+  return isPlaceholderOrganizerName(name) ? null : name;
 }
+
+/** Что реально происходит после клика: форма заявки на сайте, ответ организатора или команды MyWaveTour. */
+export const TELEGRAM_CHANNEL_HOW_TO_BOOK =
+  "<b>Как записаться</b>\n" +
+  "Нажмите «Открыть программу» → «Оставить заявку». " +
+  "С вами свяжется организатор (или команда MyWaveTour, если организатор ещё не подключён), чтобы подтвердить даты и условия. " +
+  "Оплата — напрямую организатору, на сайте платить не нужно.";
 
 /** Telegram: HTML + короткая продуктовая структура. */
 export function buildTelegramProgramNotifyHtml(
@@ -123,7 +198,10 @@ export function buildTelegramProgramNotifyHtml(
   options?: { hideLinkFallbackHint?: boolean; includeCtaLinkInBody?: boolean },
 ): string {
   const title = escapeTelegramHtml(truncateOneLine(src.title, 180));
-  const ctx = formatProgramContextLine(src);
+  const duration = durationLabel(src.startDate, src.endDate);
+  const dateLine = `📅 <b>${escapeTelegramHtml(formatDateRangeRu(src.startDate, src.endDate))}</b>${duration ? ` · ${duration}` : ""}`;
+  const place = placeLine(src);
+  const placeRow = place ? `\n📍 ${escapeTelegramHtml(place)}` : "";
   const forWho = buildForWhoBullets(src).map((b) => `• ${escapeTelegramHtml(b)}`).join("\n");
   const benefits = buildBenefitBullets(src).map((b) => `• ${escapeTelegramHtml(b)}`).join("\n");
   const org = organizerLine(src);
@@ -143,10 +221,14 @@ export function buildTelegramProgramNotifyHtml(
         ? ""
         : `\n<i>Откройте программу в приложении MyWaveTour по ссылке из письма или сайта.</i>`;
 
+  const header = org
+    ? `<i>Новый вызов от ${escapeTelegramHtml(truncateOneLine(org, 80))}</i>`
+    : `<i>Новый вызов в MyWaveTour</i>`;
+
   return (
-    `<b>Новый выезд в MyWaveTour</b>\n` +
-    `${title}\n` +
-    `${ctx}\n\n` +
+    `${header}\n\n` +
+    `<b>${title}</b>\n\n` +
+    `${dateLine}${placeRow}\n\n` +
     `<b>Для кого</b>\n` +
     `${forWho}\n\n` +
     `<b>Что входит</b>\n` +
@@ -255,6 +337,7 @@ export function programRowToNotifySource(
     title: string;
     discipline: string;
     region: string;
+    exactLocation?: string | null;
     startDate: Date;
     endDate: Date;
     audienceFit?: string | null;
@@ -273,6 +356,7 @@ export function programRowToNotifySource(
     title: row.title,
     discipline: row.discipline,
     region: row.region,
+    location: row.exactLocation ?? null,
     startDate: row.startDate,
     endDate: row.endDate,
     audienceFit: row.audienceFit ?? null,

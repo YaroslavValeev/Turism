@@ -4,6 +4,8 @@ import {
   buildEmailProgramNotifyText,
   buildTelegramProgramNotifyHtml,
   bulletsFromFreeText,
+  durationLabel,
+  formatDateRangeRu,
   programRowToNotifySource,
 } from "./programNotifyTemplates";
 
@@ -33,11 +35,40 @@ describe("programNotifyTemplates", () => {
 
   it("telegram HTML contains structure and escaped title", () => {
     const html = buildTelegramProgramNotifyHtml(baseSrc(), "https://mywavetour.ru/program/p1");
-    expect(html).toContain("<b>Новый выезд в MyWaveTour</b>");
-    expect(html).toContain("Лагерь на Волге");
+    expect(html).toContain("<i>Новый вызов от Волна Кэмп</i>\n\n<b>Лагерь на Волге</b>\n\n");
+    expect(html).toContain("📅 <b>1–10 июля 2031</b> · 10 дней");
+    expect(html).toContain("📍 Самара · Wakesurf");
     expect(html).toContain("Для кого");
     expect(html).toContain("Открыть карточку");
     expect(html).not.toContain("<script");
+  });
+
+  it("telegram HTML hides placeholder organizer and unknown discipline", () => {
+    const src = {
+      ...baseSrc(),
+      discipline: "Unknown",
+      region: "Russia",
+      location: "Алматы",
+      organizerName: null,
+      organizerDisplayName: "Ручной ввод (бот владельца)",
+      startDate: new Date("2026-09-27T12:00:00Z"),
+      endDate: new Date("2026-10-03T12:00:00Z"),
+    };
+    const html = buildTelegramProgramNotifyHtml(src, null, { hideLinkFallbackHint: true });
+    expect(html.startsWith("<i>Новый вызов в MyWaveTour</i>")).toBe(true);
+    expect(html).not.toContain("Ручной ввод");
+    expect(html).not.toContain("Unknown");
+    expect(html).toContain("📅 <b>27 сентября — 3 октября 2026</b> · 7 дней");
+    expect(html).toContain("📍 Алматы, Russia");
+  });
+
+  it("formatDateRangeRu covers single day and year boundary", () => {
+    expect(formatDateRangeRu(new Date("2026-10-10T00:00:00Z"), new Date("2026-10-10T00:00:00Z"))).toBe("10 октября 2026");
+    expect(formatDateRangeRu(new Date("2026-12-28T00:00:00Z"), new Date("2027-01-04T00:00:00Z"))).toBe(
+      "28 декабря 2026 — 4 января 2027",
+    );
+    expect(durationLabel(new Date("2026-10-10T00:00:00Z"), new Date("2026-10-11T00:00:00Z"))).toBe("2 дня");
+    expect(durationLabel(new Date("2026-10-10T00:00:00Z"), new Date("2026-10-10T00:00:00Z"))).toBeNull();
   });
 
   it("telegram HTML can hide fallback hint when link is missing", () => {

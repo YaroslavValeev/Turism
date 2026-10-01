@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { getServerApiBaseUrl, safeServerFetch } from "../../../lib/serverApiBase";
+import "./pdp.css";
 
 type ProgramData = {
   title?: string;

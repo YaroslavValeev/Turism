@@ -27,6 +27,39 @@
   --button-primary-hover: #115e59;
   --button-primary-radius: 12px;
   --button-primary-shadow: 0 8px 22px rgba(13, 148, 136, 0.28);
+
+  --mw-text-secondary: #4a4844;
+  --mw-success: #1f7a4d;
+  --mw-warning: #9a5b00;
+  --mw-error: #b00020;
+
+  --mw-space-1: 4px;
+  --mw-space-2: 8px;
+  --mw-space-3: 12px;
+  --mw-space-4: 16px;
+  --mw-space-5: 24px;
+  --mw-space-6: 32px;
+  --mw-space-7: 48px;
+  --mw-space-8: 64px;
+  --mw-space-9: 96px;
+
+  --mw-radius-control: 12px;
+  --mw-radius-media: 20px;
+  --mw-radius-panel: 20px;
+  --mw-radius-pill: 999px;
+
+  --mw-motion-fast: 120ms;
+  --mw-motion-base: 200ms;
+  --mw-motion-slow: 320ms;
+  --mw-ease: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --mw-motion-fast: 0ms;
+    --mw-motion-base: 0ms;
+    --mw-motion-slow: 0ms;
+  }
 }
 
 * {

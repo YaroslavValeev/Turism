@@ -222,6 +222,39 @@ async function sendTelegramChannelUpdate(
   }
 }
 
+export type ChannelAnnounceResult =
+  | { ok: true }
+  | { ok: false; reason: "not_found" | "not_published" | "quality_filter" | "send_failed"; detail?: string[] };
+
+/**
+ * Пост об уже опубликованной программе только в канал обновлений — без писем и личных сообщений подписчикам.
+ * Для анонсов, которые владелец выбирает вручную после тихой массовой публикации.
+ */
+export async function announceProgramToChannel(env: Env, programId: string): Promise<ChannelAnnounceResult> {
+  const program = await prisma.program.findUnique({
+    where: { id: programId },
+    select: { id: true, title: true, discipline: true, region: true, startDate: true, publishStatus: true },
+  });
+  if (!program) return { ok: false, reason: "not_found" };
+  if (program.publishStatus !== "published") return { ok: false, reason: "not_published" };
+  const tgQuality = evaluateTelegramTitleQuality(program.title);
+  if (!tgQuality.ok) return { ok: false, reason: "quality_filter", detail: tgQuality.reasons };
+
+  const notifySrc = await loadProgramNotifySource(program);
+  const mediaUrl = await loadProgramPrimaryMediaUrl(program.id);
+  const webBase = env.PUBLIC_WEB_BASE_URL.replace(/\/+$/, "");
+  const programUrl = addUtm(`${webBase}/program/${program.id}`, "telegram_channel");
+  const body = buildTelegramChannelPostHtml(
+    notifySrc,
+    mediaUrl ? { captionLimit: TELEGRAM_CAPTION_LIMIT, measure: visibleCaptionLength } : undefined,
+  );
+  const sent = await sendTelegramChannelUpdate(env, body, buildTelegramInlineKeyboard(programUrl, webBase), {
+    parseMode: "HTML",
+    mediaUrl: mediaUrl ?? undefined,
+  });
+  return sent ? { ok: true } : { ok: false, reason: "send_failed" };
+}
+
 export async function notifySubscribersOnProgramPublished(env: Env, program: PublishedProgramPayload): Promise<void> {
   const tgQuality = evaluateTelegramTitleQuality(program.title);
   if (!tgQuality.ok) {

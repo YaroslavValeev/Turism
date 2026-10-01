@@ -4,6 +4,7 @@
  */
 import { prisma } from "../../lib/prisma";
 import { writeAuditLog } from "../../lib/audit";
+import { rollOnRequestWindows } from "../programs/expiration";
 
 function startOfToday(): Date {
   const d = new Date();
@@ -20,6 +21,7 @@ export async function archivePastByDates(actorId: string | null): Promise<Archiv
   const today = startOfToday();
   let candidatesArchived = 0;
   let programsArchived = 0;
+  await rollOnRequestWindows();
 
   // Пачками, пока есть прошедшие (раньше take:2000 мог не дочистить).
   for (let round = 0; round < 20; round += 1) {
@@ -67,6 +69,7 @@ export async function archivePastByDates(actorId: string | null): Promise<Archiv
     const pastPrograms = await prisma.program.findMany({
       where: {
         publishStatus: { not: "archived" },
+        scheduleType: { not: "on_request" },
         endDate: { lt: today },
       },
       select: { id: true, publishStatus: true },

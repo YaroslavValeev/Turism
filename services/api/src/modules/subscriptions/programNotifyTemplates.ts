@@ -3,6 +3,8 @@
  * Fallback: пустые блоки не рендерятся; нейтральные фразы при отсутствии копирайта в БД.
  */
 
+import { formatOnRequestLabel, isOnRequestSchedule } from "../programs/onRequestSchedule";
+
 export type ProgramNotifySource = {
   id: string;
   title: string;
@@ -11,6 +13,9 @@ export type ProgramNotifySource = {
   location?: string | null;
   startDate: Date;
   endDate?: Date | null;
+  durationDays?: number | null;
+  scheduleType?: string | null;
+  seasonLabel?: string | null;
   audienceFit?: string | null;
   inclusions?: string | null;
   organizerName?: string | null;
@@ -137,7 +142,19 @@ function placeLine(src: ProgramNotifySource): string | null {
   return [place, discipline].filter(Boolean).join(" · ") || null;
 }
 
+/** У тура по запросу в датах лежит окно сезона, поэтому длительность берётся из durationDays. */
+function scheduleSummary(src: ProgramNotifySource): { when: string; duration: string | null } {
+  if (isOnRequestSchedule(src.scheduleType)) {
+    const days = src.durationDays ?? 0;
+    return { when: formatOnRequestLabel(src.seasonLabel), duration: days > 1 ? `${days} ${daysWord(days)}` : null };
+  }
+  return { when: formatDateRangeRu(src.startDate, src.endDate), duration: durationLabel(src.startDate, src.endDate) };
+}
+
 export function formatProgramContextLine(src: ProgramNotifySource, locale = "ru-RU"): string {
+  if (isOnRequestSchedule(src.scheduleType)) {
+    return `${escapeTelegramHtml(src.discipline)} · ${escapeTelegramHtml(src.region)} · ${escapeTelegramHtml(formatOnRequestLabel(src.seasonLabel))}`;
+  }
   const start = new Date(src.startDate).toLocaleDateString(locale);
   const end = src.endDate ? new Date(src.endDate).toLocaleDateString(locale) : null;
   const datePart = end && end !== start ? `${start} — ${end}` : start;
@@ -203,8 +220,8 @@ export function buildTelegramProgramNotifyHtml(
 ): string {
   const compact = options?.compact ?? false;
   const title = escapeTelegramHtml(truncateOneLine(src.title, 180));
-  const duration = durationLabel(src.startDate, src.endDate);
-  const dateLine = `📅 <b>${escapeTelegramHtml(formatDateRangeRu(src.startDate, src.endDate))}</b>${duration ? ` · ${duration}` : ""}`;
+  const schedule = scheduleSummary(src);
+  const dateLine = `📅 <b>${escapeTelegramHtml(schedule.when)}</b>${schedule.duration ? ` · ${schedule.duration}` : ""}`;
   const place = placeLine(src);
   const placeRow = place ? `\n📍 ${escapeTelegramHtml(place)}` : "";
   const forWhoItems = compact ? buildForWhoBullets(src).slice(0, 2).map((b) => truncateOneLine(b, 150)) : buildForWhoBullets(src);
@@ -278,10 +295,7 @@ export function buildEmailProgramNotifyHtml(
   unsubscribeUrl: string,
 ): string {
   const title = escapeHtml(truncateOneLine(src.title, 200));
-  const start = new Date(src.startDate).toLocaleDateString("ru-RU");
-  const end = src.endDate ? new Date(src.endDate).toLocaleDateString("ru-RU") : null;
-  const dateLine = end && end !== start ? `${start} — ${end}` : start;
-  const sub = `${escapeHtml(src.discipline)} · ${escapeHtml(src.region)} · старт ${escapeHtml(dateLine)}`;
+  const sub = formatProgramContextLine(src);
 
   const forWhoHtml = emailBulletsHtml(buildForWhoBullets(src));
   const benefitsHtml = emailBulletsHtml(buildBenefitBullets(src));
@@ -328,11 +342,13 @@ export function buildEmailProgramNotifyText(
   programUrl: string,
   unsubscribeUrl: string,
 ): string {
-  const start = new Date(src.startDate).toLocaleDateString("ru-RU");
+  const when = isOnRequestSchedule(src.scheduleType)
+    ? formatOnRequestLabel(src.seasonLabel)
+    : `старт ${new Date(src.startDate).toLocaleDateString("ru-RU")}`;
   const lines = [
     "MyWaveTour — новый выезд",
     src.title,
-    `${src.discipline} · ${src.region} · старт ${start}`,
+    `${src.discipline} · ${src.region} · ${when}`,
     "",
     FB.contextLine,
     "",
@@ -365,6 +381,9 @@ export function programRowToNotifySource(
     exactLocation?: string | null;
     startDate: Date;
     endDate: Date;
+    durationDays?: number | null;
+    scheduleType?: string | null;
+    seasonLabel?: string | null;
     audienceFit?: string | null;
     inclusions?: string | null;
     organizerName?: string | null;
@@ -384,6 +403,9 @@ export function programRowToNotifySource(
     location: row.exactLocation ?? null,
     startDate: row.startDate,
     endDate: row.endDate,
+    durationDays: row.durationDays ?? null,
+    scheduleType: row.scheduleType ?? null,
+    seasonLabel: row.seasonLabel ?? null,
     audienceFit: row.audienceFit ?? null,
     inclusions: row.inclusions ?? null,
     organizerName: row.organizerName ?? null,

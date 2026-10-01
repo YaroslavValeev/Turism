@@ -208,6 +208,8 @@ function resolveContentRightsStatus(row: CampProgramRow): CampContentRightsStatu
 }
 
 export function mapProgramToCamp(row: CampProgramRow, env: Env): CampContract | null {
+  // Контракт фида требует реальную дату заезда, а у тура по запросу в датах лежит окно сезона.
+  if (row.scheduleType === "on_request") return null;
   const sport = normalizeSports(row);
   if (sport.length === 0) return null;
 

@@ -6,6 +6,7 @@ import { getProgramLevelLabel } from "@mywave/shared-types";
 import { getDisciplineDisplay } from "../lib/disciplineLabels";
 import { pickBestProgramCoverImageUrl } from "../lib/programCardCover";
 import { ruPluralNoun } from "../lib/ruPlural";
+import { isOnRequestProgram, onRequestLabel } from "../lib/programSchedule";
 import { formatProgramPrice, formatProgramPriceRub, formatProgramPriceRubTitle } from "../lib/priceFormat";
 
 export type ProgramLike = {
@@ -17,6 +18,8 @@ export type ProgramLike = {
   startDate: string;
   endDate: string;
   durationDays: number;
+  scheduleType?: string | null;
+  seasonLabel?: string | null;
   levelRequired: string | null;
   priceFromRub: number | null;
   currency?: string | null;
@@ -236,7 +239,7 @@ export function programToTourCard(
     isArchived: options?.isArchived === true,
     title: p.title,
     location: loc,
-    dateLine: formatDateRangeRu(p.startDate, p.endDate),
+    dateLine: isOnRequestProgram(p) ? onRequestLabel(p) : formatDateRangeRu(p.startDate, p.endDate),
     durationLine,
     levelLine: lineLevelLabel(p),
     priceLabel: formatProgramPrice(p) ?? "Цена по запросу",

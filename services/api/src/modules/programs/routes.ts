@@ -25,6 +25,7 @@ import { enrichProgramCard, enrichPublishedProgramsBatch, isCardEnrichmentEnable
 import { nextMediaPosition, orderedProgramMedia, validateMediaReorder } from "./mediaOrder";
 import { detectUploadedMedia, MEDIA_UPLOAD_MAX_BYTES, saveUploadedMedia } from "./mediaUpload";
 import { getCbrRates, priceInRub, type CbrRates } from "../fx/cbrRates";
+import { SCHEDULE_TYPES, type ScheduleType } from "./onRequestSchedule";
 
 function isAdminRequest(req: Request, env: Env): boolean {
   const token = req.headers.authorization?.replace(/^Bearer\s+/, "");
@@ -261,7 +262,7 @@ export function programsRoutes(env: Env): Router {
       "formatType", "audienceFit", "levelRequired", "riskLevel", "priceFromRub", "capacityTotal", "spotsAvailable", "currency",
       "inclusions", "exclusions", "gearRequirements", "medicalLimitations", "itineraryDayByDay",
       "organizerName", "trustReason", "reviewsSummary", "cancellationRules", "whatHappensAfterBooking", "cta",
-      "intakeSource", "isStarred",
+      "intakeSource", "isStarred", "scheduleType", "seasonLabel",
     ];
     const data: Record<string, unknown> = {};
     let nextCapacityTotal = existing.capacityTotal;
@@ -294,6 +295,19 @@ export function programsRoutes(env: Env): Router {
         }
         if (key === "isStarred") {
           data[key] = body[key] === true;
+          continue;
+        }
+        if (key === "scheduleType") {
+          if (!SCHEDULE_TYPES.includes(body[key] as ScheduleType)) {
+            res.status(400).json({ error: "invalid scheduleType", allowed: SCHEDULE_TYPES.join(", ") });
+            return;
+          }
+          data[key] = body[key];
+          continue;
+        }
+        if (key === "seasonLabel") {
+          const v = body[key] == null ? "" : String(body[key]).trim().slice(0, 80);
+          data[key] = v || null;
           continue;
         }
         if (key === "startDate" || key === "endDate") data[key] = new Date(body[key] as string);

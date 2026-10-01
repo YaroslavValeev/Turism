@@ -27,6 +27,7 @@ import {
 import { dedupeProgramListingsByEvent } from "../lib/dedupeProgramListingsByEvent";
 import { getDisciplineCompactLabel, getDisciplineDisplay } from "../lib/disciplineLabels";
 import { pickBestProgramCoverImageUrl } from "../lib/programCardCover";
+import { isOnRequestProgram, onRequestLabel } from "../lib/programSchedule";
 import { getPublicApiBase } from "../lib/publicApiBase";
 import { ruPluralNoun } from "../lib/ruPlural";
 import { formatProgramPrice, formatProgramPriceRub, formatProgramPriceRubTitle } from "../lib/priceFormat";
@@ -41,6 +42,8 @@ type Program = {
   startDate: string;
   endDate: string;
   durationDays: number;
+  scheduleType?: string | null;
+  seasonLabel?: string | null;
   levelRequired: string | null;
   priceFromRub: number | null;
   currency?: string | null;
@@ -406,7 +409,8 @@ function HomePageInner() {
     const annotated = upcomingPrograms.map((program, index) => ({
       program,
       index,
-      daysUntilStart: getDaysUntilStart(program.startDate),
+      // У тура по запросу нет даты старта — он не должен попадать в «стартует на неделе».
+      daysUntilStart: isOnRequestProgram(program) ? Number.POSITIVE_INFINITY : getDaysUntilStart(program.startDate),
     }));
     const starredSoon = annotated.filter(
       (item) => item.program.isStarred && item.daysUntilStart >= 0 && item.daysUntilStart <= 7,
@@ -417,8 +421,10 @@ function HomePageInner() {
 
     return selected.map(({ program, index, daysUntilStart }) => {
       const locationPart = program.exactLocation?.trim() ? `${program.region} · ${program.exactLocation}` : program.region;
-      const timingLabel =
-        daysUntilStart < 0
+      const onRequest = isOnRequestProgram(program);
+      const timingLabel = onRequest
+        ? onRequestLabel(program)
+        : daysUntilStart < 0
           ? `Следующий выезд · ${formatHeroDate(program.startDate)}`
           : daysUntilStart === 0
             ? "Старт сегодня"
@@ -428,7 +434,10 @@ function HomePageInner() {
                 ? `Старт через ${daysUntilStart} дн.`
                 : `Старт ${formatHeroDate(program.startDate)}`;
 
-      const facts = [`${formatHeroDate(program.startDate)} · ${program.durationDays} дн.`, getProgramLevelLabel(program.levelRequired)];
+      const facts = [
+        onRequest ? `${program.durationDays} дн.` : `${formatHeroDate(program.startDate)} · ${program.durationDays} дн.`,
+        getProgramLevelLabel(program.levelRequired),
+      ];
 
       return {
         id: program.id,

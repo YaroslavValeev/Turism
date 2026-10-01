@@ -22,6 +22,8 @@ export type Program = {
   startDate: string;
   endDate: string;
   durationDays: number;
+  scheduleType?: string;
+  seasonLabel?: string | null;
   capacityTotal: number | null;
   spotsAvailable: number | null;
   isStarred: boolean;
@@ -125,6 +127,8 @@ export type ProgramCardDraft = Record<ProgramCardTextKey, string> & {
   startDate: string;
   endDate: string;
   durationDays: string;
+  onRequest: boolean;
+  seasonLabel: string;
 };
 
 function toDateInput(value: string): string {
@@ -155,6 +159,8 @@ export function cardDraftFromProgram(p: Program): ProgramCardDraft {
     startDate: toDateInput(p.startDate),
     endDate: toDateInput(p.endDate),
     durationDays: String(p.durationDays ?? ""),
+    onRequest: p.scheduleType === "on_request",
+    seasonLabel: p.seasonLabel ?? "",
   };
 }
 
@@ -169,6 +175,8 @@ export function cardPatchFromDraft(p: Program, draft: ProgramCardDraft): Record<
   if (draft.startDate !== saved.startDate) patch.startDate = draft.startDate;
   if (draft.endDate !== saved.endDate) patch.endDate = draft.endDate;
   if (draft.durationDays !== saved.durationDays) patch.durationDays = Number(draft.durationDays);
+  if (draft.onRequest !== saved.onRequest) patch.scheduleType = draft.onRequest ? "on_request" : "fixed";
+  if (draft.seasonLabel.trim() !== saved.seasonLabel.trim()) patch.seasonLabel = draft.seasonLabel.trim() || null;
   return patch;
 }
 

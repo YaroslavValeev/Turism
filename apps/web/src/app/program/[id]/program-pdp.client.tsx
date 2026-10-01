@@ -39,6 +39,7 @@ import {
   programFormatLabel,
   safeCatalogReturn,
 } from "../../../lib/catalog";
+import { isOnRequestProgram, onRequestLabel } from "../../../lib/programSchedule";
 
 export type Program = {
   id: string;
@@ -49,6 +50,8 @@ export type Program = {
   startDate: string;
   endDate: string;
   durationDays: number;
+  scheduleType?: string | null;
+  seasonLabel?: string | null;
   formatType: string | null;
   levelRequired: string | null;
   riskLevel: string | null;
@@ -637,7 +640,9 @@ export function ProgramPdpClient({
     }
   };
 
-  const datesLine = `${new Date(program.startDate).toLocaleDateString("ru-RU")} – ${new Date(program.endDate).toLocaleDateString("ru-RU")}`;
+  const datesLine = isOnRequestProgram(program)
+    ? onRequestLabel(program)
+    : `${new Date(program.startDate).toLocaleDateString("ru-RU")} – ${new Date(program.endDate).toLocaleDateString("ru-RU")}`;
   const seasonRu =
     seasonOfProgramStart(program) === "winter"
       ? "Зима"

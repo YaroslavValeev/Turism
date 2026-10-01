@@ -7,6 +7,8 @@ export type ProgramCardProgram = {
   startDate: string;
   endDate: string;
   durationDays: number;
+  scheduleType?: string | null;
+  seasonLabel?: string | null;
   priceFromRub: number | null;
   currency?: string | null;
   priceRubApprox?: number | null;

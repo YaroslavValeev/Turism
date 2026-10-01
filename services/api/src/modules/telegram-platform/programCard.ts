@@ -2,6 +2,7 @@ import { prisma } from "../../lib/prisma";
 import { isProgramPubliclyVisible } from "../programs/publicVisibility";
 import { formatMoney } from "../fx/cbrRates";
 import { PROGRAM_MEDIA_ORDER } from "../programs/mediaOrder";
+import { formatOnRequestLabel, isOnRequestSchedule } from "../programs/onRequestSchedule";
 
 export async function getProgramCardForTelegram(programId: string) {
   const program = await prisma.program.findUnique({
@@ -23,6 +24,8 @@ export async function getProgramCardForTelegram(programId: string) {
     startDate: program.startDate.toISOString(),
     endDate: program.endDate.toISOString(),
     durationDays: program.durationDays,
+    scheduleType: program.scheduleType,
+    seasonLabel: program.seasonLabel,
     priceFromRub: program.priceFromRub,
     currency: program.currency,
     levelRequired: program.levelRequired,
@@ -47,7 +50,9 @@ export function formatProgramCardText(card: Awaited<ReturnType<typeof getProgram
   const lines = [
     `*${card.title}*`,
     `${card.discipline} · ${card.region}`,
-    `Даты: ${card.startDate.slice(0, 10)} — ${card.endDate.slice(0, 10)} (${card.durationDays} дн.)`,
+    isOnRequestSchedule(card.scheduleType)
+      ? `Даты: ${formatOnRequestLabel(card.seasonLabel)} (${card.durationDays} дн.)`
+      : `Даты: ${card.startDate.slice(0, 10)} — ${card.endDate.slice(0, 10)} (${card.durationDays} дн.)`,
     `Цена от: ${price}`,
     card.levelRequired ? `Уровень: ${card.levelRequired}` : "",
     card.riskLevel ? `Риск: ${card.riskLevel}` : "",

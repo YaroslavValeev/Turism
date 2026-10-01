@@ -12,5 +12,6 @@ export {
   isTelegramBotApiConfigured,
   resolveTelegramApiOrigin,
   resolveTelegramBotApiBaseUrl,
+  resolveUpdatesThreadId,
   type TelegramApiEnv,
 } from "./telegramApi";

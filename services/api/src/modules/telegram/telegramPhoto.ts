@@ -18,6 +18,8 @@ const CONTENT_TYPES: Record<string, string> = {
 
 export type TelegramPhotoRequest = {
   chatId: string | number;
+  /** Тема форум-группы (message_thread_id); без неё сообщение уходит в General. */
+  messageThreadId?: number;
   /** `/ingestion-media/<файл>` (загружаем файл) или публичный http(s) URL. */
   photo: string;
   caption?: string;
@@ -88,6 +90,7 @@ export async function sendTelegramPhoto(env: Env, request: TelegramPhotoRequest)
   if (!sendPhotoUrl) return { ok: false, description: "Telegram Bot API is not configured" };
 
   const fields: Record<string, string> = { chat_id: String(request.chatId) };
+  if (request.messageThreadId) fields.message_thread_id = String(request.messageThreadId);
   if (request.caption) fields.caption = request.caption;
   if (request.parseMode) fields.parse_mode = request.parseMode;
   if (request.replyMarkup) fields.reply_markup = JSON.stringify(request.replyMarkup);
@@ -123,6 +126,7 @@ export async function sendTelegramPhoto(env: Env, request: TelegramPhotoRequest)
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           chat_id: request.chatId,
+          ...(request.messageThreadId ? { message_thread_id: request.messageThreadId } : {}),
           photo: request.photo,
           ...(request.caption ? { caption: request.caption } : {}),
           ...(request.parseMode ? { parse_mode: request.parseMode } : {}),

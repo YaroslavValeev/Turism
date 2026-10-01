@@ -1,4 +1,4 @@
-import type { Env } from "@mywave/config";
+import { resolveUpdatesThreadId, type Env } from "@mywave/config";
 import { prisma } from "../../lib/prisma";
 import { sendEmailIfConfigured } from "./mailer";
 import { safeLog } from "../../lib/safeLogger";
@@ -192,11 +192,13 @@ async function sendTelegramChannelUpdate(
 ): Promise<boolean> {
   const chatId = env.TELEGRAM_UPDATES_CHANNEL_CHAT_ID?.trim();
   if (!chatId || !isTelegramBotApiConfigured(env)) return false;
+  const messageThreadId = resolveUpdatesThreadId(env);
   try {
     if (options?.mediaUrl) {
       const fitsCaption = visibleCaptionLength(text) <= TELEGRAM_CAPTION_LIMIT;
       const photo = await sendTelegramPhoto(env, {
         chatId,
+        messageThreadId,
         photo: options.mediaUrl,
         ...(fitsCaption ? { caption: text, parseMode: options.parseMode, replyMarkup } : { disableNotification: true }),
       });
@@ -207,6 +209,7 @@ async function sendTelegramChannelUpdate(
     }
     const resp = await callTelegramJson(env, "sendMessage", {
       chat_id: chatId,
+      ...(messageThreadId ? { message_thread_id: messageThreadId } : {}),
       text,
       disable_web_page_preview: false,
       ...(options?.parseMode ? { parse_mode: options.parseMode } : {}),

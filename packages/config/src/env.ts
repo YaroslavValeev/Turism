@@ -109,6 +109,8 @@ export interface Env {
   TELEGRAM_UPDATES_BOT_USERNAME?: string;
   /** Канал/группа для автопубликации новых программ (пример: @mywave_updates или -1001234567890). */
   TELEGRAM_UPDATES_CHANNEL_CHAT_ID?: string;
+  /** Тема форум-группы обновлений (message_thread_id): число из ссылки t.me/c/<чат>/<тема>. Без неё — General. */
+  TELEGRAM_UPDATES_CHANNEL_THREAD_ID?: string;
   /** Базовый URL web-приложения для ссылок в письмах/Telegram. */
   PUBLIC_WEB_BASE_URL: string;
   /** Базовый URL API для unsubscribe ссылок в письмах. */
@@ -208,6 +210,7 @@ export function loadEnv(): Env {
     TELEGRAM_UPDATES_INVITE_LINK: optional("TELEGRAM_UPDATES_INVITE_LINK"),
     TELEGRAM_UPDATES_BOT_USERNAME: optional("TELEGRAM_UPDATES_BOT_USERNAME"),
     TELEGRAM_UPDATES_CHANNEL_CHAT_ID: optional("TELEGRAM_UPDATES_CHANNEL_CHAT_ID"),
+    TELEGRAM_UPDATES_CHANNEL_THREAD_ID: optional("TELEGRAM_UPDATES_CHANNEL_THREAD_ID"),
     PUBLIC_WEB_BASE_URL: optional("PUBLIC_WEB_BASE_URL") ?? "http://localhost:3000",
     PUBLIC_API_BASE_URL: optional("PUBLIC_API_BASE_URL") ?? "http://localhost:3001",
     ANALYTICS_ALERT_COOLDOWN_SECONDS: optionalNumber("ANALYTICS_ALERT_COOLDOWN_SECONDS", 3600),

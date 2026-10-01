@@ -1,8 +1,10 @@
 /**
  * Sprint 4: продуктовые шаблоны уведомлений о публикации программы (Telegram HTML + email HTML/text).
- * Fallback: пустые блоки не рендерятся; нейтральные фразы при отсутствии копирайта в БД.
+ * Telegram (Visual System v1): блок без данных скрывается целиком, заглушек нет; цена/уровень/риск — только из карточки.
+ * Email: нейтральные фразы при отсутствии копирайта в БД.
  */
 
+import { formatMoney } from "../fx/cbrRates";
 import { formatOnRequestLabel, isOnRequestSchedule } from "../programs/onRequestSchedule";
 
 export type ProgramNotifySource = {
@@ -21,10 +23,15 @@ export type ProgramNotifySource = {
   organizerName?: string | null;
   organizerDisplayName?: string | null;
   levelRequired?: string | null;
+  riskLevel?: string | null;
+  priceFrom?: number | null;
+  currency?: string | null;
   formatType?: string | null;
   cancellationRules?: string | null;
   whatHappensAfterBooking?: string | null;
   medicalLimitations?: string | null;
+  /** Поля, подтверждённые оператором вручную (Program.manualFields). */
+  manualFields?: string[] | null;
 };
 
 const FB = {
@@ -132,12 +139,43 @@ export function isPlaceholderOrganizerName(name: string | null | undefined): boo
   return !v || /^ручной ввод/i.test(v);
 }
 
+/** Ингест пишет дисциплину и страну латиницей; в русскоязычном посте показываем по-русски. Неизвестное — как есть. */
+const DISCIPLINE_RU: Record<string, string> = {
+  freeride: "Фрирайд",
+  wakesurf: "Вейксерф",
+  wakeboard: "Вейкборд",
+  kite: "Кайт",
+  kitesurf: "Кайтсерфинг",
+  sup: "SUP",
+  surf: "Сёрфинг",
+  enduro: "Эндуро",
+  mtb: "МТБ",
+  snowboard: "Сноуборд",
+  ski: "Горные лыжи",
+  skitour: "Скитур",
+  climbing: "Скалолазание",
+};
+
+const PLACE_RU: Record<string, string> = {
+  russia: "Россия",
+  krasnodar: "Краснодар",
+  kazakhstan: "Казахстан",
+  georgia: "Грузия",
+  egypt: "Египет",
+  turkey: "Турция",
+  chile: "Чили",
+};
+
+function ru(map: Record<string, string>, value: string | null): string | null {
+  return value ? (map[value.toLowerCase()] ?? value) : null;
+}
+
 function placeLine(src: ProgramNotifySource): string | null {
   const parts: string[] = [];
-  for (const p of [meaningful(src.location), meaningful(src.region)]) {
+  for (const p of [ru(PLACE_RU, meaningful(src.location)), ru(PLACE_RU, meaningful(src.region))]) {
     if (p && !parts.some((kept) => kept.toLowerCase() === p.toLowerCase())) parts.push(p);
   }
-  const discipline = meaningful(src.discipline);
+  const discipline = ru(DISCIPLINE_RU, meaningful(src.discipline));
   const place = parts.join(", ");
   return [place, discipline].filter(Boolean).join(" · ") || null;
 }
@@ -167,31 +205,88 @@ function levelHint(src: ProgramNotifySource): string | null {
   return `Уровень: ${lv}`;
 }
 
-function buildForWhoBullets(src: ProgramNotifySource): string[] {
-  const fromAudience = bulletsFromFreeText(src.audienceFit, 3, 200);
+const LEVEL_LABELS: Record<string, string> = {
+  beginner: "для новичков",
+  intermediate: "средний",
+  advanced: "продвинутый",
+  expert: "эксперт",
+};
+
+const RISK_LABELS: Record<string, string> = {
+  low: "низкий",
+  medium: "средний",
+  high: "высокий",
+  extreme: "экстремальный",
+};
+
+function labelOf(map: Record<string, string>, raw: string | null | undefined): string | null {
+  const v = meaningful(raw);
+  if (!v) return null;
+  return map[v.toLowerCase()] ?? null;
+}
+
+/**
+ * Ингест ставит riskLevel="medium" и levelRequired="all_levels" по умолчанию, а в тексты — служебные заготовки.
+ * Это не данные организатора: в пост они не попадают (канон запрещает выдуманные параметры).
+ */
+const INGEST_PLACEHOLDER_RE =
+  /^(Требует ручно(й|го) (нормализации|заполнения)|Базовая программа и сопровождение организатора|После заявки оператор уточняет детали)/i;
+
+export function isIngestPlaceholderText(text: string | null | undefined): boolean {
+  return INGEST_PLACEHOLDER_RE.test(text?.trim() ?? "");
+}
+
+function confirmedRisk(src: ProgramNotifySource): string | null {
+  const v = meaningful(src.riskLevel)?.toLowerCase();
+  if (!v) return null;
+  const operatorSet = src.manualFields?.includes("riskLevel") ?? false;
+  return operatorSet || v === "high" || v === "extreme" ? labelOf(RISK_LABELS, v) : null;
+}
+
+/** «Уровень: средний · Риск: высокий · от 185 000 ₽» — только поля, реально заполненные в карточке. */
+export function telegramParamsLine(src: ProgramNotifySource): string | null {
+  const level = labelOf(LEVEL_LABELS, src.levelRequired);
+  const risk = confirmedRisk(src);
+  const price = src.priceFrom != null && src.priceFrom > 0 ? `от ${formatMoney(src.priceFrom, src.currency)}` : null;
+  const parts = [
+    level ? `Уровень: ${escapeTelegramHtml(level)}` : null,
+    risk ? `Риск: ${escapeTelegramHtml(risk)}` : null,
+    price ? `<b>${escapeTelegramHtml(price)}</b>` : null,
+  ].filter(Boolean);
+  return parts.length ? parts.join(" · ") : null;
+}
+
+function buildForWhoBullets(src: ProgramNotifySource, options?: { includeLevel?: boolean; fallback?: boolean }): string[] {
+  const skipPlaceholder = options?.fallback === false && isIngestPlaceholderText(src.audienceFit);
+  const fromAudience = skipPlaceholder ? [] : bulletsFromFreeText(src.audienceFit, 3, 200);
   if (fromAudience.length) return fromAudience;
   const out: string[] = [];
   const fmt = src.formatType?.trim();
   if (fmt) out.push(`Формат: ${truncateOneLine(fmt, 100)}`);
-  const lv = levelHint(src);
+  const lv = options?.includeLevel === false ? null : levelHint(src);
   if (lv) out.push(lv);
   if (out.length) return out.slice(0, 3);
-  return [FB.forWho];
+  return options?.fallback === false ? [] : [FB.forWho];
 }
 
-function buildBenefitBullets(src: ProgramNotifySource): string[] {
-  const fromInc = bulletsFromFreeText(src.inclusions, 3, 160);
+function buildBenefitBullets(src: ProgramNotifySource, options?: { fallback?: boolean }): string[] {
+  const skipPlaceholder = options?.fallback === false && isIngestPlaceholderText(src.inclusions);
+  const fromInc = skipPlaceholder ? [] : bulletsFromFreeText(src.inclusions, 3, 160);
   if (fromInc.length) return fromInc;
-  const wh = bulletsFromFreeText(src.whatHappensAfterBooking, 2, 120);
+  const wh = bulletsFromFreeText(src.whatHappensAfterBooking, 2, 120).filter(
+    (b) => options?.fallback !== false || !isIngestPlaceholderText(b),
+  );
   if (wh.length) return wh;
-  return [FB.benefits];
+  return options?.fallback === false ? [] : [FB.benefits];
 }
 
 function buildImportantBlock(src: ProgramNotifySource): string | null {
   const parts = [
     ...bulletsFromFreeText(src.cancellationRules, 2, 140),
     ...bulletsFromFreeText(src.medicalLimitations, 2, 140),
-  ].slice(0, 3);
+  ]
+    .filter((p) => !isIngestPlaceholderText(p))
+    .slice(0, 3);
   if (parts.length) return parts.map((p) => `• ${p}`).join("\n");
   return null;
 }
@@ -204,13 +299,12 @@ function organizerLine(src: ProgramNotifySource): string | null {
 /** Что реально происходит после клика: форма заявки на сайте, ответ организатора или команды MyWaveTour. */
 export const TELEGRAM_CHANNEL_HOW_TO_BOOK =
   "<b>Как записаться</b>\n" +
-  "Нажмите «Открыть программу» → «Оставить заявку». " +
-  "С вами свяжется организатор (или команда MyWaveTour, если организатор ещё не подключён), чтобы подтвердить даты и условия. " +
-  "Оплата — напрямую организатору, на сайте платить не нужно.";
+  "Нажмите «Оставить заявку» под постом — организатор или команда MyWaveTour свяжется и подтвердит даты. " +
+  "Оплата напрямую организатору.";
 
 /** Для подписи к фото (лимит Telegram 1024 символа). */
 export const TELEGRAM_CHANNEL_HOW_TO_BOOK_SHORT =
-  "<b>Как записаться</b>\n«Открыть программу» → «Оставить заявку». Ответит организатор или команда MyWaveTour, оплата — напрямую организатору.";
+  "<b>Как записаться</b>\n«Оставить заявку» под постом. Ответит организатор или команда MyWaveTour, оплата — напрямую организатору.";
 
 /** Telegram: HTML + короткая продуктовая структура. `compact` — вариант, помещающийся в подпись к фото. */
 export function buildTelegramProgramNotifyHtml(
@@ -224,23 +318,24 @@ export function buildTelegramProgramNotifyHtml(
   const dateLine = `📅 <b>${escapeTelegramHtml(schedule.when)}</b>${schedule.duration ? ` · ${schedule.duration}` : ""}`;
   const place = placeLine(src);
   const placeRow = place ? `\n📍 ${escapeTelegramHtml(place)}` : "";
-  const forWhoItems = compact ? buildForWhoBullets(src).slice(0, 2).map((b) => truncateOneLine(b, 150)) : buildForWhoBullets(src);
-  const benefitItems = compact ? buildBenefitBullets(src).map((b) => truncateOneLine(b, 100)) : buildBenefitBullets(src);
-  const forWho = forWhoItems.map((b) => `• ${escapeTelegramHtml(b)}`).join("\n");
-  const benefits = benefitItems.map((b) => `• ${escapeTelegramHtml(b)}`).join("\n");
+  const params = telegramParamsLine(src);
+  const paramsRow = params ? `\n${params}` : "";
+  const bulletOpts = { includeLevel: false, fallback: false } as const;
+  const forWhoAll = buildForWhoBullets(src, bulletOpts);
+  const benefitAll = buildBenefitBullets(src, bulletOpts);
+  const capitalize = (b: string) => b.charAt(0).toLocaleUpperCase("ru-RU") + b.slice(1);
+  const forWhoItems = (compact ? forWhoAll.slice(0, 2).map((b) => truncateOneLine(b, 150)) : forWhoAll).map(capitalize);
+  const benefitItems = (compact ? benefitAll.map((b) => truncateOneLine(b, 100)) : benefitAll).map(capitalize);
+  const forWhoBlock = forWhoItems.length
+    ? `<b>Для кого</b>\n${forWhoItems.map((b) => `• ${escapeTelegramHtml(b)}`).join("\n")}\n\n`
+    : "";
+  const benefitsBlock = benefitItems.length
+    ? `<b>Что входит</b>\n${benefitItems.map((b) => `• ${escapeTelegramHtml(b)}`).join("\n")}\n\n`
+    : "";
+  // Имя организатора только в первой строке («Новый вызов от …»); отдельный блок его дублировал.
   const org = organizerLine(src);
-  // В компактном виде имя организатора уже есть в первой строке, а заглушки только занимают место.
-  const orgBlock = compact
-    ? ""
-    : org
-      ? `<b>Организатор</b>\n${escapeTelegramHtml(truncateOneLine(org, 120))}\n\n`
-      : `<b>Организатор</b>\n${escapeTelegramHtml(FB.organizer)}\n\n`;
   const impRaw = buildImportantBlock(src);
-  const impBlock = impRaw
-    ? `<b>Перед бронированием</b>\n${escapeTelegramHtml(impRaw)}`
-    : compact
-      ? ""
-      : `<b>Перед бронированием</b>\n${escapeTelegramHtml(FB.important)}`;
+  const impBlock = impRaw ? `<b>Перед бронированием</b>\n${escapeTelegramHtml(impRaw)}` : "";
 
   const includeCtaLinkInBody = options?.includeCtaLinkInBody ?? true;
   const urlLine =
@@ -257,12 +352,9 @@ export function buildTelegramProgramNotifyHtml(
   const body =
     `${header}\n\n` +
     `<b>${title}</b>\n\n` +
-    `${dateLine}${placeRow}\n\n` +
-    `<b>Для кого</b>\n` +
-    `${forWho}\n\n` +
-    `<b>Что входит</b>\n` +
-    `${benefits}\n\n` +
-    `${orgBlock}` +
+    `${dateLine}${placeRow}${paramsRow}\n\n` +
+    `${forWhoBlock}` +
+    `${benefitsBlock}` +
     `${impBlock}`;
   return body.trimEnd() + urlLine;
 }
@@ -388,10 +480,14 @@ export function programRowToNotifySource(
     inclusions?: string | null;
     organizerName?: string | null;
     levelRequired?: string | null;
+    riskLevel?: string | null;
+    priceFromRub?: number | null;
+    currency?: string | null;
     formatType?: string | null;
     cancellationRules?: string | null;
     whatHappensAfterBooking?: string | null;
     medicalLimitations?: string | null;
+    manualFields?: string[] | null;
     organizer?: { displayName: string } | null;
   },
 ): ProgramNotifySource {
@@ -411,9 +507,13 @@ export function programRowToNotifySource(
     organizerName: row.organizerName ?? null,
     organizerDisplayName: row.organizer?.displayName ?? null,
     levelRequired: row.levelRequired ?? null,
+    riskLevel: row.riskLevel ?? null,
+    priceFrom: row.priceFromRub ?? null,
+    currency: row.currency ?? null,
     formatType: row.formatType ?? null,
     cancellationRules: row.cancellationRules ?? null,
     whatHappensAfterBooking: row.whatHappensAfterBooking ?? null,
     medicalLimitations: row.medicalLimitations ?? null,
+    manualFields: row.manualFields ?? null,
   };
 }

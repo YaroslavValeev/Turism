@@ -11,6 +11,9 @@
 
 - Публикация новых программ в канал обновлений: **`TELEGRAM_UPDATES_CHANNEL_CHAT_ID=-1003491522243`** (или тот же ID в формате, который ожидает Bot API для вашего канала).
 - Алерты / owner: **`TELEGRAM_ALERT_CHAT_ID`** / **`TELEGRAM_CONTENT_OWNER_CHAT_ID`** — по политике деплоя (не обязательно совпадают с каналом выше).
+- Кнопка «Задать вопрос» под постом канала: **`TELEGRAM_CHANNEL_ASK_URL`** (публичный http(s), например Direct Messages канала). Не задан — кнопка не выводится.
+
+Оформление канала и формат постов: [Telegram Visual System v1](../design/telegram-visual-system-v1/README.md).
 
 ## Owner vs канал
 

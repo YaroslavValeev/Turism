@@ -26,7 +26,7 @@ export type TelegramPhotoRequest = {
   disableNotification?: boolean;
 };
 
-export type TelegramPhotoResult = { ok: boolean; description?: string };
+export type TelegramPhotoResult = { ok: boolean; description?: string; messageId?: number };
 
 export function visibleCaptionLength(html: string): number {
   return html
@@ -48,7 +48,7 @@ export function resolveLocalIngestionMedia(photo: string): { filePath: string; c
   return { filePath: path.join(INGESTION_MEDIA_DIR, name), contentType };
 }
 
-function buildMultipart(
+export function buildMultipart(
   fields: Record<string, string>,
   file: { field: string; filename: string; contentType: string; data: Buffer },
 ): { body: Buffer; contentType: string } {
@@ -71,8 +71,8 @@ function buildMultipart(
 async function readTelegramResult(response: Response): Promise<TelegramPhotoResult> {
   const text = await response.text();
   try {
-    const json = JSON.parse(text) as { ok?: boolean; description?: string };
-    return { ok: Boolean(json.ok), description: json.description };
+    const json = JSON.parse(text) as { ok?: boolean; description?: string; result?: { message_id?: number } };
+    return { ok: Boolean(json.ok), description: json.description, messageId: json.result?.message_id };
   } catch {
     return { ok: false, description: `HTTP ${response.status}` };
   }

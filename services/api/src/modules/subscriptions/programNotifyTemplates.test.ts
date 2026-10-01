@@ -38,7 +38,9 @@ describe("programNotifyTemplates", () => {
     const html = buildTelegramProgramNotifyHtml(baseSrc(), "https://mywavetour.ru/program/p1");
     expect(html).toContain("<i>Новый вызов от Волна Кэмп</i>\n\n<b>Лагерь на Волге</b>\n\n");
     expect(html).toContain("📅 <b>1–10 июля 2031</b> · 10 дней");
-    expect(html).toContain("📍 Самара · Wakesurf");
+    expect(html).toContain("📍 Самара · Вейксерф");
+    expect(html).toContain("• Инструктор");
+    expect(html).not.toContain("<b>Организатор</b>");
     expect(html).toContain("Для кого");
     expect(html).toContain("Открыть карточку");
     expect(html).not.toContain("<script");
@@ -60,25 +62,86 @@ describe("programNotifyTemplates", () => {
     expect(html).not.toContain("Ручной ввод");
     expect(html).not.toContain("Unknown");
     expect(html).toContain("📅 <b>27 сентября — 3 октября 2026</b> · 7 дней");
-    expect(html).toContain("📍 Алматы, Russia");
+    expect(html).toContain("📍 Алматы, Россия");
   });
 
   it("channel post switches to compact variant to fit a photo caption", () => {
     const long = {
       ...baseSrc(),
-      audienceFit: `${"Новичкам — база и первые трюки. ".repeat(6)}\n${"Продвинутым — соревновательная программа. ".repeat(6)}`,
-      inclusions: `${"Проживание в гостинице в центре города на 6 ночей с завтраками. ".repeat(3)}\nТренировки\nТрансфер`,
+      audienceFit: [
+        "Новичкам — база и первые трюки. ".repeat(8),
+        "Продвинутым — соревновательная программа. ".repeat(8),
+        "Компаниям друзей — отдельный катер и гибкое расписание. ".repeat(4),
+      ].join("\n"),
+      inclusions: [
+        "Проживание в гостинице в центре города на 6 ночей с завтраками. ".repeat(3),
+        "Тренировки на катерах с инструктором каждый день по два сета. ".repeat(3),
+        "Трансфер из аэропорта и обратно, а также до станции каждый день. ".repeat(3),
+      ].join("\n"),
+      organizerDisplayName: "Волна Кэмп — школа вейксёрфинга и вейкборда на Волге с инструкторами международной сертификации",
       cancellationRules: null,
     };
     const measure = (html: string) => html.replace(/<[^>]+>/g, "").length;
     const full = buildTelegramChannelPostHtml(long);
     expect(measure(full)).toBeGreaterThan(1024);
-    expect(full).toContain("С вами свяжется организатор");
+    expect(full).toContain("свяжется и подтвердит даты");
     const fitted = buildTelegramChannelPostHtml(long, { captionLimit: 1024, measure });
     expect(measure(fitted)).toBeLessThanOrEqual(1024);
     expect(fitted).toContain("<b>Лагерь на Волге</b>");
     expect(fitted).toContain("Оставить заявку");
     expect(fitted).not.toContain("<b>Организатор</b>");
+  });
+
+  it("telegram HTML shows level / risk / price from the card and hides empty blocks", () => {
+    const src = programRowToNotifySource({
+      id: "p3",
+      title: "Камчатка — Powder Expedition",
+      discipline: "Freeride",
+      region: "Камчатский край",
+      startDate: new Date("2031-02-15T00:00:00Z"),
+      endDate: new Date("2031-02-22T00:00:00Z"),
+      levelRequired: "advanced",
+      riskLevel: "high",
+      priceFromRub: 185000,
+      currency: "RUB",
+    });
+    const html = buildTelegramProgramNotifyHtml(src, null, { hideLinkFallbackHint: true });
+    expect(html).toContain("\nУровень: продвинутый · Риск: высокий · <b>от 185\u00a0000 ₽</b>");
+    expect(html).not.toContain("Для кого");
+    expect(html).not.toContain("Что входит");
+    expect(html).not.toContain("<b>Организатор</b>");
+    expect(html).not.toContain("Перед бронированием");
+    expect(html).not.toContain("на карточке");
+
+    const noParams = buildTelegramProgramNotifyHtml({ ...src, levelRequired: null, riskLevel: null, priceFrom: 0 }, null, {
+      hideLinkFallbackHint: true,
+    });
+    expect(noParams).not.toContain("Уровень:");
+    expect(noParams).not.toContain("от ");
+  });
+
+  it("telegram HTML drops ingest defaults: medium risk, all_levels, placeholder copy", () => {
+    const src = {
+      ...baseSrc(),
+      levelRequired: "all_levels",
+      riskLevel: "medium",
+      audienceFit: "Требует ручной нормализации оператором.",
+      inclusions: "Базовая программа и сопровождение организатора. Детальный состав включенного оператор уточняет.",
+      cancellationRules: "Требует ручного заполнения оператором.",
+      whatHappensAfterBooking: "После заявки оператор уточняет детали и переводит в следующий шаг.",
+    };
+    const html = buildTelegramProgramNotifyHtml(src, null, { hideLinkFallbackHint: true });
+    expect(html).not.toContain("Что входит");
+    expect(html).not.toContain("Риск");
+    expect(html).not.toContain("all_levels");
+    expect(html).not.toContain("Требует ручной");
+    expect(html).not.toContain("Базовая программа");
+    expect(html).not.toContain("Требует ручного");
+    expect(html).not.toContain("Перед бронированием");
+    expect(html).toContain("Формат: camp");
+
+    const confirmed = buildTelegramProgramNotifyHtml({ ...src, manualFields: ["riskLevel"] }, null, { hideLinkFallbackHint: true });
+    expect(confirmed).toContain("Риск: средний");
   });
 
   it("on-request tour shows season and tour length instead of the season window", () => {

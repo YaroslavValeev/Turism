@@ -33,6 +33,7 @@ import { publicCollectionsRoutes } from "./modules/public-collections/routes";
 import { publicExploreRoutes } from "./modules/public-explore/routes";
 import { telegramContentPipelineRoutes } from "./modules/telegram/telegramContentRoutes";
 import { telegramUnifiedWebhookRoutes } from "./modules/telegram/webhookRoutes";
+import { publicTelegramClickRoutes } from "./modules/telegram/channelClicks.routes";
 import { startTelegramLongPolling } from "./modules/telegram/telegramLongPolling";
 import { publicMediaRoutes } from "./modules/media/publicMedia.routes";
 import { contentPipelineRoutes } from "./modules/content-pipeline/routes";
@@ -125,6 +126,7 @@ app.use("/public", publicBlogRoutes(env));
 app.use("/public", publicSpotsRoutes());
 app.use("/public/telegram", telegramUnifiedWebhookRoutes(env));
 app.use("/public/telegram", telegramContentPipelineRoutes(env));
+app.use("/public/tg", publicTelegramClickRoutes(env));
 app.use("/public", publicMediaRoutes());
 
 // Minimal observability: log unhandled errors (no PII in logs)

@@ -128,18 +128,33 @@ export function htmlToPlainText(html: string, maxLength = 9000): string {
   return text.length > maxLength ? text.slice(0, maxLength) : text;
 }
 
+function absoluteHttpUrl(raw: string, pageUrl: string): string | null {
+  try {
+    const url = new URL(decodeEntities(raw.trim()), pageUrl);
+    return url.protocol === "https:" || url.protocol === "http:" ? url.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
+const CONTENT_IMAGE_RE = /\.(jpe?g|png|webp)(?:$|\?)/i;
+const DECOR_IMAGE_RE = /(logo|icon|sprite|avatar|favicon|placeholder|blank|pixel|banner-small|flag|payment|visa|mastercard)/i;
+
+/** og:image / twitter:image, иначе первая содержательная картинка из тела страницы (не логотип и не иконка). */
 export function extractPageImage(html: string, pageUrl: string): string | null {
   const m =
     html.match(/<meta[^>]+property=["']og:image(?::url)?["'][^>]+content=["']([^"']+)["']/i) ??
     html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image(?::url)?["']/i) ??
     html.match(/<meta[^>]+name=["']twitter:image["'][^>]+content=["']([^"']+)["']/i);
-  if (!m) return null;
-  try {
-    const url = new URL(decodeEntities(m[1].trim()), pageUrl);
-    return url.protocol === "https:" || url.protocol === "http:" ? url.toString() : null;
-  } catch {
-    return null;
+  if (m) return absoluteHttpUrl(m[1], pageUrl);
+  const body = html.replace(/<(header|nav|footer)\b[\s\S]*?<\/\1>/gi, " ");
+  for (const img of body.matchAll(/<img\b[^>]*>/gi)) {
+    const src = img[0].match(/\b(?:data-src|data-lazy-src|data-original|src)\s*=\s*["']([^"']+)["']/i)?.[1];
+    if (!src || !CONTENT_IMAGE_RE.test(src) || DECOR_IMAGE_RE.test(src)) continue;
+    const url = absoluteHttpUrl(src, pageUrl);
+    if (url) return url;
   }
+  return null;
 }
 
 export function extractPageTitle(html: string): string | null {
@@ -286,6 +301,14 @@ function dayDiff(start: Date, end: Date): number {
   return Math.round((end.getTime() - start.getTime()) / 86_400_000) + 1;
 }
 
+/** Сезон покрывает все 12 месяцев (январь–декабрь, март–февраль). */
+function coversWholeYear(from: number, to: number): boolean {
+  return (to - from + 12) % 12 === 11;
+}
+
+/** Дальше этой длины «фиксированный» диапазон — это сезон, а не даты заезда. */
+const MAX_FIXED_SPAN_DAYS = 45;
+
 /**
  * Тур с сайта → поля нормализованного элемента. У тура «по запросу» в даты кладётся окно сезона
  * (круглый год, если сезон не назван), а durationDays остаётся длительностью самого тура.
@@ -294,19 +317,36 @@ export function aiTourToNormalizedFields(tour: ExtractedTour, now = new Date()):
   let startDate: Date;
   let endDate: Date;
   let seasonLabel: string | null = null;
+  let seasonFrom = tour.seasonFromMonth;
+  let seasonTo = tour.seasonToMonth;
+  let fixedStart: Date | null = null;
+  let fixedEnd: Date | null = null;
   if (tour.scheduleType === "fixed" && tour.startDate) {
-    startDate = new Date(`${tour.startDate}T12:00:00Z`);
-    endDate = new Date(`${tour.endDate ?? tour.startDate}T12:00:00Z`);
-    if (endDate < startDate) endDate = startDate;
-  } else if (!tour.yearRound && tour.seasonFromMonth && tour.seasonToMonth) {
-    ({ startDate, endDate } = seasonWindow(tour.seasonFromMonth, tour.seasonToMonth, now));
-    seasonLabel = formatSeasonMonthsRu(tour.seasonFromMonth, tour.seasonToMonth);
+    fixedStart = new Date(`${tour.startDate}T12:00:00Z`);
+    fixedEnd = new Date(`${tour.endDate ?? tour.startDate}T12:00:00Z`);
+    if (fixedEnd < fixedStart) fixedEnd = fixedStart;
+    const today = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+    // Прошедший заезд или диапазон длиной в сезон — это расписание сезона, а не ближайшая дата.
+    if (fixedEnd.getTime() < today || dayDiff(fixedStart, fixedEnd) > MAX_FIXED_SPAN_DAYS) {
+      seasonFrom = fixedStart.getUTCMonth() + 1;
+      seasonTo = fixedEnd.getUTCMonth() + 1;
+      fixedStart = null;
+      fixedEnd = null;
+    }
+  }
+  if (fixedStart && fixedEnd) {
+    startDate = fixedStart;
+    endDate = fixedEnd;
+  } else if (!tour.yearRound && seasonFrom && seasonTo && !coversWholeYear(seasonFrom, seasonTo)) {
+    ({ startDate, endDate } = seasonWindow(seasonFrom, seasonTo, now));
+    seasonLabel = formatSeasonMonthsRu(seasonFrom, seasonTo);
   } else {
     ({ startDate, endDate } = yearRoundWindow(now));
     seasonLabel = "круглый год";
   }
   const fixed = seasonLabel === null;
   const descriptionFull = [tour.summary, tour.itinerary].filter(Boolean).join("\n\n");
+  const durationDays = tour.durationDays ?? (fixed ? dayDiff(startDate, endDate) : null);
   return {
     title: tour.title,
     discipline: tour.discipline,
@@ -314,7 +354,7 @@ export function aiTourToNormalizedFields(tour: ExtractedTour, now = new Date()):
     city: tour.location,
     startDate,
     endDate,
-    durationDays: tour.durationDays ?? (fixed ? dayDiff(startDate, endDate) : null),
+    durationDays,
     level: tour.level,
     priceFrom: tour.priceFrom,
     currency: tour.priceFrom != null ? tour.currency ?? "RUB" : null,
@@ -352,12 +392,26 @@ function titleTokens(title: string): Set<string> {
   );
 }
 
-/** Сходство названий 0–1 (по основам слов): «Восхождение на Авачинский вулкан» ≈ «Авачинский вулкан: восхождение». */
+/**
+ * Сходство названий 0–1 по основам слов (Жаккар): «Восхождение на Авачинский вулкан» ≈ «Авачинский вулкан: восхождение»,
+ * но «Заброски на Мутновский вулкан снегоходом» ≠ «Заброски на Горелый вулкан снегоходом».
+ */
 export function titleSimilarity(a: string, b: string): number {
   const ta = titleTokens(a);
   const tb = titleTokens(b);
   if (!ta.size || !tb.size) return 0;
   let common = 0;
   for (const t of ta) if (tb.has(t)) common += 1;
-  return common / Math.min(ta.size, tb.size);
+  return common / (ta.size + tb.size - common);
+}
+
+export const DUPLICATE_TITLE_SIMILARITY = 0.7;
+
+/** Один и тот же тур: почти одинаковое название и та же длительность (если она известна у обоих). */
+export function isLikelySameTour(
+  a: { title: string; durationDays: number | null },
+  b: { title: string; durationDays: number | null },
+): boolean {
+  if (a.durationDays && b.durationDays && a.durationDays !== b.durationDays) return false;
+  return titleSimilarity(a.title, b.title) >= DUPLICATE_TITLE_SIMILARITY;
 }

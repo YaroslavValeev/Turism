@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
+import { rollWindowForward } from "./onRequestSchedule";
 
 const reason = "AUTO_ARCHIVED: program endDate is in the past";
 const actor = "system:expired-program-archiver";
@@ -20,7 +21,7 @@ export type ExpiredPublishedProgram = {
 export async function findExpiredPublishedPrograms(now = new Date()): Promise<ExpiredPublishedProgram[]> {
   const cutoff = startOfUtcDay(now);
   return prisma.program.findMany({
-    where: { publishStatus: "published", endDate: { lt: cutoff } },
+    where: { publishStatus: "published", scheduleType: { not: "on_request" }, endDate: { lt: cutoff } },
     select: {
       id: true,
       title: true,
@@ -70,10 +71,41 @@ async function archiveOne(program: ExpiredPublishedProgram, now: Date): Promise<
   });
 }
 
+/** Тур по запросу не заканчивается: окно прошедшего сезона переносится на следующий год. */
+export async function rollOnRequestWindows(now = new Date()): Promise<number> {
+  const cutoff = startOfUtcDay(now);
+  const programs = await prisma.program.findMany({
+    where: { scheduleType: "on_request", publishStatus: { not: "archived" }, endDate: { lt: cutoff } },
+    select: { id: true, startDate: true, endDate: true },
+  });
+  let rolled = 0;
+  for (const program of programs) {
+    const next = rollWindowForward(program.startDate, program.endDate, now);
+    if (!next) continue;
+    await prisma.$transaction([
+      prisma.program.update({ where: { id: program.id }, data: next }),
+      prisma.auditLog.create({
+        data: {
+          entityType: "program",
+          entityId: program.id,
+          changedField: "season_window",
+          oldValue: `${program.startDate.toISOString()}..${program.endDate.toISOString()}`,
+          newValue: `${next.startDate.toISOString()}..${next.endDate.toISOString()}`,
+          changedBy: actor,
+          reason: "on_request season window rolled forward",
+        },
+      }),
+    ]);
+    rolled += 1;
+  }
+  return rolled;
+}
+
 /** Canonical lifecycle transition for every completed public program. */
 export async function archiveExpiredPublishedPrograms(now = new Date()) {
+  const rolledWindows = await rollOnRequestWindows(now);
   const programs = await findExpiredPublishedPrograms(now);
   let auditEntriesCreated = 0;
   for (const program of programs) auditEntriesCreated += await archiveOne(program, now);
-  return { archivedPrograms: programs.length, auditEntriesCreated };
+  return { archivedPrograms: programs.length, auditEntriesCreated, rolledWindows };
 }

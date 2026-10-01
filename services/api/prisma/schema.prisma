@@ -169,6 +169,10 @@ model Program {
   startDate               DateTime
   endDate                 DateTime
   durationDays            Int
+  /// fixed — выезд с датами; on_request — тур по запросу, в startDate/endDate окно сезона (см. onRequestSchedule.ts).
+  scheduleType            String                 @default("fixed")
+  /// Сезон тура по запросу для показа гостю: «июнь–сентябрь», «круглый год».
+  seasonLabel             String?
   /// true — порядок медиа (и обложку) задал админ; витрина не переставляет их эвристиками.
   mediaOrderPinned        Boolean                @default(false)
   /// Поля, которые админ правил вручную: повторный сбор и ИИ-автозаполнение их не перезаписывают.

@@ -81,6 +81,21 @@ describe("programNotifyTemplates", () => {
     expect(fitted).not.toContain("<b>Организатор</b>");
   });
 
+  it("on-request tour shows season and tour length instead of the season window", () => {
+    const src = {
+      ...baseSrc(),
+      scheduleType: "on_request",
+      seasonLabel: "июнь–сентябрь",
+      durationDays: 8,
+      startDate: new Date("2027-06-01T12:00:00Z"),
+      endDate: new Date("2027-09-30T12:00:00Z"),
+    };
+    const html = buildTelegramProgramNotifyHtml(src, null, { hideLinkFallbackHint: true });
+    expect(html).toContain("📅 <b>По запросу · сезон июнь–сентябрь</b> · 8 дней");
+    expect(html).not.toContain("122 дня");
+    expect(buildEmailProgramNotifyText(src, "u", "x")).toContain("Самара · По запросу · сезон июнь–сентябрь");
+  });
+
   it("formatDateRangeRu covers single day and year boundary", () => {
     expect(formatDateRangeRu(new Date("2026-10-10T00:00:00Z"), new Date("2026-10-10T00:00:00Z"))).toBe("10 октября 2026");
     expect(formatDateRangeRu(new Date("2026-12-28T00:00:00Z"), new Date("2027-01-04T00:00:00Z"))).toBe(

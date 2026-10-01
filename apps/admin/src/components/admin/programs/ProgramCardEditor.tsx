@@ -291,6 +291,23 @@ export function ProgramCardEditor({ program, onChanged, onError }: Props) {
               aria-label="Длительность в днях"
             />
           </div>
+          <label className="mw-admin-inline-form">
+            <input
+              type="checkbox"
+              checked={draft.onRequest}
+              onChange={(e) => setDraft((d) => ({ ...d, onRequest: e.target.checked }))}
+            />
+            <span>Тур по запросу (без фиксированной даты): даты выше — окно сезона, после него окно переносится на год вперёд</span>
+          </label>
+          {draft.onRequest ? (
+            <input
+              className="mw-admin-input"
+              value={draft.seasonLabel}
+              placeholder="Сезон, например: июнь–сентябрь или круглый год"
+              onChange={(e) => setDraft((d) => ({ ...d, seasonLabel: e.target.value }))}
+              aria-label="Сезон"
+            />
+          ) : null}
         </div>
       </div>
 

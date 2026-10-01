@@ -224,6 +224,37 @@ describe("buildEnrichmentUpdate", () => {
     expect("cancellationRules" in data).toBe(false);
   });
 
+  it("очищает устаревшие условия отмены, когда их закрывает примечание MyWave", () => {
+    const withNote = { ...result, notes: { ...result.notes, cancellation: "Организатор не указал условия отмены." } };
+    const meta = { model: "m", sourceHash: "z", now: new Date("2026-09-30T00:00:00Z") };
+    expect(
+      buildEnrichmentUpdate(
+        { manualFields: [], aiEnrichment: { sourceHash: "x", notes: {}, fields: ["cancellationRules"] } },
+        withNote,
+        meta,
+      ).data.cancellationRules,
+    ).toBeNull();
+    expect(
+      buildEnrichmentUpdate(
+        { manualFields: [], cancellationRules: "доплата за одноместное размещение 250$" },
+        withNote,
+        meta,
+      ).data.cancellationRules,
+    ).toBeNull();
+    expect(
+      "cancellationRules" in
+        buildEnrichmentUpdate({ manualFields: [], cancellationRules: "Предоплата 30% не возвращается" }, withNote, meta).data,
+    ).toBe(false);
+    expect(
+      "cancellationRules" in
+        buildEnrichmentUpdate(
+          { manualFields: ["cancellationRules"], cancellationRules: "доплата 250$", aiEnrichment: { fields: ["cancellationRules"] } },
+          withNote,
+          meta,
+        ).data,
+    ).toBe(false);
+  });
+
   it("очищает сырой «для кого» из сбора, если ИИ ничего не подтвердил", () => {
     const post = "Друзья, мы едем закрывать сезон в Краснодаре в октябре! Остались места на даты 25-31 октября.";
     const empty = { ...result, organizer: { ...result.organizer, audienceFit: "" } };

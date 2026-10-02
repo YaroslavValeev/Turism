@@ -32,6 +32,8 @@ import { getPublicApiBase } from "../lib/publicApiBase";
 import { ruPluralNoun } from "../lib/ruPlural";
 import { formatProgramPrice, formatProgramPriceRub, formatProgramPriceRubTitle } from "../lib/priceFormat";
 import { StartAlertsSignup } from "../components/StartAlertsSignup";
+import { localDate, validDate } from "../lib/catalog";
+import { WEEKEND_PRESET_TITLES, isWeekendPreset, weekendRange, type WeekendPreset } from "../lib/weekendRange";
 
 type Program = {
   id: string;
@@ -167,6 +169,9 @@ function isWinterDiscipline(program: Pick<Program, "title" | "discipline">): boo
 
 type ScenarioExtra = null | "kids" | "weekend";
 
+const NO_DATES = { when: null, from: "", to: "" } as const;
+const WEEKEND_PRESETS: WeekendPreset[] = ["this-weekend", "next-weekend"];
+
 function SearchParamSync({ onChange }: { onChange: (query: string) => void }) {
   const searchParams = useSearchParams();
 
@@ -191,6 +196,7 @@ function HomePageInner() {
   const [levelFilters, setLevelFilters] = useState<string[]>([]);
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [weekendPreset, setWeekendPreset] = useState<WeekendPreset | null>(null);
   const [nearestStartsOnly, setNearestStartsOnly] = useState(false);
   const [seasonFilter, setSeasonFilter] = useState<"" | SeasonKey>("");
   const [scenarioExtra, setScenarioExtra] = useState<ScenarioExtra>(null);
@@ -210,6 +216,18 @@ function HomePageInner() {
     setAppliedRegionQuery(region.trim() ? region : legacyCountry);
     setNearestStartsOnly(params.get("nearest") === "1");
     setSeasonFilter(readSeasonFromQuery(params.get("season")));
+
+    const when = params.get("when");
+    if (isWeekendPreset(when)) {
+      const range = weekendRange(when);
+      setWeekendPreset(when);
+      setDateFrom(range.from);
+      setDateTo(range.to);
+    } else {
+      setWeekendPreset(null);
+      setDateFrom(validDate(params.get("from") ?? ""));
+      setDateTo(validDate(params.get("to") ?? ""));
+    }
 
     const fromLevels = params.getAll("level").map((s) => s.trim()).filter((s) => LEVEL_VALUE_SET.has(s));
     setLevelFilters(fromLevels);
@@ -321,16 +339,11 @@ function HomePageInner() {
       if (!levelMatchesAny(p, levelFilters)) return false;
       if (nearestStartsOnly && !programStartsWithinDays(p, 14)) return false;
       if (seasonFilter && seasonOfProgramStart(p) !== seasonFilter) return false;
-      if (dateFrom) {
-        const start = new Date(p.startDate);
-        const from = new Date(dateFrom);
-        if (start < from) return false;
-      }
-      if (dateTo) {
-        const start = new Date(p.startDate);
-        const to = new Date(dateTo);
-        to.setHours(23, 59, 59, 999);
-        if (start > to) return false;
+      if (dateFrom || dateTo) {
+        if (isOnRequestProgram(p)) return false;
+        const start = localDate(new Date(p.startDate));
+        if (dateFrom && start < dateFrom) return false;
+        if (dateTo && start > dateTo) return false;
       }
       if (scenarioExtra === "kids") {
         const b = programBlob(p);
@@ -348,6 +361,17 @@ function HomePageInner() {
     if (filtered.length > 0) {
       return { list: filtered, notice: null as string | null };
     }
+    if (weekendPreset) {
+      const after = catalogPrograms
+        .filter((p) => !isOnRequestProgram(p) && localDate(new Date(p.startDate)) > dateTo)
+        .sort((a, b) => +new Date(a.startDate) - +new Date(b.startDate));
+      if (after.length > 0) {
+        return {
+          list: after,
+          notice: `На ${WEEKEND_PRESET_TITLES[weekendPreset].toLowerCase()} (${weekendRange(weekendPreset).label}) стартов нет. Ниже — ближайшие старты после них.`,
+        };
+      }
+    }
     if (catalogPrograms.length > 0) {
       return {
         list: catalogPrograms,
@@ -361,7 +385,7 @@ function HomePageInner() {
       };
     }
     return { list: [] as Program[], notice: null as string | null };
-  }, [filtered, catalogPrograms, programsCatalogUnique]);
+  }, [filtered, catalogPrograms, programsCatalogUnique, weekendPreset, dateTo]);
 
   const heroPrograms = catalogPrograms.length > 0 ? catalogPrograms : programsCatalogUnique;
 
@@ -469,8 +493,10 @@ function HomePageInner() {
       nearest?: boolean;
       season?: "" | SeasonKey;
       levels?: string[];
+      dates?: { when: WeekendPreset | null; from: string; to: string };
     }) => {
       const params = new URLSearchParams();
+      const dates = next.dates ?? { when: weekendPreset, from: dateFrom, to: dateTo };
       const d = next.disciplines ?? selectedDisciplines;
       for (const x of d) {
         if (x.trim()) params.append("discipline", x.trim());
@@ -484,11 +510,17 @@ function HomePageInner() {
       for (const x of lv) {
         if (x && LEVEL_VALUE_SET.has(x)) params.append("level", x);
       }
+      if (dates.when) {
+        params.set("when", dates.when);
+      } else {
+        if (dates.from) params.set("from", dates.from);
+        if (dates.to) params.set("to", dates.to);
+      }
       const qs = params.toString();
       const href = qs ? `${pathname}?${qs}` : pathname;
       router.replace(href, { scroll: false });
     },
-    [pathname, router, selectedDisciplines, appliedRegionQuery, nearestStartsOnly, seasonFilter, levelFilters],
+    [pathname, router, selectedDisciplines, appliedRegionQuery, nearestStartsOnly, seasonFilter, levelFilters, weekendPreset, dateFrom, dateTo],
   );
 
   const catalogHrefBuilder = (next: { discipline?: string; disciplines?: string[]; region?: string }) => {
@@ -565,7 +597,8 @@ function HomePageInner() {
           setNearestStartsOnly(false);
           setSeasonFilter("");
           setScenarioExtra(null);
-          syncToUrl({ disciplines: [], region: "", nearest: false, season: "", levels: [] });
+          setWeekendPreset(null);
+          syncToUrl({ disciplines: [], region: "", nearest: false, season: "", levels: [], dates: NO_DATES });
         }}
       />
       <header className="mw-hero-visual mw-hero-visual--filmstrip">
@@ -788,6 +821,15 @@ function HomePageInner() {
                   Регион: <strong style={{ marginLeft: 6 }}>{appliedRegionQuery}</strong>
                 </span>
               )}
+              {weekendPreset ? (
+                <span className="mw-badge mw-badge--pilot">
+                  {WEEKEND_PRESET_TITLES[weekendPreset]}: <strong style={{ marginLeft: 6 }}>{weekendRange(weekendPreset).label}</strong>
+                </span>
+              ) : (dateFrom || dateTo) ? (
+                <span className="mw-badge mw-badge--pilot">
+                  Старт: <strong style={{ marginLeft: 6 }}>{[dateFrom && `с ${dateFrom}`, dateTo && `по ${dateTo}`].filter(Boolean).join(" ")}</strong>
+                </span>
+              ) : null}
               {nearestStartsOnly && <span className="mw-badge mw-badge--pilot">Ближайшие старты (14 дней)</span>}
               {seasonFilter && (
                 <span className="mw-badge mw-badge--pilot">
@@ -815,7 +857,8 @@ function HomePageInner() {
                   setNearestStartsOnly(false);
                   setSeasonFilter("");
                   setScenarioExtra(null);
-                  syncToUrl({ disciplines: [], region: "", nearest: false, season: "", levels: [] });
+                  setWeekendPreset(null);
+                  syncToUrl({ disciplines: [], region: "", nearest: false, season: "", levels: [], dates: NO_DATES });
                 }}
               >
                 Сбросить всё
@@ -934,13 +977,61 @@ function HomePageInner() {
               </div>
             </details>
           </div>
+          <div className="mw-field" style={{ flexBasis: "100%" }}>
+            <span className="mw-multiselect-hint" id="flt-weekend-legend">Быстро по датам</span>
+            <div className="mw-tag-row" role="group" aria-labelledby="flt-weekend-legend">
+              {WEEKEND_PRESETS.map((preset) => {
+                const range = weekendRange(preset);
+                const on = weekendPreset === preset;
+                return (
+                  <button
+                    key={preset}
+                    type="button"
+                    className={on ? "mw-btn mw-btn--primary" : "mw-btn mw-btn--ghost"}
+                    aria-pressed={on}
+                    onClick={() => {
+                      const dates = on ? NO_DATES : { when: preset, from: range.from, to: range.to };
+                      setWeekendPreset(dates.when);
+                      setDateFrom(dates.from);
+                      setDateTo(dates.to);
+                      syncToUrl({ dates });
+                    }}
+                  >
+                    {WEEKEND_PRESET_TITLES[preset]} · {range.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
           <div className="mw-field">
             <label htmlFor="flt-from">Дата с</label>
-            <input id="flt-from" className="mw-input" type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+            <input
+              id="flt-from"
+              className="mw-input"
+              type="date"
+              value={dateFrom}
+              onChange={(e) => {
+                const dates = { when: null, from: e.target.value, to: dateTo };
+                setWeekendPreset(null);
+                setDateFrom(dates.from);
+                syncToUrl({ dates });
+              }}
+            />
           </div>
           <div className="mw-field">
             <label htmlFor="flt-to">Дата по</label>
-            <input id="flt-to" className="mw-input" type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+            <input
+              id="flt-to"
+              className="mw-input"
+              type="date"
+              value={dateTo}
+              onChange={(e) => {
+                const dates = { when: null, from: dateFrom, to: e.target.value };
+                setWeekendPreset(null);
+                setDateTo(dates.to);
+                syncToUrl({ dates });
+              }}
+            />
           </div>
           <div className="mw-field">
             <label htmlFor="flt-season">Сезон старта</label>

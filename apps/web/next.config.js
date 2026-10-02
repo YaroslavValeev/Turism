@@ -22,15 +22,20 @@ const hasYandexMetrika = Boolean(process.env.NEXT_PUBLIC_YM_ID);
 // Static next.config headers cannot attach a per-request nonce. Next's App Router
 // emits inline bootstrap scripts, and this app uses React style attributes, so
 // unsafe-inline remains narrowly enabled for scripts/styles. unsafe-eval is never allowed.
-const contentSecurityPolicy = [
+// Telegram Mini App (/dates): SDK грузится с telegram.org, а Telegram Web открывает приложение
+// во фрейме web.telegram.org. Остальные страницы по-прежнему нельзя встраивать.
+const TELEGRAM_MINI_APP_PATH = "/dates";
+
+const buildContentSecurityPolicy = ({ telegramMiniApp }) => [
   "default-src 'self'",
   "base-uri 'self'",
   "object-src 'none'",
-  "frame-ancestors 'none'",
+  telegramMiniApp ? "frame-ancestors 'self' https://web.telegram.org" : "frame-ancestors 'none'",
   "form-action 'self'",
   `script-src ${sources([
     "'self'",
     "'unsafe-inline'",
+    telegramMiniApp && "https://telegram.org",
     hasGa4 && "https://www.googletagmanager.com",
     hasYandexMetrika && "https://mc.yandex.ru",
     hasYandexMetrika && "https://mc.yandex.com",
@@ -60,11 +65,11 @@ const contentSecurityPolicy = [
   "manifest-src 'self'",
 ].join("; ");
 
-const securityHeaders = [
+const securityHeaders = ({ telegramMiniApp = false } = {}) => [
   ...(isProduction
-    ? [{ key: "Content-Security-Policy", value: contentSecurityPolicy }]
+    ? [{ key: "Content-Security-Policy", value: buildContentSecurityPolicy({ telegramMiniApp }) }]
     : []),
-  { key: "X-Frame-Options", value: "DENY" },
+  ...(telegramMiniApp ? [] : [{ key: "X-Frame-Options", value: "DENY" }]),
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   {
@@ -81,8 +86,12 @@ const nextConfig = {
   async headers() {
     return [
       {
-        source: "/:path*",
-        headers: securityHeaders,
+        source: `/:path((?!${TELEGRAM_MINI_APP_PATH.slice(1)}$).*)`,
+        headers: securityHeaders(),
+      },
+      {
+        source: TELEGRAM_MINI_APP_PATH,
+        headers: securityHeaders({ telegramMiniApp: true }),
       },
     ];
   },

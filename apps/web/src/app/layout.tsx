@@ -25,9 +25,11 @@ export const metadata: Metadata = {
     url: "/",
     title: "MyWaveTour — кэмпы и спортивные выезды по России",
     description: "Выбирайте спортивные программы и кэмпы по России и связывайтесь с организаторами напрямую.",
+    images: [{ url: "/og/mywavetour.png", width: 1200, height: 630, alt: "MyWaveTour" }],
   },
   twitter: {
-    card: "summary",
+    card: "summary_large_image",
+    images: ["/og/mywavetour.png"],
     title: "MyWaveTour — кэмпы и спортивные выезды по России",
     description: "Спортивные программы, кэмпы и активные поездки по России.",
   },

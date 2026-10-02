@@ -18,6 +18,7 @@
     "db:seed:camp-api-mvp": "tsx scripts/ensure-camp-api-mvp.ts",
     "db:seed:spot-methodology": "tsx scripts/ensure-spot-methodology.ts",
     "db:import-sources": "tsx prisma/import_sources.ts",
+    "db:import:program-enrichments": "tsx scripts/import-program-enrichments.ts",
     "backfill:traveler-key": "tsx scripts/backfill-traveler-key.ts",
     "smoke:content-pipeline": "tsx scripts/smoke-content-pipeline.ts",
     "smoke:pilot-e2e": "tsx scripts/pilot-e2e-smoke.ts",

@@ -1,0 +1,241 @@
+{
+  "batchId": "enrich-mamay-2026-10",
+  "items": [
+    {
+      "programId": "cmuf9qybu00v7l57wibvk3qum",
+      "field": "accommodation",
+      "checkedAt": "2026-10-02",
+      "content": {
+        "summary": "Жильё на все 6 ночей входит в стоимость тура: группа живёт в двухэтажном деревянном доме в долине реки Большой Мамай (8 спальных мест с бельём, печное отопление, горячая вода от газового котла, душ и туалет в доме, баня, повар; электричество от генератора по вечерам, мобильной связи нет). Отдельно бронировать нужно только ночёвку в Иркутске, если прилетаете накануне: встреча — рано утром в аэропорту. Отели ниже пригодятся, если хотите задержаться на Байкале до или после тура: у съезда на Мамай с 193-го км трассы Р-258 и в посёлках Речка Выдрино, Выдрино и Новоснежная (в 6–11 км). В самой долине есть и платные шале и глэмпинги (например, Siberia и «Звезда Мамая»), но добираться к ним — пешком или заброской на снегоходе.",
+        "locationPoint": {
+          "label": "Мамай — съезд с трассы Р-258 «Байкал» (193 км, остановка «Мамай»), старт тропы в долину р. Большой Мамай, Кабанский р-н Бурятии",
+          "lat": 51.4484,
+          "lng": 104.774
+        },
+        "hotels": [
+          {
+            "name": "Гостевой дом «Бурундуки»",
+            "group": "top",
+            "aggregator": {
+              "name": "ostrovok",
+              "url": "https://ostrovok.ru/hotel/russia/rechka_vydrino/mid10592011/burunduki_glamping/",
+              "rating": 9.9,
+              "ratingScale": 10,
+              "reviewsCount": 3
+            },
+            "distanceKm": 6.6,
+            "distanceNote": "ул. Школьная, 20Б, пос. Речка Выдрино; по прямой от остановки «Мамай» по координатам улицы в OpenStreetMap"
+          },
+          {
+            "name": "Апартаменты «Квартирник у Зайцев»",
+            "group": "top",
+            "aggregator": {
+              "name": "ostrovok",
+              "url": "https://ostrovok.ru/hotel/russia/vidrino/mid10478014/apartamenty_kvartirnik_u_zaytsev/",
+              "rating": 9.8,
+              "ratingScale": 10,
+              "reviewsCount": 4
+            },
+            "distanceKm": 9.1,
+            "distanceNote": "ул. Красных Партизан, 43, пос. Выдрино; по прямой от остановки «Мамай» по координатам улицы в OpenStreetMap"
+          },
+          {
+            "name": "Загородный клуб «Снежные гуси» (на Островке — Guest House Baykalskie Gusi)",
+            "group": "top",
+            "siteUrl": "https://snowgoose.ru/",
+            "aggregator": {
+              "name": "ostrovok",
+              "url": "https://ostrovok.ru/hotel/russia/novosnezhnaya/mid10198770/zagorodny_klub_snezhnye_gusi_hotel/",
+              "rating": 9.7,
+              "ratingScale": 10,
+              "reviewsCount": 4
+            },
+            "distanceKm": 10.6,
+            "distanceNote": "ул. Трактовая, 33 (на Островке — 35А), пос. Новоснежная; по прямой от остановки «Мамай» по координатам объекта в OpenStreetMap"
+          },
+          {
+            "name": "Гостиница «Снежный поток»",
+            "group": "top",
+            "aggregator": {
+              "name": "ostrovok",
+              "url": "https://ostrovok.ru/hotel/russia/vidrino/mid10211813/bazovy_lager_snezhny_potok_hotel/",
+              "rating": 9,
+              "ratingScale": 10,
+              "reviewsCount": 23
+            },
+            "distanceKm": 9.3,
+            "distanceNote": "ул. Магистральная, 1, пос. Выдрино; по прямой от остановки «Мамай» по координатам объекта в OpenStreetMap"
+          },
+          {
+            "name": "Апартаменты Emerald Lake Baikal",
+            "group": "top",
+            "aggregator": {
+              "name": "ostrovok",
+              "url": "https://ostrovok.ru/hotel/russia/vidrino/mid10515581/apartamenty_emerald_lake_baikal/",
+              "rating": 9,
+              "ratingScale": 10,
+              "reviewsCount": 11
+            },
+            "distanceKm": 9.1,
+            "distanceNote": "ул. Красных Партизан, 47, пос. Выдрино; по прямой от остановки «Мамай» по координатам улицы в OpenStreetMap"
+          },
+          {
+            "name": "Гостевой дом «Мамай Байкал»",
+            "group": "nearby",
+            "siteUrl": "http://mamaybaikal.ru/",
+            "distanceKm": 0.5,
+            "distanceNote": "ул. Горная, 6, местечко Мамай, 500 м от трассы; по координатам объекта в OpenStreetMap; на Островке не найден"
+          },
+          {
+            "name": "База отдыха «Сердце Мамая»",
+            "group": "nearby",
+            "distanceKm": 1.1,
+            "distanceNote": "у трассы Р-258, отсюда начинается тропа к зимовьям Мамая; по координатам объекта в OpenStreetMap; на Островке не найдена"
+          }
+        ]
+      },
+      "sources": [
+        {
+          "url": "https://birdtravel.ru/routs/ski-tur-na-mamae-gory-baykala/",
+          "title": "BirdTravel — Ски-тур на Мамае с гидом IFMGA (условия проживания, что включено)",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/russia/republic_of_buryatia_mamay/",
+          "title": "Островок — отели Мамая (выдача с оценками и расстояниями)",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/russia/vidrino/",
+          "title": "Островок — отели Выдрино (выдача с оценками)",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/russia/rechka_vydrino/mid10592011/burunduki_glamping/",
+          "title": "Островок — Burunduki Guest House",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/russia/vidrino/mid10478014/apartamenty_kvartirnik_u_zaytsev/",
+          "title": "Островок — Kvartirnik U Zaytsev Flat",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/russia/novosnezhnaya/mid10198770/zagorodny_klub_snezhnye_gusi_hotel/",
+          "title": "Островок — Guest House Baykalskie Gusi (Снежные гуси)",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/russia/vidrino/mid10211813/bazovy_lager_snezhny_potok_hotel/",
+          "title": "Островок — Bazovy Lager Snezhny Potok Hotel",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/russia/vidrino/mid10515581/apartamenty_emerald_lake_baikal/",
+          "title": "Островок — Apartamenty Emerald Lake Baikal",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://snowgoose.ru/aboutus",
+          "title": "Загородный клуб «Снежные гуси» — о клубе и контакты",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "http://mamaybaikal.ru/",
+          "title": "Гостевой дом «Мамай Байкал» — официальный сайт",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://www.baikal-media.ru/news/society/380648/",
+          "title": "Байкал-Медиа — к базе «Сердце Мамая» провели электричество",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://siberia-baikal.ru/",
+          "title": "Siberia — отель-юрты в долине Мамая",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://zvezda-mamaya.ru/",
+          "title": "«Звезда Мамая» — шале в урочище р. Большой Мамай",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://www.openstreetmap.org/node/11637506621",
+          "title": "OpenStreetMap — остановка «Мамай» у трассы Р-258",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://nominatim.openstreetmap.org/search?format=json&q=%D0%91%D0%BE%D0%BB%D1%8C%D1%88%D0%BE%D0%B9%20%D0%9C%D0%B0%D0%BC%D0%B0%D0%B9",
+          "title": "OpenStreetMap Nominatim — р. Большой Мамай (Кабанский р-н, Бурятия)",
+          "accessedAt": "2026-10-02"
+        }
+      ]
+    },
+    {
+      "programId": "cmuf9qybu00v7l57wibvk3qum",
+      "field": "transfer",
+      "checkedAt": "2026-10-02",
+      "content": {
+        "text": "Трансфер Иркутск — Мамай — Иркутск входит в стоимость. В первый день группу встречают рано утром в аэропорту Иркутска, поэтому рейс стоит брать с прилётом к утру или прилетать накануне (ночь в Иркутске оплачивается отдельно). До Мамая около 190 км по трассе Р-258 «Байкал» вдоль южного берега озера — 4–5 часов с остановкой на обед в кафе (еда в дороге за свой счёт). Съезд к Мамаю — на 193-м км трассы, за посёлком Выдрино; это уже Кабанский район Бурятии, у самой границы с Иркутской областью. От трассы до дома в долине Большого Мамая вещи везут на снегоходе, а участники поднимаются около 12 км на лыжах с камусами и лёгким рюкзаком; заброска самих участников на снегоходе в цену не входит. В последний день после завтрака группа спускается к трассе и едет обратно в Иркутск, так что обратный рейс разумнее ставить на вечер или следующий день. Если догоняете группу самостоятельно: поезда дальнего следования и электрички по Транссибу идут до станции Выдрино (электричка из Слюдянки — около 1 ч 35 мин и не каждый день), дальше около 9 км до съезда на Мамай — на такси. Платформы «Мамай» в действующем расписании электричек нет."
+      },
+      "sources": [
+        {
+          "url": "https://birdtravel.ru/routs/ski-tur-na-mamae-gory-baykala/",
+          "title": "BirdTravel — Ски-тур на Мамае: программа по дням, что включено",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "http://mamaybaikal.ru/",
+          "title": "Гостевой дом «Мамай Байкал» — как добраться (193 км а/д «Байкал»)",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://zvezda-mamaya.ru/",
+          "title": "«Звезда Мамая» — расположение Мамая (Кабанский район Бурятии, 193 км от Иркутска)",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://chemezova.ru/travel/mamai-irkutsk/",
+          "title": "Елена Чемезова — Мамай на Байкале: как добраться",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://irkutsk.tutu.ru/rasp.php?st1=11138&st2=40080",
+          "title": "Туту.ру — расписание электричек Слюдянка-1 → Выдрино",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://www.napoezde.net/raspisanie-po-marshrutu/elektrichki-slyudyanka-1--vydrino/",
+          "title": "Напоезде — электрички Слюдянка-1 — Выдрино, дни курсирования",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://snowgoose.ru/aboutus",
+          "title": "«Снежные гуси» — поезд от Иркутска до станции Выдрино",
+          "accessedAt": "2026-10-02"
+        }
+      ]
+    },
+    {
+      "programId": "cmuf9qybu00v7l57wibvk3qum",
+      "field": "equipment",
+      "checkedAt": "2026-10-02",
+      "content": {
+        "text": "Нужны свои лыжи для ски-тура (или сплитборд) с камусами, телескопические палки, шлем и две маски — на солнце и на снегопад. Лавинный комплект — датчик (бипер), лопата и щуп — обязателен: каждое утро перед выходом гиды проверяют датчики; лавинный рюкзак — по желанию. Аренда скитурного и лавинного снаряжения в цену не входит, поэтому недостающее лучше найти заранее. Рюкзак на 35–40 л с креплением для лыж или доски, термос и перекус: на маршруте с 10 до 15 часов, 2–4 спуска в день с суммарным перепадом 1000–1500 м. Одежда слоями: мембранные куртка и брюки, флис, пуховка, тёплое и тонкое термобельё, варежки и запасные тёплые перчатки, шапка, балаклава, тёплые носки; пригодятся стельки или носки с подогревом и сушилка для обуви. Организатор также просит спальник с комфортом 0…−5 °C, налобный фонарь с запасными батарейками, солнцезащитные очки, личную аптечку, часы, отвёртку, ремкомплект креплений (стрепы, болты), армированный скотч и пуховые тапки для дома. Мобильной связи в долине нет, поэтому в списке есть рация на 140 или 430 МГц. Обязательна страховка, покрывающая фрирайд: организатор называет программу «Классик (С)» на сумму 40 000 $."
+      },
+      "sources": [
+        {
+          "url": "https://birdtravel.ru/routs/ski-tur-na-mamae-gory-baykala/",
+          "title": "BirdTravel — Ски-тур на Мамае: список снаряжения, распорядок дня, страхование",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://chemezova.ru/travel/mamai-irkutsk/",
+          "title": "Елена Чемезова — Мамай: лавинное снаряжение и связь",
+          "accessedAt": "2026-10-02"
+        }
+      ]
+    }
+  ]
+}

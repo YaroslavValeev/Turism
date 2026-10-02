@@ -174,6 +174,25 @@ echo "== Media placeholder =="
 echo "== Media proxy =="
 "${CURL_EXT_I[@]}" "${PUBLIC_ORIGIN}/api/media?url=https%3A%2F%2Fimages.unsplash.com%2Fphoto-1506905925346-21bda4d32df4%3Fw%3D200" | sed -n '1,8p'
 
+echo "== Egress via TELEGRAM_BOT_HTTP_PROXY (Telegram getMe) =="
+# Бот, ИИ-сборщик и Instagram ходят наружу через один SOCKS (мост на WireGuard); его обрыв не виден в /api/health.
+_egress_out="$("${DC[@]}" exec -T api node -e '
+const env=require("@mywave/config").loadEnv();const c=require("@mywave/config");
+const {proxyAwareFetch}=require("./dist/lib/proxyFetch.js");
+const url=c.buildTelegramBotApiUrl(env,"getMe");
+if(!url){console.log("skipped: bot api not configured");process.exit(0);}
+proxyAwareFetch(url,{signal:AbortSignal.timeout(20000)},env.TELEGRAM_BOT_HTTP_PROXY)
+  .then(r=>r.json()).then(j=>{console.log(j.ok?"ok":"telegram_error "+(j.error_code||""));process.exit(j.ok?0:2);})
+  .catch(e=>{console.log("unreachable "+e.message);process.exit(3);});' 2>&1)" && _egress_rc=0 || _egress_rc=$?
+echo "egress: ${_egress_out}"
+if [[ "$_egress_rc" != "0" ]]; then
+  if [[ "${PROD_HEALTHCHECK_REQUIRE_EGRESS:-0}" == "1" ]]; then
+    echo "prod_healthcheck: egress via Telegram proxy failed" >&2
+    exit 1
+  fi
+  echo "prod_healthcheck: WARN egress via Telegram proxy failed (set PROD_HEALTHCHECK_REQUIRE_EGRESS=1 to fail)" >&2
+fi
+
 echo "== Docker status =="
 "${DC[@]}" ps
 

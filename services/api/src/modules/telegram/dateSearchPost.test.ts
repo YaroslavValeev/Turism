@@ -46,7 +46,9 @@ describe("buildDateSearchMessage", () => {
 
   it("shows the large /dates preview above the text", () => {
     expect(message.link_preview_options).toMatchObject({ prefer_large_media: true, show_above_text: true });
-    expect(new URL(message.link_preview_options.url).pathname).toBe("/dates");
+    const preview = new URL(message.link_preview_options.url);
+    expect(preview.pathname).toBe("/dates");
+    expect([...preview.searchParams.keys()]).toEqual(["v"]);
     expect(message.text).toContain('<a href="https://mywavetour.ru/dates?');
     expect(message.text).not.toMatch(/href="[^"]*&(?!amp;)/);
   });

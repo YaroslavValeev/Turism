@@ -4,6 +4,7 @@
  *   pnpm --filter ./services/api exec tsx scripts/telegram-date-search-post.ts                       # владельцу в личку (превью)
  *   pnpm --filter ./services/api exec tsx scripts/telegram-date-search-post.ts --dry-run
  *   pnpm --filter ./services/api exec tsx scripts/telegram-date-search-post.ts --target channel --yes --pin
+ *   pnpm --filter ./services/api exec tsx scripts/telegram-date-search-post.ts --target channel --yes --edit 135   # обновить уже опубликованный (закреп сохраняется)
  *   pnpm --filter ./services/api exec tsx scripts/telegram-date-search-post.ts --menu-button         # «Меню» в личке бота → календарь
  *
  * Календарь как Mini App внутри Telegram: TELEGRAM_DATES_MINIAPP_URL=https://t.me/<bot>/<app> (или --mini-app);
@@ -72,8 +73,18 @@ async function main() {
   const message = buildDateSearchMessage(site, { miniAppUrl });
   console.log(`target=${target} chat=${chatId} site=${site} miniApp=${miniAppUrl ?? "нет"}${flag("dry-run") ? " (dry-run)" : ""}`);
   console.log(`  preview: ${message.link_preview_options.url}`);
+  if (arg("edit") && !/^\d+$/.test(arg("edit")!)) throw new Error("--edit ожидает message_id");
   for (const b of message.reply_markup.inline_keyboard.flat()) console.log(`  [${b.text}] ${b.url}`);
   if (flag("dry-run")) return;
+
+  const editId = arg("edit");
+  if (editId) {
+    const edited = await callBot("editMessageText", { chat_id: chatId, message_id: Number(editId), ...message });
+    const ok = edited.json?.ok || /message is not modified/i.test(edited.json?.description ?? "");
+    console.log(ok ? `edited message_id=${editId}` : `editMessageText: HTTP ${edited.status} ${edited.json?.description ?? ""}`);
+    if (!ok) process.exitCode = 2;
+    return;
+  }
 
   const sent = await callBot("sendMessage", { chat_id: chatId, ...message });
   if (!sent.json?.ok) {

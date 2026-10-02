@@ -28,9 +28,19 @@ function siteUrl(siteBase: string, pathname: string, params: Record<string, stri
   return url.toString();
 }
 
-// Telegram кэширует превью по точному URL; при смене OG-картинки меняйте utm_content.
-export function dateSearchPageUrl(siteBase: string, content = "cover"): string {
+export function dateSearchPageUrl(siteBase: string, content: string): string {
   return siteUrl(siteBase, "/dates", {}, content);
+}
+
+/**
+ * URL крупного превью. Telegram кэширует превью без учёта utm_*, поэтому версия — в отдельном
+ * параметре: при смене OG-картинки (или если закэшировалась ошибка) увеличьте PREVIEW_VERSION.
+ */
+const PREVIEW_VERSION = "2";
+export function dateSearchPreviewUrl(siteBase: string): string {
+  const url = new URL("/dates", `${siteBase.replace(/\/+$/, "")}/`);
+  url.searchParams.set("v", PREVIEW_VERSION);
+  return url.toString();
 }
 
 export function isTelegramMiniAppLink(value: string | undefined): value is string {
@@ -75,7 +85,7 @@ export function buildDateSearchMessage(siteBase: string, options: { miniAppUrl?:
   return {
     text: buildDateSearchPostHtml(siteBase),
     parse_mode: "HTML",
-    link_preview_options: { url: dateSearchPageUrl(siteBase), prefer_large_media: true, show_above_text: true },
+    link_preview_options: { url: dateSearchPreviewUrl(siteBase), prefer_large_media: true, show_above_text: true },
     reply_markup: buildDateSearchKeyboard(siteBase, options),
   };
 }

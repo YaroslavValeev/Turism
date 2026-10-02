@@ -1,0 +1,1869 @@
+{
+  "batchId": "enrich-per-tour-2026-10",
+  "items": [
+    {
+      "programId": "cmuf9qybu00v7l57wibvk3qum",
+      "field": "accommodation",
+      "checkedAt": "2026-10-02",
+      "content": {
+        "summary": "Проживание для семей организатор не включает: родители бронируют жильё сами (или через менеджера BirdTravel, в т.ч. шале у подножия гор Зелёная и Мустаг). Удобнее всего жить в секторе А у ул. Снежной — до детского клуба у Gesh Fly можно дойти пешком; жильё в посёлке дешевле, но потребует такси.",
+        "locationPoint": {
+          "label": "Шерегеш, гора Зелёная, сектор А — детский клуб у нижней станции Gesh Fly (ул. Снежная, 8/2, центральная парковка)",
+          "lat": 52.9539,
+          "lng": 87.958
+        },
+        "hotels": [
+          {
+            "name": "Парк Шале «ЭльГора»",
+            "group": "top",
+            "aggregator": {
+              "name": "ostrovok",
+              "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid11028685/shale_na_zvezdnoy_apartments/",
+              "rating": 10,
+              "ratingScale": 10,
+              "reviewsCount": 15
+            },
+            "distanceKm": 1.4,
+            "distanceNote": "ул. Звёздная, 27, посёлок у подножия горы Зелёная; по прямой от точки «нижняя станция Gesh Fly» по координатам объекта на Островке"
+          },
+          {
+            "name": "Гостевой дом «Рыжий пони»",
+            "group": "top",
+            "aggregator": {
+              "name": "ostrovok",
+              "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid10214468/na_vesenney_guest_house_32v/",
+              "rating": 9.4,
+              "ratingScale": 10,
+              "reviewsCount": 21
+            },
+            "distanceKm": 2,
+            "distanceNote": "ул. Весенняя, 32в, посёлок Шерегеш; по прямой от точки «нижняя станция Gesh Fly» по координатам объекта на Островке"
+          },
+          {
+            "name": "Апартаменты «Счастье»",
+            "group": "top",
+            "aggregator": {
+              "name": "ostrovok",
+              "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid8502938/schaste_aparthotel/",
+              "rating": 9.3,
+              "ratingScale": 10,
+              "reviewsCount": 23
+            },
+            "distanceKm": 0.6,
+            "distanceNote": "ул. Олимпийская, 8, сектор А; по прямой от точки «нижняя станция Gesh Fly» по координатам объекта на Островке"
+          },
+          {
+            "name": "Отель «Тайгара» (Сектор Е)",
+            "group": "top",
+            "siteUrl": "https://www.taigara.ru/",
+            "aggregator": {
+              "name": "ostrovok",
+              "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid9991423/tajgara_sektor_e/",
+              "rating": 9.3,
+              "ratingScale": 10,
+              "reviewsCount": 18
+            },
+            "distanceKm": 5.4,
+            "distanceNote": "Сектор Е (отдельная зона катания), у нижней станции гондолы сектора Е; по прямой от точки «нижняя станция Gesh Fly» по координатам объекта на Островке"
+          },
+          {
+            "name": "Апартаменты WOW.Aparts",
+            "group": "top",
+            "aggregator": {
+              "name": "ostrovok",
+              "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid9986273/wowaparts/",
+              "rating": 9.2,
+              "ratingScale": 10,
+              "reviewsCount": 29
+            },
+            "distanceKm": 3.7,
+            "distanceNote": "ул. Пирогова, 1, посёлок Шерегеш; до склона — транспортом; по прямой от точки «нижняя станция Gesh Fly» по координатам объекта на Островке"
+          },
+          {
+            "name": "Отель «Снежный»",
+            "group": "nearby",
+            "aggregator": {
+              "name": "ostrovok",
+              "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid8703553/hotel_snezhniy/",
+              "rating": 8.5,
+              "ratingScale": 10,
+              "reviewsCount": 37
+            },
+            "distanceKm": 0.1,
+            "distanceNote": "ул. Снежная, 24, сектор А; по прямой от точки «нижняя станция Gesh Fly» по координатам объекта на Островке"
+          },
+          {
+            "name": "Гостиничный комплекс «Губернский»",
+            "group": "nearby",
+            "aggregator": {
+              "name": "ostrovok",
+              "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid7747989/gubernskaya_hotel/",
+              "rating": 8.8,
+              "ratingScale": 10,
+              "reviewsCount": 61
+            },
+            "distanceKm": 0.1,
+            "distanceNote": "ул. Снежная, 27, сектор А; по прямой от точки «нижняя станция Gesh Fly» по координатам объекта на Островке"
+          },
+          {
+            "name": "Йети Хаус (на Островке — «Отель Йети»)",
+            "group": "nearby",
+            "siteUrl": "https://yeti.house/",
+            "aggregator": {
+              "name": "ostrovok",
+              "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid10009785/hotel_jeti/",
+              "rating": 8.5,
+              "ratingScale": 10,
+              "reviewsCount": 26
+            },
+            "distanceKm": 0.1,
+            "distanceNote": "ул. Снежная, 50, сектор А; по прямой от точки «нижняя станция Gesh Fly» по координатам объекта на Островке"
+          },
+          {
+            "name": "Отель «Грюнхоф»",
+            "group": "nearby",
+            "aggregator": {
+              "name": "ostrovok",
+              "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid7735352/gostinitsa_griunkhof/",
+              "rating": 8.6,
+              "ratingScale": 10,
+              "reviewsCount": 62
+            },
+            "distanceKm": 0.2,
+            "distanceNote": "ул. Снежная, 19, сектор А; по прямой от точки «нижняя станция Gesh Fly» по координатам объекта на Островке"
+          },
+          {
+            "name": "Гостиница «Сибирь»",
+            "group": "nearby",
+            "siteUrl": "http://sibirhotelgesh.ru/",
+            "aggregator": {
+              "name": "ostrovok",
+              "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid9768577/sibir_19/",
+              "rating": 8.5,
+              "ratingScale": 10,
+              "reviewsCount": 35
+            },
+            "distanceKm": 0.3,
+            "distanceNote": "ул. Спортивная, 22, сектор А; по прямой от точки «нижняя станция Gesh Fly» по координатам объекта на Островке"
+          }
+        ]
+      },
+      "sources": [
+        {
+          "url": "https://birdtravel.ru/routs/detskaya-gornolyzhnaya-shkola-v-sheregeshe/",
+          "title": "BirdTravel — Детская горнолыжная и сноубордическая школа в Шерегеше",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://birdtravel.ru/routs/ski-tur-na-mamae-gory-baykala/",
+          "title": "BirdTravel — Ски-тур на Мамае с гидом IFMGA (для сверки названия и дат)",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/russia/sheregesh/",
+          "title": "Островок — отели Шерегеша (выдача с оценками)",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://gesh.ru/gid/gesh-fly/",
+          "title": "GESH.RU — канатная дорога Gesh Fly (сектор А)",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://nominatim.openstreetmap.org/search?format=json&q=Gesh%20Fly",
+          "title": "OpenStreetMap Nominatim — координаты Gesh Fly (Шерегеш)",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid11028685/shale_na_zvezdnoy_apartments/",
+          "title": "Островок — Парк Шале ЭльГора",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid10214468/na_vesenney_guest_house_32v/",
+          "title": "Островок — Гостевой Дом Рыжий пони",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid8502938/schaste_aparthotel/",
+          "title": "Островок — Апартаменты Счастье",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid9991423/tajgara_sektor_e/",
+          "title": "Островок — Отель Тайгара Сектор Е",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid9986273/wowaparts/",
+          "title": "Островок — Апартаменты WOW.Aparts",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid8703553/hotel_snezhniy/",
+          "title": "Островок — Отель Снежный",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid7747989/gubernskaya_hotel/",
+          "title": "Островок — Гостиничный комплекс Губернский",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid10009785/hotel_jeti/",
+          "title": "Островок — Отель Йети",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid7735352/gostinitsa_griunkhof/",
+          "title": "Островок — Отель Грюнхоф",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid9768577/sibir_19/",
+          "title": "Островок — Отель Сибирь",
+          "accessedAt": "2026-10-02"
+        }
+      ]
+    },
+    {
+      "programId": "cmuf9qybu00v7l57wibvk3qum",
+      "field": "transfer",
+      "checkedAt": "2026-10-02",
+      "content": {
+        "text": "Ближайший аэропорт — Новокузнецк (Спиченково), до сектора А около 165 км, на машине обычно 2–3 часа, в снегопад дольше. Организатор советует прилетать в Новокузнецк в воскресенье утром и самостоятельно бронировать групповой трансфер у его партнёров — ориентировочно 2000–2500 ₽ с человека в одну сторону (данные организатора, уточняйте). Альтернативы: рейсовый автобус с автовокзала Новокузнецка (около 3,5 часа), по выходным в сезон — пригородный поезд до Чугунаша со стыковочным автобусом, такси. Детский клуб стоит у нижней станции Gesh Fly на бесплатной центральной парковке; остановка «Гора Зелёная» — примерно в 150 м. Если Gesh Fly не работает, по данным организатора детей подвозят к секторам А/Б, а дорога к зоне катания оплачивается отдельно. Из посёлка до парковки — такси или автобус."
+      },
+      "sources": [
+        {
+          "url": "https://birdtravel.ru/routs/detskaya-gornolyzhnaya-shkola-v-sheregeshe/",
+          "title": "BirdTravel — Детская горнолыжная и сноубордическая школа в Шерегеше",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://gesh.ru/sheregesh/location/",
+          "title": "GESH.RU — как добраться до Шерегеша",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://gesh.ru/gid/gesh-fly/",
+          "title": "GESH.RU — канатная дорога Gesh Fly (сектор А)",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ru.wikiroutes.info/stops/1003780",
+          "title": "Wikiroutes — остановка Gesh Fly (гондольная), Шерегеш",
+          "accessedAt": "2026-10-02"
+        }
+      ]
+    },
+    {
+      "programId": "cmuf9qybu00v7l57wibvk3qum",
+      "field": "equipment",
+      "checkedAt": "2026-10-02",
+      "content": {
+        "text": "По данным организатора, в стоимость уже входит детский прокат: лыжи или сноуборд, палки, ботинки, шлем и маска. Поэтому из дома стоит взять прежде всего одежду. Для ребёнка удобна многослойность: термобельё плюс запасной комплект на смену после обеда, флис или тонкий пуховик, непромокаемый горнолыжный костюм, тёплые носки (одна пара, без двух слоёв — иначе мёрзнут ноги). Нужны варежки и запасные перчатки, балаклава или бафф под шлем, крем SPF 50 и бальзам для губ. В конце ноября сезон только открывается: может быть морозно и ветрено, поэтому держите в рюкзаке у родителей сменные варежки и термос. Защита (спина, колени) — по желанию; для сноуборда пригодится защита копчика и запястий. Проверьте, что прокатный шлем и маска хорошо сидят, — это влияет на комфорт ребёнка больше всего."
+      },
+      "sources": [
+        {
+          "url": "https://birdtravel.ru/routs/detskaya-gornolyzhnaya-shkola-v-sheregeshe/",
+          "title": "BirdTravel — Детская горнолыжная и сноубордическая школа в Шерегеше",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ridertrip.ru/kogda-ehat-v-sheregesh/",
+          "title": "Ridertrip — когда ехать в Шерегеш: сезон 2026/27 по месяцам",
+          "accessedAt": "2026-10-02"
+        }
+      ]
+    },
+    {
+      "programId": "cmuf9wnk200wpl57wk408rzhe",
+      "field": "accommodation",
+      "checkedAt": "2026-10-02",
+      "content": {
+        "summary": "Детская школа работает у подъёмника Gesh Fly в секторе А; проживание и питание семьи организуют сами (организатор предлагает шале у подножия гор Зелёная и Мустаг или список отелей курорта). Для поездки с маленькими детьми удобнее отели в пешей доступности от центральной парковки у ул. Снежной и Горнолыжной.",
+        "locationPoint": {
+          "label": "Шерегеш, гора Зелёная, сектор А — детский клуб у нижней станции Gesh Fly (ул. Снежная, 8/2, центральная парковка)",
+          "lat": 52.9539,
+          "lng": 87.958
+        },
+        "hotels": [
+          {
+            "name": "Парк Шале «ЭльГора»",
+            "group": "top",
+            "aggregator": {
+              "name": "ostrovok",
+              "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid11028685/shale_na_zvezdnoy_apartments/",
+              "rating": 10,
+              "ratingScale": 10,
+              "reviewsCount": 15
+            },
+            "distanceKm": 1.4,
+            "distanceNote": "ул. Звёздная, 27, посёлок у подножия горы Зелёная; по прямой от точки «нижняя станция Gesh Fly» по координатам объекта на Островке"
+          },
+          {
+            "name": "Гостевой дом «Рыжий пони»",
+            "group": "top",
+            "aggregator": {
+              "name": "ostrovok",
+              "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid10214468/na_vesenney_guest_house_32v/",
+              "rating": 9.4,
+              "ratingScale": 10,
+              "reviewsCount": 21
+            },
+            "distanceKm": 2,
+            "distanceNote": "ул. Весенняя, 32в, посёлок Шерегеш; по прямой от точки «нижняя станция Gesh Fly» по координатам объекта на Островке"
+          },
+          {
+            "name": "Апартаменты «Счастье»",
+            "group": "top",
+            "aggregator": {
+              "name": "ostrovok",
+              "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid8502938/schaste_aparthotel/",
+              "rating": 9.3,
+              "ratingScale": 10,
+              "reviewsCount": 23
+            },
+            "distanceKm": 0.6,
+            "distanceNote": "ул. Олимпийская, 8, сектор А; по прямой от точки «нижняя станция Gesh Fly» по координатам объекта на Островке"
+          },
+          {
+            "name": "Отель «Тайгара» (Сектор Е)",
+            "group": "top",
+            "siteUrl": "https://www.taigara.ru/",
+            "aggregator": {
+              "name": "ostrovok",
+              "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid9991423/tajgara_sektor_e/",
+              "rating": 9.3,
+              "ratingScale": 10,
+              "reviewsCount": 18
+            },
+            "distanceKm": 5.4,
+            "distanceNote": "Сектор Е (отдельная зона катания), у нижней станции гондолы сектора Е; по прямой от точки «нижняя станция Gesh Fly» по координатам объекта на Островке"
+          },
+          {
+            "name": "Апартаменты WOW.Aparts",
+            "group": "top",
+            "aggregator": {
+              "name": "ostrovok",
+              "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid9986273/wowaparts/",
+              "rating": 9.2,
+              "ratingScale": 10,
+              "reviewsCount": 29
+            },
+            "distanceKm": 3.7,
+            "distanceNote": "ул. Пирогова, 1, посёлок Шерегеш; до склона — транспортом; по прямой от точки «нижняя станция Gesh Fly» по координатам объекта на Островке"
+          },
+          {
+            "name": "База отдыха Izba",
+            "group": "nearby",
+            "aggregator": {
+              "name": "ostrovok",
+              "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid10949666/gostevoy_dom_izba_2/",
+              "rating": 9.2,
+              "ratingScale": 10,
+              "reviewsCount": 23
+            },
+            "distanceKm": 0.3,
+            "distanceNote": "ул. Горнолыжная, 16, сектор А; по прямой от точки «нижняя станция Gesh Fly» по координатам объекта на Островке"
+          },
+          {
+            "name": "Laska Hotel Sheregesh",
+            "group": "nearby",
+            "siteUrl": "https://laska-hotel.ru/",
+            "aggregator": {
+              "name": "ostrovok",
+              "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid8736452/laska_hotel/",
+              "rating": 8.9,
+              "ratingScale": 10,
+              "reviewsCount": 17
+            },
+            "distanceKm": 0.4,
+            "distanceNote": "гора Зелёная, сектор А; по прямой от точки «нижняя станция Gesh Fly» по координатам объекта на Островке"
+          },
+          {
+            "name": "Отель «Вояж»",
+            "group": "nearby",
+            "siteUrl": "https://geshvoyage.ru/",
+            "aggregator": {
+              "name": "ostrovok",
+              "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid10902166/voyazh_glamping/",
+              "rating": 8.2,
+              "ratingScale": 10,
+              "reviewsCount": 38
+            },
+            "distanceKm": 0.1,
+            "distanceNote": "ул. Горнолыжная, 1, сектор А; по прямой от точки «нижняя станция Gesh Fly» по координатам объекта на Островке"
+          },
+          {
+            "name": "Отель «Ольга»",
+            "group": "nearby",
+            "aggregator": {
+              "name": "ostrovok",
+              "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid8014641/hotel_olga_/",
+              "rating": 7.7,
+              "ratingScale": 10,
+              "reviewsCount": 111
+            },
+            "distanceKm": 0.2,
+            "distanceNote": "ул. Горнолыжная, 3, сектор А; по прямой от точки «нижняя станция Gesh Fly» по координатам объекта на Островке"
+          },
+          {
+            "name": "Отель «Аквилон»",
+            "group": "nearby",
+            "aggregator": {
+              "name": "ostrovok",
+              "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid7735340/akvilon_hotel/",
+              "rating": 8.1,
+              "ratingScale": 10,
+              "reviewsCount": 52
+            },
+            "distanceKm": 0.2,
+            "distanceNote": "ул. Спортивная, 25, сектор А; по прямой от точки «нижняя станция Gesh Fly» по координатам объекта на Островке"
+          }
+        ]
+      },
+      "sources": [
+        {
+          "url": "https://birdtravel.ru/routs/detskaya-gornolyzhnaya-shkola-v-sheregeshe/",
+          "title": "BirdTravel — Детская горнолыжная и сноубордическая школа в Шерегеше",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://birdtravel.ru/routs/frirayd-i-ski-tur-v-gulmarge-indiyskie-gimalai/",
+          "title": "BirdTravel — Фрирайд и бэккантри в Гульмарге (страница по sourceUrl карточки)",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/russia/sheregesh/",
+          "title": "Островок — отели Шерегеша (выдача с оценками)",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://gesh.ru/gid/gesh-fly/",
+          "title": "GESH.RU — канатная дорога Gesh Fly (сектор А)",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://nominatim.openstreetmap.org/search?format=json&q=Gesh%20Fly",
+          "title": "OpenStreetMap Nominatim — координаты Gesh Fly (Шерегеш)",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid11028685/shale_na_zvezdnoy_apartments/",
+          "title": "Островок — Парк Шале ЭльГора",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid10214468/na_vesenney_guest_house_32v/",
+          "title": "Островок — Гостевой Дом Рыжий пони",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid8502938/schaste_aparthotel/",
+          "title": "Островок — Апартаменты Счастье",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid9991423/tajgara_sektor_e/",
+          "title": "Островок — Отель Тайгара Сектор Е",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid9986273/wowaparts/",
+          "title": "Островок — Апартаменты WOW.Aparts",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid10949666/gostevoy_dom_izba_2/",
+          "title": "Островок — База отдыха Izba",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid8736452/laska_hotel/",
+          "title": "Островок — Отель Laska Sheregesh",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid10902166/voyazh_glamping/",
+          "title": "Островок — Отель Вояж",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid8014641/hotel_olga_/",
+          "title": "Островок — Ольга",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid7735340/akvilon_hotel/",
+          "title": "Островок — Аквилон курорт Шерегеш",
+          "accessedAt": "2026-10-02"
+        }
+      ]
+    },
+    {
+      "programId": "cmuf9wnk200wpl57wk408rzhe",
+      "field": "transfer",
+      "checkedAt": "2026-10-02",
+      "content": {
+        "text": "Ближайший аэропорт — Новокузнецк (Спиченково), до сектора А около 165 км, на машине обычно 2–3 часа, в снегопад дольше. Поездку удобно планировать так же, как предлагает организатор: прилёт в воскресенье утром и групповой трансфер с попутчиками с того же рейса, который бронируется у партнёров BirdTravel (по их данным около 2000–2500 ₽ с человека в одну сторону). С детьми и багажом часто удобнее индивидуальный трансфер или такси до отеля. Бюджетные варианты — рейсовый автобус из Новокузнецка (около 3,5 часа) или выходной туристический поезд до Чугунаша с автобусом до курорта. Занятия начинаются у нижней станции Gesh Fly на центральной парковке сектора А; рядом остановка «Гора Зелёная». Если гондола не работает, детей, по словам организатора, подвозят к секторам А/Б. Обратный выезд — через неделю, трансфер тоже бронируется самостоятельно."
+      },
+      "sources": [
+        {
+          "url": "https://birdtravel.ru/routs/detskaya-gornolyzhnaya-shkola-v-sheregeshe/",
+          "title": "BirdTravel — Детская горнолыжная и сноубордическая школа в Шерегеше",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://gesh.ru/sheregesh/location/",
+          "title": "GESH.RU — как добраться до Шерегеша",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://gesh.ru/gid/gesh-fly/",
+          "title": "GESH.RU — канатная дорога Gesh Fly (сектор А)",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ru.wikiroutes.info/stops/1003780",
+          "title": "Wikiroutes — остановка Gesh Fly (гондольная), Шерегеш",
+          "accessedAt": "2026-10-02"
+        }
+      ]
+    },
+    {
+      "programId": "cmuf9wnk200wpl57wk408rzhe",
+      "field": "equipment",
+      "checkedAt": "2026-10-02",
+      "content": {
+        "text": "Прокат детского снаряжения (лыжи или доска, палки, ботинки, шлем, маска) организатор включает в стоимость, так что своё железо везти не обязательно. Если ребёнок катается на своих лыжах, организатор ориентирует на трассовые модели длиной примерно до подбородка или носа и мягкие ботинки. Из одежды понадобятся: два комплекта термобелья, флисовая кофта, тёплая куртка-пуховка под костюм, мембранный горнолыжный костюм, шапка или подшлемник, балаклава, варежки плюс запасные перчатки. Маски лучше две — для солнца и для снегопада. Крем SPF 50 и гигиеническая помада обязательны даже зимой. Для игровой комнаты и обеда пригодятся сменная обувь и сухие носки. Для малышей 2–3 лет захватите любимую игрушку и перекус: занятия короткие, но ребёнок быстро устаёт на холоде."
+      },
+      "sources": [
+        {
+          "url": "https://birdtravel.ru/routs/detskaya-gornolyzhnaya-shkola-v-sheregeshe/",
+          "title": "BirdTravel — Детская горнолыжная и сноубордическая школа в Шерегеше",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ridertrip.ru/kogda-ehat-v-sheregesh/",
+          "title": "Ridertrip — когда ехать в Шерегеш: сезон 2026/27 по месяцам",
+          "accessedAt": "2026-10-02"
+        }
+      ]
+    },
+    {
+      "programId": "cmufa6xfd00xhl57w7g77yp84",
+      "field": "accommodation",
+      "checkedAt": "2026-10-02",
+      "content": {
+        "summary": "Проживание в базовую цену курса не входит. Организатор предлагает пакет с шале у подножия гор Зелёная и Мустаг недалеко от Gesh Fly или самостоятельное размещение в отелях курорта; если занятия группы проходят в секторе Е, разумно жить там же.",
+        "locationPoint": {
+          "label": "Шерегеш, гора Зелёная, сектор А — нижняя станция Gesh Fly / центральная парковка (часть занятий может проходить в секторе Е)",
+          "lat": 52.9539,
+          "lng": 87.958
+        },
+        "hotels": [
+          {
+            "name": "Парк Шале «ЭльГора»",
+            "group": "top",
+            "aggregator": {
+              "name": "ostrovok",
+              "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid11028685/shale_na_zvezdnoy_apartments/",
+              "rating": 10,
+              "ratingScale": 10,
+              "reviewsCount": 15
+            },
+            "distanceKm": 1.4,
+            "distanceNote": "ул. Звёздная, 27, посёлок у подножия горы Зелёная; по прямой от точки «нижняя станция Gesh Fly» по координатам объекта на Островке"
+          },
+          {
+            "name": "Гостевой дом «Рыжий пони»",
+            "group": "top",
+            "aggregator": {
+              "name": "ostrovok",
+              "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid10214468/na_vesenney_guest_house_32v/",
+              "rating": 9.4,
+              "ratingScale": 10,
+              "reviewsCount": 21
+            },
+            "distanceKm": 2,
+            "distanceNote": "ул. Весенняя, 32в, посёлок Шерегеш; по прямой от точки «нижняя станция Gesh Fly» по координатам объекта на Островке"
+          },
+          {
+            "name": "Апартаменты «Счастье»",
+            "group": "top",
+            "aggregator": {
+              "name": "ostrovok",
+              "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid8502938/schaste_aparthotel/",
+              "rating": 9.3,
+              "ratingScale": 10,
+              "reviewsCount": 23
+            },
+            "distanceKm": 0.6,
+            "distanceNote": "ул. Олимпийская, 8, сектор А; по прямой от точки «нижняя станция Gesh Fly» по координатам объекта на Островке"
+          },
+          {
+            "name": "Отель «Тайгара» (Сектор Е)",
+            "group": "top",
+            "siteUrl": "https://www.taigara.ru/",
+            "aggregator": {
+              "name": "ostrovok",
+              "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid9991423/tajgara_sektor_e/",
+              "rating": 9.3,
+              "ratingScale": 10,
+              "reviewsCount": 18
+            },
+            "distanceKm": 5.4,
+            "distanceNote": "Сектор Е (отдельная зона катания), у нижней станции гондолы сектора Е; по прямой от точки «нижняя станция Gesh Fly» по координатам объекта на Островке"
+          },
+          {
+            "name": "Апартаменты WOW.Aparts",
+            "group": "top",
+            "aggregator": {
+              "name": "ostrovok",
+              "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid9986273/wowaparts/",
+              "rating": 9.2,
+              "ratingScale": 10,
+              "reviewsCount": 29
+            },
+            "distanceKm": 3.7,
+            "distanceNote": "ул. Пирогова, 1, посёлок Шерегеш; до склона — транспортом; по прямой от точки «нижняя станция Gesh Fly» по координатам объекта на Островке"
+          },
+          {
+            "name": "Отель Ays Club",
+            "group": "nearby",
+            "aggregator": {
+              "name": "ostrovok",
+              "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid7735317/ays_club/",
+              "rating": 8.3,
+              "ratingScale": 10,
+              "reviewsCount": 67
+            },
+            "distanceKm": 0.5,
+            "distanceNote": "ул. Спортивная, 8, сектор А; по прямой от точки «нижняя станция Gesh Fly» по координатам объекта на Островке"
+          },
+          {
+            "name": "Гостиничный комплекс «Губернский»",
+            "group": "nearby",
+            "aggregator": {
+              "name": "ostrovok",
+              "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid7747989/gubernskaya_hotel/",
+              "rating": 8.8,
+              "ratingScale": 10,
+              "reviewsCount": 61
+            },
+            "distanceKm": 0.1,
+            "distanceNote": "ул. Снежная, 27, сектор А; по прямой от точки «нижняя станция Gesh Fly» по координатам объекта на Островке"
+          },
+          {
+            "name": "Отель «Грюнхоф»",
+            "group": "nearby",
+            "aggregator": {
+              "name": "ostrovok",
+              "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid7735352/gostinitsa_griunkhof/",
+              "rating": 8.6,
+              "ratingScale": 10,
+              "reviewsCount": 62
+            },
+            "distanceKm": 0.2,
+            "distanceNote": "ул. Снежная, 19, сектор А; по прямой от точки «нижняя станция Gesh Fly» по координатам объекта на Островке"
+          },
+          {
+            "name": "Гостиница «Сибирь»",
+            "group": "nearby",
+            "siteUrl": "http://sibirhotelgesh.ru/",
+            "aggregator": {
+              "name": "ostrovok",
+              "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid9768577/sibir_19/",
+              "rating": 8.5,
+              "ratingScale": 10,
+              "reviewsCount": 35
+            },
+            "distanceKm": 0.3,
+            "distanceNote": "ул. Спортивная, 22, сектор А; по прямой от точки «нижняя станция Gesh Fly» по координатам объекта на Островке"
+          },
+          {
+            "name": "База отдыха Izba",
+            "group": "nearby",
+            "aggregator": {
+              "name": "ostrovok",
+              "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid10949666/gostevoy_dom_izba_2/",
+              "rating": 9.2,
+              "ratingScale": 10,
+              "reviewsCount": 23
+            },
+            "distanceKm": 0.3,
+            "distanceNote": "ул. Горнолыжная, 16, сектор А; по прямой от точки «нижняя станция Gesh Fly» по координатам объекта на Островке"
+          }
+        ]
+      },
+      "sources": [
+        {
+          "url": "https://birdtravel.ru/routs/shkola-gornyh-lyzh-i-snouborda-v-sheregeshe/",
+          "title": "BirdTravel — Технический курс по горным лыжам и сноуборду в Шерегеше",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/russia/sheregesh/",
+          "title": "Островок — отели Шерегеша (выдача с оценками)",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://gesh.ru/gid/gesh-fly/",
+          "title": "GESH.RU — канатная дорога Gesh Fly (сектор А)",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://nominatim.openstreetmap.org/search?format=json&q=Gesh%20Fly",
+          "title": "OpenStreetMap Nominatim — координаты Gesh Fly (Шерегеш)",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid11028685/shale_na_zvezdnoy_apartments/",
+          "title": "Островок — Парк Шале ЭльГора",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid10214468/na_vesenney_guest_house_32v/",
+          "title": "Островок — Гостевой Дом Рыжий пони",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid8502938/schaste_aparthotel/",
+          "title": "Островок — Апартаменты Счастье",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid9991423/tajgara_sektor_e/",
+          "title": "Островок — Отель Тайгара Сектор Е",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid9986273/wowaparts/",
+          "title": "Островок — Апартаменты WOW.Aparts",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid7735317/ays_club/",
+          "title": "Островок — Отель Ays Club",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid7747989/gubernskaya_hotel/",
+          "title": "Островок — Гостиничный комплекс Губернский",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid7735352/gostinitsa_griunkhof/",
+          "title": "Островок — Отель Грюнхоф",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid9768577/sibir_19/",
+          "title": "Островок — Отель Сибирь",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid10949666/gostevoy_dom_izba_2/",
+          "title": "Островок — База отдыха Izba",
+          "accessedAt": "2026-10-02"
+        }
+      ]
+    },
+    {
+      "programId": "cmufa6xfd00xhl57w7g77yp84",
+      "field": "transfer",
+      "checkedAt": "2026-10-02",
+      "content": {
+        "text": "Ближайший аэропорт — Новокузнецк (Спиченково), до сектора А около 165 км, на машине обычно 2–3 часа, в снегопад дольше. Трансфер из аэропорта в курс не входит. Организатор рекомендует прилёт в воскресенье утром и групповой трансфер через его партнёров (ориентировочно 2000–2500 ₽ с человека в одну сторону по данным организатора). Другие варианты: рейсовый автобус Новокузнецк — Шерегеш (около 3,5 часа), по выходным в сезон — пригородный поезд до Чугунаша и автобус до курорта, такси или минивэн для компании. Занятия идут в секторе А: нижняя станция Gesh Fly расположена на центральной парковке, остановка «Гора Зелёная» примерно в 150 м. Если группу определят в сектор Е, учитывайте, что это отдельная зона в нескольких километрах от сектора А — туда едут на такси или автобусе. Закладывайте запас времени на снегопад."
+      },
+      "sources": [
+        {
+          "url": "https://birdtravel.ru/routs/shkola-gornyh-lyzh-i-snouborda-v-sheregeshe/",
+          "title": "BirdTravel — Технический курс по горным лыжам и сноуборду в Шерегеше",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://gesh.ru/sheregesh/location/",
+          "title": "GESH.RU — как добраться до Шерегеша",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://gesh.ru/gid/gesh-fly/",
+          "title": "GESH.RU — канатная дорога Gesh Fly (сектор А)",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ru.wikiroutes.info/stops/1003780",
+          "title": "Wikiroutes — остановка Gesh Fly (гондольная), Шерегеш",
+          "accessedAt": "2026-10-02"
+        }
+      ]
+    },
+    {
+      "programId": "cmufa6xfd00xhl57w7g77yp84",
+      "field": "equipment",
+      "checkedAt": "2026-10-02",
+      "content": {
+        "text": "Курс построен на технике по подготовленным трассам, поэтому организатор просит трассовые лыжи с талией примерно 65–80 мм и обычные горнолыжные ботинки, а не ски-турные или фрирайдные модели. Аренда снаряжения в стоимость не входит: если берёте прокат, выбирайте карвинговые лыжи и просите заточенные канты — в конце ноября трассы бывают жёсткими, а катание часто идёт только наверху. Время на подгонку ботинок лучше заложить до первого занятия. Сноубордистам стоит заранее проверить углы креплений и хайбек — их донастроят с инструктором. В программе есть мастер-класс по ОФП в тренажёрном зале, так что возьмите спортивную форму и кроссовки. Две маски (для солнца и плохой видимости), защита по желанию, тёплые слои под мембрану — для видеоразборов ждать на склоне приходится часто."
+      },
+      "sources": [
+        {
+          "url": "https://birdtravel.ru/routs/shkola-gornyh-lyzh-i-snouborda-v-sheregeshe/",
+          "title": "BirdTravel — Технический курс по горным лыжам и сноуборду в Шерегеше",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ridertrip.ru/kogda-ehat-v-sheregesh/",
+          "title": "Ridertrip — когда ехать в Шерегеш: сезон 2026/27 по месяцам",
+          "accessedAt": "2026-10-02"
+        }
+      ]
+    },
+    {
+      "programId": "cmulqlaxp00lugghlhxhro60t",
+      "field": "accommodation",
+      "checkedAt": "2026-10-02",
+      "content": {
+        "summary": "Организатор (Freeride Russia, гид Игорь Ильиных) не публикует пакет проживания, поэтому жильё бронируют самостоятельно. Для фрирайд-программы удобнее всего жить у подножия горы Зелёная в секторе А — утром не нужно добираться до подъёмников.",
+        "locationPoint": {
+          "label": "Шерегеш, гора Зелёная, сектор А — подножие у ул. Снежной (точное место сбора организатор не публикует)",
+          "lat": 52.9525,
+          "lng": 87.9642
+        },
+        "hotels": [
+          {
+            "name": "Парк Шале «ЭльГора»",
+            "group": "top",
+            "aggregator": {
+              "name": "ostrovok",
+              "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid11028685/shale_na_zvezdnoy_apartments/",
+              "rating": 10,
+              "ratingScale": 10,
+              "reviewsCount": 15
+            },
+            "distanceKm": 1,
+            "distanceNote": "ул. Звёздная, 27, посёлок у подножия горы Зелёная; по прямой от точки «сектор А, ул. Снежная» по координатам объекта на Островке"
+          },
+          {
+            "name": "Гостевой дом «Рыжий пони»",
+            "group": "top",
+            "aggregator": {
+              "name": "ostrovok",
+              "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid10214468/na_vesenney_guest_house_32v/",
+              "rating": 9.4,
+              "ratingScale": 10,
+              "reviewsCount": 21
+            },
+            "distanceKm": 1.7,
+            "distanceNote": "ул. Весенняя, 32в, посёлок Шерегеш; по прямой от точки «сектор А, ул. Снежная» по координатам объекта на Островке"
+          },
+          {
+            "name": "Апартаменты «Счастье»",
+            "group": "top",
+            "aggregator": {
+              "name": "ostrovok",
+              "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid8502938/schaste_aparthotel/",
+              "rating": 9.3,
+              "ratingScale": 10,
+              "reviewsCount": 23
+            },
+            "distanceKm": 0.4,
+            "distanceNote": "ул. Олимпийская, 8, сектор А; по прямой от точки «сектор А, ул. Снежная» по координатам объекта на Островке"
+          },
+          {
+            "name": "Отель «Тайгара» (Сектор Е)",
+            "group": "top",
+            "siteUrl": "https://www.taigara.ru/",
+            "aggregator": {
+              "name": "ostrovok",
+              "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid9991423/tajgara_sektor_e/",
+              "rating": 9.3,
+              "ratingScale": 10,
+              "reviewsCount": 18
+            },
+            "distanceKm": 5.7,
+            "distanceNote": "Сектор Е (отдельная зона катания), у нижней станции гондолы сектора Е; по прямой от точки «сектор А, ул. Снежная» по координатам объекта на Островке"
+          },
+          {
+            "name": "Апартаменты WOW.Aparts",
+            "group": "top",
+            "aggregator": {
+              "name": "ostrovok",
+              "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid9986273/wowaparts/",
+              "rating": 9.2,
+              "ratingScale": 10,
+              "reviewsCount": 29
+            },
+            "distanceKm": 3.4,
+            "distanceNote": "ул. Пирогова, 1, посёлок Шерегеш; до склона — транспортом; по прямой от точки «сектор А, ул. Снежная» по координатам объекта на Островке"
+          },
+          {
+            "name": "Отель «Снежный»",
+            "group": "nearby",
+            "aggregator": {
+              "name": "ostrovok",
+              "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid8703553/hotel_snezhniy/",
+              "rating": 8.5,
+              "ratingScale": 10,
+              "reviewsCount": 37
+            },
+            "distanceKm": 0.4,
+            "distanceNote": "ул. Снежная, 24, сектор А; по прямой от точки «сектор А, ул. Снежная» по координатам объекта на Островке"
+          },
+          {
+            "name": "Гостиничный комплекс «Губернский»",
+            "group": "nearby",
+            "aggregator": {
+              "name": "ostrovok",
+              "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid7747989/gubernskaya_hotel/",
+              "rating": 8.8,
+              "ratingScale": 10,
+              "reviewsCount": 61
+            },
+            "distanceKm": 0.4,
+            "distanceNote": "ул. Снежная, 27, сектор А; по прямой от точки «сектор А, ул. Снежная» по координатам объекта на Островке"
+          },
+          {
+            "name": "Йети Хаус (на Островке — «Отель Йети»)",
+            "group": "nearby",
+            "siteUrl": "https://yeti.house/",
+            "aggregator": {
+              "name": "ostrovok",
+              "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid10009785/hotel_jeti/",
+              "rating": 8.5,
+              "ratingScale": 10,
+              "reviewsCount": 26
+            },
+            "distanceKm": 0.6,
+            "distanceNote": "ул. Снежная, 50, сектор А; по прямой от точки «сектор А, ул. Снежная» по координатам объекта на Островке"
+          },
+          {
+            "name": "Отель «Вояж»",
+            "group": "nearby",
+            "siteUrl": "https://geshvoyage.ru/",
+            "aggregator": {
+              "name": "ostrovok",
+              "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid10902166/voyazh_glamping/",
+              "rating": 8.2,
+              "ratingScale": 10,
+              "reviewsCount": 38
+            },
+            "distanceKm": 0.5,
+            "distanceNote": "ул. Горнолыжная, 1, сектор А; по прямой от точки «сектор А, ул. Снежная» по координатам объекта на Островке"
+          },
+          {
+            "name": "Отель «Аквилон»",
+            "group": "nearby",
+            "aggregator": {
+              "name": "ostrovok",
+              "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid7735340/akvilon_hotel/",
+              "rating": 8.1,
+              "ratingScale": 10,
+              "reviewsCount": 52
+            },
+            "distanceKm": 0.4,
+            "distanceNote": "ул. Спортивная, 25, сектор А; по прямой от точки «сектор А, ул. Снежная» по координатам объекта на Островке"
+          }
+        ]
+      },
+      "sources": [
+        {
+          "url": "https://t.me/s/freeriderussia/1032",
+          "title": "Telegram Freeride Russia (Игорь Ильиных) — места в школы в Шерегеше, пост 1032",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://t.me/s/freeriderussia/968",
+          "title": "Telegram Freeride Russia (Игорь Ильиных) — ранняя запись на школы и кэмпы, пост 968",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/russia/sheregesh/",
+          "title": "Островок — отели Шерегеша (выдача с оценками)",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://nominatim.openstreetmap.org/search?format=json&q=%D0%A1%D0%BD%D0%B5%D0%B6%D0%BD%D0%B0%D1%8F%20%D1%83%D0%BB%D0%B8%D1%86%D0%B0%2C%20%D0%A8%D0%B5%D1%80%D0%B5%D0%B3%D0%B5%D1%88",
+          "title": "OpenStreetMap Nominatim — координаты ул. Снежная, Шерегеш",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid11028685/shale_na_zvezdnoy_apartments/",
+          "title": "Островок — Парк Шале ЭльГора",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid10214468/na_vesenney_guest_house_32v/",
+          "title": "Островок — Гостевой Дом Рыжий пони",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid8502938/schaste_aparthotel/",
+          "title": "Островок — Апартаменты Счастье",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid9991423/tajgara_sektor_e/",
+          "title": "Островок — Отель Тайгара Сектор Е",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid9986273/wowaparts/",
+          "title": "Островок — Апартаменты WOW.Aparts",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid8703553/hotel_snezhniy/",
+          "title": "Островок — Отель Снежный",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid7747989/gubernskaya_hotel/",
+          "title": "Островок — Гостиничный комплекс Губернский",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid10009785/hotel_jeti/",
+          "title": "Островок — Отель Йети",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid10902166/voyazh_glamping/",
+          "title": "Островок — Отель Вояж",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid7735340/akvilon_hotel/",
+          "title": "Островок — Аквилон курорт Шерегеш",
+          "accessedAt": "2026-10-02"
+        }
+      ]
+    },
+    {
+      "programId": "cmulqlaxp00lugghlhxhro60t",
+      "field": "transfer",
+      "checkedAt": "2026-10-02",
+      "content": {
+        "text": "Ближайший аэропорт — Новокузнецк (Спиченково), до сектора А около 165 км, на машине обычно 2–3 часа, в снегопад дольше. Трансфер организатор не описывает, его нужно планировать самостоятельно. Самые частые варианты — групповой или индивидуальный трансфер из аэропорта, такси, рейсовый автобус с автовокзала Новокузнецка (около 3,5 часа), а по выходным в сезон — пригородный поезд до Чугунаша со стыковочным автобусом. Из Кемерово до курорта около 375 км, из Новосибирска — около 525 км, обычно через Новокузнецк. Фрирайд-группы стартуют от подъёмников горы Зелёная. Основание сектора А с отелями на улицах Снежной и Спортивной находится в нескольких километрах от центра посёлка; если живёте в посёлке, заложите время на такси утром. Конец ноября — начало сезона, дороги могут быть заснежены, лучше иметь запас по времени до рейса."
+      },
+      "sources": [
+        {
+          "url": "https://gesh.ru/sheregesh/location/",
+          "title": "GESH.RU — как добраться до Шерегеша",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://t.me/s/freeriderussia/1032",
+          "title": "Telegram Freeride Russia (Игорь Ильиных) — места в школы в Шерегеше, пост 1032",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://gesh.ru/gid/gesh-fly/",
+          "title": "GESH.RU — канатная дорога Gesh Fly (сектор А)",
+          "accessedAt": "2026-10-02"
+        }
+      ]
+    },
+    {
+      "programId": "cmulqlaxp00lugghlhxhro60t",
+      "field": "equipment",
+      "checkedAt": "2026-10-02",
+      "content": {
+        "text": "Школа Freeride Russia требует у каждого участника лавинный комплект — датчик, щуп и лопату; если своего нет, его выдают в аренду, и по условиям школы аренда включена в стоимость. Шлем обязателен, без него к катанию не допускают; защиту спины или копчика и колен школа рекомендует. Даты 23–28 ноября — самое начало сезона: снежный покров внизу может быть тонким, поэтому для катания вне трасс разумнее взять лыжи или доску, которые не жалко поцарапать о камни и пни. Удобны лыжи с талией от 100 мм или фрирайдный сноуборд, рюкзак на 20–30 л с креплением для лыж или доски, термос и тёплый слой для остановок. Маска с линзой для плохой видимости пригодится в лесу и в снегопад. Перед первым днём проверьте батарейки датчика и потренируйтесь с ним вместе с гидом."
+      },
+      "sources": [
+        {
+          "url": "https://freeriderussia.ru/",
+          "title": "Школа фрирайда Freeride Russia — условия, лавинное оборудование, защита",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://t.me/s/freeriderussia/1032",
+          "title": "Telegram Freeride Russia (Игорь Ильиных) — места в школы в Шерегеше, пост 1032",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ridertrip.ru/kogda-ehat-v-sheregesh/",
+          "title": "Ridertrip — когда ехать в Шерегеш: сезон 2026/27 по месяцам",
+          "accessedAt": "2026-10-02"
+        }
+      ]
+    },
+    {
+      "programId": "cmugp6s950004nzppfjror3fk",
+      "field": "accommodation",
+      "checkedAt": "2026-10-02",
+      "content": {
+        "summary": "Программа проходит не в Шерегеше: группа живёт в лодже на берегу Байкала в Танхое, на территории визит-центра «Байкал заповедный», с вертолётной площадкой; размещение в лодже входит в тур, а отели ниже нужны только для дополнительных ночей.",
+        "locationPoint": {
+          "label": "Танхой, южный берег Байкала (Кабанский р-н, Бурятия) — база-лодж программы на территории визит-центра «Байкал заповедный»; координаты посёлка, приблизительно",
+          "lat": 51.5543,
+          "lng": 105.1152
+        },
+        "hotels": [
+          {
+            "name": "Ski-Let Hotel (Байкальск)",
+            "group": "top",
+            "aggregator": {
+              "name": "ostrovok",
+              "url": "https://ostrovok.ru/hotel/russia/baikalsk/mid8005460/skilet_hotel/",
+              "rating": 9.4,
+              "ratingScale": 10,
+              "reviewsCount": 28
+            },
+            "distanceKm": 67.1,
+            "distanceNote": "Байкальск, мкр. Гагарина (у горы Соболиная), ближайший курортный кластер; по прямой от точки «пос. Танхой» по координатам объекта на Островке"
+          },
+          {
+            "name": "Парк-отель «Соболинка» (Байкальск)",
+            "group": "top",
+            "aggregator": {
+              "name": "ostrovok",
+              "url": "https://ostrovok.ru/hotel/russia/baikalsk/mid9761022/sobolinka_parkhotel_2/",
+              "rating": 9.3,
+              "ratingScale": 10,
+              "reviewsCount": 57
+            },
+            "distanceKm": 68.9,
+            "distanceNote": "Байкальск, Красный Ключ (у горы Соболиная), ближайший курортный кластер; по прямой от точки «пос. Танхой» по координатам объекта на Островке"
+          },
+          {
+            "name": "Отель «Куршавель» (Байкальск)",
+            "group": "top",
+            "aggregator": {
+              "name": "ostrovok",
+              "url": "https://ostrovok.ru/hotel/russia/baikalsk/mid6456691/hotel_kurshavel_/",
+              "rating": 9.2,
+              "ratingScale": 10,
+              "reviewsCount": 49
+            },
+            "distanceKm": 67.3,
+            "distanceNote": "Байкальск, мкр. Южный, ближайший курортный кластер; по прямой от точки «пос. Танхой» по координатам объекта на Островке"
+          },
+          {
+            "name": "Хостел BaikalSki (Байкальск)",
+            "group": "top",
+            "aggregator": {
+              "name": "ostrovok",
+              "url": "https://ostrovok.ru/hotel/russia/baikalsk/mid7698388/baykal_hotel/",
+              "rating": 9.1,
+              "ratingScale": 10,
+              "reviewsCount": 19
+            },
+            "distanceKm": 66.8,
+            "distanceNote": "Байкальск, ул. Гагарина, ближайший курортный кластер; по прямой от точки «пос. Танхой» по координатам объекта на Островке"
+          },
+          {
+            "name": "Отель «Гранд Байкал» (Байкальск)",
+            "group": "top",
+            "aggregator": {
+              "name": "ostrovok",
+              "url": "https://ostrovok.ru/hotel/russia/baikalsk/mid8481257/grand_baikal/",
+              "rating": 8.6,
+              "ratingScale": 10,
+              "reviewsCount": 53
+            },
+            "distanceKm": 69,
+            "distanceNote": "Байкальск, Красный Ключ (у горы Соболиная), ближайший курортный кластер; по прямой от точки «пос. Танхой» по координатам объекта на Островке"
+          },
+          {
+            "name": "Гостевой дом «Порт Танхой»",
+            "group": "nearby",
+            "aggregator": {
+              "name": "ostrovok",
+              "url": "https://ostrovok.ru/hotel/russia/tankhoy/mid10004930/port_tanhoj/",
+              "rating": 8.6,
+              "ratingScale": 10,
+              "reviewsCount": 6
+            },
+            "distanceKm": 0.8,
+            "distanceNote": "ул. Портовая, 2, Танхой; по прямой от точки «пос. Танхой» по координатам объекта на Островке"
+          },
+          {
+            "name": "Гостиница «Танхой» (ул. Пионерская, 1А)",
+            "group": "nearby",
+            "aggregator": {
+              "name": "ostrovok",
+              "url": "https://ostrovok.ru/hotel/russia/tankhoy/mid10055127/tankhoi/"
+            },
+            "distanceKm": 0.8,
+            "distanceNote": "ул. Пионерская, 1А, Танхой; по прямой от точки «пос. Танхой» по координатам объекта на Островке"
+          },
+          {
+            "name": "Глэмпинг Baikal Surf (А-фреймы, ул. Портовая, 13)",
+            "group": "nearby",
+            "aggregator": {
+              "name": "ostrovok",
+              "url": "https://ostrovok.ru/hotel/russia/tankhoy/mid13864076/baikal_surf_afreym_tyomny_na_beregu_baykala_glamping/"
+            },
+            "distanceKm": 1,
+            "distanceNote": "ул. Портовая, 13, Танхой (на Островке два отдельных А-фрейма, учтены как один объект); по прямой от точки «пос. Танхой» по координатам объекта на Островке"
+          },
+          {
+            "name": "База отдыха «Экопарк Танхой»",
+            "group": "nearby",
+            "aggregator": {
+              "name": "ostrovok",
+              "url": "https://ostrovok.ru/hotel/russia/tankhoy/mid13371641/recreation_camp_ekopark_tankhoy/",
+              "rating": 9.5,
+              "ratingScale": 10,
+              "reviewsCount": 1
+            },
+            "distanceKm": 1.5,
+            "distanceNote": "Танхой, Кабанский р-н; по прямой от точки «пос. Танхой» по координатам объекта на Островке"
+          }
+        ]
+      },
+      "sources": [
+        {
+          "url": "https://birdtravel.ru/routs/heli-ski-vyhodnye-na-baykale/",
+          "title": "BirdTravel — Хели-ски выходные на Байкале (Heliski Weekend)",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://snowsurf.pro/heliskibaikaltanhoi",
+          "title": "SnowSurf Pro — хелиски на Байкале, база Танхой",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/russia/tankhoy/",
+          "title": "Островок — жильё в Танхое",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/russia/baikalsk/",
+          "title": "Островок — отели Байкальска",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://nominatim.openstreetmap.org/search?format=json&q=%D0%A2%D0%B0%D0%BD%D1%85%D0%BE%D0%B9",
+          "title": "OpenStreetMap Nominatim — координаты пос. Танхой",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/russia/baikalsk/mid8005460/skilet_hotel/",
+          "title": "Островок — Ski-Let Hotel",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/russia/baikalsk/mid9761022/sobolinka_parkhotel_2/",
+          "title": "Островок — Парк-отель Соболинка",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/russia/baikalsk/mid6456691/hotel_kurshavel_/",
+          "title": "Островок — Отель Куршавель",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/russia/baikalsk/mid7698388/baykal_hotel/",
+          "title": "Островок — Хостел BaikalSki",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/russia/baikalsk/mid8481257/grand_baikal/",
+          "title": "Островок — Отель Гранд Байкал",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/russia/tankhoy/mid10004930/port_tanhoj/",
+          "title": "Островок — Гостевой дом Порт Танхой",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/russia/tankhoy/mid10055127/tankhoi/",
+          "title": "Островок — Танхой",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/russia/tankhoy/mid13864076/baikal_surf_afreym_tyomny_na_beregu_baykala_glamping/",
+          "title": "Островок — Глэмпинг Baikal Surf А-фрейм Тёмный на берегу Байкала",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/russia/tankhoy/mid13371641/recreation_camp_ekopark_tankhoy/",
+          "title": "Островок — База отдыха Экопарк Танхой",
+          "accessedAt": "2026-10-02"
+        }
+      ]
+    },
+    {
+      "programId": "cmugp6s950004nzppfjror3fk",
+      "field": "transfer",
+      "checkedAt": "2026-10-02",
+      "content": {
+        "text": "Ближайший аэропорт — Иркутск. До Танхоя по дороге вдоль Байкала около 220 км, обычно 3–3,5 часа на машине. По программе BirdTravel групповой трансфер из аэропорта Иркутска и обратно входит в стоимость: группу встречают утром в день прилёта, в последний день после катания везут обратно к вечерним рейсам. Вертолётная заброска из Иркутска до базы возможна по запросу за доплату. Самостоятельно до Танхоя можно доехать поездом по Транссибу до станции Танхой (со стороны Иркутска или Улан-Удэ) или на машине. В ноябре Байкал ещё не замёрз, ледовых переправ нет. Местное время — МСК+5. Если прилетаете накануне, ночёвку в Иркутске бронируйте сами: она в тур не входит."
+      },
+      "sources": [
+        {
+          "url": "https://birdtravel.ru/routs/heli-ski-vyhodnye-na-baykale/",
+          "title": "BirdTravel — Хели-ски выходные на Байкале (Heliski Weekend)",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://baikalzapovednik.ru/karta",
+          "title": "Байкальский заповедник — как добраться (Танхой)",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://snowsurf.pro/heliskibaikaltanhoi",
+          "title": "SnowSurf Pro — хелиски на Байкале, база Танхой",
+          "accessedAt": "2026-10-02"
+        }
+      ]
+    },
+    {
+      "programId": "cmugp6s950004nzppfjror3fk",
+      "field": "equipment",
+      "checkedAt": "2026-10-02",
+      "content": {
+        "text": "Лавинный комплект и лавинный рюкзак организатор выдаёт на месте, поэтому их везти не нужно. Своё снаряжение — фрирайдные лыжи с талией примерно 110–130 мм или направленный фрирайдный сноуборд, удобные ботинки, шлем и две маски. В ноябре на Хамар-Дабане, по данным операторов, обычно около −5…−15 °C и частые снегопады: нужна маска с линзой для плохой видимости и запасные перчатки — при посадке и взлёте вертолёта поднимается снежная пыль. Для погрузки в вертолёт удобно стянуть лыжи ремешками, а в рюкзаке не держать незакреплённых вещей. Значительная часть катания идёт в лесу, поэтому держитесь в паре с напарником и слушайте брифинг гида. Для бани и купели фурако организатор советует взять купальник."
+      },
+      "sources": [
+        {
+          "url": "https://birdtravel.ru/routs/heli-ski-vyhodnye-na-baykale/",
+          "title": "BirdTravel — Хели-ски выходные на Байкале (Heliski Weekend)",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://snowsurf.pro/heliskibaikaltanhoi",
+          "title": "SnowSurf Pro — хелиски на Байкале, база Танхой",
+          "accessedAt": "2026-10-02"
+        }
+      ]
+    },
+    {
+      "programId": "cmue1mv950005rpgifmy6iv6u",
+      "field": "accommodation",
+      "checkedAt": "2026-10-02",
+      "content": {
+        "summary": "Freeride Russia продаёт только катание с гидом, жильё бронируется отдельно. Для школы фрирайда удобнее всего сектор А у подножия горы Зелёная (улицы Снежная, Спортивная, Горнолыжная) — до подъёмников можно дойти пешком; Сектор Е и посёлок подойдут, если готовы ездить на такси.",
+        "locationPoint": {
+          "label": "Шерегеш, гора Зелёная, сектор А — подножие у ул. Снежной (точное место сбора организатор не публикует)",
+          "lat": 52.9525,
+          "lng": 87.9642
+        },
+        "hotels": [
+          {
+            "name": "Парк Шале «ЭльГора»",
+            "group": "top",
+            "aggregator": {
+              "name": "ostrovok",
+              "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid11028685/shale_na_zvezdnoy_apartments/",
+              "rating": 10,
+              "ratingScale": 10,
+              "reviewsCount": 15
+            },
+            "distanceKm": 1,
+            "distanceNote": "ул. Звёздная, 27, посёлок у подножия горы Зелёная; по прямой от точки «сектор А, ул. Снежная» по координатам объекта на Островке"
+          },
+          {
+            "name": "Гостевой дом «Рыжий пони»",
+            "group": "top",
+            "aggregator": {
+              "name": "ostrovok",
+              "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid10214468/na_vesenney_guest_house_32v/",
+              "rating": 9.4,
+              "ratingScale": 10,
+              "reviewsCount": 21
+            },
+            "distanceKm": 1.7,
+            "distanceNote": "ул. Весенняя, 32в, посёлок Шерегеш; по прямой от точки «сектор А, ул. Снежная» по координатам объекта на Островке"
+          },
+          {
+            "name": "Апартаменты «Счастье»",
+            "group": "top",
+            "aggregator": {
+              "name": "ostrovok",
+              "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid8502938/schaste_aparthotel/",
+              "rating": 9.3,
+              "ratingScale": 10,
+              "reviewsCount": 23
+            },
+            "distanceKm": 0.4,
+            "distanceNote": "ул. Олимпийская, 8, сектор А; по прямой от точки «сектор А, ул. Снежная» по координатам объекта на Островке"
+          },
+          {
+            "name": "Отель «Тайгара» (Сектор Е)",
+            "group": "top",
+            "siteUrl": "https://www.taigara.ru/",
+            "aggregator": {
+              "name": "ostrovok",
+              "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid9991423/tajgara_sektor_e/",
+              "rating": 9.3,
+              "ratingScale": 10,
+              "reviewsCount": 18
+            },
+            "distanceKm": 5.7,
+            "distanceNote": "Сектор Е (отдельная зона катания), у нижней станции гондолы сектора Е; по прямой от точки «сектор А, ул. Снежная» по координатам объекта на Островке"
+          },
+          {
+            "name": "Апартаменты WOW.Aparts",
+            "group": "top",
+            "aggregator": {
+              "name": "ostrovok",
+              "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid9986273/wowaparts/",
+              "rating": 9.2,
+              "ratingScale": 10,
+              "reviewsCount": 29
+            },
+            "distanceKm": 3.4,
+            "distanceNote": "ул. Пирогова, 1, посёлок Шерегеш; до склона — транспортом; по прямой от точки «сектор А, ул. Снежная» по координатам объекта на Островке"
+          },
+          {
+            "name": "Отель «Грюнхоф»",
+            "group": "nearby",
+            "aggregator": {
+              "name": "ostrovok",
+              "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid7735352/gostinitsa_griunkhof/",
+              "rating": 8.6,
+              "ratingScale": 10,
+              "reviewsCount": 62
+            },
+            "distanceKm": 0.2,
+            "distanceNote": "ул. Снежная, 19, сектор А; по прямой от точки «сектор А, ул. Снежная» по координатам объекта на Островке"
+          },
+          {
+            "name": "Гостиница «Сибирь»",
+            "group": "nearby",
+            "siteUrl": "http://sibirhotelgesh.ru/",
+            "aggregator": {
+              "name": "ostrovok",
+              "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid9768577/sibir_19/",
+              "rating": 8.5,
+              "ratingScale": 10,
+              "reviewsCount": 35
+            },
+            "distanceKm": 0.2,
+            "distanceNote": "ул. Спортивная, 22, сектор А; по прямой от точки «сектор А, ул. Снежная» по координатам объекта на Островке"
+          },
+          {
+            "name": "База отдыха Izba",
+            "group": "nearby",
+            "aggregator": {
+              "name": "ostrovok",
+              "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid10949666/gostevoy_dom_izba_2/",
+              "rating": 9.2,
+              "ratingScale": 10,
+              "reviewsCount": 23
+            },
+            "distanceKm": 0.7,
+            "distanceNote": "ул. Горнолыжная, 16, сектор А; по прямой от точки «сектор А, ул. Снежная» по координатам объекта на Островке"
+          },
+          {
+            "name": "Laska Hotel Sheregesh",
+            "group": "nearby",
+            "siteUrl": "https://laska-hotel.ru/",
+            "aggregator": {
+              "name": "ostrovok",
+              "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid8736452/laska_hotel/",
+              "rating": 8.9,
+              "ratingScale": 10,
+              "reviewsCount": 17
+            },
+            "distanceKm": 0.3,
+            "distanceNote": "гора Зелёная, сектор А; по прямой от точки «сектор А, ул. Снежная» по координатам объекта на Островке"
+          },
+          {
+            "name": "Отель Ays Club",
+            "group": "nearby",
+            "aggregator": {
+              "name": "ostrovok",
+              "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid7735317/ays_club/",
+              "rating": 8.3,
+              "ratingScale": 10,
+              "reviewsCount": 67
+            },
+            "distanceKm": 0.1,
+            "distanceNote": "ул. Спортивная, 8, сектор А; по прямой от точки «сектор А, ул. Снежная» по координатам объекта на Островке"
+          }
+        ]
+      },
+      "sources": [
+        {
+          "url": "https://t.me/s/freeriderussia/968",
+          "title": "Telegram Freeride Russia (Игорь Ильиных) — ранняя запись на школы и кэмпы, пост 968",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://t.me/s/freeriderussia/1032",
+          "title": "Telegram Freeride Russia (Игорь Ильиных) — места в школы в Шерегеше, пост 1032",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/russia/sheregesh/",
+          "title": "Островок — отели Шерегеша (выдача с оценками)",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://nominatim.openstreetmap.org/search?format=json&q=%D0%A1%D0%BD%D0%B5%D0%B6%D0%BD%D0%B0%D1%8F%20%D1%83%D0%BB%D0%B8%D1%86%D0%B0%2C%20%D0%A8%D0%B5%D1%80%D0%B5%D0%B3%D0%B5%D1%88",
+          "title": "OpenStreetMap Nominatim — координаты ул. Снежная, Шерегеш",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid11028685/shale_na_zvezdnoy_apartments/",
+          "title": "Островок — Парк Шале ЭльГора",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid10214468/na_vesenney_guest_house_32v/",
+          "title": "Островок — Гостевой Дом Рыжий пони",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid8502938/schaste_aparthotel/",
+          "title": "Островок — Апартаменты Счастье",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid9991423/tajgara_sektor_e/",
+          "title": "Островок — Отель Тайгара Сектор Е",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid9986273/wowaparts/",
+          "title": "Островок — Апартаменты WOW.Aparts",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid7735352/gostinitsa_griunkhof/",
+          "title": "Островок — Отель Грюнхоф",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid9768577/sibir_19/",
+          "title": "Островок — Отель Сибирь",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid10949666/gostevoy_dom_izba_2/",
+          "title": "Островок — База отдыха Izba",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid8736452/laska_hotel/",
+          "title": "Островок — Отель Laska Sheregesh",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid7735317/ays_club/",
+          "title": "Островок — Отель Ays Club",
+          "accessedAt": "2026-10-02"
+        }
+      ]
+    },
+    {
+      "programId": "cmue1mv950005rpgifmy6iv6u",
+      "field": "transfer",
+      "checkedAt": "2026-10-02",
+      "content": {
+        "text": "Ближайший аэропорт — Новокузнецк (Спиченково), до сектора А около 165 км, на машине обычно 2–3 часа, в снегопад дольше. Трансфер в программу не входит. Обычно едут групповым или индивидуальным трансфером, на такси или рейсовым автобусом с автовокзала Новокузнецка (около 3,5 часа). По выходным в сезон ходит пригородный поезд до станции Чугунаш, оттуда автобус до курорта. Школа катается от подъёмников горы Зелёная; если живёте в посёлке Шерегеш, до сектора А несколько километров — такси или местный автобус до остановки «Гора Зелёная». В начале декабря возможны снегопады и заснеженная трасса, поэтому обратный рейс лучше брать не впритык к последнему дню катания."
+      },
+      "sources": [
+        {
+          "url": "https://gesh.ru/sheregesh/location/",
+          "title": "GESH.RU — как добраться до Шерегеша",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://t.me/s/freeriderussia/968",
+          "title": "Telegram Freeride Russia (Игорь Ильиных) — ранняя запись на школы и кэмпы, пост 968",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ru.wikiroutes.info/stops/1003780",
+          "title": "Wikiroutes — остановка Gesh Fly (гондольная), Шерегеш",
+          "accessedAt": "2026-10-02"
+        }
+      ]
+    },
+    {
+      "programId": "cmue1mv950005rpgifmy6iv6u",
+      "field": "equipment",
+      "checkedAt": "2026-10-02",
+      "content": {
+        "text": "В карточке указано, что лавинное снаряжение входит в стоимость; по условиям школы это датчик, щуп и лопата, которые выдают и проверяют утром вместе с группой. Остальное — своё или из проката курорта. Шлем обязателен; школа советует также защиту копчика и колен. Для первых выходов вне трасс в начале сезона подойдут лыжи с талией около 95–110 мм или мягкий фрирайдный сноуборд — в прокатах Шерегеша такие есть. Новичкам во фрирайде лучше не брать жёсткую слаломную модель: в мягком снегу она тонет и быстро утомляет. Возьмите рюкзак на 20–30 л (без него лопату и щуп нести негде), термос, перекус, лёгкий пуховик на остановки и маску с линзой для пасмурной погоды. Сообщите гиду о хронических травмах до старта — этого прямо требуют условия школы."
+      },
+      "sources": [
+        {
+          "url": "https://freeriderussia.ru/",
+          "title": "Школа фрирайда Freeride Russia — условия, лавинное оборудование, защита",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://t.me/s/freeriderussia/968",
+          "title": "Telegram Freeride Russia (Игорь Ильиных) — ранняя запись на школы и кэмпы, пост 968",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ridertrip.ru/kogda-ehat-v-sheregesh/",
+          "title": "Ridertrip — когда ехать в Шерегеш: сезон 2026/27 по месяцам",
+          "accessedAt": "2026-10-02"
+        }
+      ]
+    },
+    {
+      "programId": "cmuf9n0ak00tpl57wgrv2l1ff",
+      "field": "accommodation",
+      "checkedAt": "2026-10-02",
+      "content": {
+        "summary": "Кемп живёт в апарт-отеле в Новом Гудаури с выходом прямо к трассе; двухместное размещение входит в стоимость, поэтому отели ниже нужны для доплаты за одноместное размещение, дополнительных ночей или если едете вместе с кем-то не из кемпа.",
+        "locationPoint": {
+          "label": "Новый Гудаури, курорт Гудаури (Мцхета-Мтианети, Грузия) — апарт-отель кемпа, ski-in/ski-out",
+          "lat": 42.4694,
+          "lng": 44.493
+        },
+        "hotels": [
+          {
+            "name": "RezoHut",
+            "group": "top",
+            "aggregator": {
+              "name": "ostrovok",
+              "url": "https://ostrovok.ru/hotel/georgia/gudauri/mid9992237/rezohut/",
+              "rating": 9.6,
+              "ratingScale": 10,
+              "reviewsCount": 60
+            },
+            "distanceKm": 1,
+            "distanceNote": "курорт Гудаури; по прямой от точки «Новый Гудаури» по координатам объекта на Островке"
+          },
+          {
+            "name": "Montis Apartments Gudauri",
+            "group": "top",
+            "aggregator": {
+              "name": "ostrovok",
+              "url": "https://ostrovok.ru/hotel/georgia/gudauri/mid13096849/apartments_joyn_apartments/",
+              "rating": 9.3,
+              "ratingScale": 10,
+              "reviewsCount": 24
+            },
+            "distanceKm": 1.7,
+            "distanceNote": "курорт Гудаури; по прямой от точки «Новый Гудаури» по координатам объекта на Островке"
+          },
+          {
+            "name": "Gogo Apartments New Gudauri",
+            "group": "top",
+            "aggregator": {
+              "name": "ostrovok",
+              "url": "https://ostrovok.ru/hotel/georgia/gudauri/mid11195323/gogo_apartments_new_gudauri/",
+              "rating": 9.1,
+              "ratingScale": 10,
+              "reviewsCount": 32
+            },
+            "distanceKm": 0.6,
+            "distanceNote": "курорт Гудаури; по прямой от точки «Новый Гудаури» по координатам объекта на Островке"
+          },
+          {
+            "name": "Hotel Truso",
+            "group": "top",
+            "aggregator": {
+              "name": "ostrovok",
+              "url": "https://ostrovok.ru/hotel/georgia/gudauri/mid6471517/hotel_truso/",
+              "rating": 9,
+              "ratingScale": 10,
+              "reviewsCount": 33
+            },
+            "distanceKm": 1.6,
+            "distanceNote": "курорт Гудаури; по прямой от точки «Новый Гудаури» по координатам объекта на Островке"
+          },
+          {
+            "name": "GoodAura",
+            "group": "top",
+            "aggregator": {
+              "name": "ostrovok",
+              "url": "https://ostrovok.ru/hotel/georgia/gudauri/mid7991574/hotel_good_aura/",
+              "rating": 8.9,
+              "ratingScale": 10,
+              "reviewsCount": 86
+            },
+            "distanceKm": 1.3,
+            "distanceNote": "курорт Гудаури; по прямой от точки «Новый Гудаури» по координатам объекта на Островке"
+          },
+          {
+            "name": "New Gudauri Rooms (Loft 1)",
+            "group": "nearby",
+            "aggregator": {
+              "name": "ostrovok",
+              "url": "https://ostrovok.ru/hotel/georgia/gudauri/mid8288771/new_gudauri_aparthotel_2/",
+              "rating": 7,
+              "ratingScale": 10,
+              "reviewsCount": 69
+            },
+            "distanceKm": 0.1,
+            "distanceNote": "курорт Гудаури; по прямой от точки «Новый Гудаури» по координатам объекта на Островке"
+          },
+          {
+            "name": "Apartment Hotel Gudauri Ski Resort – Four Seasons",
+            "group": "nearby",
+            "aggregator": {
+              "name": "ostrovok",
+              "url": "https://ostrovok.ru/hotel/georgia/gudauri/mid11157173/apartment_hotel_gudauri_ski_resort_four_seasons/",
+              "rating": 8.5,
+              "ratingScale": 10,
+              "reviewsCount": 12
+            },
+            "distanceKm": 0.1,
+            "distanceNote": "курорт Гудаури; по прямой от точки «Новый Гудаури» по координатам объекта на Островке"
+          },
+          {
+            "name": "Hotel Club-2100",
+            "group": "nearby",
+            "aggregator": {
+              "name": "ostrovok",
+              "url": "https://ostrovok.ru/hotel/georgia/gudauri/mid6362917/hotel_club2100/",
+              "rating": 8.2,
+              "ratingScale": 10,
+              "reviewsCount": 98
+            },
+            "distanceKm": 1,
+            "distanceNote": "курорт Гудаури; по прямой от точки «Новый Гудаури» по координатам объекта на Островке"
+          },
+          {
+            "name": "Best Western Gudauri",
+            "group": "nearby",
+            "aggregator": {
+              "name": "ostrovok",
+              "url": "https://ostrovok.ru/hotel/georgia/gudauri/mid9260605/best_western_gudauri/",
+              "rating": 8.1,
+              "ratingScale": 10,
+              "reviewsCount": 45
+            },
+            "distanceKm": 1,
+            "distanceNote": "курорт Гудаури; по прямой от точки «Новый Гудаури» по координатам объекта на Островке"
+          },
+          {
+            "name": "Marco Polo Gudauri",
+            "group": "nearby",
+            "aggregator": {
+              "name": "ostrovok",
+              "url": "https://ostrovok.ru/hotel/georgia/gudauri/mid11316069/marco_polo_gudauri_hotel_4/",
+              "rating": 7.8,
+              "ratingScale": 10,
+              "reviewsCount": 570
+            },
+            "distanceKm": 1.2,
+            "distanceNote": "курорт Гудаури; по прямой от точки «Новый Гудаури» по координатам объекта на Островке"
+          }
+        ]
+      },
+      "sources": [
+        {
+          "url": "https://birdtravel.ru/routs/frirajd-kemp-v-gruzii-gudauri/",
+          "title": "BirdTravel — Фрирайд кемп в Грузии. Гудаури",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://birdtravel.ru/",
+          "title": "BirdTravel — главная (каталог программ; sourceUrl карточки «https://birdtravel.ru/#»)",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/georgia/gudauri/",
+          "title": "Островок — отели Гудаури (выдача с оценками)",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://nominatim.openstreetmap.org/search?format=json&q=%D0%9D%D0%BE%D0%B2%D1%8B%D0%B9%20%D0%93%D1%83%D0%B4%D0%B0%D1%83%D1%80%D0%B8",
+          "title": "OpenStreetMap Nominatim — координаты Нового Гудаури",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/georgia/gudauri/mid9992237/rezohut/",
+          "title": "Островок — Отель RezoHut",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/georgia/gudauri/mid13096849/apartments_joyn_apartments/",
+          "title": "Островок — Apartments Montis Apartments Gudauri",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/georgia/gudauri/mid11195323/gogo_apartments_new_gudauri/",
+          "title": "Островок — Gogo Apartments New Gudauri",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/georgia/gudauri/mid6471517/hotel_truso/",
+          "title": "Островок — Hotel Truso",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/georgia/gudauri/mid7991574/hotel_good_aura/",
+          "title": "Островок — Отель GoodAura",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/georgia/gudauri/mid8288771/new_gudauri_aparthotel_2/",
+          "title": "Островок — New Gudauri Rooms",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/georgia/gudauri/mid11157173/apartment_hotel_gudauri_ski_resort_four_seasons/",
+          "title": "Островок — Apartment hotel Gudauri Ski Resort - Four Seasons",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/georgia/gudauri/mid6362917/hotel_club2100/",
+          "title": "Островок — Hotel Club-2100",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/georgia/gudauri/mid9260605/best_western_gudauri/",
+          "title": "Островок — Hotel Best Western Gudauri",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/georgia/gudauri/mid11316069/marco_polo_gudauri_hotel_4/",
+          "title": "Островок — Отель Marco Polo Гудаури",
+          "accessedAt": "2026-10-02"
+        }
+      ]
+    },
+    {
+      "programId": "cmuf9n0ak00tpl57wgrv2l1ff",
+      "field": "transfer",
+      "checkedAt": "2026-10-02",
+      "content": {
+        "text": "Обычно прилетают в Тбилиси. До Гудаури около 120 км по Военно-Грузинской дороге, при хорошей погоде 2–2,5 часа. Трансфер из аэропорта в стоимость кемпа не входит (трансферы на выездные маршруты в дни катания включены). Частный трансфер на машину стоит ориентировочно от 230 лари по данным сервисов осенью 2026 года; маршрутки от автостанции Дидубе — около 15 лари с человека, уезжают по заполнению и высаживают на трассе, а не у отеля, — неудобно с лыжными чехлами. Даты кемпа приходятся на новогоднюю неделю, когда машины разбирают заранее. В сильный снегопад дорогу и перевал Джвари иногда закрывают — заложите запас времени. Организатор упоминает и наземный вариант: перелёт во Владикавказ и дорога на машине через границу; время прохождения границы заранее не предсказать."
+      },
+      "sources": [
+        {
+          "url": "https://birdtravel.ru/routs/frirajd-kemp-v-gruzii-gudauri/",
+          "title": "BirdTravel — Фрирайд кемп в Грузии. Гудаури",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://orbitrip.ge/guide/tbilisi-to-gudauri-transfer-guide",
+          "title": "OrbiTrip — Tbilisi to Gudauri 2026/27: transfer, marshrutka, costs",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://georgiaguidebook.com/ru/transport/tbilisi-gudauri/",
+          "title": "Georgia Guidebook — Тбилиси – Гудаури 2026: маршрутка, такси, трансфер",
+          "accessedAt": "2026-10-02"
+        }
+      ]
+    },
+    {
+      "programId": "cmuf9n0ak00tpl57wgrv2l1ff",
+      "field": "equipment",
+      "checkedAt": "2026-10-02",
+      "content": {
+        "text": "Список организатора подробный, поэтому здесь — что учесть дополнительно. Из лавинного снаряжения в стоимость входит только аренда датчика; лопату и щуп нужно привезти или договориться заранее, а рюкзак, снегоступы, телескопические палки, ски-тур комплект или сплитборд можно арендовать у гидов за отдельную плату. Катание идёт на высоте примерно 2100–3400 м: солнце сильное, а погода в высокогорье быстро меняется. Пригодятся крем SPF 50, солнцезащитные очки для подъёмов и ветрозащитный слой. На ски-тур в Ломиси и на Дедаену нужны камусы, и полезно проверить их клей перед поездкой. По традиции участники несут в монастырь воду и провизию — закладывайте место в рюкзаке. Страховка должна покрывать катание вне трасс и эвакуацию."
+      },
+      "sources": [
+        {
+          "url": "https://birdtravel.ru/routs/frirajd-kemp-v-gruzii-gudauri/",
+          "title": "BirdTravel — Фрирайд кемп в Грузии. Гудаури",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://pvd-club.com/freeride-gudauri-den-freeride/",
+          "title": "PVD Club — фрирайд в Гудаури: день с гидом, снаряжение, страховка",
+          "accessedAt": "2026-10-02"
+        }
+      ]
+    }
+  ]
+}

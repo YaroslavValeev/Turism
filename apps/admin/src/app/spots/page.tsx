@@ -12,6 +12,7 @@ import {
 } from "../../components/admin/spots/spotModel";
 import type { SpotRow } from "../../components/admin/spots/spotTypes";
 import { CandidateImportCard } from "../../components/admin/spots/CandidateImportCard";
+import { MethodologyRegistryCard } from "../../components/admin/spots/MethodologyRegistryCard";
 
 const emptyForm = { name: "", region: "", address: "", coordinates: "", waterBodyType: "", relatedToMyWave: false };
 
@@ -113,6 +114,8 @@ export default function SpotsPage() {
       </AdminSectionCard>
 
       <CandidateImportCard onImported={load} />
+
+      <MethodologyRegistryCard />
 
       <AdminSectionCard title="Реестр">
         <div className="mw-admin-inline-form" style={{ marginBottom: 12 }}>

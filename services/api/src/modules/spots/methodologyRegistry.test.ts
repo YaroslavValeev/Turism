@@ -106,7 +106,7 @@ describe("planSpotMethodologyAction", () => {
   });
 
   it("updates a draft with a different definition", () => {
-    expect(planSpotMethodologyAction({ status: "draft", definitionSha256: other }, sha)).toEqual({
+    expect(planSpotMethodologyAction({ status: "draft", definitionSha256: other, pinnedAudits: 0 }, sha)).toEqual({
       action: "update",
       previousSha256: other,
     });
@@ -114,13 +114,22 @@ describe("planSpotMethodologyAction", () => {
 
   it("is a no-op when the definition is unchanged", () => {
     for (const status of ["draft", "approved", "retired"]) {
-      expect(planSpotMethodologyAction({ status, definitionSha256: sha }, sha)).toEqual({ action: "noop", status });
+      expect(planSpotMethodologyAction({ status, definitionSha256: sha, pinnedAudits: 3 }, sha)).toEqual({
+        action: "noop",
+        status,
+      });
     }
+  });
+
+  it("refuses to change a draft that already has pinned assessments", () => {
+    const plan = planSpotMethodologyAction({ status: "draft", definitionSha256: other, pinnedAudits: 2 }, sha);
+    expect(plan).toMatchObject({ action: "blocked_pinned_audits", status: "draft", existingSha256: other, pinnedAudits: 2 });
+    if (plan.action === "blocked_pinned_audits") expect(plan.message).toMatch(/2 assessment\(s\) are pinned/);
   });
 
   it("refuses to change approved or retired definitions", () => {
     for (const status of ["approved", "retired"]) {
-      const plan = planSpotMethodologyAction({ status, definitionSha256: other }, sha);
+      const plan = planSpotMethodologyAction({ status, definitionSha256: other, pinnedAudits: 0 }, sha);
       expect(plan.action).toBe("error");
       if (plan.action === "error") expect(plan.message).toMatch(/immutable/);
     }

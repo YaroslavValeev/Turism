@@ -108,17 +108,22 @@ export function parseSpotMethodologyDefinition(raw: unknown): SpotMethodologyDef
 export interface ExistingSpotMethodology {
   status: string;
   definitionSha256: string;
+  /** Сколько оценок (`spot_audits`) закреплено за этой строкой. */
+  pinnedAudits: number;
 }
 
 export type SpotMethodologyPlan =
   | { action: "create" }
   | { action: "update"; previousSha256: string }
   | { action: "noop"; status: string }
+  | { action: "blocked_pinned_audits"; status: string; existingSha256: string; pinnedAudits: number; message: string }
   | { action: "error"; status: string; existingSha256: string; message: string };
 
 /**
  * Скрипт загрузки никогда не утверждает методику: создаёт/обновляет только draft.
  * Изменение утверждённой или выведенной методики = новая версия, а не правка строки.
+ * Черновик, за которым уже закреплены оценки, тоже не правится (иначе пилотные оценки
+ * перестают соответствовать методике) — это тоже новая версия.
  */
 export function planSpotMethodologyAction(
   existing: ExistingSpotMethodology | null,
@@ -126,6 +131,18 @@ export function planSpotMethodologyAction(
 ): SpotMethodologyPlan {
   if (!existing) return { action: "create" };
   if (existing.definitionSha256 === computedSha256) return { action: "noop", status: existing.status };
+  if (existing.status === "draft" && existing.pinnedAudits > 0) {
+    return {
+      action: "blocked_pinned_audits",
+      status: existing.status,
+      existingSha256: existing.definitionSha256,
+      pinnedAudits: existing.pinnedAudits,
+      message:
+        `draft definition differs from the file (db ${existing.definitionSha256.slice(0, 12)}…, ` +
+        `file ${computedSha256.slice(0, 12)}…) but ${existing.pinnedAudits} assessment(s) are pinned to it; ` +
+        "bump the version and add a new file instead",
+    };
+  }
   if (existing.status === "draft") return { action: "update", previousSha256: existing.definitionSha256 };
   return {
     action: "error",

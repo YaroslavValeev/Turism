@@ -28,7 +28,8 @@ function siteUrl(siteBase: string, pathname: string, params: Record<string, stri
   return url.toString();
 }
 
-export function dateSearchPageUrl(siteBase: string, content = "preview"): string {
+// Telegram кэширует превью по точному URL; при смене OG-картинки меняйте utm_content.
+export function dateSearchPageUrl(siteBase: string, content = "cover"): string {
   return siteUrl(siteBase, "/dates", {}, content);
 }
 

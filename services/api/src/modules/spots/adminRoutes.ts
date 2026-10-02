@@ -7,6 +7,7 @@ import { requireAdmin } from "../../middleware/auth";
 import { evaluateRemoteGateRemediation, evaluateSpotRating } from "./ratingEngine";
 import { buildSpotRatingInput } from "./ratingInput";
 import { checkPinnedMethodology, planAssessmentMethodologyPin, type PinnableMethodology } from "./methodologyPin";
+import { planSpotMethodologyApproval } from "./methodologyApproval";
 import { planCandidateImport } from "./candidateImport";
 import {
   SPOT_EVIDENCE_MAX_BYTES,
@@ -149,6 +150,58 @@ export function spotsAdminRoutes(env: Env): Router {
       });
     }
     res.status(201).json({ dryRun: false, created, ...summary });
+  }));
+
+  router.get("/methodologies", wrap(async (_req, res) => {
+    const items = await prisma.spotMethodology.findMany({
+      orderBy: [{ discipline: "asc" }, { createdAt: "desc" }],
+      select: {
+        id: true,
+        discipline: true,
+        methodologyVersion: true,
+        protocolVersion: true,
+        criteriaVersion: true,
+        ratingVersion: true,
+        status: true,
+        definitionSha256: true,
+        approvedByUserId: true,
+        approvedAt: true,
+        retiredAt: true,
+        createdAt: true,
+        _count: { select: { assessments: true } },
+      },
+    });
+    res.json({ items });
+  }));
+
+  router.post("/methodologies/:methodologyId/approve", wrap(async (req, res) => {
+    const approverId = actor(req);
+    if (!approverId || !(await isAdminUser(approverId))) {
+      res.status(403).json({ error: "only an admin user can approve a methodology" });
+      return;
+    }
+    const methodology = await prisma.spotMethodology.findUnique({ where: { id: req.params.methodologyId } });
+    if (!methodology) { res.status(404).json({ error: "Not found" }); return; }
+    const plan = planSpotMethodologyApproval(methodology, (req.body ?? {}).expectedSha256);
+    if (!plan.ok) { res.status(plan.status).json({ error: plan.error, code: plan.code }); return; }
+    // where по status + sha256: одновременная правка черновика или повторное утверждение не пройдут.
+    const updated = await prisma.spotMethodology.updateMany({
+      where: { id: methodology.id, status: "draft", definitionSha256: plan.definitionSha256 },
+      data: { status: "approved", approvedByUserId: approverId, approvedAt: new Date() },
+    });
+    if (updated.count !== 1) {
+      res.status(409).json({ error: "methodology changed concurrently; reload and retry", code: "methodology_changed" });
+      return;
+    }
+    await writeAuditLog({
+      entityType: "spot_methodology", entityId: methodology.id, changedField: "status",
+      oldValue: "draft", newValue: "approved", changedBy: approverId,
+      reason: `definitionSha256=${plan.definitionSha256}`,
+    });
+    res.json(await prisma.spotMethodology.findUnique({
+      where: { id: methodology.id },
+      select: { id: true, status: true, definitionSha256: true, approvedByUserId: true, approvedAt: true },
+    }));
   }));
 
   router.get("/:id", wrap(async (req, res) => {

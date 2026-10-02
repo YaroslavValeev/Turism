@@ -81,7 +81,7 @@ function sameEntries(actual: Record<string, unknown>, expected: Record<string, u
 }
 
 /** Определение должно описывать ровно то, что считает движок: те же веса, гейты и срок действия. */
-function definitionMatchesEngine(definition: unknown): boolean {
+export function definitionMatchesEngine(definition: unknown): boolean {
   if (definition === null || typeof definition !== "object") return false;
   const source = definition as { criteria?: unknown; gates?: unknown; validityMonths?: unknown };
   if (!Array.isArray(source.criteria) || !Array.isArray(source.gates)) return false;

@@ -47,6 +47,30 @@ export const WATER_BODY_LABEL: Record<string, string> = {
   bay: "Залив",
 };
 
+export const METHODOLOGY_STATUS_LABEL: Record<string, string> = {
+  draft: "Черновик",
+  approved: "Утверждена",
+  retired: "Выведена",
+};
+
+export function shortSha(sha: string): string {
+  return sha.slice(0, 12);
+}
+
+export function methodologyApproveConfirmText(m: {
+  id: string;
+  methodologyVersion: string;
+  definitionSha256: string;
+  pinnedAudits: number;
+}): string {
+  return [
+    `Утвердить методику ${m.id} (${m.methodologyVersion})?`,
+    `SHA-256 определения: ${m.definitionSha256}`,
+    `Закреплённых оценок: ${m.pinnedAudits}.`,
+    "После утверждения определение менять нельзя — только новая версия. Снимки с блокером «Методика не утверждена» нужно пересчитать.",
+  ].join("\n\n");
+}
+
 export const BAND_LABEL: Record<string, string> = {
   premium_plus: "Премиум+",
   premium: "Премиум",

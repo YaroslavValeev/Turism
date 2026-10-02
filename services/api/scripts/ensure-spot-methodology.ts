@@ -29,14 +29,18 @@ async function ensureSpotMethodology(
   const definitionSha256 = computeDefinitionSha256(definition);
 
   return client.$transaction(async (tx) => {
-    const existing = await tx.spotMethodology.findUnique({
+    const row = await tx.spotMethodology.findUnique({
       where: { id },
-      select: { status: true, definitionSha256: true },
+      select: { status: true, definitionSha256: true, _count: { select: { assessments: true } } },
     });
+    const existing = row
+      ? { status: row.status, definitionSha256: row.definitionSha256, pinnedAudits: row._count.assessments }
+      : null;
     const plan = planSpotMethodologyAction(existing, definitionSha256);
     const summary = { id, file: path.basename(file), definitionSha256, dryRun, plan };
 
     if (plan.action === "error") throw new Error(`${id}: ${plan.message}`);
+    if (plan.action === "blocked_pinned_audits") return { ok: false, ...summary, error: `${id}: ${plan.message}` };
     if (dryRun || plan.action === "noop") return { ok: true, ...summary };
 
     const versions = {
@@ -71,6 +75,7 @@ async function main(): Promise<void> {
     process.argv.includes("--dry-run"),
   );
   console.log(JSON.stringify(result, null, 2));
+  if (result.ok !== true) process.exitCode = 1;
 }
 
 if (require.main === module) {

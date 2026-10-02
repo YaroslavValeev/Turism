@@ -14,6 +14,22 @@ export type SpotRow = {
 
 export type Reviewer = { id: string; name: string | null; email: string };
 
+export type SpotMethodologyRow = {
+  id: string;
+  discipline: string;
+  methodologyVersion: string;
+  protocolVersion: string;
+  criteriaVersion: string;
+  ratingVersion: string;
+  status: string;
+  definitionSha256: string;
+  approvedByUserId: string | null;
+  approvedAt: string | null;
+  retiredAt: string | null;
+  createdAt: string;
+  _count: { assessments: number };
+};
+
 export type ReviewersResponse = { items: Reviewer[]; currentUserId: string | null };
 
 export type SpotSnapshot = {

@@ -6,12 +6,31 @@ import {
   auditReadiness,
   blockerLabel,
   criterionLabel,
+  methodologyApproveConfirmText,
   parseCandidateTable,
   parseCoordinates,
   reviewerLabel,
+  shortSha,
   yandexMapsUrl,
   type AuditForReadiness,
 } from "./spotModel";
+
+describe("methodology approval helpers", () => {
+  const sha = "ab".repeat(32);
+
+  it("shows the full sha256 and pinned assessments in the confirm text", () => {
+    const text = methodologyApproveConfirmText({
+      id: "spotmeth_wakesurf_v1_1",
+      methodologyVersion: "v1.1",
+      definitionSha256: sha,
+      pinnedAudits: 2,
+    });
+    assert.match(text, /spotmeth_wakesurf_v1_1 \(v1\.1\)/);
+    assert.ok(text.includes(sha));
+    assert.match(text, /Закреплённых оценок: 2\./);
+    assert.equal(shortSha(sha), sha.slice(0, 12));
+  });
+});
 
 function completeAudit(overrides: Partial<AuditForReadiness> = {}): AuditForReadiness {
   return {

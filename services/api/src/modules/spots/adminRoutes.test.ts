@@ -12,6 +12,8 @@ const mocks = vi.hoisted(() => ({
   spotCreate: vi.fn(),
   spotFindMany: vi.fn(),
   userFindMany: vi.fn(),
+  userFindUnique: vi.fn(),
+  methodologyUpdateMany: vi.fn(),
   spotAuditFindUnique: vi.fn(),
   spotAuditUpdate: vi.fn(),
   spotAuditCreate: vi.fn(),
@@ -30,10 +32,14 @@ const mocks = vi.hoisted(() => ({
 vi.mock("../../lib/prisma", () => ({
   prisma: {
     spot: { create: mocks.spotCreate, findMany: mocks.spotFindMany },
-    user: { findMany: mocks.userFindMany },
+    user: { findMany: mocks.userFindMany, findUnique: mocks.userFindUnique },
     spotAssessment: { findUnique: mocks.spotAuditFindUnique, update: mocks.spotAuditUpdate, create: mocks.spotAuditCreate },
     spotEquipment: { findUnique: mocks.equipmentFindUnique },
-    spotMethodology: { findUnique: mocks.methodologyFindUnique, findMany: mocks.methodologyFindMany },
+    spotMethodology: {
+      findUnique: mocks.methodologyFindUnique,
+      findMany: mocks.methodologyFindMany,
+      updateMany: mocks.methodologyUpdateMany,
+    },
     spotCriterionResult: { upsert: mocks.scoreUpsert },
     spotEvidence: { findUnique: mocks.evidenceFindUnique, create: mocks.evidenceCreate },
     spotRatingSnapshot: {
@@ -187,6 +193,84 @@ describe("spots admin routes: reviewers", () => {
     expect(res.status).toBe(200);
     expect(res.json).toEqual({ items: [{ id: "admin-2", name: "Editor", email: "e@x.ru" }], currentUserId: "admin-1" });
     expect(mocks.userFindMany.mock.calls[0][0].where).toEqual({ role: "admin" });
+  });
+});
+
+describe("spots admin routes: methodology approval", () => {
+  beforeEach(() => {
+    mocks.userFindUnique.mockResolvedValue({ role: "admin" });
+    mocks.methodologyUpdateMany.mockResolvedValue({ count: 1 });
+  });
+
+  it("lists methodologies without definitions and is not shadowed by /:id", async () => {
+    mocks.methodologyFindMany.mockResolvedValue([{ id: "spotmeth_wakesurf_v1_1", status: "draft" }]);
+    const res = await call("GET", "/methodologies");
+    expect(res.status).toBe(200);
+    expect(res.json?.items).toEqual([{ id: "spotmeth_wakesurf_v1_1", status: "draft" }]);
+    const select = mocks.methodologyFindMany.mock.calls[0][0].select;
+    expect(select.definition).toBeUndefined();
+    expect(select._count).toEqual({ select: { assessments: true } });
+  });
+
+  it("approves a draft as the current admin and writes an audit log entry", async () => {
+    mocks.methodologyFindUnique
+      .mockResolvedValueOnce(methodologyRow({ status: "draft" }))
+      .mockResolvedValueOnce({ id: "spotmeth_wakesurf_v1_1", status: "approved" });
+    const res = await call("POST", "/methodologies/spotmeth_wakesurf_v1_1/approve", { expectedSha256: METHODOLOGY_SHA });
+    expect(res.status).toBe(200);
+    expect(res.json).toMatchObject({ status: "approved" });
+    expect(mocks.userFindUnique.mock.calls[0][0].where).toEqual({ id: "admin-1" });
+    expect(mocks.methodologyUpdateMany).toHaveBeenCalledWith({
+      where: { id: "spotmeth_wakesurf_v1_1", status: "draft", definitionSha256: METHODOLOGY_SHA },
+      data: { status: "approved", approvedByUserId: "admin-1", approvedAt: expect.any(Date) },
+    });
+    expect(mocks.writeAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        entityType: "spot_methodology",
+        entityId: "spotmeth_wakesurf_v1_1",
+        changedField: "status",
+        oldValue: "draft",
+        newValue: "approved",
+        changedBy: "admin-1",
+        reason: `definitionSha256=${METHODOLOGY_SHA}`,
+      }),
+    );
+  });
+
+  it("refuses non-admin tokens and users whose role is no longer admin", async () => {
+    const organizer = await fetch(`${base}/methodologies/spotmeth_wakesurf_v1_1/approve`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token("organizer")}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ expectedSha256: METHODOLOGY_SHA }),
+    });
+    expect(organizer.status).toBe(403);
+    mocks.userFindUnique.mockResolvedValue({ role: "user" });
+    expect((await call("POST", "/methodologies/spotmeth_wakesurf_v1_1/approve", { expectedSha256: METHODOLOGY_SHA })).status).toBe(403);
+    expect(mocks.methodologyUpdateMany).not.toHaveBeenCalled();
+  });
+
+  it("refuses non-drafts, missing or wrong expected sha256 and concurrent changes", async () => {
+    const approve = (body: unknown) => call("POST", "/methodologies/spotmeth_wakesurf_v1_1/approve", body);
+    mocks.methodologyFindUnique.mockResolvedValue(null);
+    expect((await approve({ expectedSha256: METHODOLOGY_SHA })).status).toBe(404);
+
+    mocks.methodologyFindUnique.mockResolvedValue(methodologyRow({ status: "approved" }));
+    const again = await approve({ expectedSha256: METHODOLOGY_SHA });
+    expect(again.status).toBe(409);
+    expect(again.json?.code).toBe("methodology_not_draft");
+
+    mocks.methodologyFindUnique.mockResolvedValue(methodologyRow({ status: "draft" }));
+    expect((await approve({})).status).toBe(400);
+    const wrong = await approve({ expectedSha256: "f".repeat(64) });
+    expect(wrong.status).toBe(409);
+    expect(wrong.json?.code).toBe("methodology_sha256_mismatch");
+    expect(mocks.methodologyUpdateMany).not.toHaveBeenCalled();
+
+    mocks.methodologyUpdateMany.mockResolvedValue({ count: 0 });
+    const raced = await approve({ expectedSha256: METHODOLOGY_SHA });
+    expect(raced.status).toBe(409);
+    expect(raced.json?.code).toBe("methodology_changed");
+    expect(mocks.writeAuditLog).not.toHaveBeenCalled();
   });
 });
 

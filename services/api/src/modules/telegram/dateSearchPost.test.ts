@@ -29,8 +29,10 @@ describe("buildDateSearchKeyboard", () => {
   });
 
   it("opens the calendar as a Mini App when a direct link is configured", () => {
-    const calendar = buildDateSearchKeyboard(SITE, { miniAppUrl: "https://t.me/MyWaveTour_bot/dates" }).inline_keyboard[2]![0]!;
-    expect(calendar.url).toBe("https://t.me/MyWaveTour_bot/dates?startapp=calendar");
+    const rows = buildDateSearchKeyboard(SITE, { miniAppUrl: "https://t.me/MyWaveTour_bot/tourApp" }).inline_keyboard;
+    expect(rows[1]![0]!.url).toBe("https://t.me/MyWaveTour_bot/tourApp?startapp=2w");
+    expect(rows[2]![0]!.url).toBe("https://t.me/MyWaveTour_bot/tourApp?startapp=calendar");
+    expect(rows[0]![0]!.url).toContain("when=this-weekend");
   });
 
   it("rejects anything that is not a t.me direct link", () => {

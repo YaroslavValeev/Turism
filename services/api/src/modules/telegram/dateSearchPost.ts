@@ -51,16 +51,19 @@ export function buildDateSearchKeyboard(
   siteBase: string,
   options: { miniAppUrl?: string } = {},
 ): { inline_keyboard: DateSearchButton[][] } {
-  const calendarUrl = isTelegramMiniAppLink(options.miniAppUrl)
-    ? `${options.miniAppUrl}?startapp=calendar`
-    : dateSearchPageUrl(siteBase, "custom_dates");
+  const miniApp = isTelegramMiniAppLink(options.miniAppUrl) ? options.miniAppUrl : null;
+  // startapp совпадает с ключами пресетов на /dates (date-search.client.tsx → PRESETS).
+  const calendarUrl = miniApp ? `${miniApp}?startapp=calendar` : dateSearchPageUrl(siteBase, "custom_dates");
+  const nearestUrl = miniApp
+    ? `${miniApp}?startapp=2w`
+    : siteUrl(siteBase, "/", { nearest: "1" }, "nearest_14d", "programs");
   return {
     inline_keyboard: [
       [
         { text: "Эти выходные", url: siteUrl(siteBase, "/", { when: "this-weekend" }, "this_weekend", "programs") },
         { text: "Следующие выходные", url: siteUrl(siteBase, "/", { when: "next-weekend" }, "next_weekend", "programs") },
       ],
-      [{ text: "Ближайшие 2 недели", url: siteUrl(siteBase, "/", { nearest: "1" }, "nearest_14d", "programs") }],
+      [{ text: "Ближайшие 2 недели", url: nearestUrl }],
       [{ text: "🗓 Выбрать свои даты", url: calendarUrl }],
     ],
   };

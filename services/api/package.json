@@ -19,6 +19,7 @@
     "db:seed:spot-methodology": "tsx scripts/ensure-spot-methodology.ts",
     "db:import-sources": "tsx prisma/import_sources.ts",
     "db:import:program-enrichments": "tsx scripts/import-program-enrichments.ts",
+    "db:fix:program-cards-2026-10": "tsx scripts/fix-program-cards-2026-10.ts",
     "backfill:traveler-key": "tsx scripts/backfill-traveler-key.ts",
     "smoke:content-pipeline": "tsx scripts/smoke-content-pipeline.ts",
     "smoke:pilot-e2e": "tsx scripts/pilot-e2e-smoke.ts",

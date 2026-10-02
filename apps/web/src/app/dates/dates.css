@@ -1,0 +1,241 @@
+.mw-dates {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 20px 16px 140px;
+  color: var(--mw-text);
+}
+
+.mw-dates__brand {
+  display: block;
+  width: 180px;
+  margin: 0 auto 12px;
+}
+
+.mw-dates__brand img {
+  display: block;
+  width: 100%;
+  height: auto;
+  /* Логотип на белой подложке: multiply растворяет её в фоне страницы. */
+  mix-blend-mode: multiply;
+}
+
+.mw-dates__title {
+  margin: 0;
+  font-size: 1.75rem;
+  font-weight: 800;
+  text-align: center;
+}
+
+.mw-dates__lead {
+  margin: 6px 0 18px;
+  color: var(--mw-muted);
+  text-align: center;
+  line-height: 1.5;
+}
+
+.mw-dates__presets {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.mw-dates__chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-height: 52px;
+  padding: 8px 10px;
+  border: 1px solid var(--mw-border);
+  border-radius: var(--mw-radius-control);
+  background: var(--mw-surface);
+  color: var(--mw-text);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--mw-motion-fast), border-color var(--mw-motion-fast);
+}
+
+.mw-dates__chip-sub {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--mw-muted);
+}
+
+.mw-dates__chip.is-active {
+  border-color: var(--mw-accent);
+  background: var(--mw-accent);
+  color: #fff;
+}
+
+.mw-dates__chip.is-active .mw-dates__chip-sub {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.mw-dates__calendar {
+  padding: 14px 12px 10px;
+  border: 1px solid var(--mw-border);
+  border-radius: var(--mw-radius-panel);
+  background: var(--mw-surface);
+  box-shadow: var(--mw-shadow);
+}
+
+.mw-dates__nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-weight: 700;
+}
+
+.mw-dates__nav button {
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--mw-accent-soft);
+  color: var(--mw-accent);
+  font-size: 1.4rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.mw-dates__nav button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.mw-dates__grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  row-gap: 4px;
+}
+
+.mw-dates__weekday {
+  padding: 4px 0;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-align: center;
+  color: var(--mw-muted);
+}
+
+.mw-dates__weekday.is-weekend {
+  color: var(--mw-accent);
+}
+
+.mw-dates__day {
+  position: relative;
+  height: 44px;
+  border: 0;
+  background: transparent;
+  color: var(--mw-text);
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.mw-dates__day.is-outside {
+  color: #b5b2ad;
+}
+
+.mw-dates__day:disabled {
+  color: #d0cdc8;
+  cursor: default;
+}
+
+.mw-dates__day.is-today {
+  font-weight: 800;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.mw-dates__day.is-in-range {
+  background: var(--mw-accent-soft);
+}
+
+.mw-dates__day.is-edge {
+  border-radius: 12px;
+  background: var(--mw-accent);
+  color: #fff;
+}
+
+.mw-dates__dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #f97316;
+}
+
+.mw-dates__day .mw-dates__dot {
+  position: absolute;
+  left: 50%;
+  bottom: 5px;
+  transform: translateX(-50%);
+}
+
+.mw-dates__day.is-edge .mw-dates__dot {
+  background: #fff;
+}
+
+.mw-dates__legend {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 8px 4px 0;
+  font-size: 0.82rem;
+  color: var(--mw-muted);
+}
+
+.mw-dates__footer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--mw-border);
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(8px);
+}
+
+.mw-dates__footer > * {
+  max-width: 448px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.mw-dates__summary {
+  margin-top: 0;
+  margin-bottom: 8px;
+  font-size: 0.92rem;
+  text-align: center;
+  color: var(--mw-text-secondary);
+}
+
+.mw-dates__footer.is-telegram .mw-dates__summary {
+  margin-bottom: 0;
+}
+
+.mw-dates__link {
+  display: block;
+  margin-bottom: 8px;
+  border: 0;
+  background: none;
+  color: var(--mw-accent);
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.mw-dates__cta {
+  display: block;
+  width: 100%;
+  min-height: 48px;
+}
+
+.mw-dates__cta:disabled {
+  opacity: 0.5;
+  cursor: default;
+}

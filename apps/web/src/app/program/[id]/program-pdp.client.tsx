@@ -50,11 +50,12 @@ import { ProgramSection } from "../../../components/program-pdp/ProgramSection";
 import {
   BulletList,
   MyWaveNote,
-  ProgramInfoField,
   Prose,
   SourceCaption,
   linesToBullets,
 } from "../../../components/program-pdp/ProgramText";
+import { ProgramLogisticsField } from "../../../components/program-pdp/ProgramEnrichmentField";
+import type { ProgramEnrichment } from "../../../lib/programEnrichment";
 import { ProgramReviews } from "../../../components/program-pdp/ProgramReviews";
 import { ProgramProvenance } from "../../../components/program-pdp/ProgramProvenance";
 import { ProgramApplicationForm } from "../../../components/program-pdp/ProgramApplicationForm";
@@ -115,6 +116,7 @@ export type Program = {
   }[];
   mediaOrderPinned?: boolean;
   aiEnrichment?: unknown;
+  enrichment?: ProgramEnrichment;
 };
 
 function sourceTypeLabelRuPdp(t: string | null | undefined): string {
@@ -710,11 +712,11 @@ export function ProgramPdpClient({
 
           <ProgramSection id="logistics" title="Проживание, трансфер и экипировка">
             <div className="mw-pdp-two-col">
-              <ProgramInfoField label="Тип размещения" value={accommodationField} />
-              <ProgramInfoField label="Трансфер" value={transferField} />
+              <ProgramLogisticsField label="Тип размещения" value={accommodationField} enrichment={program.enrichment?.accommodation} />
+              <ProgramLogisticsField label="Трансфер" value={transferField} enrichment={program.enrichment?.transfer} />
             </div>
             <div className="mw-pdp-subsection">
-              <ProgramInfoField label="Экипировка" value={equipmentField} />
+              <ProgramLogisticsField label="Экипировка" value={equipmentField} enrichment={program.enrichment?.equipment} />
             </div>
           </ProgramSection>
 

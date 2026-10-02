@@ -1084,3 +1084,27 @@ body:has(.mw-pdp-root) {
     animation-duration: 0ms !important;
   }
 }
+
+/* OSINT-дополнения (проверено MyWave по открытым источникам) */
+.mw-pdp-enrichment__hotels li {
+  line-height: 1.55;
+}
+
+.mw-pdp-enrichment__note {
+  color: var(--mw-text-secondary);
+}
+
+.mw-pdp-enrichment__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--mw-space-1) var(--mw-space-3);
+  margin-top: 2px;
+  font-size: var(--mw-fs-caption);
+}
+
+.mw-pdp-enrichment__sources {
+  margin: var(--mw-space-2) 0 0;
+  font-size: var(--mw-fs-caption);
+  color: var(--mw-text-secondary);
+  overflow-wrap: anywhere;
+}

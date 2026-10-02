@@ -15,6 +15,7 @@ import {
   type ProgramCardDraft,
 } from "./programModel";
 import { ProgramOrganizerRow } from "./ProgramOrganizerRow";
+import { ProgramEnrichmentsCard } from "./ProgramEnrichmentsCard";
 
 const WEB_BASE = (process.env.NEXT_PUBLIC_WEB_URL ?? "").replace(/\/+$/, "");
 /** Совпадает с MEDIA_UPLOAD_MAX_BYTES в API и client_max_body_size в nginx. */
@@ -385,6 +386,8 @@ export function ProgramCardEditor({ program, onChanged, onError }: Props) {
           </span>
         ) : null}
       </div>
+
+      <ProgramEnrichmentsCard programId={program.id} />
 
       <div className="mw-admin-caption">
         Медиа карточки ({program.media.length}). Первое — обложка на витрине и в Telegram. Новое медиа (файлом или полем

@@ -229,9 +229,34 @@ model Program {
   reviewRequests          ReviewRequest[]
   contentItems            ContentItem[]
   telegramLeadAttempts    TelegramLeadAttempt[]
+  enrichments             ProgramEnrichment[]
 
   @@index([sourceId])
   @@map("programs")
+}
+
+/// OSINT-дополнение карточки (проживание / трансфер / экипировка) из открытых источников.
+/// Создаётся только черновиком; на витрине — лишь после approve владельцем и только если поле организатора пустое.
+/// Не больше одной approved-записи на (programId, field) — частичный unique-индекс в миграции.
+model ProgramEnrichment {
+  id               String    @id @default(cuid())
+  programId        String
+  field            String // accommodation | transfer | equipment
+  status           String    @default("draft") // draft | approved | rejected | retired
+  contentJson      Json
+  sourcesJson      Json
+  batchId          String?
+  createdBy        String
+  reviewedByUserId String?
+  reviewedAt       DateTime?
+  rejectionReason  String?   @db.Text
+  checkedAt        DateTime
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  program          Program   @relation(fields: [programId], references: [id], onDelete: Cascade)
+
+  @@index([programId, field, status])
+  @@map("program_enrichments")
 }
 
 model Source {

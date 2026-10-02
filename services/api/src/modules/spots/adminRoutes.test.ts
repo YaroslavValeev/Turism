@@ -1,5 +1,6 @@
 import express from "express";
 import fs from "fs/promises";
+import { readFileSync } from "fs";
 import os from "os";
 import path from "path";
 import type { Server } from "node:http";
@@ -13,6 +14,10 @@ const mocks = vi.hoisted(() => ({
   userFindMany: vi.fn(),
   spotAuditFindUnique: vi.fn(),
   spotAuditUpdate: vi.fn(),
+  spotAuditCreate: vi.fn(),
+  equipmentFindUnique: vi.fn(),
+  methodologyFindUnique: vi.fn(),
+  methodologyFindMany: vi.fn(),
   scoreUpsert: vi.fn(),
   evidenceFindUnique: vi.fn(),
   evidenceCreate: vi.fn(),
@@ -26,7 +31,9 @@ vi.mock("../../lib/prisma", () => ({
   prisma: {
     spot: { create: mocks.spotCreate, findMany: mocks.spotFindMany },
     user: { findMany: mocks.userFindMany },
-    spotAssessment: { findUnique: mocks.spotAuditFindUnique, update: mocks.spotAuditUpdate },
+    spotAssessment: { findUnique: mocks.spotAuditFindUnique, update: mocks.spotAuditUpdate, create: mocks.spotAuditCreate },
+    spotEquipment: { findUnique: mocks.equipmentFindUnique },
+    spotMethodology: { findUnique: mocks.methodologyFindUnique, findMany: mocks.methodologyFindMany },
     spotCriterionResult: { upsert: mocks.scoreUpsert },
     spotEvidence: { findUnique: mocks.evidenceFindUnique, create: mocks.evidenceCreate },
     spotRatingSnapshot: {
@@ -40,10 +47,31 @@ vi.mock("../../lib/prisma", () => ({
 vi.mock("../../lib/audit", () => ({ writeAuditLog: mocks.writeAuditLog }));
 
 import { spotsAdminRoutes } from "./adminRoutes";
+import { computeDefinitionSha256 } from "./methodologyRegistry";
 
 const env = { ADMIN_JWT_SECRET: "spots-admin-routes-test-secret" } as Env;
 const CATEGORIES = ["infrastructure", "instrument", "waterArea", "personnel", "safety", "atmosphere"];
 const GATES = ["G01", "G02", "G03", "G04", "G05", "G06", "G07", "G08"];
+
+const methodologyDefinition = JSON.parse(
+  readFileSync(path.resolve(__dirname, "../../../prisma/data/spot-methodology/wakesurf-v1.1.json"), "utf8"),
+) as unknown;
+const METHODOLOGY_SHA = computeDefinitionSha256(methodologyDefinition);
+
+function methodologyRow(overrides: Record<string, unknown> = {}) {
+  return {
+    id: "spotmeth_wakesurf_v1_1",
+    discipline: "wakesurf",
+    methodologyVersion: "v1.1",
+    protocolVersion: "wakesurf-v1.1",
+    criteriaVersion: "wakesurf-v1.1",
+    ratingVersion: "wakesurf-v1.1",
+    status: "approved",
+    definition: methodologyDefinition,
+    definitionSha256: METHODOLOGY_SHA,
+    ...overrides,
+  };
+}
 
 function signedAudit(overrides: Record<string, unknown> = {}) {
   const testedAt = new Date(Date.now() - 30 * 24 * 3600 * 1000);
@@ -51,6 +79,9 @@ function signedAudit(overrides: Record<string, unknown> = {}) {
     id: "audit-1",
     unitId: "unit-1",
     testedAt,
+    methodologyId: "spotmeth_wakesurf_v1_1",
+    methodologySha256: METHODOLOGY_SHA,
+    methodology: methodologyRow(),
     methodologyVersion: "v1.1",
     protocolVersion: "wakesurf-v1.1",
     criteriaVersion: "wakesurf-v1.1",
@@ -254,31 +285,105 @@ describe("spots admin routes: evidence", () => {
   });
 });
 
+describe("spots admin routes: assessment methodology pin", () => {
+  const body = { testedAt: "2026-06-01T10:00:00Z", methodologyVersion: "v1.1", protocolVersion: "wakesurf-v1.1", criteriaVersion: "wakesurf-v1.1" };
+
+  beforeEach(() => {
+    mocks.equipmentFindUnique.mockResolvedValue({ id: "unit-1", discipline: "wakesurf" });
+    mocks.spotAuditCreate.mockImplementation(async ({ data }) => ({ id: "audit-new", ...data }));
+  });
+
+  it("resolves the registry methodology by versions and pins its sha256", async () => {
+    mocks.methodologyFindMany.mockResolvedValue([methodologyRow({ status: "draft" })]);
+    const res = await call("POST", "/units/unit-1/audits", body);
+    expect(res.status).toBe(201);
+    expect(mocks.methodologyFindMany.mock.calls[0][0].where).toEqual({
+      discipline: "wakesurf",
+      methodologyVersion: "v1.1",
+      protocolVersion: "wakesurf-v1.1",
+      criteriaVersion: "wakesurf-v1.1",
+      status: { not: "retired" },
+    });
+    expect(mocks.spotAuditCreate.mock.calls[0][0].data).toMatchObject({
+      unitId: "unit-1",
+      methodologyId: "spotmeth_wakesurf_v1_1",
+      methodologySha256: METHODOLOGY_SHA,
+      methodologyVersion: "v1.1",
+      protocolVersion: "wakesurf-v1.1",
+      criteriaVersion: "wakesurf-v1.1",
+    });
+  });
+
+  it("pins by methodologyId and copies versions from the registry", async () => {
+    mocks.methodologyFindUnique.mockResolvedValue(methodologyRow());
+    const res = await call("POST", "/units/unit-1/audits", { testedAt: body.testedAt, methodologyId: "spotmeth_wakesurf_v1_1" });
+    expect(res.status).toBe(201);
+    expect(mocks.spotAuditCreate.mock.calls[0][0].data).toMatchObject({
+      methodologyId: "spotmeth_wakesurf_v1_1",
+      protocolVersion: "wakesurf-v1.1",
+    });
+  });
+
+  it("refuses unknown, retired or ambiguous methodologies", async () => {
+    mocks.methodologyFindMany.mockResolvedValue([]);
+    expect((await call("POST", "/units/unit-1/audits", body)).status).toBe(404);
+    mocks.methodologyFindUnique.mockResolvedValue(methodologyRow({ status: "retired" }));
+    expect((await call("POST", "/units/unit-1/audits", { testedAt: body.testedAt, methodologyId: "spotmeth_wakesurf_v1_1" })).status).toBe(409);
+    mocks.methodologyFindMany.mockResolvedValue([methodologyRow(), methodologyRow({ id: "other" })]);
+    expect((await call("POST", "/units/unit-1/audits", body)).status).toBe(409);
+    expect(mocks.spotAuditCreate).not.toHaveBeenCalled();
+  });
+
+  it("does not allow changing the pinned methodology of an assessment", async () => {
+    mocks.spotAuditFindUnique.mockResolvedValue(signedAudit({ status: "draft" }));
+    const res = await call("PATCH", "/audits/audit-1", { protocolVersion: "wakesurf-v1.0" });
+    expect(res.status).toBe(400);
+    expect(mocks.spotAuditUpdate).not.toHaveBeenCalled();
+  });
+});
+
 describe("spots admin routes: snapshots", () => {
   it("computes a snapshot from a signed audit through the rating engine", async () => {
     mocks.spotAuditFindUnique.mockResolvedValue(signedAudit());
     mocks.snapshotCreate.mockImplementation(async ({ data }) => ({ id: "snap-1", ...data }));
-    const res = await call("POST", "/audits/audit-1/snapshots", {
-      ratingVersion: "rating-v1.1",
-      methodologyApprovedForPublication: true,
-    });
+    const res = await call("POST", "/audits/audit-1/snapshots", {});
     expect(res.status).toBe(201);
     const data = mocks.snapshotCreate.mock.calls[0][0].data;
     expect(data.publishable).toBe(true);
     expect(data.officialScore.toString()).toBe("8");
     expect(data.band).toBe("premium");
     expect(data.blockers).toEqual([]);
-    expect(data.inputJson).toMatchObject({ ratingVersion: "rating-v1.1", expertSigned: true });
+    expect(data.methodologyId).toBe("spotmeth_wakesurf_v1_1");
+    expect(data.methodologySha256).toBe(METHODOLOGY_SHA);
+    expect(data.ratingVersion).toBe("wakesurf-v1.1");
+    expect(data.inputJson).toMatchObject({ ratingVersion: "wakesurf-v1.1", expertSigned: true, methodologyApprovedForPublication: true });
   });
 
-  it("stores blockers instead of a score when methodology is not approved", async () => {
-    mocks.spotAuditFindUnique.mockResolvedValue(signedAudit());
+  it("reads approval from the registry, not from the request body", async () => {
+    mocks.spotAuditFindUnique.mockResolvedValue(signedAudit({ methodology: methodologyRow({ status: "draft" }) }));
     mocks.snapshotCreate.mockImplementation(async ({ data }) => ({ id: "snap-2", ...data }));
-    await call("POST", "/audits/audit-1/snapshots", { ratingVersion: "r", methodologyApprovedForPublication: false });
+    const res = await call("POST", "/audits/audit-1/snapshots", { methodologyApprovedForPublication: true });
+    expect(res.status).toBe(201);
     const data = mocks.snapshotCreate.mock.calls[0][0].data;
     expect(data.publishable).toBe(false);
     expect(data.officialScore).toBeNull();
     expect(data.blockers).toContain("methodology_not_approved");
+  });
+
+  it("refuses snapshots for unpinned or drifted assessments and foreign rating versions", async () => {
+    mocks.spotAuditFindUnique.mockResolvedValue(signedAudit({ methodologyId: null, methodologySha256: null, methodology: null }));
+    const legacy = await call("POST", "/audits/audit-1/snapshots", {});
+    expect(legacy.status).toBe(409);
+    expect(legacy.json?.code).toBe("assessment_not_pinned");
+
+    mocks.spotAuditFindUnique.mockResolvedValue(signedAudit({ methodologySha256: "f".repeat(64) }));
+    const drifted = await call("POST", "/audits/audit-1/snapshots", {});
+    expect(drifted.status).toBe(409);
+    expect(drifted.json?.code).toBe("methodology_changed_since_assessment");
+
+    mocks.spotAuditFindUnique.mockResolvedValue(signedAudit());
+    expect((await call("POST", "/audits/audit-1/snapshots", { ratingVersion: "rating-v2" })).status).toBe(400);
+    expect(mocks.snapshotCreate).not.toHaveBeenCalled();
   });
 
   it("publishes only publishable, unexpired, unpublished snapshots", async () => {

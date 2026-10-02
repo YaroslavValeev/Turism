@@ -6,6 +6,7 @@ import { writeAuditLog } from "../../lib/audit";
 import { requireAdmin } from "../../middleware/auth";
 import { evaluateRemoteGateRemediation, evaluateSpotRating } from "./ratingEngine";
 import { buildSpotRatingInput } from "./ratingInput";
+import { checkPinnedMethodology, planAssessmentMethodologyPin, type PinnableMethodology } from "./methodologyPin";
 import { planCandidateImport } from "./candidateImport";
 import {
   SPOT_EVIDENCE_MAX_BYTES,
@@ -36,6 +37,7 @@ function wrap(handler: AsyncHandler): RequestHandler {
 
 const auditInclude = {
   unit: { include: { spot: true } },
+  methodology: true,
   categoryScores: true,
   gateResults: true,
   evidence: { orderBy: { createdAt: "asc" } },
@@ -235,7 +237,10 @@ export function spotsAdminRoutes(env: Env): Router {
   }));
 
   router.post("/units/:unitId/audits", wrap(async (req, res) => {
-    const unit = await prisma.spotEquipment.findUnique({ where: { id: req.params.unitId }, select: { id: true } });
+    const unit = await prisma.spotEquipment.findUnique({
+      where: { id: req.params.unitId },
+      select: { id: true, discipline: true },
+    });
     if (!unit) { res.status(404).json({ error: "Not found" }); return; }
     const parsed = parseAuditInput(req.body, "create");
     if (!parsed.ok) { res.status(400).json({ error: parsed.error }); return; }
@@ -243,13 +248,33 @@ export function spotsAdminRoutes(env: Env): Router {
       res.status(400).json({ error: "independentEditorUserId must be an admin user" });
       return;
     }
+    let methodology: PinnableMethodology | null;
+    if (parsed.data.methodologyId) {
+      methodology = await prisma.spotMethodology.findUnique({ where: { id: parsed.data.methodologyId } });
+    } else {
+      const candidates = await prisma.spotMethodology.findMany({
+        where: {
+          discipline: unit.discipline,
+          methodologyVersion: parsed.data.methodologyVersion,
+          protocolVersion: parsed.data.protocolVersion,
+          criteriaVersion: parsed.data.criteriaVersion,
+          status: { not: "retired" },
+        },
+        take: 2,
+      });
+      if (candidates.length > 1) {
+        res.status(409).json({ error: "several methodologies match these versions; pass methodologyId" });
+        return;
+      }
+      methodology = candidates[0] ?? null;
+    }
+    const pin = planAssessmentMethodologyPin(methodology, unit.discipline, parsed.data);
+    if (!pin.ok) { res.status(pin.status).json({ error: pin.error }); return; }
     const audit = await prisma.spotAssessment.create({
       data: {
         unitId: unit.id,
         testedAt: parsed.data.testedAt!,
-        methodologyVersion: parsed.data.methodologyVersion!,
-        protocolVersion: parsed.data.protocolVersion!,
-        criteriaVersion: parsed.data.criteriaVersion!,
+        ...pin.pin,
         externalExpertConfirmed: parsed.data.externalExpertConfirmed ?? false,
         externalExpertName: parsed.data.externalExpertName ?? null,
         independentEditorUserId: parsed.data.independentEditorUserId ?? null,
@@ -498,17 +523,18 @@ export function spotsAdminRoutes(env: Env): Router {
     const audit = await loadAudit(req.params.auditId);
     if (!audit) { res.status(404).json({ error: "Not found" }); return; }
     if (audit.status !== "signed") { res.status(409).json({ error: "snapshot requires a signed audit" }); return; }
+    const pinned = checkPinnedMethodology(audit, audit.methodology);
+    if (!pinned.ok) { res.status(409).json({ error: pinned.message, code: pinned.error }); return; }
     const body = (req.body ?? {}) as Record<string, unknown>;
-    const ratingVersion = typeof body.ratingVersion === "string" ? body.ratingVersion.trim() : "";
-    if (!ratingVersion) { res.status(400).json({ error: "ratingVersion is required" }); return; }
-    if (typeof body.methodologyApprovedForPublication !== "boolean") {
-      res.status(400).json({ error: "methodologyApprovedForPublication must be a boolean" });
+    const requestedRatingVersion = typeof body.ratingVersion === "string" ? body.ratingVersion.trim() : "";
+    if (requestedRatingVersion && requestedRatingVersion !== pinned.ratingVersion) {
+      res.status(400).json({ error: `ratingVersion is fixed by methodology ${audit.methodologyId}: ${pinned.ratingVersion}` });
       return;
     }
     const built = buildSpotRatingInput(audit, {
       relatedToMyWave: audit.unit.spot.relatedToMyWave,
-      ratingVersion,
-      methodologyApprovedForPublication: body.methodologyApprovedForPublication,
+      ratingVersion: pinned.ratingVersion,
+      methodologyApprovedForPublication: pinned.approved,
       asOf: new Date(),
     });
     if (!built.ok) {
@@ -520,6 +546,8 @@ export function spotsAdminRoutes(env: Env): Router {
       data: {
         unitId: audit.unitId,
         auditId: audit.id,
+        methodologyId: audit.methodologyId,
+        methodologySha256: audit.methodologySha256,
         methodologyVersion: result.methodologyVersion,
         protocolVersion: result.protocolVersion,
         criteriaVersion: result.criteriaVersion,

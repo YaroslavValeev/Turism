@@ -67,6 +67,8 @@ export type SpotAuditDetail = {
   id: string;
   unitId: string;
   testedAt: string;
+  methodologyId: string | null;
+  methodology: { id: string; status: string; ratingVersion: string } | null;
   methodologyVersion: string;
   protocolVersion: string;
   criteriaVersion: string;

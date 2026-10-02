@@ -97,20 +97,28 @@ export function DateSearch() {
   }, []);
   useEffect(attachTelegram, [attachTelegram]);
 
+  const [loadError, setLoadError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
   useEffect(() => {
     let cancelled = false;
+    setLoadError(false);
     fetch(`${getPublicApiBase()}/programs`, { cache: "no-store" })
-      .then((r) => (r.ok ? r.json() : []))
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
       .then((data) => {
         if (!cancelled) setPrograms(Array.isArray(data) ? dedupeProgramListingsByEvent(data as ApiProgram[]) : []);
       })
       .catch(() => {
-        if (!cancelled) setPrograms([]);
+        if (cancelled) return;
+        setPrograms(null);
+        setLoadError(true);
       });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [reloadKey]);
 
   const byDay = useMemo(() => startsByDay(programs ?? [], today), [programs, today]);
   const selected = effectiveRange(range);
@@ -136,7 +144,11 @@ export function DateSearch() {
 
   const startPreset = telegram?.initDataUnsafe?.start_param;
   useEffect(() => {
-    const key = startPreset ?? new URLSearchParams(window.location.search).get("preset");
+    // Telegram кладёт startapp и в initData, и в адрес (tgWebAppStartParam) — Desktop не всегда в оба.
+    const search = new URLSearchParams(window.location.search);
+    const hash = new URLSearchParams(window.location.hash.slice(1));
+    const key =
+      startPreset ?? search.get("tgWebAppStartParam") ?? hash.get("tgWebAppStartParam") ?? search.get("preset");
     const preset = PRESETS.find((p) => p.key === key);
     if (preset) applyRange(preset.range(), preset.key);
   }, [startPreset, applyRange]);
@@ -151,7 +163,7 @@ export function DateSearch() {
     if (!selected) return;
     const params = new URLSearchParams();
     const preset = PRESETS.find((p) => p.key === presetKey);
-    if (count === 0) {
+    if (count === 0 && programs !== null) {
       params.set("from", selected.from);
     } else if (preset?.when) {
       params.set("when", preset.when);
@@ -162,11 +174,13 @@ export function DateSearch() {
     const current = new URLSearchParams(window.location.search);
     for (const [key, value] of current) if (key.startsWith("utm_")) params.set(key, value);
     router.push(`/?${params.toString()}#programs`);
-  }, [router, selected, presetKey, count]);
+  }, [router, selected, presetKey, count, programs]);
 
   const cta = !selected
     ? "Выберите даты"
-    : programs === null
+    : loadError
+      ? "Показать программы"
+      : programs === null
       ? "Считаем старты…"
       : count > 0
         ? `Показать ${count} ${ruPluralNoun(count, STARTS_FORMS)}`
@@ -263,8 +277,17 @@ export function DateSearch() {
             );
           })}
         </div>
-        <p className="mw-dates__legend">
+        <p className="mw-dates__legend" aria-live="polite">
           <span className="mw-dates__dot" aria-hidden /> есть старты
+          {programs === null && !loadError ? <span className="mw-dates__status">· загружаем…</span> : null}
+          {loadError ? (
+            <>
+              <span className="mw-dates__status">· не удалось загрузить старты</span>
+              <button type="button" className="mw-dates__link mw-dates__link--inline" onClick={() => setReloadKey((n) => n + 1)}>
+                Повторить
+              </button>
+            </>
+          ) : null}
         </p>
       </section>
 
@@ -272,7 +295,9 @@ export function DateSearch() {
         <p className="mw-dates__summary" aria-live="polite">
           {!selected
             ? "Нажмите на день начала, затем на день окончания."
-            : count > 0
+            : programs === null
+              ? `${formatRange(selected)}${loadError ? "" : ": считаем старты…"}`
+              : count > 0
               ? `${formatRange(selected)}: ${count} ${ruPluralNoun(count, STARTS_FORMS)}`
               : nextStart
                 ? `${formatRange(selected)}: стартов нет. Ближайший — ${formatDay(nextStart)}.`

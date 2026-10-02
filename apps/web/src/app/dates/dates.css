@@ -229,6 +229,16 @@
   cursor: pointer;
 }
 
+.mw-dates__status {
+  color: var(--mw-muted);
+}
+
+.mw-dates__link.mw-dates__link--inline {
+  display: inline;
+  margin: 0 0 0 4px;
+  padding: 0;
+}
+
 .mw-dates__cta {
   display: block;
   width: 100%;

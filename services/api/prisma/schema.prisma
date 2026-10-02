@@ -1765,3 +1765,26 @@ model SpotAppeal {
   @@index([status])
   @@map("spot_appeals")
 }
+
+/// Реестр методик оценки. После approve определение и версии неизменяемы (триггер в миграции);
+/// источник определения — prisma/data/spot-methodology/*.json, загрузка — scripts/ensure-spot-methodology.ts.
+model SpotMethodology {
+  id                 String    @id // детерминированный, например spotmeth_wakesurf_v1_1
+  discipline         String
+  methodologyVersion String
+  protocolVersion    String
+  criteriaVersion    String
+  ratingVersion      String
+  status             String    @default("draft") // draft | approved | retired
+  definition         Json
+  definitionSha256   String
+  approvedByUserId   String?
+  approvedAt         DateTime?
+  retiredAt          DateTime?
+  notes              String?   @db.Text
+  createdAt          DateTime  @default(now())
+
+  @@unique([discipline, methodologyVersion, protocolVersion, criteriaVersion, ratingVersion])
+  @@index([discipline, status])
+  @@map("spot_methodologies")
+}

@@ -26,7 +26,7 @@ import { nextMediaPosition, orderedProgramMedia, validateMediaReorder } from "./
 import { detectUploadedMedia, MEDIA_UPLOAD_MAX_BYTES, saveUploadedMedia } from "./mediaUpload";
 import { getCbrRates, priceInRub, type CbrRates } from "../fx/cbrRates";
 import { SCHEDULE_TYPES, type ScheduleType } from "./onRequestSchedule";
-import { organizerFieldsFromProgram, pickPublicEnrichment, type PublicEnrichment } from "./enrichment";
+import { pickPublicEnrichment, type PublicEnrichment } from "./enrichment";
 import { registerEnrichmentRoutes } from "./enrichmentRoutes";
 
 function isAdminRequest(req: Request, env: Env): boolean {
@@ -72,15 +72,13 @@ function isSyntheticPublicProgram(
   return false;
 }
 
-async function loadPublicEnrichment(
-  p: Parameters<typeof organizerFieldsFromProgram>[0] & { id: string },
-): Promise<PublicEnrichment> {
+async function loadPublicEnrichment(programId: string): Promise<PublicEnrichment> {
   try {
     const rows = await prisma.programEnrichment.findMany({
-      where: { programId: p.id, status: "approved" },
+      where: { programId, status: "approved" },
       orderBy: { reviewedAt: "desc" },
     });
-    return pickPublicEnrichment(organizerFieldsFromProgram(p), rows);
+    return pickPublicEnrichment(rows);
   } catch (error) {
     console.error("[programs] enrichment load failed", error instanceof Error ? error.message : error);
     return {};
@@ -171,7 +169,7 @@ export function programsRoutes(env: Env): Router {
       res.status(404).json({ error: "Not found" });
       return;
     }
-    const enrichment = await loadPublicEnrichment(p);
+    const enrichment = await loadPublicEnrichment(p.id);
     res.json({ ...toPublicProgram(p, await getCbrRates()), enrichment });
   });
 

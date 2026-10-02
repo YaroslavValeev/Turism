@@ -6,15 +6,22 @@ import { adminJson } from "../../../lib/admin";
 type Source = { url: string; title?: string; accessedAt: string };
 type Hotel = {
   name: string;
+  group: "top" | "nearby";
   siteUrl?: string;
   aggregator?: { name: string; url: string; rating?: number; ratingScale?: number; reviewsCount?: number };
+  distanceKm?: number;
   distanceNote?: string;
 };
 type Enrichment = {
   id: string;
   field: "accommodation" | "transfer" | "equipment";
   status: "draft" | "approved" | "rejected" | "retired";
-  contentJson: { summary?: string; hotels?: Hotel[]; text?: string };
+  contentJson: {
+    summary?: string;
+    locationPoint?: { label: string; lat?: number; lng?: number };
+    hotels?: Hotel[];
+    text?: string;
+  };
   sourcesJson: Source[];
   batchId: string | null;
   createdBy: string;
@@ -31,7 +38,7 @@ const FIELD_LABELS: Record<Enrichment["field"], string> = {
 
 const STATUS_LABELS: Record<Enrichment["status"], { label: string; color: string }> = {
   draft: { label: "черновик — ждёт ревью", color: "#b54708" },
-  approved: { label: "одобрено — на сайте, если поле организатора пустое", color: "#1f7a4d" },
+  approved: { label: "одобрено — на сайте под данными организатора", color: "#1f7a4d" },
   rejected: { label: "отклонено", color: "#b42318" },
   retired: { label: "заменено новым одобрением", color: "#6b7280" },
 };
@@ -44,35 +51,61 @@ function day(value: string | null): string {
   return Number.isNaN(d.getTime()) ? "—" : d.toLocaleDateString("ru-RU", { timeZone: "UTC" });
 }
 
+const GROUP_LABELS: Record<Hotel["group"], string> = {
+  top: "Топ по оценкам гостей",
+  nearby: "Рядом с местом программы (до 5 км)",
+};
+
 function ContentPreview({ row }: { row: Enrichment }) {
   const c = row.contentJson ?? {};
   if (row.field !== "accommodation") return <span>{c.text}</span>;
+  const hotels = c.hotels ?? [];
   return (
     <div className="mw-admin-stack-6">
-      {c.summary ? <span>{c.summary}</span> : null}
-      {(c.hotels ?? []).map((h, i) => (
-        <span key={`${i}-${h.name}`}>
-          • <strong>{h.name}</strong>
-          {h.distanceNote ? ` — ${h.distanceNote}` : ""}
-          {h.siteUrl ? (
-            <>
-              {" · "}
-              <a href={h.siteUrl} target="_blank" rel="noreferrer">сайт</a>
-            </>
-          ) : null}
-          {h.aggregator ? (
-            <>
-              {" · "}
-              <a href={h.aggregator.url} target="_blank" rel="noreferrer">
-                {AGGREGATOR_LABELS[h.aggregator.name] ?? h.aggregator.name}
-                {h.aggregator.rating != null && h.aggregator.ratingScale ? ` ${h.aggregator.rating}/${h.aggregator.ratingScale}` : ""}
-                {h.aggregator.reviewsCount != null ? ` (${h.aggregator.reviewsCount} отз.)` : ""}
-              </a>
-            </>
-          ) : null}
+      {c.locationPoint?.label ? (
+        <span className="mw-admin-caption">
+          Точка отсчёта: {c.locationPoint.label}
+          {c.locationPoint.lat != null && c.locationPoint.lng != null ? ` (${c.locationPoint.lat}, ${c.locationPoint.lng})` : ""}
         </span>
-      ))}
+      ) : null}
+      {c.summary ? <span>{c.summary}</span> : null}
+      {(Object.keys(GROUP_LABELS) as Hotel["group"][]).map((group) => {
+        const list = hotels.filter((h) => h.group === group);
+        if (list.length === 0) return null;
+        return (
+          <div key={group} className="mw-admin-stack-6">
+            <span className="mw-admin-caption"><strong>{GROUP_LABELS[group]}</strong></span>
+            {list.map((h, i) => <HotelPreview key={`${group}-${i}-${h.name}`} hotel={h} />)}
+          </div>
+        );
+      })}
     </div>
+  );
+}
+
+function HotelPreview({ hotel: h }: { hotel: Hotel }) {
+  return (
+    <span>
+      • <strong>{h.name}</strong>
+      {h.distanceKm != null ? ` · ~${h.distanceKm} км` : ""}
+      {h.distanceNote ? ` — ${h.distanceNote}` : ""}
+      {h.siteUrl ? (
+        <>
+          {" · "}
+          <a href={h.siteUrl} target="_blank" rel="noreferrer">сайт</a>
+        </>
+      ) : null}
+      {h.aggregator ? (
+        <>
+          {" · "}
+          <a href={h.aggregator.url} target="_blank" rel="noreferrer">
+            {AGGREGATOR_LABELS[h.aggregator.name] ?? h.aggregator.name}
+            {h.aggregator.rating != null && h.aggregator.ratingScale ? ` ${h.aggregator.rating}/${h.aggregator.ratingScale}` : ""}
+            {h.aggregator.reviewsCount != null ? ` (${h.aggregator.reviewsCount} отз.)` : ""}
+          </a>
+        </>
+      ) : null}
+    </span>
   );
 }
 
@@ -118,8 +151,8 @@ export function ProgramEnrichmentsCard({ programId }: { programId: string }) {
   return (
     <div className="mw-admin-stack-6" style={{ border: "1px solid #d9e2dc", borderRadius: 10, padding: "10px 12px", background: "#fafafa" }}>
       <span className="mw-admin-caption">
-        <strong>OSINT-дополнения</strong> — данные из открытых источников. На сайте показываются только одобренные и только если
-        организатор не заполнил соответствующее поле.
+        <strong>OSINT-дополнения</strong> — рекомендации MyWave по открытым источникам для этого тура. На сайте показываются только
+        одобренные — отдельным блоком под данными организатора.
       </span>
       {rows === null ? (
         <span className="mw-admin-caption">Загружаем...</span>

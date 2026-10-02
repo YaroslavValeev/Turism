@@ -1,7 +1,8 @@
 /**
  * OSINT-дополнения карточки тура (проживание / трансфер / экипировка): валидация и выбор публичных данных.
- * Правила: только черновик → approve владельцем; данные организатора всегда важнее; рейтинг отеля — только из
- * источника-агрегатора с датой проверки; тексты — пересказ со ссылками на источники.
+ * Правила: данные собираются под конкретный тур и его локацию; только черновик → approve владельцем;
+ * на витрине — отдельным блоком ПОСЛЕ данных организатора; рейтинг отеля — только из источника-агрегатора
+ * с датой проверки; тексты — пересказ со ссылками на источники.
  */
 import { isPublicHttpUrl } from "../scout/validate";
 
@@ -17,19 +18,26 @@ export const AGGREGATORS = {
 } as const;
 export type AggregatorName = keyof typeof AGGREGATORS;
 
+export const HOTEL_GROUPS = ["top", "nearby"] as const;
+export type HotelGroup = (typeof HOTEL_GROUPS)[number];
+
 export const ENRICHMENT_LIMITS = {
   maxHotels: 10,
+  maxHotelsPerGroup: 5,
+  nearbyMaxKm: 5,
   maxSources: 20,
   textMin: 50,
   textMax: 1500,
   summaryMax: 1000,
   hotelNameMax: 200,
   distanceNoteMax: 200,
+  locationLabelMax: 200,
   sourceTitleMax: 300,
 } as const;
 
 export type EnrichmentHotel = {
   name: string;
+  group: HotelGroup;
   siteUrl?: string;
   aggregator?: {
     name: AggregatorName;
@@ -38,10 +46,12 @@ export type EnrichmentHotel = {
     ratingScale?: number;
     reviewsCount?: number;
   };
+  distanceKm?: number;
   distanceNote?: string;
 };
 
-export type AccommodationContent = { summary?: string; hotels: EnrichmentHotel[] };
+export type LocationPoint = { label: string; lat?: number; lng?: number };
+export type AccommodationContent = { summary?: string; locationPoint: LocationPoint; hotels: EnrichmentHotel[] };
 export type TextContent = { text: string };
 export type EnrichmentContent = AccommodationContent | TextContent;
 export type EnrichmentSource = { url: string; title?: string; accessedAt: string };
@@ -62,6 +72,10 @@ function optionalTrimmed(value: unknown): string | undefined {
   return typeof value === "string" && value.trim() ? value.trim() : undefined;
 }
 
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value);
+}
+
 function hostMatches(url: string, expectedHost: string): boolean {
   try {
     const host = new URL(url).hostname.toLowerCase().replace(/\.$/, "");
@@ -75,6 +89,27 @@ function isValidDateString(value: unknown): value is string {
   return typeof value === "string" && value.trim() !== "" && !Number.isNaN(Date.parse(value));
 }
 
+/** Ключ для поиска дублей: регистр, кавычки, пунктуация и лишние пробелы не важны. */
+export function normalizeHotelName(name: string): string {
+  return name
+    .toLocaleLowerCase("ru")
+    .replace(/ё/g, "е")
+    .replace(/[«»"'`„“”]/g, "")
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim();
+}
+
+/** Ключ URL для поиска дублей: без схемы, www, query/hash и завершающего слэша. */
+export function normalizeUrlKey(url: string): string {
+  try {
+    const parsed = new URL(url);
+    const host = parsed.hostname.toLowerCase().replace(/^www\./, "");
+    return `${host}${parsed.pathname.replace(/\/+$/, "").toLowerCase()}`;
+  } catch {
+    return url.trim().toLowerCase();
+  }
+}
+
 function validateHotel(raw: unknown, index: number, errors: string[]): EnrichmentHotel | null {
   const at = `hotels[${index}]`;
   if (!isRecord(raw)) {
@@ -85,7 +120,13 @@ function validateHotel(raw: unknown, index: number, errors: string[]): Enrichmen
   if (!name) errors.push(`${at}.name обязателен`);
   else if (name.length > ENRICHMENT_LIMITS.hotelNameMax) errors.push(`${at}.name длиннее ${ENRICHMENT_LIMITS.hotelNameMax} символов`);
 
-  const hotel: EnrichmentHotel = { name: name ?? "" };
+  const group = raw.group;
+  if (group !== "top" && group !== "nearby") {
+    errors.push(`${at}.group: допустимы top | nearby`);
+    return null;
+  }
+
+  const hotel: EnrichmentHotel = { name: name ?? "", group };
 
   if (raw.siteUrl !== undefined && raw.siteUrl !== null && raw.siteUrl !== "") {
     if (!isPublicHttpUrl(raw.siteUrl)) errors.push(`${at}.siteUrl: нужен публичный http(s) URL`);
@@ -96,6 +137,11 @@ function validateHotel(raw: unknown, index: number, errors: string[]): Enrichmen
   if (distanceNote) {
     if (distanceNote.length > ENRICHMENT_LIMITS.distanceNoteMax) errors.push(`${at}.distanceNote слишком длинный`);
     hotel.distanceNote = distanceNote;
+  }
+
+  if (raw.distanceKm !== undefined && raw.distanceKm !== null) {
+    if (!isFiniteNumber(raw.distanceKm) || raw.distanceKm <= 0) errors.push(`${at}.distanceKm: число > 0`);
+    else hotel.distanceKm = raw.distanceKm;
   }
 
   if (raw.aggregator !== undefined && raw.aggregator !== null) {
@@ -113,14 +159,13 @@ function validateHotel(raw: unknown, index: number, errors: string[]): Enrichmen
       } else {
         const aggregator: NonNullable<EnrichmentHotel["aggregator"]> = { name: aggName, url: String(agg.url).trim() };
         if (agg.rating !== undefined && agg.rating !== null) {
-          const rating = agg.rating;
           const scale = agg.ratingScale;
-          if (typeof scale !== "number" || !Number.isFinite(scale) || scale <= 0) {
+          if (!isFiniteNumber(scale) || scale <= 0) {
             errors.push(`${at}.aggregator.ratingScale обязателен и > 0, если указан rating`);
-          } else if (typeof rating !== "number" || !Number.isFinite(rating) || rating < 0 || rating > scale) {
+          } else if (!isFiniteNumber(agg.rating) || agg.rating < 0 || agg.rating > scale) {
             errors.push(`${at}.aggregator.rating должен быть в диапазоне 0..${scale}`);
           } else {
-            aggregator.rating = rating;
+            aggregator.rating = agg.rating;
             aggregator.ratingScale = scale;
           }
         }
@@ -135,7 +180,60 @@ function validateHotel(raw: unknown, index: number, errors: string[]): Enrichmen
       }
     }
   }
+
+  if (group === "top" && (hotel.aggregator?.rating === undefined || hotel.aggregator.ratingScale === undefined)) {
+    errors.push(`${at}: в группе top нужен aggregator с rating и ratingScale (топ — по публичным оценкам)`);
+  }
+  if (group === "nearby" && (hotel.distanceKm === undefined || hotel.distanceKm > ENRICHMENT_LIMITS.nearbyMaxKm)) {
+    errors.push(`${at}: в группе nearby нужен distanceKm в диапазоне (0; ${ENRICHMENT_LIMITS.nearbyMaxKm}] км`);
+  }
   return hotel;
+}
+
+function validateLocationPoint(raw: unknown, errors: string[]): LocationPoint | null {
+  if (!isRecord(raw)) {
+    errors.push("content.locationPoint обязателен: { label, lat?, lng? }");
+    return null;
+  }
+  const label = optionalTrimmed(raw.label);
+  if (!label) {
+    errors.push("content.locationPoint.label обязателен");
+    return null;
+  }
+  if (label.length > ENRICHMENT_LIMITS.locationLabelMax) errors.push("content.locationPoint.label слишком длинный");
+  const point: LocationPoint = { label };
+  const hasLat = raw.lat !== undefined && raw.lat !== null;
+  const hasLng = raw.lng !== undefined && raw.lng !== null;
+  if (hasLat !== hasLng) errors.push("content.locationPoint: lat и lng указываются вместе");
+  if (hasLat) {
+    if (!isFiniteNumber(raw.lat) || raw.lat < -90 || raw.lat > 90) errors.push("content.locationPoint.lat: -90..90");
+    else point.lat = raw.lat;
+  }
+  if (hasLng) {
+    if (!isFiniteNumber(raw.lng) || raw.lng < -180 || raw.lng > 180) errors.push("content.locationPoint.lng: -180..180");
+    else point.lng = raw.lng;
+  }
+  return point;
+}
+
+function checkHotelUniqueness(hotels: EnrichmentHotel[], errors: string[]): void {
+  const names = new Map<string, number>();
+  const urls = new Map<string, number>();
+  hotels.forEach((hotel, index) => {
+    const nameKey = normalizeHotelName(hotel.name);
+    if (nameKey) {
+      const prev = names.get(nameKey);
+      if (prev !== undefined) errors.push(`hotels[${index}]: дубль отеля hotels[${prev}] по названию`);
+      else names.set(nameKey, index);
+    }
+    for (const url of [hotel.siteUrl, hotel.aggregator?.url]) {
+      if (!url) continue;
+      const key = normalizeUrlKey(url);
+      const prev = urls.get(key);
+      if (prev !== undefined && prev !== index) errors.push(`hotels[${index}]: дубль отеля hotels[${prev}] по ссылке ${url}`);
+      else urls.set(key, index);
+    }
+  });
 }
 
 function validateContent(field: EnrichmentField, content: unknown, errors: string[]): EnrichmentContent | null {
@@ -144,7 +242,8 @@ function validateContent(field: EnrichmentField, content: unknown, errors: strin
     return null;
   }
   if (field === "accommodation") {
-    const result: AccommodationContent = { hotels: [] };
+    const locationPoint = validateLocationPoint(content.locationPoint, errors);
+    const result: AccommodationContent = { locationPoint: locationPoint ?? { label: "" }, hotels: [] };
     const summary = optionalTrimmed(content.summary);
     if (summary) {
       if (summary.length > ENRICHMENT_LIMITS.summaryMax) errors.push(`content.summary длиннее ${ENRICHMENT_LIMITS.summaryMax} символов`);
@@ -160,6 +259,12 @@ function validateContent(field: EnrichmentField, content: unknown, errors: strin
       const hotel = validateHotel(raw, index, errors);
       if (hotel) result.hotels.push(hotel);
     });
+    for (const group of HOTEL_GROUPS) {
+      if (result.hotels.filter((h) => h.group === group).length > ENRICHMENT_LIMITS.maxHotelsPerGroup) {
+        errors.push(`content.hotels: в группе ${group} не больше ${ENRICHMENT_LIMITS.maxHotelsPerGroup}`);
+      }
+    }
+    checkHotelUniqueness(result.hotels, errors);
     if (!result.summary && result.hotels.length === 0) errors.push("content: нужен summary или хотя бы один отель");
     return result;
   }
@@ -210,49 +315,6 @@ export function validateEnrichmentInput(field: unknown, content: unknown, source
   return { ok: true, field, content: normalizedContent, sources: normalizedSources };
 }
 
-/** Служебные заглушки сбора из источников (синхронно с apps/web recommendedProgramFields). */
-const PLACEHOLDER_PATTERNS = [
-  /^требует\s+ручно(?:го\s+заполнения|й\s+нормализации)/i,
-  /^базовая программа и сопровождение организатора\.\s*детальный состав/i,
-];
-
-function organizerValuePresent(value: string | null | undefined): boolean {
-  const text = String(value ?? "").trim();
-  return text !== "" && !PLACEHOLDER_PATTERNS.some((p) => p.test(text));
-}
-
-const LABELED_PATTERNS: Record<Exclude<EnrichmentField, "equipment">, RegExp> = {
-  accommodation: /^(?:тип\s+размещ(?:ения|ение)|размещ(?:ение|ения)|проживание)\s*[:\-]\s*(.+)$/i,
-  transfer: /^(?:трансфер|дорога|логистика|переезды)\s*[:\-]\s*(.+)$/i,
-};
-
-function extractLabeled(field: Exclude<EnrichmentField, "equipment">, texts: Array<string | null | undefined>): string | null {
-  for (const line of texts.map((t) => String(t ?? "")).join("\n").split(/\r?\n/)) {
-    const match = line.trim().match(LABELED_PATTERNS[field]);
-    if (match?.[1]?.trim()) return match[1].trim();
-  }
-  return null;
-}
-
-export type ProgramOrganizerFields = Partial<Record<EnrichmentField, string | null>>;
-
-/** Значения организатора для трёх полей: экипировка — gearRequirements, остальное — строки «Проживание: …» в текстах карточки. */
-export function organizerFieldsFromProgram(p: {
-  gearRequirements?: string | null;
-  inclusions?: string | null;
-  exclusions?: string | null;
-  itineraryDayByDay?: string | null;
-  audienceFit?: string | null;
-  trustReason?: string | null;
-}): ProgramOrganizerFields {
-  const scope = [p.inclusions, p.exclusions, p.itineraryDayByDay, p.audienceFit, p.trustReason];
-  return {
-    accommodation: extractLabeled("accommodation", scope),
-    transfer: extractLabeled("transfer", scope),
-    equipment: p.gearRequirements ?? null,
-  };
-}
-
 export type EnrichmentRowLike = {
   field: string;
   status: string;
@@ -264,12 +326,15 @@ export type EnrichmentRowLike = {
 export type PublicEnrichmentEntry = EnrichmentContent & { sources: EnrichmentSource[]; checkedAt: string };
 export type PublicEnrichment = Partial<Record<EnrichmentField, PublicEnrichmentEntry>>;
 
-/** Только approved и только там, где организатор поле не заполнил; невалидные строки молча отбрасываются. */
-export function pickPublicEnrichment(programFields: ProgramOrganizerFields, rows: EnrichmentRowLike[]): PublicEnrichment {
+/**
+ * Все одобренные поля (по одному на поле; строки ожидаются отсортированными от свежих к старым).
+ * Показ идёт отдельным блоком под данными организатора, поэтому заполненность полей организатора здесь не важна.
+ * Невалидные строки молча отбрасываются.
+ */
+export function pickPublicEnrichment(rows: EnrichmentRowLike[]): PublicEnrichment {
   const result: PublicEnrichment = {};
   for (const row of rows) {
     if (row.status !== "approved" || !isEnrichmentField(row.field)) continue;
-    if (organizerValuePresent(programFields[row.field])) continue;
     if (result[row.field]) continue;
     const checked = new Date(row.checkedAt);
     if (Number.isNaN(checked.getTime())) continue;

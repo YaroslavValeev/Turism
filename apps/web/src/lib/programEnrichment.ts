@@ -1,9 +1,10 @@
-/** OSINT-дополнения карточки (approved владельцем) из GET /programs/:id → enrichment. */
+/** OSINT-рекомендации MyWave (approved владельцем) из GET /programs/:id → enrichment. */
 
 export type EnrichmentSource = { url: string; title?: string; accessedAt: string };
 
 export type EnrichmentHotel = {
   name: string;
+  group: "top" | "nearby";
   siteUrl?: string;
   aggregator?: {
     name: "yandex_travel" | "ostrovok";
@@ -12,11 +13,16 @@ export type EnrichmentHotel = {
     ratingScale?: number;
     reviewsCount?: number;
   };
+  distanceKm?: number;
   distanceNote?: string;
 };
 
 type EnrichmentMeta = { sources: EnrichmentSource[]; checkedAt: string };
-export type AccommodationEnrichment = EnrichmentMeta & { summary?: string; hotels: EnrichmentHotel[] };
+export type AccommodationEnrichment = EnrichmentMeta & {
+  summary?: string;
+  locationPoint: { label: string; lat?: number; lng?: number };
+  hotels: EnrichmentHotel[];
+};
 export type TextEnrichment = EnrichmentMeta & { text: string };
 
 export type ProgramEnrichment = {
@@ -43,10 +49,12 @@ export function formatEnrichmentDate(value: string): string {
 
 export function enrichmentCaption(checkedAt: string): string {
   const date = formatEnrichmentDate(checkedAt);
-  return date ? `По открытым источникам · проверено MyWave ${date}` : "По открытым источникам · проверено MyWave";
+  return date
+    ? `Рекомендации MyWave · по открытым источникам, проверено ${date}`
+    : "Рекомендации MyWave · по открытым источникам";
 }
 
-function formatRating(value: number): string {
+function formatNumber(value: number): string {
   return Number.isInteger(value) ? String(value) : value.toFixed(1).replace(".", ",");
 }
 
@@ -54,9 +62,21 @@ function formatRating(value: number): string {
 export function aggregatorLinkLabel(aggregator: NonNullable<EnrichmentHotel["aggregator"]>): string {
   const name = AGGREGATOR_LABELS[aggregator.name] ?? aggregator.name;
   if (typeof aggregator.rating === "number" && typeof aggregator.ratingScale === "number" && aggregator.ratingScale > 0) {
-    return `${name} · ${formatRating(aggregator.rating)}/${formatRating(aggregator.ratingScale)}`;
+    return `${name} · ${formatNumber(aggregator.rating)}/${formatNumber(aggregator.ratingScale)}`;
   }
   return name;
+}
+
+/** «~0,8 км»; без расстояния → "". */
+export function formatDistanceKm(value: number | undefined): string {
+  return typeof value === "number" && Number.isFinite(value) && value > 0 ? `~${formatNumber(value)} км` : "";
+}
+
+export function splitHotelGroups(hotels: EnrichmentHotel[]): { top: EnrichmentHotel[]; nearby: EnrichmentHotel[] } {
+  return {
+    top: hotels.filter((h) => h.group === "top"),
+    nearby: hotels.filter((h) => h.group === "nearby"),
+  };
 }
 
 export function sourceLinkLabel(source: EnrichmentSource): string {

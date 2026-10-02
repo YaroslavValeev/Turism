@@ -1085,7 +1085,23 @@ body:has(.mw-pdp-root) {
   }
 }
 
-/* OSINT-дополнения (проверено MyWave по открытым источникам) */
+/* Рекомендации MyWave по открытым источникам — отдельный блок под данными организатора */
+.mw-pdp-enrichment {
+  margin-top: var(--mw-space-3);
+  padding-top: var(--mw-space-3);
+  border-top: 1px dashed var(--mw-border, rgba(0, 0, 0, 0.12));
+}
+
+.mw-pdp-enrichment__group {
+  margin-top: var(--mw-space-2);
+}
+
+.mw-pdp-enrichment__group-title {
+  margin: 0;
+  font-weight: 600;
+  color: var(--mw-text-body);
+}
+
 .mw-pdp-enrichment__hotels li {
   line-height: 1.55;
 }

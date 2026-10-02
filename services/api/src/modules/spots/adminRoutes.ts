@@ -41,12 +41,12 @@ const auditInclude = {
   evidence: { orderBy: { createdAt: "asc" } },
   remediations: { orderBy: { decidedAt: "asc" } },
   snapshots: { orderBy: { computedAt: "desc" } },
-} satisfies Prisma.SpotAuditInclude;
+} satisfies Prisma.SpotAssessmentInclude;
 
-type AuditWithRelations = Prisma.SpotAuditGetPayload<{ include: typeof auditInclude }>;
+type AuditWithRelations = Prisma.SpotAssessmentGetPayload<{ include: typeof auditInclude }>;
 
 async function loadAudit(id: string): Promise<AuditWithRelations | null> {
-  return prisma.spotAudit.findUnique({ where: { id }, include: auditInclude });
+  return prisma.spotAssessment.findUnique({ where: { id }, include: auditInclude });
 }
 
 function actor(req: Request): string | null {
@@ -188,7 +188,7 @@ export function spotsAdminRoutes(env: Env): Router {
     if (!spot) { res.status(404).json({ error: "Not found" }); return; }
     const parsed = parseUnitInput(req.body, "create");
     if (!parsed.ok) { res.status(400).json({ error: parsed.error }); return; }
-    const unit = await prisma.spotServiceUnit.create({
+    const unit = await prisma.spotEquipment.create({
       data: {
         spotId: spot.id,
         serviceName: parsed.data.serviceName!,
@@ -205,7 +205,7 @@ export function spotsAdminRoutes(env: Env): Router {
   }));
 
   router.get("/units/:unitId", wrap(async (req, res) => {
-    const unit = await prisma.spotServiceUnit.findUnique({
+    const unit = await prisma.spotEquipment.findUnique({
       where: { id: req.params.unitId },
       include: {
         spot: true,
@@ -218,12 +218,12 @@ export function spotsAdminRoutes(env: Env): Router {
   }));
 
   router.patch("/units/:unitId", wrap(async (req, res) => {
-    const existing = await prisma.spotServiceUnit.findUnique({ where: { id: req.params.unitId } });
+    const existing = await prisma.spotEquipment.findUnique({ where: { id: req.params.unitId } });
     if (!existing) { res.status(404).json({ error: "Not found" }); return; }
     const parsed = parseUnitInput(req.body, "patch");
     if (!parsed.ok) { res.status(400).json({ error: parsed.error }); return; }
     const { equipmentConfig, ...rest } = parsed.data;
-    const unit = await prisma.spotServiceUnit.update({
+    const unit = await prisma.spotEquipment.update({
       where: { id: existing.id },
       data: { ...rest, ...(equipmentConfig ? { equipmentConfig: toJsonValue(equipmentConfig) } : {}) },
     });
@@ -235,7 +235,7 @@ export function spotsAdminRoutes(env: Env): Router {
   }));
 
   router.post("/units/:unitId/audits", wrap(async (req, res) => {
-    const unit = await prisma.spotServiceUnit.findUnique({ where: { id: req.params.unitId }, select: { id: true } });
+    const unit = await prisma.spotEquipment.findUnique({ where: { id: req.params.unitId }, select: { id: true } });
     if (!unit) { res.status(404).json({ error: "Not found" }); return; }
     const parsed = parseAuditInput(req.body, "create");
     if (!parsed.ok) { res.status(400).json({ error: parsed.error }); return; }
@@ -243,7 +243,7 @@ export function spotsAdminRoutes(env: Env): Router {
       res.status(400).json({ error: "independentEditorUserId must be an admin user" });
       return;
     }
-    const audit = await prisma.spotAudit.create({
+    const audit = await prisma.spotAssessment.create({
       data: {
         unitId: unit.id,
         testedAt: parsed.data.testedAt!,
@@ -279,7 +279,7 @@ export function spotsAdminRoutes(env: Env): Router {
       res.status(400).json({ error: "independentEditorUserId must be an admin user" });
       return;
     }
-    const updated = await prisma.spotAudit.update({ where: { id: audit.id }, data: parsed.data });
+    const updated = await prisma.spotAssessment.update({ where: { id: audit.id }, data: parsed.data });
     await writeAuditLog({
       entityType: "spot_audit", entityId: audit.id, changedField: "updated",
       oldValue: null, newValue: Object.keys(parsed.data).join(","), changedBy: actor(req),
@@ -295,7 +295,7 @@ export function spotsAdminRoutes(env: Env): Router {
     if (!parsed.ok) { res.status(400).json({ error: parsed.error }); return; }
     await prisma.$transaction(
       Object.entries(parsed.data).map(([category, score]) =>
-        prisma.spotAuditCategoryScore.upsert({
+        prisma.spotCriterionResult.upsert({
           where: { auditId_category: { auditId: audit.id, category } },
           create: { auditId: audit.id, category, score: new Prisma.Decimal(score!) },
           update: { score: new Prisma.Decimal(score!) },
@@ -318,7 +318,7 @@ export function spotsAdminRoutes(env: Env): Router {
     if (!parsed.ok) { res.status(400).json({ error: parsed.error }); return; }
     await prisma.$transaction(
       Object.entries(parsed.data).map(([gateId, status]) =>
-        prisma.spotAuditGateResult.upsert({
+        prisma.spotGateResult.upsert({
           where: { auditId_gateId: { auditId: audit.id, gateId } },
           create: { auditId: audit.id, gateId, status: status! },
           update: { status: status! },
@@ -354,7 +354,7 @@ export function spotsAdminRoutes(env: Env): Router {
           return;
         }
       }
-      const data: Prisma.SpotAuditUncheckedUpdateInput = { status: to };
+      const data: Prisma.SpotAssessmentUncheckedUpdateInput = { status: to };
       if (to === "signed") {
         data.expertUserId = actor(req);
         data.expertSignedAt = new Date();
@@ -363,7 +363,7 @@ export function spotsAdminRoutes(env: Env): Router {
         data.expertUserId = null;
         data.expertSignedAt = null;
       }
-      const updated = await prisma.spotAudit.update({ where: { id: audit.id }, data });
+      const updated = await prisma.spotAssessment.update({ where: { id: audit.id }, data });
       await writeAuditLog({
         entityType: "spot_audit", entityId: audit.id, changedField: "status",
         oldValue: audit.status, newValue: to, changedBy: actor(req),
@@ -377,7 +377,7 @@ export function spotsAdminRoutes(env: Env): Router {
     "/audits/:auditId/evidence",
     express.raw({ type: () => true, limit: SPOT_EVIDENCE_MAX_BYTES }),
     wrap(async (req, res) => {
-      const audit = await prisma.spotAudit.findUnique({ where: { id: req.params.auditId }, select: { id: true, status: true } });
+      const audit = await prisma.spotAssessment.findUnique({ where: { id: req.params.auditId }, select: { id: true, status: true } });
       if (!audit) { res.status(404).json({ error: "Not found" }); return; }
       if (audit.status !== "draft" && audit.status !== "submitted") {
         res.status(409).json({ error: "evidence can only be added before signing" });
@@ -474,7 +474,7 @@ export function spotsAdminRoutes(env: Env): Router {
       rationale,
       moderatorVerifiedWorkingHotWater: verified,
     });
-    const remediation = await prisma.spotGateRemediation.create({
+    const remediation = await prisma.spotRemediation.create({
       data: {
         auditId: audit.id,
         gateId: "G05",

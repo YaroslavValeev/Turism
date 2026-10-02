@@ -26,8 +26,8 @@ vi.mock("../../lib/prisma", () => ({
   prisma: {
     spot: { create: mocks.spotCreate, findMany: mocks.spotFindMany },
     user: { findMany: mocks.userFindMany },
-    spotAudit: { findUnique: mocks.spotAuditFindUnique, update: mocks.spotAuditUpdate },
-    spotAuditCategoryScore: { upsert: mocks.scoreUpsert },
+    spotAssessment: { findUnique: mocks.spotAuditFindUnique, update: mocks.spotAuditUpdate },
+    spotCriterionResult: { upsert: mocks.scoreUpsert },
     spotEvidence: { findUnique: mocks.evidenceFindUnique, create: mocks.evidenceCreate },
     spotRatingSnapshot: {
       create: mocks.snapshotCreate,

@@ -85,55 +85,55 @@ enum ContentPublishState {
 // Seed: pnpm --filter api db:seed (creates admin@mywave.local)
 
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  name         String?
-  phone        String?
-  role         String // admin | organizer | user (Sprint 1: admin only)
-  passwordHash String? // for admin login only
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  spotAuditsAsExpert SpotAudit[] @relation("SpotAuditExpert")
-  spotAuditsAsEditor SpotAudit[] @relation("SpotAuditEditor")
+  id                 String           @id @default(cuid())
+  email              String           @unique
+  name               String?
+  phone              String?
+  role               String // admin | organizer | user (Sprint 1: admin only)
+  passwordHash       String? // for admin login only
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  spotAuditsAsExpert SpotAssessment[] @relation("SpotAuditExpert")
+  spotAuditsAsEditor SpotAssessment[] @relation("SpotAuditEditor")
 }
 
 model Organizer {
-  id                   String                          @id @default(cuid())
-  displayName          String
-  legalStatus          String? // self-employed / ИП / ООО
-  contactEmail         String
-  contactPhone         String?
-  responseScore        Int? // optional metric
-  verificationStatus   String // listed | checked | verified | trusted_by_platform | paused | rejected
-  onboardingStatus     String                          @default("applied") // applied | under_review | approved | contract_pending | contract_signed | billing_connected | active | limited | suspended
-  billingStatus        String                          @default("not_connected") // not_connected | billing_connected | suspended
-  privilegeStatus      String                          @default("limited") // limited | active | suspended
-  commissionRateBps    Int                             @default(300) // Fair Success Fee default 3%
+  id                    String                          @id @default(cuid())
+  displayName           String
+  legalStatus           String? // self-employed / ИП / ООО
+  contactEmail          String
+  contactPhone          String?
+  responseScore         Int? // optional metric
+  verificationStatus    String // listed | checked | verified | trusted_by_platform | paused | rejected
+  onboardingStatus      String                          @default("applied") // applied | under_review | approved | contract_pending | contract_signed | billing_connected | active | limited | suspended
+  billingStatus         String                          @default("not_connected") // not_connected | billing_connected | suspended
+  privilegeStatus       String                          @default("limited") // limited | active | suspended
+  commissionRateBps     Int                             @default(300) // Fair Success Fee default 3%
   /// Permanent business approval: after the first verified/trusted decision, active sources may use autopublish.
   autoPublishApprovedAt DateTime?
   autoPublishApprovedBy String?
-  createdAt            DateTime                        @default(now())
-  updatedAt            DateTime                        @updatedAt
-  programs             Program[]
-  leads                Lead[]
-  bookings             Booking[]
-  verificationEvidence OrganizerVerificationEvidence[]
-  incidents            Incident[]
-  reviews              Review[]
-  commissions          Commission[]
-  sources              Source[]                        @relation("SourceOrganizer")
-  payments             Payment[]
-  refunds              Refund[]
-  billingProfile       OrganizerBillingProfile?
-  contracts            OrganizerContract[]
-  billingStatements    BillingStatement[]
-  scoreSnapshots       OrganizerScoreSnapshot[]
-  reviewRequests       ReviewRequest[]
-  outreachCampaigns    OrganizerOutreachCampaign[]
-  contactChannels      OrganizerContactChannel[]
-  telegramAccounts     OrganizerTelegramAccount[]
-  telegramLeadAttempts TelegramLeadAttempt[]
-  spots                Spot[]
+  createdAt             DateTime                        @default(now())
+  updatedAt             DateTime                        @updatedAt
+  programs              Program[]
+  leads                 Lead[]
+  bookings              Booking[]
+  verificationEvidence  OrganizerVerificationEvidence[]
+  incidents             Incident[]
+  reviews               Review[]
+  commissions           Commission[]
+  sources               Source[]                        @relation("SourceOrganizer")
+  payments              Payment[]
+  refunds               Refund[]
+  billingProfile        OrganizerBillingProfile?
+  contracts             OrganizerContract[]
+  billingStatements     BillingStatement[]
+  scoreSnapshots        OrganizerScoreSnapshot[]
+  reviewRequests        ReviewRequest[]
+  outreachCampaigns     OrganizerOutreachCampaign[]
+  contactChannels       OrganizerContactChannel[]
+  telegramAccounts      OrganizerTelegramAccount[]
+  telegramLeadAttempts  TelegramLeadAttempt[]
+  spots                 Spot[]
 
   @@map("organizers")
 }
@@ -1581,21 +1581,21 @@ model ContentCollection {
 // ---------------------------------------------------------------------------
 
 model Spot {
-  id              String            @id @default(cuid())
+  id              String          @id @default(cuid())
   name            String
   region          String
   address         String?
-  latitude        Decimal?          @db.Decimal(9, 6)
-  longitude       Decimal?          @db.Decimal(9, 6)
+  latitude        Decimal?        @db.Decimal(9, 6)
+  longitude       Decimal?        @db.Decimal(9, 6)
   waterBodyType   String? // lake | river | reservoir | sea | bay
   organizerId     String?
   /// Спот связан с MyWave: для официального рейтинга нужны внешний эксперт и независимый редактор.
-  relatedToMyWave Boolean           @default(false)
-  discoveryStatus String            @default("candidate") // candidate | listed | archived
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
-  organizer       Organizer?        @relation(fields: [organizerId], references: [id], onDelete: SetNull)
-  serviceUnits    SpotServiceUnit[]
+  relatedToMyWave Boolean         @default(false)
+  discoveryStatus String          @default("candidate") // candidate | listed | archived
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  organizer       Organizer?      @relation(fields: [organizerId], references: [id], onDelete: SetNull)
+  serviceUnits    SpotEquipment[]
 
   @@index([region])
   @@index([discoveryStatus])
@@ -1604,7 +1604,7 @@ model Spot {
 }
 
 /// Единица официального рейтинга: конкретная услуга на конкретном споте с протестированной конфигурацией инструмента.
-model SpotServiceUnit {
+model SpotEquipment {
   id              String               @id @default(cuid())
   spotId          String
   discipline      String               @default("wakesurf")
@@ -1615,7 +1615,7 @@ model SpotServiceUnit {
   createdAt       DateTime             @default(now())
   updatedAt       DateTime             @updatedAt
   spot            Spot                 @relation(fields: [spotId], references: [id], onDelete: Cascade)
-  audits          SpotAudit[]
+  audits          SpotAssessment[]
   snapshots       SpotRatingSnapshot[]
 
   @@index([spotId])
@@ -1624,29 +1624,29 @@ model SpotServiceUnit {
 }
 
 /// Профессиональный тест единицы. Эксперт и редактор — пользователи админки.
-model SpotAudit {
-  id                      String                   @id @default(cuid())
+model SpotAssessment {
+  id                      String                @id @default(cuid())
   unitId                  String
   testedAt                DateTime
   methodologyVersion      String
   protocolVersion         String
   criteriaVersion         String
-  status                  String                   @default("draft") // draft | submitted | signed | void
+  status                  String                @default("draft") // draft | submitted | signed | void
   expertUserId            String?
   expertSignedAt          DateTime?
-  externalExpertConfirmed Boolean                  @default(false)
+  externalExpertConfirmed Boolean               @default(false)
   externalExpertName      String?
   independentEditorUserId String?
-  notes                   String?                  @db.Text
-  createdAt               DateTime                 @default(now())
-  updatedAt               DateTime                 @updatedAt
-  unit                    SpotServiceUnit          @relation(fields: [unitId], references: [id], onDelete: Restrict)
-  expert                  User?                    @relation("SpotAuditExpert", fields: [expertUserId], references: [id], onDelete: Restrict)
-  independentEditor       User?                    @relation("SpotAuditEditor", fields: [independentEditorUserId], references: [id], onDelete: Restrict)
-  categoryScores          SpotAuditCategoryScore[]
-  gateResults             SpotAuditGateResult[]
+  notes                   String?               @db.Text
+  createdAt               DateTime              @default(now())
+  updatedAt               DateTime              @updatedAt
+  unit                    SpotEquipment         @relation(fields: [unitId], references: [id], onDelete: Restrict)
+  expert                  User?                 @relation("SpotAuditExpert", fields: [expertUserId], references: [id], onDelete: Restrict)
+  independentEditor       User?                 @relation("SpotAuditEditor", fields: [independentEditorUserId], references: [id], onDelete: Restrict)
+  categoryScores          SpotCriterionResult[]
+  gateResults             SpotGateResult[]
   evidence                SpotEvidence[]
-  remediations            SpotGateRemediation[]
+  remediations            SpotRemediation[]
   snapshots               SpotRatingSnapshot[]
 
   @@index([unitId])
@@ -1654,23 +1654,23 @@ model SpotAudit {
   @@map("spot_audits")
 }
 
-model SpotAuditCategoryScore {
-  id       String    @id @default(cuid())
+model SpotCriterionResult {
+  id       String         @id @default(cuid())
   auditId  String
   category String // infrastructure | instrument | waterArea | personnel | safety | atmosphere
-  score    Decimal   @db.Decimal(3, 1)
-  audit    SpotAudit @relation(fields: [auditId], references: [id], onDelete: Cascade)
+  score    Decimal        @db.Decimal(3, 1)
+  audit    SpotAssessment @relation(fields: [auditId], references: [id], onDelete: Cascade)
 
   @@unique([auditId, category])
   @@map("spot_audit_category_scores")
 }
 
-model SpotAuditGateResult {
-  id      String    @id @default(cuid())
+model SpotGateResult {
+  id      String         @id @default(cuid())
   auditId String
   gateId  String // G01..G08
   status  String // pass | fail | unknown
-  audit   SpotAudit @relation(fields: [auditId], references: [id], onDelete: Cascade)
+  audit   SpotAssessment @relation(fields: [auditId], references: [id], onDelete: Cascade)
 
   @@unique([auditId, gateId])
   @@map("spot_audit_gate_results")
@@ -1678,42 +1678,42 @@ model SpotAuditGateResult {
 
 /// Файлы лежат в приватном хранилище (не в публичном /ingestion-media), отдаются только через admin API.
 model SpotEvidence {
-  id                         String                @id @default(cuid())
+  id                         String            @id @default(cuid())
   auditId                    String
   /// Категория (infrastructure…) или гейт (G01…), к которому относится доказательство.
   criterion                  String?
   kind                       String // photo | video | document
-  storageKey                 String                @unique
+  storageKey                 String            @unique
   sha256                     String
   mimeType                   String
   sizeBytes                  Int
   capturedAt                 DateTime?
-  isGenerated                Boolean               @default(false)
+  isGenerated                Boolean           @default(false)
   uploadedByUserId           String?
   integrityConfirmedByUserId String?
   integrityConfirmedAt       DateTime?
-  createdAt                  DateTime              @default(now())
-  audit                      SpotAudit             @relation(fields: [auditId], references: [id], onDelete: Restrict)
-  remediations               SpotGateRemediation[]
+  createdAt                  DateTime          @default(now())
+  audit                      SpotAssessment    @relation(fields: [auditId], references: [id], onDelete: Restrict)
+  remediations               SpotRemediation[]
 
   @@index([auditId])
   @@map("spot_evidence")
 }
 
 /// Удалённое исправление гейта: по канону v1.1 только G05 (горячий душ) — ограничено CHECK в миграции.
-model SpotGateRemediation {
-  id                      String       @id @default(cuid())
+model SpotRemediation {
+  id                      String         @id @default(cuid())
   auditId                 String
-  gateId                  String       @default("G05")
+  gateId                  String         @default("G05")
   evidenceId              String
   moderatorUserId         String
-  rationale               String       @db.Text
+  rationale               String         @db.Text
   verifiedWorkingHotWater Boolean
   accepted                Boolean
   reasons                 Json
-  decidedAt               DateTime     @default(now())
-  audit                   SpotAudit    @relation(fields: [auditId], references: [id], onDelete: Restrict)
-  evidence                SpotEvidence @relation(fields: [evidenceId], references: [id], onDelete: Restrict)
+  decidedAt               DateTime       @default(now())
+  audit                   SpotAssessment @relation(fields: [auditId], references: [id], onDelete: Restrict)
+  evidence                SpotEvidence   @relation(fields: [evidenceId], references: [id], onDelete: Restrict)
 
   @@index([auditId])
   @@map("spot_gate_remediations")
@@ -1721,27 +1721,27 @@ model SpotGateRemediation {
 
 /// Неизменяемый результат оценки (триггер в миграции): новая оценка = новая строка.
 model SpotRatingSnapshot {
-  id                 String          @id @default(cuid())
+  id                 String         @id @default(cuid())
   unitId             String
   auditId            String
   methodologyVersion String
   protocolVersion    String
   criteriaVersion    String
   ratingVersion      String
-  officialScore      Decimal?        @db.Decimal(3, 1)
+  officialScore      Decimal?       @db.Decimal(3, 1)
   band               String?
   publishable        Boolean
   blockers           Json
   inputJson          Json
   expiresAt          DateTime
-  computedAt         DateTime        @default(now())
+  computedAt         DateTime       @default(now())
   computedByUserId   String?
   publishedAt        DateTime?
   publishedByUserId  String?
   revokedAt          DateTime?
   revokeReason       String?
-  unit               SpotServiceUnit @relation(fields: [unitId], references: [id], onDelete: Restrict)
-  audit              SpotAudit       @relation(fields: [auditId], references: [id], onDelete: Restrict)
+  unit               SpotEquipment  @relation(fields: [unitId], references: [id], onDelete: Restrict)
+  audit              SpotAssessment @relation(fields: [auditId], references: [id], onDelete: Restrict)
   appeals            SpotAppeal[]
 
   @@index([unitId, publishedAt])

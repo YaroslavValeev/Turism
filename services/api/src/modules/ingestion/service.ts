@@ -239,7 +239,7 @@ const EVENT_TYPE_KEYWORDS: Record<string, string[]> = {
   expedition: ["expedition", "экспедиция", "heliski", "heli-ski", "heliboarding", "хелиски"],
 };
 
-const DISCIPLINE_KEYWORDS: Record<string, string[]> = {
+export const DISCIPLINE_KEYWORDS: Record<string, string[]> = {
   wakesurf: ["wakesurf", "вейксерф"],
   sup: ["sup", "сап"],
   mtb: ["mtb", "mountain bike", "маунтинбайк", "велотур", "downhill"],

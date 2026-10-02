@@ -1,0 +1,263 @@
+{
+  "batchId": "enrich-sheregesh-2026-10",
+  "items": [
+    {
+      "programMatch": {
+        "region": "Шерегеш",
+        "titleIncludes": [
+          "Шерегеш"
+        ]
+      },
+      "field": "accommodation",
+      "content": {
+        "summary": "Основная часть гостиниц стоит у подножия горы Зелёная (сектор А, улицы Спортивная, Снежная, Олимпийская, Горнолыжная) — оттуда до подъёмников можно дойти пешком; отдельный кластер жилья — Сектор Е (например, комплекс «Тайгара»), примерно в 6 км от центра посёлка, а в самом посёлке Шерегеш обычно дешевле, но до склона нужно ехать на такси или автобусе. Типичные форматы — гостиницы и мини-отели, гостевые дома, шале и барнхаусы, апартаменты. Список упорядочен по оценке гостей на Островке (шкала 10, данные на 2 октября 2026); объекты с менее чем 15 отзывами вынесены в конец.",
+        "hotels": [
+          {
+            "name": "Тайгара (Сектор Е)",
+            "siteUrl": "https://www.taigara.ru/",
+            "aggregator": {
+              "name": "ostrovok",
+              "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid9991423/tajgara_sektor_e/",
+              "rating": 9.3,
+              "ratingScale": 10,
+              "reviewsCount": 18
+            },
+            "distanceNote": "Сектор Е, около 150 м до нижней станции гондолы Сектора Е (по данным Островка)"
+          },
+          {
+            "name": "Аляска (гостевой дом и модульные домики)",
+            "siteUrl": "https://alaska-gesh.ru/",
+            "aggregator": {
+              "name": "ostrovok",
+              "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid10013476/alaska_guest_house/",
+              "rating": 9,
+              "ratingScale": 10,
+              "reviewsCount": 41
+            },
+            "distanceNote": "ул. Снежная, 2, гора Зелёная; около 220 м до подъёмника Sky Way"
+          },
+          {
+            "name": "Laska Hotel Sheregesh",
+            "siteUrl": "https://laska-hotel.ru/",
+            "aggregator": {
+              "name": "ostrovok",
+              "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid8736452/laska_hotel/",
+              "rating": 8.9,
+              "ratingScale": 10,
+              "reviewsCount": 17
+            },
+            "distanceNote": "гора Зелёная, сектор А; около 400 м до подъёмника «Олимпия-Экспресс»"
+          },
+          {
+            "name": "Гостевой дом Ski Park",
+            "siteUrl": "https://skiparksheregesh.tb.ru/",
+            "aggregator": {
+              "name": "ostrovok",
+              "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid9996154/ski_park/",
+              "rating": 8.6,
+              "ratingScale": 10,
+              "reviewsCount": 33
+            },
+            "distanceNote": "ул. Свободная, 35; около 500 м до подъёмника Sky Way"
+          },
+          {
+            "name": "Гостиница «Сибирь»",
+            "siteUrl": "http://sibirhotelgesh.ru/",
+            "aggregator": {
+              "name": "ostrovok",
+              "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid9768577/sibir_19/",
+              "rating": 8.5,
+              "ratingScale": 10,
+              "reviewsCount": 35
+            },
+            "distanceNote": "ул. Спортивная, 22, гора Зелёная; около 400 м до подъёмника «Олимпия-Экспресс»"
+          },
+          {
+            "name": "Йети Хаус",
+            "siteUrl": "https://yeti.house/",
+            "aggregator": {
+              "name": "ostrovok",
+              "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid10009785/hotel_jeti/",
+              "rating": 8.5,
+              "ratingScale": 10,
+              "reviewsCount": 26
+            },
+            "distanceNote": "ул. Снежная, 50, гора Зелёная (сектор А); около 70 м до бугеля БКД-39"
+          },
+          {
+            "name": "Отель «Вояж»",
+            "siteUrl": "https://geshvoyage.ru/",
+            "aggregator": {
+              "name": "ostrovok",
+              "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid10902166/voyazh_glamping/",
+              "rating": 8.2,
+              "ratingScale": 10,
+              "reviewsCount": 38
+            },
+            "distanceNote": "ул. Горнолыжная, 1, гора Зелёная, сектор А; около 170 м до подъёмника «Олимпия-Экспресс»"
+          },
+          {
+            "name": "Парк-отель «Горный»",
+            "siteUrl": "https://gornyhotel.ru/",
+            "aggregator": {
+              "name": "ostrovok",
+              "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid9751451/park_hotel_gorny/",
+              "rating": 9.6,
+              "ratingScale": 10,
+              "reviewsCount": 7
+            },
+            "distanceNote": "ул. Олимпийская, 4, гора Зелёная; около 100 м до подъёмника Sky Way"
+          }
+        ]
+      },
+      "sources": [
+        {
+          "url": "https://ostrovok.ru/hotel/russia/sheregesh/",
+          "title": "Островок — отели Шерегеша (список с оценками)",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid9991423/tajgara_sektor_e/",
+          "title": "Островок — Taigara Sektor E Hotel",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid10013476/alaska_guest_house/",
+          "title": "Островок — Alyaska Hotel",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid8736452/laska_hotel/",
+          "title": "Островок — Laska Hotel Sheregesh",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid9996154/ski_park/",
+          "title": "Островок — Ski Park Guest House",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid9768577/sibir_19/",
+          "title": "Островок — Sibir Hotel",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid10009785/hotel_jeti/",
+          "title": "Островок — Jeti Hotel (Йети Хаус)",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid10902166/voyazh_glamping/",
+          "title": "Островок — Voyazh Hotel",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ostrovok.ru/hotel/russia/sheregesh/mid9751451/park_hotel_gorny/",
+          "title": "Островок — Gornyij Park-Hotel",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://www.taigara.ru/",
+          "title": "Отель «Тайгара» в Шерегеше — официальный сайт",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://geshvoyage.ru/",
+          "title": "Отель & Глэмпинг Вояж Шерегеш — официальный сайт",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://yeti.house/",
+          "title": "Йети Хаус — гостиница Шерегеш",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://gornyhotel.ru/",
+          "title": "Парк-Отель Горный — официальный сайт",
+          "accessedAt": "2026-10-02"
+        }
+      ],
+      "checkedAt": "2026-10-02"
+    },
+    {
+      "programMatch": {
+        "region": "Шерегеш",
+        "titleIncludes": [
+          "Шерегеш"
+        ]
+      },
+      "field": "transfer",
+      "content": {
+        "text": "Аэропорта в самом Шерегеше нет. Ближайший — Новокузнецк (Спиченково): по дороге примерно 160–180 км, в хорошую погоду ориентировочно 2,5–3 часа, в сильный снегопад путь может растянуться до 4–5 часов. Из Кемерово — около 370–380 км (примерно 5–6 часов), из Новосибирска (Толмачёво) — около 520–530 км (ориентировочно 6–9 часов); дорога из этих городов обычно идёт через Новокузнецк. Типичные варианты: индивидуальный или групповой трансфер (легковые авто, минивэны, автобусы), такси, сервисы попутчиков, рейсовые автобусы с автовокзала Новокузнецка до Шерегеша и Таштагола, сезонные автобусы из Новосибирска. Прямых поездов до курорта нет: едут до Новокузнецка или Таштагола, дальше — автобусом или такси (от Таштагола примерно 20–40 минут). В сезон по выходным ходит туристический пригородный поезд Новокузнецк — Чугунаш со стыковочным автобусом до Шерегеша. Зимой закладывайте запас времени на снегопады и скользкую дорогу; расписания и цены уточняйте перед поездкой."
+      },
+      "sources": [
+        {
+          "url": "https://sheregesh.ru/pathway",
+          "title": "Как добраться до Шерегеша — популярные маршруты (sheregesh.ru)",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://gesh.ru/sheregesh/location/",
+          "title": "Как добраться до Шерегеша — виды трансфера из разных городов (gesh.ru)",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://www.tutu.ru/geo/rossiya/sheregesh/article/kak-dobratsya/",
+          "title": "Как добраться до Шерегеша на самолёте, поезде, автобусе (Туту.ру)",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ridertrip.ru/transfer-v-sheregesh/",
+          "title": "Как добраться до горнолыжного курорта Шерегеш в 2026 году (Ridertrip)",
+          "accessedAt": "2026-10-02"
+        }
+      ],
+      "checkedAt": "2026-10-02"
+    },
+    {
+      "programMatch": {
+        "region": "Шерегеш",
+        "titleIncludes": [
+          "Шерегеш"
+        ]
+      },
+      "field": "equipment",
+      "content": {
+        "text": "Зима в Шерегеше сибирская: в январе–феврале днём обычно около −15…−20 °C, в отдельные дни бывает −25…−30 °C и холоднее, световой день короткий. Одеваться лучше слоями: термобельё, флисовый средний слой, мембранные куртка и штаны, термоноски; тёплые варежки плюс запасные перчатки, балаклава или бафф. Для катания нужны шлем и маска (желательно со светлой линзой на снегопад и пасмурную погоду), пригодятся термос, солнцезащитный крем и небольшой рюкзак. Лыжи, сноуборды, ботинки, шлемы, маски и защиту можно арендовать в прокатах курорта; для глубокого снега удобнее широкие фрирайд-лыжи или доска. Для катания вне трасс дополнительно нужен лавинный комплект — цифровой датчик (бипер), лопата и щуп — и навык им пользоваться; его обычно выдают фрирайд-школы или сдают в аренду. В целину рекомендуется выходить с гидом. Точный список зависит от программы — уточняйте у организатора."
+      },
+      "sources": [
+        {
+          "url": "https://ridertrip.ru/kak-sobratsya-v-sheregesh-layfhaki/",
+          "title": "Что взять в Шерегеш: 20 лайфхаков сборов (Ridertrip)",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ridertrip.ru/gesh/freeride/5-days-freeride/",
+          "title": "Фрирайд-школа в Шерегеше: аренда лавинного снаряжения (Ridertrip)",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://freetime.guru/blog/poleznaya-informatsiya/chto-vzyat-s-soboy-v-sheregesh/",
+          "title": "Что взять с собой в Шерегеш (Freetime)",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://sherigesh.k2tour.ru/",
+          "title": "Прокат в Шерегеше — аренда лыж и сноубордов (K2TOUR)",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://vc.ru/travel/2246352-pogoda-v-sheregeshe-po-mesyacam",
+          "title": "Погода в Шерегеше по месяцам (vc.ru)",
+          "accessedAt": "2026-10-02"
+        },
+        {
+          "url": "https://ridertrip.ru/kogda-ehat-v-sheregesh/",
+          "title": "Шерегеш: когда ехать — календарь 26/27 (Ridertrip)",
+          "accessedAt": "2026-10-02"
+        }
+      ],
+      "checkedAt": "2026-10-02"
+    }
+  ]
+}

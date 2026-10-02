@@ -4,6 +4,7 @@ import { sendEmailIfConfigured } from "./mailer";
 import { safeLog } from "../../lib/safeLogger";
 import { PROGRAM_MEDIA_ORDER } from "../programs/mediaOrder";
 import { callTelegramJson, isTelegramBotApiConfigured } from "../telegram/telegramApi";
+import { attachChannelPostId, buildChannelCtas, createTrackedChannelKeyboard } from "../telegram/channelClicks";
 import {
   resolveLocalIngestionMedia,
   sendTelegramPhoto,
@@ -172,26 +173,16 @@ function isPublicHttpUrl(value: string): boolean {
   }
 }
 
-function buildTelegramInlineKeyboard(programUrl: string, webBase: string): Record<string, unknown> | undefined {
-  const inline_keyboard: Array<Array<{ text: string; url: string }>> = [];
-  if (isPublicHttpUrl(programUrl)) {
-    inline_keyboard.push([{ text: "Открыть программу", url: programUrl }]);
-  }
-  if (isPublicHttpUrl(webBase)) {
-    inline_keyboard.push([{ text: "Все программы на сайте", url: webBase }]);
-  }
-  if (!inline_keyboard.length) return undefined;
-  return { inline_keyboard };
-}
+type ChannelSendResult = { ok: boolean; messageId?: number };
 
 async function sendTelegramChannelUpdate(
   env: Env,
   text: string,
   replyMarkup?: Record<string, unknown>,
   options?: { parseMode?: "HTML"; mediaUrl?: string },
-): Promise<boolean> {
+): Promise<ChannelSendResult> {
   const chatId = env.TELEGRAM_UPDATES_CHANNEL_CHAT_ID?.trim();
-  if (!chatId || !isTelegramBotApiConfigured(env)) return false;
+  if (!chatId || !isTelegramBotApiConfigured(env)) return { ok: false };
   try {
     if (options?.mediaUrl) {
       const fitsCaption = visibleCaptionLength(text) <= TELEGRAM_CAPTION_LIMIT;
@@ -200,12 +191,12 @@ async function sendTelegramChannelUpdate(
         photo: options.mediaUrl,
         ...(fitsCaption ? { caption: text, parseMode: options.parseMode, replyMarkup } : { disableNotification: true }),
       });
-      if (photo.ok && fitsCaption) return true;
+      if (photo.ok && fitsCaption) return { ok: true, messageId: photo.messageId };
       if (!photo.ok) {
         console.error("[subscriptions] telegram channel photo failed", photo.description ?? "unknown");
       }
     }
-    const resp = await callTelegramJson(env, "sendMessage", {
+    const resp = await callTelegramJson<{ message_id?: number }>(env, "sendMessage", {
       chat_id: chatId,
       text,
       disable_web_page_preview: false,
@@ -215,10 +206,10 @@ async function sendTelegramChannelUpdate(
     if (!resp.ok) {
       console.error("[subscriptions] telegram publish failed", resp.description ?? "unknown error");
     }
-    return resp.ok;
+    return { ok: resp.ok, messageId: resp.result?.message_id };
   } catch (error) {
     console.error("[subscriptions] telegram publish error", error instanceof Error ? error.message : String(error));
-    return false;
+    return { ok: false };
   }
 }
 
@@ -248,11 +239,19 @@ export async function announceProgramToChannel(env: Env, programId: string): Pro
     notifySrc,
     mediaUrl ? { captionLimit: TELEGRAM_CAPTION_LIMIT, measure: visibleCaptionLength } : undefined,
   );
-  const sent = await sendTelegramChannelUpdate(env, body, buildTelegramInlineKeyboard(programUrl, webBase), {
+  const keyboard = await createTrackedChannelKeyboard({
+    apiBase: env.PUBLIC_API_BASE_URL.replace(/\/+$/, ""),
+    programId: program.id,
+    campaign: "program_announce",
+    ctas: buildChannelCtas({ programUrl, askUrl: process.env.TELEGRAM_CHANNEL_ASK_URL }),
+  });
+  const sent = await sendTelegramChannelUpdate(env, body, keyboard.replyMarkup, {
     parseMode: "HTML",
     mediaUrl: mediaUrl ?? undefined,
   });
-  return sent ? { ok: true } : { ok: false, reason: "send_failed" };
+  if (!sent.ok) return { ok: false, reason: "send_failed" };
+  await attachChannelPostId(keyboard.clickTokens, sent.messageId);
+  return { ok: true };
 }
 
 export async function notifySubscribersOnProgramPublished(env: Env, program: PublishedProgramPayload): Promise<void> {
@@ -355,16 +354,18 @@ export async function notifySubscribersOnProgramPublished(env: Env, program: Pub
   if (emailAllow) {
     console.log("[subscriptions] telegram channel publish skipped (EMAIL_STAGING_ALLOWLIST is set)");
   } else if (tgQuality.ok) {
-    const channelOk = await sendTelegramChannelUpdate(
-      env,
-      channelBody,
-      buildTelegramInlineKeyboard(programUrlTelegramChannel, webBase),
-      {
-        parseMode: "HTML",
-        mediaUrl: mediaUrl ?? undefined,
-      },
-    );
-    console.log("[subscriptions] telegram channel publish", channelOk ? "success" : "failed");
+    const keyboard = await createTrackedChannelKeyboard({
+      apiBase,
+      programId: program.id,
+      campaign: "program_publish",
+      ctas: buildChannelCtas({ programUrl: programUrlTelegramChannel, askUrl: process.env.TELEGRAM_CHANNEL_ASK_URL }),
+    });
+    const channel = await sendTelegramChannelUpdate(env, channelBody, keyboard.replyMarkup, {
+      parseMode: "HTML",
+      mediaUrl: mediaUrl ?? undefined,
+    });
+    if (channel.ok) await attachChannelPostId(keyboard.clickTokens, channel.messageId);
+    console.log("[subscriptions] telegram channel publish", channel.ok ? "success" : "failed");
   } else {
     console.log("[subscriptions] telegram channel publish skipped by quality filter");
   }

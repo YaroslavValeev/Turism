@@ -1,0 +1,112 @@
+{
+  "discipline": "wakesurf",
+  "methodologyVersion": "v1.1",
+  "protocolVersion": "wakesurf-v1.1",
+  "criteriaVersion": "wakesurf-v1.1",
+  "ratingVersion": "wakesurf-v1.1",
+  "validityMonths": 12,
+  "rounding": "ROUND_HALF_UP_1",
+  "scale": { "min": 0, "max": 10, "step": 0.1 },
+  "criteria": [
+    {
+      "code": "infrastructure",
+      "titleRu": "Инфраструктура",
+      "weight": 25,
+      "scoreBearing": true,
+      "evidenceRequired": ["photo"],
+      "guidance": [
+        "Причал или понтон: состояние, безопасный заход в лодку",
+        "Раздевалки, туалет, душ: чистота и доступность",
+        "Зона ожидания: тень, место для вещей, питьевая вода",
+        "Парковка и подъезд к споту"
+      ]
+    },
+    {
+      "code": "instrument",
+      "titleRu": "Инструмент (лодка и волна)",
+      "weight": 25,
+      "scoreBearing": true,
+      "evidenceRequired": ["photo", "video"],
+      "guidance": [
+        "Лодка, модель и балласт фиксируются в конфигурации оборудования",
+        "Качество и стабильность волны на тестовой конфигурации",
+        "Исправность серф-системы и балластных насосов",
+        "Состояние досок и жилетов для гостей"
+      ]
+    },
+    {
+      "code": "waterArea",
+      "titleRu": "Акватория",
+      "weight": 15,
+      "scoreBearing": true,
+      "evidenceRequired": ["photo", "video"],
+      "guidance": [
+        "Защищённость от ветра и встречной волны",
+        "Длина прямого участка для захода",
+        "Плотность трафика других судов",
+        "Отсутствие мелей и препятствий на маршруте"
+      ]
+    },
+    {
+      "code": "personnel",
+      "titleRu": "Персонал",
+      "weight": 15,
+      "scoreBearing": true,
+      "evidenceRequired": ["document", "photo"],
+      "guidance": [
+        "Квалификация водителя лодки и подтверждающие документы",
+        "Квалификация инструктора и умение объяснить технику",
+        "Коммуникация с гостем до, во время и после сессии"
+      ]
+    },
+    {
+      "code": "safety",
+      "titleRu": "Безопасность",
+      "weight": 10,
+      "scoreBearing": true,
+      "evidenceRequired": ["photo", "document"],
+      "guidance": [
+        "Проведение инструктажа перед выходом на воду",
+        "Наличие и укомплектованность аптечки и спасательных средств",
+        "Наблюдатель на борту и порядок подъёма райдера",
+        "Контроль зоны винта при подборе райдера"
+      ]
+    },
+    {
+      "code": "atmosphere",
+      "titleRu": "Атмосфера",
+      "weight": 10,
+      "scoreBearing": true,
+      "evidenceRequired": ["photo"],
+      "guidance": [
+        "Общее впечатление и комфорт гостя",
+        "Музыка, съёмка сессии, дополнительные сервисы",
+        "Пунктуальность и соблюдение заявленного времени"
+      ]
+    }
+  ],
+  "gates": [
+    { "code": "G01", "key": "working_instrument", "titleRu": "Исправный инструмент", "remoteRemediable": false },
+    { "code": "G02", "key": "safe_water_area", "titleRu": "Безопасная акватория", "remoteRemediable": false },
+    { "code": "G03", "key": "closed_changing_room", "titleRu": "Закрытая раздевалка", "remoteRemediable": false },
+    { "code": "G04", "key": "toilet", "titleRu": "Туалет", "remoteRemediable": false },
+    { "code": "G05", "key": "hot_shower", "titleRu": "Горячий душ", "remoteRemediable": true },
+    { "code": "G06", "key": "safety_briefing", "titleRu": "Инструктаж по безопасности", "remoteRemediable": false },
+    { "code": "G07", "key": "first_aid_and_rescue", "titleRu": "Аптечка и спасательные средства", "remoteRemediable": false },
+    { "code": "G08", "key": "safety_system", "titleRu": "Система безопасности", "remoteRemediable": false }
+  ],
+  "gatePolicy": { "unknownIsZero": false, "failOrUnknownBlocks": true },
+  "bands": [
+    { "code": "premium_plus", "labelRu": "Премиум+", "minScore": 9 },
+    { "code": "premium", "labelRu": "Премиум", "minScore": 7.5 },
+    { "code": "standard", "labelRu": "Стандарт", "minScore": 6 },
+    { "code": "basic", "labelRu": "Базовый", "minScore": 4 },
+    { "code": "below_standard", "labelRu": "Ниже стандарта", "minScore": 0 }
+  ],
+  "equipmentSchema": {
+    "required": ["boat", "model", "ballast"],
+    "optional": ["year", "surfSystem", "ballastLitres"]
+  },
+  "relatedSpotRules": { "externalExpertRequired": true, "independentEditorRequired": true },
+  "publicStatusPolicy": { "gate_failed": "insufficient_data" }
+}

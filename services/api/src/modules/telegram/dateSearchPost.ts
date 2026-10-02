@@ -28,8 +28,19 @@ function siteUrl(siteBase: string, pathname: string, params: Record<string, stri
   return url.toString();
 }
 
-export function dateSearchPageUrl(siteBase: string, content = "preview"): string {
+export function dateSearchPageUrl(siteBase: string, content: string): string {
   return siteUrl(siteBase, "/dates", {}, content);
+}
+
+/**
+ * URL крупного превью. Telegram кэширует превью без учёта utm_*, поэтому версия — в отдельном
+ * параметре: при смене OG-картинки (или если закэшировалась ошибка) увеличьте PREVIEW_VERSION.
+ */
+const PREVIEW_VERSION = "2";
+export function dateSearchPreviewUrl(siteBase: string): string {
+  const url = new URL("/dates", `${siteBase.replace(/\/+$/, "")}/`);
+  url.searchParams.set("v", PREVIEW_VERSION);
+  return url.toString();
 }
 
 export function isTelegramMiniAppLink(value: string | undefined): value is string {
@@ -40,16 +51,19 @@ export function buildDateSearchKeyboard(
   siteBase: string,
   options: { miniAppUrl?: string } = {},
 ): { inline_keyboard: DateSearchButton[][] } {
-  const calendarUrl = isTelegramMiniAppLink(options.miniAppUrl)
-    ? `${options.miniAppUrl}?startapp=calendar`
-    : dateSearchPageUrl(siteBase, "custom_dates");
+  const miniApp = isTelegramMiniAppLink(options.miniAppUrl) ? options.miniAppUrl : null;
+  // startapp совпадает с ключами пресетов на /dates (date-search.client.tsx → PRESETS).
+  const calendarUrl = miniApp ? `${miniApp}?startapp=calendar` : dateSearchPageUrl(siteBase, "custom_dates");
+  const nearestUrl = miniApp
+    ? `${miniApp}?startapp=2w`
+    : siteUrl(siteBase, "/", { nearest: "1" }, "nearest_14d", "programs");
   return {
     inline_keyboard: [
       [
         { text: "Эти выходные", url: siteUrl(siteBase, "/", { when: "this-weekend" }, "this_weekend", "programs") },
         { text: "Следующие выходные", url: siteUrl(siteBase, "/", { when: "next-weekend" }, "next_weekend", "programs") },
       ],
-      [{ text: "Ближайшие 2 недели", url: siteUrl(siteBase, "/", { nearest: "1" }, "nearest_14d", "programs") }],
+      [{ text: "Ближайшие 2 недели", url: nearestUrl }],
       [{ text: "🗓 Выбрать свои даты", url: calendarUrl }],
     ],
   };
@@ -74,7 +88,7 @@ export function buildDateSearchMessage(siteBase: string, options: { miniAppUrl?:
   return {
     text: buildDateSearchPostHtml(siteBase),
     parse_mode: "HTML",
-    link_preview_options: { url: dateSearchPageUrl(siteBase), prefer_large_media: true, show_above_text: true },
+    link_preview_options: { url: dateSearchPreviewUrl(siteBase), prefer_large_media: true, show_above_text: true },
     reply_markup: buildDateSearchKeyboard(siteBase, options),
   };
 }

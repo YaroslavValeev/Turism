@@ -136,7 +136,10 @@ jobs:
             "${DC[@]}" up -d api web admin reverse-proxy
           fi
           "${DC[@]}" ps
-          PROD_HEALTHCHECK_EXPECTED_SHA="$EXPECTED_SHA" MYWAVE_ROOT="$DEPLOY_PATH" bash scripts/prod_healthcheck.sh
+          # web_only не пересобирает api, поэтому /api/health честно отдаёт прежний releaseSha.
+          HEALTH_EXPECTED_SHA="$EXPECTED_SHA"
+          if [ "$DEPLOY_MODE" = "web_only" ]; then HEALTH_EXPECTED_SHA=""; fi
+          PROD_HEALTHCHECK_EXPECTED_SHA="$HEALTH_EXPECTED_SHA" MYWAVE_ROOT="$DEPLOY_PATH" bash scripts/prod_healthcheck.sh
           if [ "$DEPLOY_MODE" = "full" ]; then
             "${DC[@]}" exec -T api sh -lc 'cd /app && INGESTION_TRACE_AUDIT_STRICT=true pnpm --filter api audit:ingestion-trace'
             "${DC[@]}" exec -T api sh -lc 'cd /app && pnpm --filter api audit:pilot-readiness'

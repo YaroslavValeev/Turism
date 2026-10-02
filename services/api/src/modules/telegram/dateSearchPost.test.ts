@@ -32,7 +32,10 @@ describe("buildDateSearchKeyboard", () => {
     const rows = buildDateSearchKeyboard(SITE, { miniAppUrl: "https://t.me/MyWaveTour_bot/tourApp" }).inline_keyboard;
     expect(rows[1]![0]!.url).toBe("https://t.me/MyWaveTour_bot/tourApp?startapp=2w");
     expect(rows[2]![0]!.url).toBe("https://t.me/MyWaveTour_bot/tourApp?startapp=calendar");
-    expect(rows[0]![0]!.url).toContain("when=this-weekend");
+    expect(rows[0]!.map((b) => b.url)).toEqual([
+      "https://t.me/MyWaveTour_bot/tourApp?startapp=this-weekend",
+      "https://t.me/MyWaveTour_bot/tourApp?startapp=next-weekend",
+    ]);
   });
 
   it("rejects anything that is not a t.me direct link", () => {

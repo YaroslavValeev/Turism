@@ -57,11 +57,15 @@ export function buildDateSearchKeyboard(
   const nearestUrl = miniApp
     ? `${miniApp}?startapp=2w`
     : siteUrl(siteBase, "/", { nearest: "1" }, "nearest_14d", "programs");
+  const weekendUrl = (when: "this-weekend" | "next-weekend") =>
+    miniApp
+      ? `${miniApp}?startapp=${when}`
+      : siteUrl(siteBase, "/", { when }, when.replace("-", "_"), "programs");
   return {
     inline_keyboard: [
       [
-        { text: "Эти выходные", url: siteUrl(siteBase, "/", { when: "this-weekend" }, "this_weekend", "programs") },
-        { text: "Следующие выходные", url: siteUrl(siteBase, "/", { when: "next-weekend" }, "next_weekend", "programs") },
+        { text: "Эти выходные", url: weekendUrl("this-weekend") },
+        { text: "Следующие выходные", url: weekendUrl("next-weekend") },
       ],
       [{ text: "Ближайшие 2 недели", url: nearestUrl }],
       [{ text: "🗓 Выбрать свои даты", url: calendarUrl }],

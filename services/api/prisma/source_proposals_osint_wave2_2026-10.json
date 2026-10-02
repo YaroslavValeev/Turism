@@ -1,0 +1,3720 @@
+{
+  "schemaVersion": 2,
+  "batchId": "osint-wave2-2026-10",
+  "wave": 2,
+  "discoveredAt": "2026-10-02",
+  "candidates": [
+    {
+      "scoutArea": "sheregesh",
+      "region": "Кемеровская область — Кузбасс",
+      "name": "Фрирайд в Сибири (Freeride in Siberia)",
+      "organizerName": "Фрирайд в Сибири",
+      "url": "https://freerideinsiberia.ru/",
+      "organizerKinds": [
+        "guide_team",
+        "tour_operator"
+      ],
+      "kind": "гиды/фрирайд-туры",
+      "disciplines": [
+        "freeride",
+        "snowmobile",
+        "backcountry"
+      ],
+      "rawDisciplines": [
+        "фрирайд на ратраках",
+        "фрирайд на снегоходах",
+        "обучающий фрирайд-кэмп"
+      ],
+      "formats": [
+        "tour",
+        "camp",
+        "course"
+      ],
+      "seasonality": "ноябрь–март",
+      "keyPerson": null,
+      "role": null,
+      "contacts": {
+        "site": "https://freerideinsiberia.ru/"
+      },
+      "legal": {
+        "registry": null,
+        "inn": null
+      },
+      "reputation": "Собственные ратраки и снегоходы, аттестованные гиды; опубликованы даты недельных кэмпов и приисковых туров на сезон 2026/27.",
+      "partners": [],
+      "osintScore": 4,
+      "evidence": [
+        "https://freerideinsiberia.ru/",
+        "https://freerideinsiberia.ru/den-frirajda-na-ratrake/"
+      ]
+    },
+    {
+      "scoutArea": "sheregesh",
+      "region": "Кемеровская область — Кузбасс",
+      "name": "Катаем Горы",
+      "organizerName": "Катаем Горы",
+      "url": "https://kataemgory.ru/",
+      "organizerKinds": [
+        "guide_team"
+      ],
+      "kind": "гиды/фрирайд на ратраках",
+      "disciplines": [
+        "freeride",
+        "snowmobile"
+      ],
+      "rawDisciplines": [
+        "фрирайд на ратраках",
+        "фрирайд на снегоходах",
+        "аренда снегохода"
+      ],
+      "formats": [
+        "tour",
+        "course"
+      ],
+      "seasonality": "декабрь–апрель",
+      "keyPerson": null,
+      "role": null,
+      "contacts": {
+        "site": "https://kataemgory.ru/"
+      },
+      "legal": {
+        "registry": null,
+        "inn": null
+      },
+      "reputation": "Команда сообщает о 9 годах фрирайд-туров, собственном парке из 4 ратраков и 2 снегоходов и сертифицированных гидах.",
+      "partners": [],
+      "osintScore": 4,
+      "evidence": [
+        "https://kataemgory.ru/",
+        "https://kataemgory.ru/freeride_na_ratrakah"
+      ]
+    },
+    {
+      "scoutArea": "sheregesh",
+      "region": "Кемеровская область — Кузбасс",
+      "name": "Йети Фрирайд",
+      "organizerName": "Йети Фрирайд",
+      "url": "https://yetifreeride.ru/",
+      "organizerKinds": [
+        "guide_team",
+        "base",
+        "school"
+      ],
+      "kind": "фрирайд-оператор на ратраках",
+      "disciplines": [
+        "freeride",
+        "backcountry"
+      ],
+      "rawDisciplines": [
+        "фрирайд на ратраках",
+        "школа фрирайда"
+      ],
+      "formats": [
+        "tour",
+        "school"
+      ],
+      "seasonality": "декабрь–апрель",
+      "keyPerson": null,
+      "role": null,
+      "contacts": {
+        "site": "https://yetifreeride.ru/"
+      },
+      "legal": {
+        "registry": null,
+        "inn": null
+      },
+      "reputation": "Работает с 2008 года, 7 собственных ратраков и база «Викторьевка» в зоне катания; открыто раннее бронирование на сезон 26/27.",
+      "partners": [],
+      "osintScore": 4,
+      "evidence": [
+        "https://yetifreeride.ru/",
+        "https://yetifreeride.ru/reviews",
+        "https://xn--24-6kchq2abwi5bc.xn--p1ai/group-207408780.html"
+      ]
+    },
+    {
+      "scoutArea": "sheregesh",
+      "region": "Кемеровская область — Кузбасс",
+      "name": "Ridertrip — фрирайд-школа в Шерегеше",
+      "organizerName": "Ridertrip",
+      "url": "https://ridertrip.ru/",
+      "organizerKinds": [
+        "school",
+        "tour_operator"
+      ],
+      "kind": "школа/фрирайд",
+      "disciplines": [
+        "freeride",
+        "ski",
+        "snowboard"
+      ],
+      "rawDisciplines": [
+        "фрирайд",
+        "курс лавинной безопасности",
+        "горные лыжи",
+        "сноуборд"
+      ],
+      "formats": [
+        "course",
+        "school",
+        "tour"
+      ],
+      "seasonality": "ноябрь–апрель",
+      "keyPerson": null,
+      "role": null,
+      "contacts": {
+        "site": "https://ridertrip.ru/"
+      },
+      "legal": {
+        "registry": null,
+        "inn": null
+      },
+      "reputation": "Публикует 5-дневный курс фрирайда с лавинным модулем на 2026 год и календарь сезона 26/27 для Шерегеша.",
+      "partners": [],
+      "osintScore": 4,
+      "evidence": [
+        "https://ridertrip.ru/gesh/freeride/5-days-freeride/",
+        "https://ridertrip.ru/kogda-ehat-v-sheregesh/"
+      ]
+    },
+    {
+      "scoutArea": "sheregesh",
+      "region": "Кемеровская область — Кузбасс",
+      "name": "Zimaaa — Freeride Camp Шерегеш",
+      "organizerName": "Zimaaa",
+      "url": "https://zimaaa.ru/",
+      "organizerKinds": [
+        "school",
+        "event_organizer"
+      ],
+      "kind": "школа катания/кэмпы",
+      "disciplines": [
+        "freeride",
+        "ski",
+        "snowboard"
+      ],
+      "rawDisciplines": [
+        "фрирайд",
+        "горные лыжи",
+        "сноуборд",
+        "карвинг для фрирайдеров"
+      ],
+      "formats": [
+        "camp",
+        "clinic",
+        "school"
+      ],
+      "seasonality": "декабрь–март",
+      "keyPerson": null,
+      "role": null,
+      "contacts": {
+        "site": "https://zimaaa.ru/"
+      },
+      "legal": {
+        "registry": null,
+        "inn": null
+      },
+      "reputation": "Проводила программы в Шерегеше 21–27 декабря 2025 и 23–27 февраля 2026 с именными инструкторами и группами до 6 человек.",
+      "partners": [],
+      "osintScore": 4,
+      "evidence": [
+        "https://zimaaa.ru/gesh25-12-2",
+        "https://zimaaa.ru/gesh26-02"
+      ]
+    },
+    {
+      "scoutArea": "sheregesh",
+      "region": "Кемеровская область — Кузбасс",
+      "name": "Fanera Snow Camp",
+      "organizerName": "На фанере (na-fanere.com)",
+      "url": "https://na-fanere.com/",
+      "organizerKinds": [
+        "event_organizer",
+        "tour_operator"
+      ],
+      "kind": "авторские фрирайд-кэмпы",
+      "disciplines": [
+        "freeride",
+        "snowboard",
+        "ski"
+      ],
+      "rawDisciplines": [
+        "фрирайд с ратраком",
+        "уроки фрирайда"
+      ],
+      "formats": [
+        "camp",
+        "tour"
+      ],
+      "seasonality": "март",
+      "keyPerson": null,
+      "role": null,
+      "contacts": {
+        "site": "https://na-fanere.com/"
+      },
+      "legal": {
+        "registry": null,
+        "inn": null
+      },
+      "reputation": "Авторский 5-дневный фрирайд-тур в Шерегеш с личным ратраком, даты 7–14 и 14–21 марта 2026.",
+      "partners": [],
+      "osintScore": 3,
+      "evidence": [
+        "https://na-fanere.com/snowcamp/sheregesh-3",
+        "https://na-fanere.com/"
+      ]
+    },
+    {
+      "scoutArea": "sheregesh",
+      "region": "Кемеровская область — Кузбасс",
+      "name": "Rider Skill",
+      "organizerName": "Rider Skill",
+      "url": "https://rider-skill.ru/",
+      "organizerKinds": [
+        "tour_operator",
+        "school"
+      ],
+      "kind": "фрирайд-кэмпы",
+      "disciplines": [
+        "freeride",
+        "backcountry"
+      ],
+      "rawDisciplines": [
+        "фрирайд на ратраках",
+        "лавинная подготовка"
+      ],
+      "formats": [
+        "camp",
+        "tour"
+      ],
+      "seasonality": "декабрь–март",
+      "keyPerson": null,
+      "role": null,
+      "contacts": {
+        "site": "https://rider-skill.ru/"
+      },
+      "legal": {
+        "registry": null,
+        "inn": null
+      },
+      "reputation": "7-дневный фрирайд-кэмп в Шерегеше на ратраках (публикация январь 2026, даты 7–14 марта) и анонс сезона 2026/27.",
+      "partners": [],
+      "osintScore": 3,
+      "evidence": [
+        "https://rider-skill.ru/tours/frirajd-kemp-v-sheregeshe-na-ratrakah/",
+        "https://rider-skill.ru/"
+      ]
+    },
+    {
+      "scoutArea": "sheregesh",
+      "region": "Кемеровская область — Кузбасс",
+      "name": "BirdTravel — Freeride week Шерегеш",
+      "organizerName": "BirdTravel",
+      "url": "https://birdtravel.ru/",
+      "organizerKinds": [
+        "tour_operator",
+        "school"
+      ],
+      "kind": "туроператор/фрирайд и лавинные курсы",
+      "disciplines": [
+        "freeride",
+        "ski-tour",
+        "backcountry"
+      ],
+      "rawDisciplines": [
+        "фрирайд",
+        "ски-тур",
+        "базовый лавинный курс"
+      ],
+      "formats": [
+        "tour",
+        "course"
+      ],
+      "seasonality": "ноябрь–январь",
+      "keyPerson": null,
+      "role": null,
+      "contacts": {
+        "site": "https://birdtravel.ru/"
+      },
+      "legal": {
+        "registry": null,
+        "inn": null
+      },
+      "reputation": "Опубликованы даты лавинного курса в Шерегеше на ноябрь 2026 – январь 2027 и неделя фрирайда с днём ски-тура.",
+      "partners": [
+        "АльпИндустрия-Тур"
+      ],
+      "osintScore": 3,
+      "evidence": [
+        "https://birdtravel.ru/routs/bazovyy-lavinnyy-kurs-rlts-1/",
+        "https://birdtravel.ru/routs/nedelya-frirayda-v-sheregeshe-freeride-week/"
+      ]
+    },
+    {
+      "scoutArea": "baikal",
+      "region": "Иркутская область",
+      "name": "Байкал Терра",
+      "organizerName": "Туроператор «Байкал Терра»",
+      "url": "https://baikalterra.com/",
+      "organizerKinds": [
+        "tour_operator"
+      ],
+      "kind": "туроператор/туры на лёд Байкала",
+      "disciplines": [
+        "trekking",
+        "multisport"
+      ],
+      "rawDisciplines": [
+        "туры на лёд Байкала",
+        "ледовые экспедиции",
+        "Большая Байкальская тропа"
+      ],
+      "formats": [
+        "tour",
+        "expedition"
+      ],
+      "seasonality": "круглый год (лёд — январь–март)",
+      "keyPerson": null,
+      "role": null,
+      "contacts": {
+        "site": "https://baikalterra.com/"
+      },
+      "legal": {
+        "registry": "РТО 025410",
+        "inn": null
+      },
+      "reputation": "Сообщает о 15 годах работы и 20 000+ туристов; на сайте туры лето–осень 2026 и зима–весна 2027, реестровый номер РТО 025410.",
+      "partners": [],
+      "osintScore": 5,
+      "evidence": [
+        "https://baikalterra.com/",
+        "https://baikalterra.com/turyi-na-bajkal/",
+        "https://tour.baikalterra.com/baikalactive"
+      ]
+    },
+    {
+      "scoutArea": "baikal",
+      "region": "Республика Бурятия",
+      "name": "Байкал Бурятия",
+      "organizerName": "ООО «Байкал Бурятия»",
+      "url": "https://baikalburyatia.ru/",
+      "organizerKinds": [
+        "tour_operator"
+      ],
+      "kind": "туроператор/ледовые экспедиции из Улан-Удэ",
+      "disciplines": [
+        "expedition",
+        "jeep-tour"
+      ],
+      "rawDisciplines": [
+        "экспедиция по льду Байкала",
+        "хивус",
+        "Святой Нос",
+        "Чивыркуйский залив"
+      ],
+      "formats": [
+        "expedition",
+        "tour"
+      ],
+      "seasonality": "круглый год (лёд — февраль–март)",
+      "keyPerson": null,
+      "role": null,
+      "contacts": {
+        "site": "https://baikalburyatia.ru/"
+      },
+      "legal": {
+        "registry": "РТО 018230",
+        "inn": null
+      },
+      "reputation": "13 лет на рынке, 50+ авторских туров; опубликована «Экспедиция по льду Байкала 2027», РТО 018230 указан на сайте.",
+      "partners": [
+        "ВизитБурятия.рф"
+      ],
+      "osintScore": 5,
+      "evidence": [
+        "https://baikalburyatia.ru/",
+        "https://www.visitburyatia.ru/tours/section-182/item-299544/"
+      ]
+    },
+    {
+      "scoutArea": "baikal",
+      "region": "Иркутская область",
+      "name": "Территория ветра — поход по льду Байкала",
+      "organizerName": "Клуб путешествий «Территория ветра»",
+      "url": "https://territoria-vetra.com/",
+      "organizerKinds": [
+        "tour_operator",
+        "club"
+      ],
+      "kind": "клуб путешествий/ледовые походы",
+      "disciplines": [
+        "trekking",
+        "expedition"
+      ],
+      "rawDisciplines": [
+        "поход по льду Байкала",
+        "пешком/на коньках/на лыжах"
+      ],
+      "formats": [
+        "tour",
+        "expedition"
+      ],
+      "seasonality": "февраль–март",
+      "keyPerson": null,
+      "role": null,
+      "contacts": {
+        "site": "https://territoria-vetra.com/"
+      },
+      "legal": {
+        "registry": null,
+        "inn": null
+      },
+      "reputation": "Екатеринбургский клуб с ледовыми походами по Байкалу в феврале–марте 2026; на внешних площадках есть негатив о переносах и ценах (Фламп).",
+      "partners": [],
+      "osintScore": 3,
+      "evidence": [
+        "https://territoria-vetra.com/pohod-po-ldu-baikala.html",
+        "https://territoria-vetra.com/otzyvy/",
+        "https://ekaterinburg.flamp.ru/firm/territoriya_vetra_klub_puteshestvijj_po_rossii_i_uralu-70000001036236704"
+      ]
+    },
+    {
+      "scoutArea": "baikal",
+      "region": "Иркутская область",
+      "name": "Ахтилахти — Байкальский лёд",
+      "organizerName": "Ахтилахти",
+      "url": "https://ahtilahti.ru/",
+      "organizerKinds": [
+        "tour_operator"
+      ],
+      "kind": "организатор активных туров",
+      "disciplines": [
+        "trekking",
+        "multisport"
+      ],
+      "rawDisciplines": [
+        "мультиактивный тур по льду",
+        "коньки",
+        "велосипеды по льду"
+      ],
+      "formats": [
+        "tour"
+      ],
+      "seasonality": "февраль–март",
+      "keyPerson": null,
+      "role": null,
+      "contacts": {
+        "site": "https://ahtilahti.ru/"
+      },
+      "legal": {
+        "registry": null,
+        "inn": null
+      },
+      "reputation": "Петербургская команда (с 2016 года); 2026 — пятый сезон их туров по льду Байкала с инструкторами и ночёвками на турбазах.",
+      "partners": [],
+      "osintScore": 4,
+      "evidence": [
+        "https://ahtilahti.ru/tur-na-bajkal-zimoj",
+        "https://ahtilahti.ru/"
+      ]
+    },
+    {
+      "scoutArea": "baikal",
+      "region": "Иркутская область",
+      "name": "Baikal Race (Байкал-Рейс) — ФПС Иркутской области",
+      "organizerName": "ИРОО «Байкальский спортивный парусный союз»",
+      "url": "https://fps-io.ru/",
+      "organizerKinds": [
+        "event_organizer",
+        "club"
+      ],
+      "kind": "федерация/парусные регаты и походы",
+      "disciplines": [
+        "sailing"
+      ],
+      "rawDisciplines": [
+        "парусная регата-поход по Байкалу",
+        "яхтинг"
+      ],
+      "formats": [
+        "race",
+        "expedition"
+      ],
+      "seasonality": "июнь–сентябрь",
+      "keyPerson": null,
+      "role": null,
+      "contacts": {
+        "site": "https://fps-io.ru/"
+      },
+      "legal": {
+        "registry": null,
+        "inn": null
+      },
+      "reputation": "Регата-поход «Байкал-Рейс 2026» в три этапа (12–31 июля 2026), на сайте новости регат за июнь 2026.",
+      "partners": [
+        "Яхт-клуб «Иркут»"
+      ],
+      "osintScore": 4,
+      "evidence": [
+        "https://fps-io.ru/baikal-race-2026/",
+        "https://fps-io.ru/"
+      ]
+    },
+    {
+      "scoutArea": "baikal",
+      "region": "Иркутская область",
+      "name": "Яхт-клуб «Иркут»",
+      "organizerName": "Яхт-клуб «Иркут»",
+      "url": "http://yahta-irk.ru/",
+      "organizerKinds": [
+        "club",
+        "school"
+      ],
+      "kind": "яхт-клуб/парусная школа",
+      "disciplines": [
+        "sailing"
+      ],
+      "rawDisciplines": [
+        "парусная школа",
+        "регаты",
+        "ледовый «Оптимист»"
+      ],
+      "formats": [
+        "school",
+        "race"
+      ],
+      "seasonality": "май–октябрь (зимой — ледовые классы)",
+      "keyPerson": null,
+      "role": null,
+      "contacts": {
+        "site": "http://yahta-irk.ru/"
+      },
+      "legal": {
+        "registry": null,
+        "inn": "3810041770"
+      },
+      "reputation": "Крупнейший яхт-клуб Восточной Сибири (100+ судов), ИНН и ОГРН на сайте; в июне 2026 разыгрывался кубок клуба на регате «Парусное лето».",
+      "partners": [
+        "ФПС Иркутской области"
+      ],
+      "osintScore": 5,
+      "evidence": [
+        "http://yahta-irk.ru/",
+        "https://fps-io.ru/"
+      ]
+    },
+    {
+      "scoutArea": "baikal",
+      "region": "Иркутская область",
+      "name": "Baski-Travel — морской каякинг на Байкале",
+      "organizerName": "Baski-Travel (клуб морского каякинга BASKI)",
+      "url": "https://baski.fun/",
+      "organizerKinds": [
+        "guide_team",
+        "club"
+      ],
+      "kind": "морской каякинг/экспедиции",
+      "disciplines": [
+        "kayaking",
+        "expedition"
+      ],
+      "rawDisciplines": [
+        "морской каякинг",
+        "Ольхон",
+        "Большая Байкальская тропа на каяках"
+      ],
+      "formats": [
+        "expedition",
+        "tour"
+      ],
+      "seasonality": "июнь–август",
+      "keyPerson": "Дмитрий Пырх",
+      "role": "директор клуба экстремального морского каякинга BASKI",
+      "contacts": {
+        "site": "https://baski.fun/"
+      },
+      "legal": {
+        "registry": null,
+        "inn": null
+      },
+      "reputation": "10+ лет морского каякинга; байкальские маршруты 2026 (Север, Ольхон, Юг) и уже анонсированы маршруты 2027.",
+      "partners": [],
+      "osintScore": 3,
+      "evidence": [
+        "https://baski.fun/baikal",
+        "https://baski.fun/"
+      ]
+    },
+    {
+      "scoutArea": "baikal",
+      "region": "Республика Бурятия",
+      "name": "BAIKALNORTH",
+      "organizerName": "BAIKALNORTH",
+      "url": "https://baikalnorth.ru/",
+      "organizerKinds": [
+        "instructor_service",
+        "guide_team"
+      ],
+      "kind": "инструктор/походы по Северному Байкалу",
+      "disciplines": [
+        "trekking"
+      ],
+      "rawDisciplines": [
+        "походы",
+        "прогулки",
+        "выезды на природу у Северобайкальска"
+      ],
+      "formats": [
+        "tour"
+      ],
+      "seasonality": "круглый год",
+      "keyPerson": null,
+      "role": null,
+      "contacts": {
+        "site": "https://baikalnorth.ru/"
+      },
+      "legal": {
+        "registry": null,
+        "inn": null
+      },
+      "reputation": "Местный инструктор организует походы у Северобайкальска и Нижнеангарска; данных о юрлице и отзывах мало.",
+      "partners": [],
+      "osintScore": 2,
+      "evidence": [
+        "https://baikalnorth.ru/",
+        "https://radiotochki.net/blog/baikal/vodnye-vidy-sporta-na-baykale-letom-2026-polnyy-gid-po-aktivnomu-otdyhu-ot-sapbordov-do-baydarok.html"
+      ]
+    },
+    {
+      "scoutArea": "baikal",
+      "region": "Иркутская область",
+      "name": "Байкальский ледовый марафон (Absolute Siberia)",
+      "organizerName": "ООО «Абсолютная Сибирь»",
+      "url": "http://www.baikal-marathon.org/",
+      "organizerKinds": [
+        "event_organizer",
+        "tour_operator"
+      ],
+      "kind": "организатор забега по льду Байкала",
+      "disciplines": [
+        "trail-running"
+      ],
+      "rawDisciplines": [
+        "марафон по льду Байкала",
+        "полумарафон"
+      ],
+      "formats": [
+        "race"
+      ],
+      "seasonality": "конец февраля – начало марта",
+      "keyPerson": "Алексей Никифоров",
+      "role": "директор забега",
+      "contacts": {
+        "site": "http://www.baikal-marathon.org/"
+      },
+      "legal": {
+        "registry": null,
+        "inn": null
+      },
+      "reputation": "Марафон проводится с 2005 года, партнёр — Байкальский заповедник; в календаре hdsports указан выпуск 2026 года.",
+      "partners": [
+        "Байкальский государственный заповедник",
+        "Зимниада"
+      ],
+      "osintScore": 3,
+      "evidence": [
+        "http://www.baikal-marathon.org/rulesandterms",
+        "https://baikalzapovednik.ru/project_marathon",
+        "https://www.hdsports.de/laufen/baikal-ice-marathon"
+      ]
+    },
+    {
+      "scoutArea": "baikal",
+      "region": "Иркутская область",
+      "name": "Клуб Приключений — Байкал на байдарках",
+      "organizerName": "Клуб Приключений",
+      "url": "https://www.vpoxod.ru/",
+      "organizerKinds": [
+        "tour_operator",
+        "club"
+      ],
+      "kind": "клуб походов/водные походы",
+      "disciplines": [
+        "kayaking",
+        "trekking"
+      ],
+      "rawDisciplines": [
+        "байдарочный поход по Малому морю",
+        "вокруг Ольхона"
+      ],
+      "formats": [
+        "expedition",
+        "tour"
+      ],
+      "seasonality": "июнь–август",
+      "keyPerson": null,
+      "role": null,
+      "contacts": {
+        "site": "https://www.vpoxod.ru/"
+      },
+      "legal": {
+        "registry": null,
+        "inn": null
+      },
+      "reputation": "Работает с 2003 года, 2 500+ походов в год, 48 000+ отзывов (средняя 4.94); байдарочный поход по Ольхону со сроками на 2026.",
+      "partners": [],
+      "osintScore": 4,
+      "evidence": [
+        "https://www.vpoxod.ru/route/baikal/Baikal_na_baidarka_olhon",
+        "https://www.vpoxod.ru/"
+      ]
+    },
+    {
+      "scoutArea": "sakhalin-kurils",
+      "region": "Сахалинская область",
+      "name": "GoRide65 — фрирайд на Сахалине",
+      "organizerName": "GoRide65",
+      "url": "https://goride65.taplink.ws",
+      "organizerKinds": [
+        "guide_team"
+      ],
+      "kind": "гиды/фрирайд со снегоходными забросками",
+      "disciplines": [
+        "freeride",
+        "snowmobile"
+      ],
+      "rawDisciplines": [
+        "фрирайд",
+        "снегоходные заброски",
+        "гора Красная",
+        "гора Быкова"
+      ],
+      "formats": [
+        "tour"
+      ],
+      "seasonality": "январь–март",
+      "keyPerson": null,
+      "role": null,
+      "contacts": {
+        "site": "https://goride65.taplink.ws"
+      },
+      "legal": {
+        "registry": null,
+        "inn": null
+      },
+      "reputation": "Включены в официальный турпортал области (ГБУ «Сахалинский ТИЦ») с тарифами 12 500–19 500 ₽; юрлицо не раскрыто.",
+      "partners": [
+        "Сахалинский туристско-информационный центр"
+      ],
+      "osintScore": 3,
+      "evidence": [
+        "https://gosakhalin.ru/tours/frirayd-na-sakhaline/",
+        "https://gosakhalin.ru/activities/firayd/",
+        "https://goride65.taplink.ws"
+      ]
+    },
+    {
+      "scoutArea": "sakhalin-kurils",
+      "region": "Сахалинская область",
+      "name": "Al Guy Skitouring — скитур на Сахалине",
+      "organizerName": "Al Guy Skitouring",
+      "url": "https://alguyskitouring.ru/",
+      "organizerKinds": [
+        "instructor_service",
+        "school"
+      ],
+      "kind": "лыжный гид/скитур и лавинное обучение",
+      "disciplines": [
+        "ski-tour",
+        "backcountry",
+        "freeride"
+      ],
+      "rawDisciplines": [
+        "скитур",
+        "лавинная подготовка"
+      ],
+      "formats": [
+        "tour",
+        "course"
+      ],
+      "seasonality": "январь",
+      "keyPerson": "Денис Ломакин",
+      "role": "лыжный гид, основатель Академии лавинной безопасности",
+      "contacts": {
+        "site": "https://alguyskitouring.ru/"
+      },
+      "legal": {
+        "registry": null,
+        "inn": null
+      },
+      "reputation": "Гид с сертификатами ACMG/Avalanche Canada; тур «Скитур на Сахалине» на 3–10 января 2027, бронирование с июня 2026.",
+      "partners": [],
+      "osintScore": 4,
+      "evidence": [
+        "https://alguyskitouring.ru/skiing-in-sahalin-island-january-2027/",
+        "https://alguyskitouring.ru/"
+      ]
+    },
+    {
+      "scoutArea": "sakhalin-kurils",
+      "region": "Сахалинская область",
+      "name": "Islanders School",
+      "organizerName": "Islanders School",
+      "url": "https://www.islanders-school.ru/",
+      "organizerKinds": [
+        "school"
+      ],
+      "kind": "школа сёрфинга",
+      "disciplines": [
+        "surf",
+        "snowboard"
+      ],
+      "rawDisciplines": [
+        "сёрфинг",
+        "скейтборд",
+        "сноуборд"
+      ],
+      "formats": [
+        "school",
+        "course"
+      ],
+      "seasonality": "май–октябрь (сёрф), зима — сноуборд",
+      "keyPerson": null,
+      "role": null,
+      "contacts": {
+        "site": "https://www.islanders-school.ru/"
+      },
+      "legal": {
+        "registry": null,
+        "inn": null
+      },
+      "reputation": "Школа с 2015 года в Южно-Сахалинске, указана среди школ сёрфинга на официальном турпортале области.",
+      "partners": [],
+      "osintScore": 4,
+      "evidence": [
+        "https://www.islanders-school.ru/",
+        "https://gosakhalin.ru/activities/serf/"
+      ]
+    },
+    {
+      "scoutArea": "sakhalin-kurils",
+      "region": "Сахалинская область",
+      "name": "SnowSurfProject («Сёрф друзья»)",
+      "organizerName": "SnowSurfProject",
+      "url": "https://snowsurfproject.ru/",
+      "organizerKinds": [
+        "school",
+        "event_organizer"
+      ],
+      "kind": "школа сёрфинга/серф-туры на Кунашир",
+      "disciplines": [
+        "surf",
+        "trekking"
+      ],
+      "rawDisciplines": [
+        "сёрфинг",
+        "серф-тур на Кунашир",
+        "вулканы"
+      ],
+      "formats": [
+        "school",
+        "camp",
+        "tour"
+      ],
+      "seasonality": "15 мая – 31 октября",
+      "keyPerson": null,
+      "role": null,
+      "contacts": {
+        "site": "https://snowsurfproject.ru/"
+      },
+      "legal": {
+        "registry": null,
+        "inn": null
+      },
+      "reputation": "Отзывы учеников за 2024–2025, три заезда серф-тура на Кунашир в сентябре 2026; указана на официальном турпортале.",
+      "partners": [],
+      "osintScore": 4,
+      "evidence": [
+        "https://snowsurfproject.ru/",
+        "https://gosakhalin.ru/activities/serf/"
+      ]
+    },
+    {
+      "scoutArea": "sakhalin-kurils",
+      "region": "Сахалинская область",
+      "name": "Сахавтотуризм",
+      "organizerName": "ИП Сорочинская А. Ю.",
+      "url": "https://sakhavtoturizm.com/",
+      "organizerKinds": [
+        "tour_operator",
+        "guide_team"
+      ],
+      "kind": "организатор джип-туров и серф-программ",
+      "disciplines": [
+        "jeep-tour",
+        "surf"
+      ],
+      "rawDisciplines": [
+        "джип-туры",
+        "морские прогулки",
+        "серфинг на Японском и Охотском морях"
+      ],
+      "formats": [
+        "tour",
+        "camp"
+      ],
+      "seasonality": "круглый год (серф — июнь–июль)",
+      "keyPerson": null,
+      "role": null,
+      "contacts": {
+        "site": "https://sakhavtoturizm.com/"
+      },
+      "legal": {
+        "registry": null,
+        "inn": "650107025285"
+      },
+      "reputation": "Сами проводят экскурсии без перепродажи, на сайте туры 2026 и авторская серф-программа (заезды 3–12 июня и 20–29 июля); ИНН ИП на сайте.",
+      "partners": [],
+      "osintScore": 5,
+      "evidence": [
+        "https://sakhavtoturizm.com/",
+        "https://sakhavtoturizm.com/serfing_na_sahaline/"
+      ]
+    },
+    {
+      "scoutArea": "sakhalin-kurils",
+      "region": "Сахалинская область",
+      "name": "АМИСТ — Курильские экспедиции",
+      "organizerName": "Туроператор АМИСТ",
+      "url": "https://amist.ru/",
+      "organizerKinds": [
+        "tour_operator"
+      ],
+      "kind": "туроператор/Сахалин и Курилы",
+      "disciplines": [
+        "trekking",
+        "expedition",
+        "jeep-tour"
+      ],
+      "rawDisciplines": [
+        "экспедиции на Итуруп, Кунашир, Шикотан",
+        "джип-туры",
+        "снегоходы"
+      ],
+      "formats": [
+        "expedition",
+        "tour"
+      ],
+      "seasonality": "июнь–сентябрь (Курилы), зима — Сахалин",
+      "keyPerson": null,
+      "role": null,
+      "contacts": {
+        "site": "https://amist.ru/"
+      },
+      "legal": {
+        "registry": null,
+        "inn": null
+      },
+      "reputation": "Южно-сахалинский оператор с 25+ годами работы, берёт на себя пропуска ФСБ; отзывы на сайте до марта 2026; РТО на страницах не найден.",
+      "partners": [],
+      "osintScore": 4,
+      "evidence": [
+        "https://amist.ru/tours/kurily/",
+        "https://amist.ru/"
+      ]
+    },
+    {
+      "scoutArea": "sakhalin-kurils",
+      "region": "Сахалинская область",
+      "name": "YETI TOUR — поход по трём Курильским островам",
+      "organizerName": "YETI TOUR",
+      "url": "https://pohod.me/",
+      "organizerKinds": [
+        "tour_operator",
+        "guide_team"
+      ],
+      "kind": "организатор походов/Курильские экспедиции",
+      "disciplines": [
+        "trekking",
+        "expedition"
+      ],
+      "rawDisciplines": [
+        "поход по Итурупу, Шикотану и Кунаширу",
+        "вулканы"
+      ],
+      "formats": [
+        "expedition"
+      ],
+      "seasonality": "сентябрь",
+      "keyPerson": null,
+      "role": null,
+      "contacts": {
+        "site": "https://pohod.me/"
+      },
+      "legal": {
+        "registry": null,
+        "inn": null
+      },
+      "reputation": "14 лет работы, 1000+ отзывов; 16-дневный поход 15–30 сентября 2026 полностью набран, на главной анонс «Удивительные Курилы 2027».",
+      "partners": [],
+      "osintScore": 4,
+      "evidence": [
+        "https://pohod.me/tour/poxod-po-3-ostrovam-iturup-shikotan-kunashir/",
+        "https://pohod.me/"
+      ]
+    },
+    {
+      "scoutArea": "sakhalin-kurils",
+      "region": "Сахалинская область",
+      "name": "Sakh Extreme Travel",
+      "organizerName": "Sakh Extreme Travel",
+      "url": "https://sakhextreme.ru/",
+      "organizerKinds": [
+        "tour_operator",
+        "guide_team"
+      ],
+      "kind": "оператор снегоходных, морских и квадро-туров",
+      "disciplines": [
+        "snowmobile",
+        "jeep-tour",
+        "wildlife"
+      ],
+      "rawDisciplines": [
+        "снегоходы",
+        "катера к сивучам и Монерону",
+        "квадроциклы",
+        "джип-туры"
+      ],
+      "formats": [
+        "tour"
+      ],
+      "seasonality": "круглый год",
+      "keyPerson": null,
+      "role": null,
+      "contacts": {
+        "site": "https://sakhextreme.ru/"
+      },
+      "legal": {
+        "registry": null,
+        "inn": null
+      },
+      "reputation": "Собственный парк техники, 5,0 в 2ГИС по 152 отзывам (отзывы январь–февраль 2026); заявлено «в реестре туроператоров», номер не найден.",
+      "partners": [],
+      "osintScore": 4,
+      "evidence": [
+        "https://sakhextreme.ru/",
+        "https://tours.gosakhalin.ru/44650-safari-na-snegokhodakh-zimnij-sakhalin"
+      ]
+    },
+    {
+      "scoutArea": "sakhalin-kurils",
+      "region": "Сахалинская область",
+      "name": "WSGS — серф-лагерь на Кунашире",
+      "organizerName": "WSGS (школа серфинга Максима Фомина)",
+      "url": "https://wsgs.ru/",
+      "organizerKinds": [
+        "school",
+        "event_organizer"
+      ],
+      "kind": "серф-школа/серф-трипы",
+      "disciplines": [
+        "surf",
+        "trekking"
+      ],
+      "rawDisciplines": [
+        "океанский серфинг на Кунашире",
+        "вулканы Менделеева и Головнина"
+      ],
+      "formats": [
+        "camp",
+        "tour"
+      ],
+      "seasonality": "лето–осень",
+      "keyPerson": "Максим Фомин",
+      "role": "основатель школы серфинга WSGS",
+      "contacts": {
+        "site": "https://wsgs.ru/"
+      },
+      "legal": {
+        "registry": null,
+        "inn": null
+      },
+      "reputation": "Московская серф-школа и магазин, проводит серф-лагерь на Кунашире с базой на берегу океана; даты 2026 на странице явно не подтверждены.",
+      "partners": [],
+      "osintScore": 3,
+      "evidence": [
+        "https://wsgs.ru/trips/serflager-v-kunashir/",
+        "https://wsgs.ru/"
+      ]
+    },
+    {
+      "scoutArea": "sakhalin-kurils",
+      "region": "Сахалинская область",
+      "name": "Лавина — фрирайд на снегоходах (Горный воздух)",
+      "organizerName": "Прокат «Лавина»",
+      "url": "https://lavina-prokat.ru/",
+      "organizerKinds": [
+        "guide_team",
+        "base"
+      ],
+      "kind": "прокат/фрирайд-туры со снегоходами",
+      "disciplines": [
+        "freeride",
+        "snowmobile"
+      ],
+      "rawDisciplines": [
+        "фрирайд с забросками на снегоходах",
+        "прокат снаряжения"
+      ],
+      "formats": [
+        "tour"
+      ],
+      "seasonality": "январь–март",
+      "keyPerson": null,
+      "role": null,
+      "contacts": {
+        "site": "https://lavina-prokat.ru/"
+      },
+      "legal": {
+        "registry": null,
+        "inn": null
+      },
+      "reputation": "Прокат у СТК «Горный воздух» предлагает фрирайд на горе Красная со снегоходными забросками; возможно, продаёт ту же программу, что GoRide65 (проверить).",
+      "partners": [
+        "СТК «Горный воздух»"
+      ],
+      "osintScore": 2,
+      "evidence": [
+        "https://lavina-prokat.ru/service/nezabyvaemyj-frirajd-na-sahaline/",
+        "https://sakhpress.ru/gornyj-vozduh-zapustit-frirajd-tury-na-juzhnom-sklone-gory-krasnaja/"
+      ]
+    },
+    {
+      "scoutArea": "krasnaya-polyana",
+      "region": "Краснодарский край",
+      "name": "Мастерская Приключений",
+      "organizerName": "Мастерская Приключений",
+      "url": "https://superadventure.ru/",
+      "organizerKinds": [
+        "guide_team",
+        "tour_operator"
+      ],
+      "kind": "команда горных гидов/приключенческие туры",
+      "disciplines": [
+        "trekking",
+        "freeride",
+        "heli-ski",
+        "ski-tour",
+        "climbing"
+      ],
+      "rawDisciplines": [
+        "треккинг",
+        "походы",
+        "фрирайд",
+        "хелиски",
+        "скитур",
+        "виа-феррата",
+        "каньонинг",
+        "снегоступинг"
+      ],
+      "formats": [
+        "tour",
+        "course"
+      ],
+      "seasonality": "круглый год (зима — фрирайд/хелиски, лето — треккинг/каньонинг)",
+      "keyPerson": "Николай Поляков",
+      "role": "основатель и руководитель (с 1999 г.)",
+      "contacts": {
+        "site": "https://superadventure.ru/"
+      },
+      "legal": {
+        "registry": "гиды в реестре инструкторов-проводников (№В011-00161-77/…)",
+        "inn": null
+      },
+      "reputation": "Работают 26 лет, создали первую виа-феррату в России, гиды — члены АГГР; на сайте свежие отзывы с Яндекс.Карт.",
+      "partners": [
+        "heliski.ru"
+      ],
+      "osintScore": 4,
+      "evidence": [
+        "https://superadventure.ru/",
+        "https://heliski.ru/"
+      ]
+    },
+    {
+      "scoutArea": "krasnaya-polyana",
+      "region": "Краснодарский край",
+      "name": "Heliski.ru — хелиски в Красной Поляне",
+      "organizerName": null,
+      "url": "https://heliski.ru/",
+      "organizerKinds": [
+        "tour_operator",
+        "guide_team"
+      ],
+      "kind": "хели-ски оператор",
+      "disciplines": [
+        "heli-ski",
+        "freeride"
+      ],
+      "rawDisciplines": [
+        "хелиски",
+        "фрирайд",
+        "снегоступинг с заброской"
+      ],
+      "formats": [
+        "tour"
+      ],
+      "seasonality": "январь–март",
+      "keyPerson": null,
+      "role": null,
+      "contacts": {
+        "site": "https://heliski.ru/"
+      },
+      "legal": {
+        "registry": null,
+        "inn": null
+      },
+      "reputation": "Позиционируется как первый оператор вертолётных туров в Сочи с 2000 г.; опубликованы программы хелиски 2026 на AS350B3 (190 000 ₽/4 спуска).",
+      "partners": [
+        "Вертикальный Мир",
+        "Мастерская Приключений",
+        "Реинфо"
+      ],
+      "osintScore": 4,
+      "evidence": [
+        "https://heliski.ru/",
+        "https://vertikalny-mir.com/heliski_krasnaya_polyana"
+      ]
+    },
+    {
+      "scoutArea": "krasnaya-polyana",
+      "region": "Краснодарский край",
+      "name": "Рафтинг Сочи",
+      "organizerName": "ИП Баталова Л.Б.",
+      "url": "https://raftingsochi.ru/",
+      "organizerKinds": [
+        "instructor_service"
+      ],
+      "kind": "рафтинг по Мзымте",
+      "disciplines": [
+        "rafting"
+      ],
+      "rawDisciplines": [
+        "рафтинг",
+        "сплав по Мзымте"
+      ],
+      "formats": [
+        "tour"
+      ],
+      "seasonality": "май–октябрь",
+      "keyPerson": null,
+      "role": null,
+      "contacts": {
+        "site": "https://raftingsochi.ru/"
+      },
+      "legal": {
+        "registry": "инструкторы в реестре инструкторов-проводников Минэкономразвития",
+        "inn": "231700760370"
+      },
+      "reputation": "Команда водит сплавы по Мзымте (Ахштырское ущелье) с 1995 г.; продаётся также через агрегатор впечатлений АХАА.",
+      "partners": [],
+      "osintScore": 5,
+      "evidence": [
+        "https://raftingsochi.ru/",
+        "https://www.axaa.ru/Splav-Na-Srednem-Rafte-Po-Gornoy-Reke-Mzymte-V-Sochi-Prokat-Snaryazheniya.html"
+      ]
+    },
+    {
+      "scoutArea": "krasnaya-polyana",
+      "region": "Краснодарский край",
+      "name": "Рафтинг Сочи «Капитан Граф»",
+      "organizerName": null,
+      "url": "https://raftingsochigraf.ru/",
+      "organizerKinds": [
+        "instructor_service"
+      ],
+      "kind": "рафтинг по Мзымте",
+      "disciplines": [
+        "rafting"
+      ],
+      "rawDisciplines": [
+        "рафтинг",
+        "обучение гребле"
+      ],
+      "formats": [
+        "tour",
+        "training"
+      ],
+      "seasonality": "май–октябрь",
+      "keyPerson": null,
+      "role": null,
+      "contacts": {
+        "site": "https://raftingsochigraf.ru/"
+      },
+      "legal": {
+        "registry": "инструкторы заявлены в реестре Минэкономразвития",
+        "inn": null
+      },
+      "reputation": "Сплавы по Мзымте через ущелье Ахцу, упоминаются съёмки 2024–2025 гг.; точка старта совпадает с «Рафтинг Сочи» — возможна аффилированность.",
+      "partners": [],
+      "osintScore": 3,
+      "evidence": [
+        "https://raftingsochigraf.ru/",
+        "https://raftingsochi.ru/"
+      ]
+    },
+    {
+      "scoutArea": "krasnaya-polyana",
+      "region": "Краснодарский край",
+      "name": "Экстрим клуб «Взлёт»",
+      "organizerName": null,
+      "url": "https://sochi-fly.ru/",
+      "organizerKinds": [
+        "club",
+        "instructor_service"
+      ],
+      "kind": "парапланерный клуб",
+      "disciplines": [
+        "paragliding"
+      ],
+      "rawDisciplines": [
+        "полёты на параплане",
+        "тандем",
+        "паратрайк",
+        "обучение полётам"
+      ],
+      "formats": [
+        "school",
+        "course"
+      ],
+      "seasonality": "круглый год по погоде",
+      "keyPerson": null,
+      "role": null,
+      "contacts": {
+        "site": "https://sochi-fly.ru/"
+      },
+      "legal": {
+        "registry": null,
+        "inn": null
+      },
+      "reputation": "Тандем-полёты со старта «Приют Ветров» (2256 м) на Альпике и обучение самостоятельным полётам.",
+      "partners": [
+        "ГТЦ «Газпром» Альпика"
+      ],
+      "osintScore": 3,
+      "evidence": [
+        "https://sochi-fly.ru/",
+        "https://sochi-fly.ru/polety-v-krasnoj-polyane/"
+      ]
+    },
+    {
+      "scoutArea": "krasnaya-polyana",
+      "region": "Краснодарский край",
+      "name": "Горнолыжная школа «Роза Хутор»",
+      "organizerName": "Роза Хутор",
+      "url": "https://rosakhutor.ru/ski-school/",
+      "organizerKinds": [
+        "school",
+        "base"
+      ],
+      "kind": "официальная школа курорта",
+      "disciplines": [
+        "ski",
+        "snowboard"
+      ],
+      "rawDisciplines": [
+        "горные лыжи",
+        "сноуборд",
+        "персональный гид"
+      ],
+      "formats": [
+        "school",
+        "course"
+      ],
+      "seasonality": "декабрь–апрель",
+      "keyPerson": null,
+      "role": null,
+      "contacts": {
+        "site": "https://rosakhutor.ru/ski-school/"
+      },
+      "legal": {
+        "registry": null,
+        "inn": null
+      },
+      "reputation": "Официальная школа курорта, подтвердила стандарт ISIA Ski School (НЛИ), инструкторы с категориями НЛИ.",
+      "partners": [],
+      "osintScore": 4,
+      "evidence": [
+        "https://rosakhutor.ru/ski-school/",
+        "https://rosakhutor.ru/news/gornolyzhnaya-shkola-roza-khutor-podtverdila-mezhdunarodnyy-standart-isia-ski-school/"
+      ]
+    },
+    {
+      "scoutArea": "krasnaya-polyana",
+      "region": "Краснодарский край",
+      "name": "Школа фрирайда Freeride Russia",
+      "organizerName": null,
+      "url": "https://freeriderussia.ru/",
+      "organizerKinds": [
+        "school",
+        "guide_team"
+      ],
+      "kind": "школа/фрирайд",
+      "disciplines": [
+        "freeride",
+        "ski-tour",
+        "snowboard"
+      ],
+      "rawDisciplines": [
+        "фрирайд",
+        "бэккантри",
+        "ски-тур",
+        "лавинная подготовка"
+      ],
+      "formats": [
+        "school",
+        "clinic"
+      ],
+      "seasonality": "январь–март",
+      "keyPerson": null,
+      "role": null,
+      "contacts": {
+        "site": "https://freeriderussia.ru/"
+      },
+      "legal": {
+        "registry": null,
+        "inn": null
+      },
+      "reputation": "Главный гид — член RMGA, 10-кратный чемпион России по рейтингу FWQ; 3-дневные школы в Красной Поляне на 2026 г. (30 000 ₽).",
+      "partners": [],
+      "osintScore": 4,
+      "evidence": [
+        "https://freeriderussia.ru/",
+        "https://freeriderussia.ru/kp"
+      ]
+    },
+    {
+      "scoutArea": "krasnaya-polyana",
+      "region": "Краснодарский край",
+      "name": "Горная Среда",
+      "organizerName": "самозанятые Баканин Д.С., Бисерова Л.С.",
+      "url": "https://gornayasreda.ru/",
+      "organizerKinds": [
+        "guide_team",
+        "club"
+      ],
+      "kind": "горный клуб/походы",
+      "disciplines": [
+        "trekking"
+      ],
+      "rawDisciplines": [
+        "треккинг",
+        "хайкинг",
+        "походы с ночёвками",
+        "виа-феррата"
+      ],
+      "formats": [
+        "tour",
+        "weekend"
+      ],
+      "seasonality": "май–ноябрь",
+      "keyPerson": null,
+      "role": null,
+      "contacts": {
+        "site": "https://gornayasreda.ru/"
+      },
+      "legal": {
+        "registry": null,
+        "inn": "590411270759"
+      },
+      "reputation": "Клуб основан в 2021 г., расписание походов на октябрь–ноябрь 2026, положительные отзывы на Яндекс.Картах.",
+      "partners": [],
+      "osintScore": 5,
+      "evidence": [
+        "https://gornayasreda.ru/",
+        "https://gornayasreda.ru/hrebet-aibga"
+      ]
+    },
+    {
+      "scoutArea": "krasnaya-polyana",
+      "region": "Краснодарский край",
+      "name": "Кавказ Хелиски (Caucasus Heliski Team) / Вертикальный Мир",
+      "organizerName": "ООО \"Вертикальный Мир\"",
+      "url": "https://vertikalny-mir.com/",
+      "organizerKinds": [
+        "tour_operator",
+        "guide_team"
+      ],
+      "kind": "хели-ски оператор",
+      "disciplines": [
+        "heli-ski",
+        "freeride"
+      ],
+      "rawDisciplines": [
+        "хелиски",
+        "фрирайд"
+      ],
+      "formats": [
+        "tour"
+      ],
+      "seasonality": "январь–март",
+      "keyPerson": "Николай Веселовский",
+      "role": "сооснователь «Вертикального Мира», хелиски-гид (по данным heliski.ru)",
+      "contacts": {
+        "site": "https://vertikalny-mir.com/"
+      },
+      "legal": {
+        "registry": "ОГРН 1157746814697",
+        "inn": null
+      },
+      "reputation": "Совместный проект «Вертикального Мира», магазина «Альпиндустрия» и ассоциации «Горы Лыжи Вертолёт»; хелиски на Airbus AS350 B3/EC130 T2 от Домбая до Красной Поляны.",
+      "partners": [
+        "Альпиндустрия",
+        "Ассоциация «Горы Лыжи Вертолёт»",
+        "heliski.ru"
+      ],
+      "osintScore": 5,
+      "evidence": [
+        "https://vertikalny-mir.com/heliski_krasnaya_polyana",
+        "https://heliski.ru/"
+      ]
+    },
+    {
+      "scoutArea": "krasnaya-polyana",
+      "region": "Краснодарский край",
+      "name": "Tripsnow",
+      "organizerName": null,
+      "url": "https://www.tripsnow.ru/",
+      "organizerKinds": [
+        "guide_team"
+      ],
+      "kind": "ски-туры и треккинг",
+      "disciplines": [
+        "ski-tour",
+        "trekking",
+        "freeride"
+      ],
+      "rawDisciplines": [
+        "скитур",
+        "треккинг",
+        "фрирайд"
+      ],
+      "formats": [
+        "tour",
+        "weekend"
+      ],
+      "seasonality": "круглый год",
+      "keyPerson": null,
+      "role": null,
+      "contacts": {
+        "site": "https://www.tripsnow.ru/"
+      },
+      "legal": {
+        "registry": null,
+        "inn": null
+      },
+      "reputation": "Авторские ски-туры и треккинг в Красной Поляне (также выезды в Архыз); контакты только личные, юрданные не найдены.",
+      "partners": [],
+      "osintScore": 2,
+      "evidence": [
+        "https://www.tripsnow.ru/",
+        "https://www.tripsnow.ru/arkhyz-skitour"
+      ]
+    },
+    {
+      "scoutArea": "arkhyz",
+      "region": "Карачаево-Черкесская Республика",
+      "name": "Wild Riders — клуб конного туризма",
+      "organizerName": null,
+      "url": "https://wild-riders.ru/",
+      "organizerKinds": [
+        "club",
+        "tour_operator"
+      ],
+      "kind": "конные туры/джипинг",
+      "disciplines": [
+        "horse-riding",
+        "jeep-tour"
+      ],
+      "rawDisciplines": [
+        "конные туры",
+        "конные прогулки",
+        "джипинг"
+      ],
+      "formats": [
+        "tour",
+        "weekend"
+      ],
+      "seasonality": "круглый год (основной сезон май–октябрь)",
+      "keyPerson": null,
+      "role": null,
+      "contacts": {
+        "site": "https://wild-riders.ru/"
+      },
+      "legal": {
+        "registry": null,
+        "inn": null
+      },
+      "reputation": "Местная команда, работает более 6 лет; расписание групповых конных туров на 2025–2026 гг. с отметками «мест нет».",
+      "partners": [],
+      "osintScore": 4,
+      "evidence": [
+        "https://wild-riders.ru/",
+        "https://wild-riders.ru/7days",
+        "https://wild-riders.ru/dzhiping"
+      ]
+    },
+    {
+      "scoutArea": "arkhyz",
+      "region": "Карачаево-Черкесская Республика",
+      "name": "K-Travel (Kalabekov Travel)",
+      "organizerName": null,
+      "url": "https://kalabekov-travel.ru/",
+      "organizerKinds": [
+        "tour_operator",
+        "instructor_service"
+      ],
+      "kind": "джипинг/рафтинг/конные прогулки",
+      "disciplines": [
+        "jeep-tour",
+        "rafting",
+        "horse-riding"
+      ],
+      "rawDisciplines": [
+        "джиппинг",
+        "рафтинг",
+        "конные прогулки",
+        "квадроциклы"
+      ],
+      "formats": [
+        "tour"
+      ],
+      "seasonality": "май–октябрь",
+      "keyPerson": null,
+      "role": null,
+      "contacts": {
+        "site": "https://kalabekov-travel.ru/"
+      },
+      "legal": {
+        "registry": null,
+        "inn": null
+      },
+      "reputation": "Местная компания в с. Архыз, заявляет более 20 лет работы; джип-туры к Софийским озёрам и водопадам, рафтинг.",
+      "partners": [],
+      "osintScore": 3,
+      "evidence": [
+        "https://kalabekov-travel.ru/",
+        "https://kalabekov-travel.ru/tury/dzhipping-k-sofijskim-ozeram/"
+      ]
+    },
+    {
+      "scoutArea": "arkhyz",
+      "region": "Карачаево-Черкесская Республика",
+      "name": "Школа катания «Три вершины»",
+      "organizerName": "Курорт Архыз",
+      "url": "https://resort-arkhyz.ru/services/instructors/skischool-arkhyz/",
+      "organizerKinds": [
+        "school",
+        "base"
+      ],
+      "kind": "официальная школа курорта",
+      "disciplines": [
+        "ski",
+        "snowboard"
+      ],
+      "rawDisciplines": [
+        "горные лыжи",
+        "сноуборд",
+        "карвинг",
+        "фристайл"
+      ],
+      "formats": [
+        "school",
+        "course"
+      ],
+      "seasonality": "декабрь–апрель",
+      "keyPerson": null,
+      "role": null,
+      "contacts": {
+        "site": "https://resort-arkhyz.ru/services/instructors/skischool-arkhyz/"
+      },
+      "legal": {
+        "registry": null,
+        "inn": null
+      },
+      "reputation": "Основная школа на сайте курорта Архыз, инструкторы НЛИ категорий C/B/A, проход Fast track.",
+      "partners": [],
+      "osintScore": 4,
+      "evidence": [
+        "https://resort-arkhyz.ru/services/instructors/skischool-arkhyz/",
+        "https://resort-arkhyz.ru/services/instructors/"
+      ]
+    },
+    {
+      "scoutArea": "arkhyz",
+      "region": "Карачаево-Черкесская Республика",
+      "name": "АрхызПарк",
+      "organizerName": "ООО «АрхызПарк»",
+      "url": "https://arhyzpark.ru/",
+      "organizerKinds": [
+        "school"
+      ],
+      "kind": "горнолыжная школа и всесезонный туризм",
+      "disciplines": [
+        "ski",
+        "snowboard"
+      ],
+      "rawDisciplines": [
+        "горные лыжи",
+        "сноуборд",
+        "карвинг",
+        "всесезонный туризм"
+      ],
+      "formats": [
+        "school",
+        "clinic"
+      ],
+      "seasonality": "декабрь–апрель",
+      "keyPerson": "Александр Ривлин",
+      "role": "тренер-преподаватель, инструктор высшей категории",
+      "contacts": {
+        "site": "https://arhyzpark.ru/"
+      },
+      "legal": {
+        "registry": "ОГРН 1170917002420",
+        "inn": "0912004972"
+      },
+      "reputation": "Школа с 2017 г., инструкторы НЛИ/ФГССР/ВАГИ; отзывы клиентов за февраль 2025 г. на сайте.",
+      "partners": [],
+      "osintScore": 5,
+      "evidence": [
+        "https://arhyzpark.ru/",
+        "https://arhyzpark.ru/%D0%94%D0%BE%D0%B3%D0%BE%D0%B2%D0%BE%D1%80-%D0%BE%D1%84%D0%B5%D1%80%D1%82%D0%B0_%D0%90%D1%80%D1%85%D1%8B%D0%B7%D0%9F%D0%B0%D1%80%D0%BA.pdf"
+      ]
+    },
+    {
+      "scoutArea": "arkhyz",
+      "region": "Карачаево-Черкесская Республика",
+      "name": "SnowRush — фрирайд-гиды",
+      "organizerName": null,
+      "url": "https://snowrush.net/",
+      "organizerKinds": [
+        "guide_team",
+        "school"
+      ],
+      "kind": "гиды/фрирайд",
+      "disciplines": [
+        "freeride",
+        "ski-tour",
+        "backcountry"
+      ],
+      "rawDisciplines": [
+        "фрирайд",
+        "ски-тур",
+        "бэккантри",
+        "школа фрирайда"
+      ],
+      "formats": [
+        "tour",
+        "school"
+      ],
+      "seasonality": "декабрь–апрель",
+      "keyPerson": null,
+      "role": null,
+      "contacts": {
+        "site": "https://snowrush.net/"
+      },
+      "legal": {
+        "registry": null,
+        "inn": null
+      },
+      "reputation": "Гиды по фрирайду и ски-туру в Архызе (ущелье Пхия) и Домбае, опубликованы тарифы; на домбайской странице заявлена сертификация гидов RMGA.",
+      "partners": [],
+      "osintScore": 3,
+      "evidence": [
+        "https://snowrush.net/ru/freeride-guide-arhyz/",
+        "https://snowrush.net/ru/freeride-guide-dombay/"
+      ]
+    },
+    {
+      "scoutArea": "arkhyz",
+      "region": "Карачаево-Черкесская Республика",
+      "name": "Велолагерь — школа маунтинбайка",
+      "organizerName": "ИП Кунаев Иван Николаевич",
+      "url": "https://xn--80adegc7aaxw4j.xn--p1ai/arkhyz",
+      "organizerKinds": [
+        "school",
+        "event_organizer"
+      ],
+      "kind": "MTB-лагерь в байк-парке",
+      "disciplines": [
+        "mtb"
+      ],
+      "rawDisciplines": [
+        "маунтинбайк",
+        "даунхилл",
+        "байк-парк"
+      ],
+      "formats": [
+        "camp",
+        "course"
+      ],
+      "seasonality": "июнь–сентябрь",
+      "keyPerson": "Александр Прянишников",
+      "role": "организатор обучающего велолагеря",
+      "contacts": {
+        "site": "https://xn--80adegc7aaxw4j.xn--p1ai/"
+      },
+      "legal": {
+        "registry": "ОГРНИП 321132600001678",
+        "inn": "132609717907"
+      },
+      "reputation": "Проводит смены с 2016 г., инструкторы — призёры Кубков России по DH; смены в Сочи отменены и перенесены в Архыз (сезон 2026).",
+      "partners": [
+        "7Peaks Family Resort"
+      ],
+      "osintScore": 5,
+      "evidence": [
+        "https://xn--80adegc7aaxw4j.xn--p1ai/arkhyz",
+        "https://xn--80adegc7aaxw4j.xn--p1ai/public_offer",
+        "https://xn--80adegc7aaxw4j.xn--p1ai/sochi"
+      ]
+    },
+    {
+      "scoutArea": "arkhyz",
+      "region": "Карачаево-Черкесская Республика",
+      "name": "Лазурит Архыз — активности",
+      "organizerName": "ООО «Лазурит Путешествия»",
+      "url": "https://lazuritarkhyz.ru/",
+      "organizerKinds": [
+        "base",
+        "tour_operator"
+      ],
+      "kind": "отель-база с программами",
+      "disciplines": [
+        "ski-tour",
+        "freeride",
+        "horse-riding",
+        "jeep-tour",
+        "trekking"
+      ],
+      "rawDisciplines": [
+        "скитур",
+        "сплитбординг",
+        "фрирайд",
+        "конные прогулки",
+        "джип-туры",
+        "многодневные походы"
+      ],
+      "formats": [
+        "tour"
+      ],
+      "seasonality": "круглый год",
+      "keyPerson": null,
+      "role": null,
+      "contacts": {
+        "site": "https://lazuritarkhyz.ru/"
+      },
+      "legal": {
+        "registry": "ЕФРТ В031-00161-00/05337591",
+        "inn": null
+      },
+      "reputation": "Отель 5* в Архызе с собственным туроператором в Едином федеральном реестре туроператоров; скитур с гидом, трансфером и инструктажем.",
+      "partners": [],
+      "osintScore": 5,
+      "evidence": [
+        "https://lazuritarkhyz.ru/konnye_progulki",
+        "https://lazuritarkhyz.ru/skitur-i-splitbording"
+      ]
+    },
+    {
+      "scoutArea": "arkhyz",
+      "region": "Карачаево-Черкесская Республика",
+      "name": "Экстрим Архыз",
+      "organizerName": null,
+      "url": "https://extreme-arkhyz.ru/",
+      "organizerKinds": [
+        "instructor_service"
+      ],
+      "kind": "джипинг/квадроциклы/сплавы",
+      "disciplines": [
+        "jeep-tour",
+        "rafting",
+        "trekking"
+      ],
+      "rawDisciplines": [
+        "джипинг",
+        "квадроциклы",
+        "снегоходы",
+        "сплавы по Большому Зеленчуку",
+        "пешие экскурсии"
+      ],
+      "formats": [
+        "tour"
+      ],
+      "seasonality": "круглый год",
+      "keyPerson": null,
+      "role": null,
+      "contacts": {
+        "site": "https://extreme-arkhyz.ru/"
+      },
+      "legal": {
+        "registry": null,
+        "inn": null
+      },
+      "reputation": "Заявлен официальным партнёром курорта Архыз; карточка с отзывами на Яндекс.Картах.",
+      "partners": [
+        "Курорт Архыз"
+      ],
+      "osintScore": 3,
+      "evidence": [
+        "https://extreme-arkhyz.ru/",
+        "https://extreme-arkhyz.ru/jeeping-sofiyskie-vodopadi"
+      ]
+    },
+    {
+      "scoutArea": "arkhyz",
+      "region": "Карачаево-Черкесская Республика",
+      "name": "ДАВС Тур",
+      "organizerName": null,
+      "url": "https://www.davstour.com/",
+      "organizerKinds": [
+        "tour_operator"
+      ],
+      "kind": "треккинг-туры",
+      "disciplines": [
+        "trekking"
+      ],
+      "rawDisciplines": [
+        "треккинг",
+        "пешие туры"
+      ],
+      "formats": [
+        "tour"
+      ],
+      "seasonality": "июнь–октябрь; зимние туры декабрь–февраль",
+      "keyPerson": null,
+      "role": null,
+      "contacts": {
+        "site": "https://www.davstour.com/"
+      },
+      "legal": {
+        "registry": null,
+        "inn": null
+      },
+      "reputation": "Туроператор из Георгиевска, треккинг-тур «Архыз. Перезагрузка 2.0» с датами на 2026 г.; номер в реестре на сайте не найден.",
+      "partners": [],
+      "osintScore": 3,
+      "evidence": [
+        "https://www.davstour.com/",
+        "https://www.davstour.com/arkhiz2"
+      ]
+    },
+    {
+      "scoutArea": "arkhyz",
+      "region": "Карачаево-Черкесская Республика",
+      "name": "Горный приют Base Camp — гиды",
+      "organizerName": "Горный приют Base Camp",
+      "url": "https://base-camp.ru/",
+      "organizerKinds": [
+        "base",
+        "guide_team"
+      ],
+      "kind": "горный приют с гид-сервисом",
+      "disciplines": [
+        "trekking",
+        "ski-tour",
+        "ski",
+        "snowboard"
+      ],
+      "rawDisciplines": [
+        "треккинг",
+        "походы",
+        "скитур",
+        "горные лыжи",
+        "сноуборд"
+      ],
+      "formats": [
+        "tour",
+        "school"
+      ],
+      "seasonality": "круглый год",
+      "keyPerson": "Азамат Казаноков",
+      "role": "шеф-гид горного приюта, гид АГГР",
+      "contacts": {
+        "site": "https://base-camp.ru/"
+      },
+      "legal": {
+        "registry": null,
+        "inn": null
+      },
+      "reputation": "Коттеджи у пос. Архыз с собственными гидами (АГГР, НЛИ, ВАГИ) и гайдбуком маршрутов; положительные отзывы с Яндекса, даты отзывов на сайте не указаны.",
+      "partners": [],
+      "osintScore": 3,
+      "evidence": [
+        "https://base-camp.ru/guide",
+        "https://base-camp.ru/"
+      ]
+    },
+    {
+      "scoutArea": "dombay",
+      "region": "Карачаево-Черкесская Республика",
+      "name": "Школа NEW RIDERS — фрирайд в Домбае",
+      "organizerName": null,
+      "url": "https://newriders.ru/",
+      "organizerKinds": [
+        "school",
+        "event_organizer"
+      ],
+      "kind": "школа фрирайда и лагеря",
+      "disciplines": [
+        "freeride",
+        "ski",
+        "snowboard",
+        "trekking"
+      ],
+      "rawDisciplines": [
+        "школа фрирайда",
+        "горные лыжи",
+        "сноуборд",
+        "детские лагеря",
+        "треккинг"
+      ],
+      "formats": [
+        "school",
+        "camp",
+        "tour"
+      ],
+      "seasonality": "декабрь–апрель (фрирайд); летом — лагеря и походы",
+      "keyPerson": null,
+      "role": null,
+      "contacts": {
+        "site": "https://newriders.ru/"
+      },
+      "legal": {
+        "registry": null,
+        "inn": null
+      },
+      "reputation": "Школа фрирайда в Домбае, заявлено более 3000 обученных, цены на сезон 2025–2026 и именные гиды; также лагеря и треккинг в Красной Поляне. Юрданные на сайте не найдены.",
+      "partners": [],
+      "osintScore": 4,
+      "evidence": [
+        "https://newriders.ru/freeride-dombai",
+        "https://newriders.ru/",
+        "https://newriders.ru/trekking"
+      ]
+    },
+    {
+      "scoutArea": "dombay",
+      "region": "Карачаево-Черкесская Республика",
+      "name": "Альп Экзотика — восхождения на Белалакаю",
+      "organizerName": "Альп Экзотика",
+      "url": "https://alpexoticatravel.ru/",
+      "organizerKinds": [
+        "tour_operator",
+        "guide_team"
+      ],
+      "kind": "альпинистские экспедиции",
+      "disciplines": [
+        "mountaineering",
+        "climbing"
+      ],
+      "rawDisciplines": [
+        "альпинизм",
+        "восхождение на Белалакаю",
+        "обучение основам альпинизма"
+      ],
+      "formats": [
+        "expedition",
+        "course"
+      ],
+      "seasonality": "июль–август",
+      "keyPerson": "Михаил Семёнов",
+      "role": "руководитель восхождений, мастер спорта и инструктор-методист по альпинизму",
+      "contacts": {
+        "site": "https://alpexoticatravel.ru/"
+      },
+      "legal": {
+        "registry": "РТО 022744 (реестр туроператоров)",
+        "inn": null
+      },
+      "reputation": "Шесть экспедиций на Белалакаю (3861 м) с 11.07 по 29.08.2026, 160 000 ₽, минимум два гида на маршруте; основной район — Домбай и Теберда.",
+      "partners": [],
+      "osintScore": 5,
+      "evidence": [
+        "https://alpexoticatravel.ru/",
+        "https://alpexoticatravel.ru/company"
+      ]
+    },
+    {
+      "scoutArea": "dombay",
+      "region": "Карачаево-Черкесская Республика",
+      "name": "Турклуб «Восход» — треккинг в Домбае",
+      "organizerName": "Турклуб «Восход»",
+      "url": "https://club-voshod.com/",
+      "organizerKinds": [
+        "club",
+        "tour_operator"
+      ],
+      "kind": "турклуб/комфорт-треккинг",
+      "disciplines": [
+        "trekking",
+        "ski"
+      ],
+      "rawDisciplines": [
+        "треккинг с гостиницей",
+        "радиальные выходы",
+        "горнолыжные туры"
+      ],
+      "formats": [
+        "tour"
+      ],
+      "seasonality": "июль–октябрь (треккинг); февраль–март (горнолыжные туры)",
+      "keyPerson": null,
+      "role": null,
+      "contacts": {
+        "site": "https://club-voshod.com/"
+      },
+      "legal": {
+        "registry": null,
+        "inn": null
+      },
+      "reputation": "Еженедельные заезды «Треккинг в Домбае» с 19.07 по 24.10.2026 с именными инструкторами и заполняемостью групп; горнолыжные туры в Домбай на 2027 г. Работает и в других районах Кавказа.",
+      "partners": [],
+      "osintScore": 4,
+      "evidence": [
+        "https://club-voshod.com/marshruti/kavkaz/dombay",
+        "https://club-voshod.com/marshruti/kavkaz/dombay/gorny_lager_v_dombae_kavkaz/",
+        "https://club-voshod.com/calendar"
+      ]
+    },
+    {
+      "scoutArea": "dombay",
+      "region": "Карачаево-Черкесская Республика",
+      "name": "Гуру гор — туры на Домбай без рюкзаков",
+      "organizerName": "Гуру гор",
+      "url": "https://gurugor.com/",
+      "organizerKinds": [
+        "guide_team",
+        "tour_operator"
+      ],
+      "kind": "горные гиды/комфорт-треккинг",
+      "disciplines": [
+        "trekking"
+      ],
+      "rawDisciplines": [
+        "треккинг без рюкзаков",
+        "радиальные выходы"
+      ],
+      "formats": [
+        "tour"
+      ],
+      "seasonality": "июнь–октябрь",
+      "keyPerson": "Андрей Семибратов",
+      "role": "горный гид, сооснователь проекта («Катя и Андрей — горные гиды»)",
+      "contacts": {
+        "site": "https://gurugor.com/"
+      },
+      "legal": {
+        "registry": null,
+        "inn": null
+      },
+      "reputation": "Заявляют 362 проведённых тура за 11 лет; расписание тура на Домбай на август–октябрь 2026 с заполняемостью групп. Работают также в Архызе, Приэльбрусье, Ергаках и Непале.",
+      "partners": [],
+      "osintScore": 4,
+      "evidence": [
+        "https://gurugor.com/tur-na-dombay",
+        "https://gurugor.com/"
+      ]
+    },
+    {
+      "scoutArea": "dombay",
+      "region": "Карачаево-Черкесская Республика",
+      "name": "Alplife — восхождения и ски-альпинизм",
+      "organizerName": "Alplife",
+      "url": "https://alplife.ru/",
+      "organizerKinds": [
+        "guide_team"
+      ],
+      "kind": "гиды по альпинизму",
+      "disciplines": [
+        "mountaineering",
+        "ski-tour"
+      ],
+      "rawDisciplines": [
+        "альпинизм",
+        "восхождение на Белалакаю 3А",
+        "ски-альпинизм"
+      ],
+      "formats": [
+        "expedition",
+        "tour"
+      ],
+      "seasonality": "круглый год",
+      "keyPerson": null,
+      "role": null,
+      "contacts": {
+        "site": "https://alplife.ru/"
+      },
+      "legal": {
+        "registry": null,
+        "inn": null
+      },
+      "reputation": "Программы восхождений в Домбае с ценами (Белалакая 3А); в подвале © 2026, но новости на сайте датированы 2019 г. — свежесть активности под вопросом.",
+      "partners": [],
+      "osintScore": 3,
+      "evidence": [
+        "https://alplife.ru/",
+        "https://alplife.ru/product/category&path=25_28_110"
+      ]
+    },
+    {
+      "scoutArea": "dombay",
+      "region": "Карачаево-Черкесская Республика",
+      "name": "Домбай Фрирайд Гид",
+      "organizerName": null,
+      "url": "https://dombayfg.orgs.biz/",
+      "organizerKinds": [
+        "guide_team",
+        "instructor_service"
+      ],
+      "kind": "фрирайд-гиды",
+      "disciplines": [
+        "freeride",
+        "ski-tour",
+        "backcountry"
+      ],
+      "rawDisciplines": [
+        "фрирайд",
+        "ски-тур",
+        "внетрассовое катание"
+      ],
+      "formats": [
+        "tour"
+      ],
+      "seasonality": "декабрь–апрель",
+      "keyPerson": "Мурат Темиров",
+      "role": "инструктор и фрирайд-гид (15 лет опыта)",
+      "contacts": {
+        "site": "https://dombayfg.orgs.biz/"
+      },
+      "legal": {
+        "registry": null,
+        "inn": null
+      },
+      "reputation": "Местная команда фрирайд-гидов; публикации на странице до апреля 2025 г., описание на портале dombai.online.",
+      "partners": [],
+      "osintScore": 3,
+      "evidence": [
+        "https://dombayfg.orgs.biz/",
+        "https://dombai.online/freeride"
+      ]
+    },
+    {
+      "scoutArea": "dombay",
+      "region": "Карачаево-Черкесская Республика",
+      "name": "DS GROUP — школа и прокат в Домбае",
+      "organizerName": "DS GROUP",
+      "url": "https://t.me/dombay_snow",
+      "organizerKinds": [
+        "school",
+        "instructor_service"
+      ],
+      "kind": "школа катания и прокат",
+      "disciplines": [
+        "ski",
+        "snowboard"
+      ],
+      "rawDisciplines": [
+        "горные лыжи",
+        "сноуборд",
+        "прокат снаряжения"
+      ],
+      "formats": [
+        "school"
+      ],
+      "seasonality": "декабрь–апрель",
+      "keyPerson": null,
+      "role": null,
+      "contacts": {
+        "site": "https://t.me/dombay_snow"
+      },
+      "legal": {
+        "registry": null,
+        "inn": null
+      },
+      "reputation": "Telegram-канал школы и проката (~580 подписчиков), публикации до сентября 2026; собственного сайта не найдено.",
+      "partners": [],
+      "osintScore": 3,
+      "evidence": [
+        "https://t.me/dombay_snow",
+        "https://tg.me/dombay_snow"
+      ]
+    },
+    {
+      "scoutArea": "dombay",
+      "region": "Карачаево-Черкесская Республика",
+      "name": "TripKavkaz — туры из Домбая",
+      "organizerName": "TripKavkaz",
+      "url": "https://trip-kavkaz.com/",
+      "organizerKinds": [
+        "tour_operator"
+      ],
+      "kind": "организатор горных туров",
+      "disciplines": [
+        "trekking"
+      ],
+      "rawDisciplines": [
+        "походы с палатками",
+        "треккинг",
+        "туры выходного дня"
+      ],
+      "formats": [
+        "tour",
+        "weekend"
+      ],
+      "seasonality": "июнь–октябрь",
+      "keyPerson": null,
+      "role": null,
+      "contacts": {
+        "site": "https://trip-kavkaz.com/"
+      },
+      "legal": {
+        "registry": null,
+        "inn": null
+      },
+      "reputation": "Офисы в Домбае и Махачкале; тур выходного дня к Семенов-Баши со стартом из Домбая (брошюра актуальна на 02.10.2026). Большая часть каталога — Дагестан.",
+      "partners": [],
+      "osintScore": 3,
+      "evidence": [
+        "https://trip-kavkaz.com/",
+        "https://trip-kavkaz.com/atoms_documents/brochure/pdf?tour_id=5246"
+      ]
+    },
+    {
+      "scoutArea": "dombay",
+      "region": "Карачаево-Черкесская Республика",
+      "name": "TrekRussia — поход Теберда — Даут",
+      "organizerName": "TrekRussia",
+      "url": "https://trek-russia.com/",
+      "organizerKinds": [
+        "club",
+        "tour_operator"
+      ],
+      "kind": "клуб пеших походов",
+      "disciplines": [
+        "trekking"
+      ],
+      "rawDisciplines": [
+        "поход с рюкзаками",
+        "перевальный поход"
+      ],
+      "formats": [
+        "tour",
+        "expedition"
+      ],
+      "seasonality": "май–сентябрь",
+      "keyPerson": null,
+      "role": null,
+      "contacts": {
+        "site": "https://trek-russia.com/"
+      },
+      "legal": {
+        "registry": null,
+        "inn": null
+      },
+      "reputation": "Поход Теберда — Даут 8–14.08.2026 (мест нет) и Теберда — Архыз в мае и августе 2026; клуб работает по всему Кавказу.",
+      "partners": [],
+      "osintScore": 3,
+      "evidence": [
+        "https://trek-russia.com/pohody/teberda-uchkulan.html",
+        "https://trek-russia.com/tours/"
+      ]
+    },
+    {
+      "scoutArea": "dombay",
+      "region": "Карачаево-Черкесская Республика",
+      "name": "Инструкторы курорта Домбай",
+      "organizerName": null,
+      "url": "https://dombay-resort.ru/service-category/instruktory/",
+      "organizerKinds": [
+        "instructor_service"
+      ],
+      "kind": "инструкторы по горным лыжам и сноуборду",
+      "disciplines": [
+        "ski",
+        "snowboard"
+      ],
+      "rawDisciplines": [
+        "горные лыжи",
+        "сноуборд"
+      ],
+      "formats": [
+        "school"
+      ],
+      "seasonality": "декабрь–апрель",
+      "keyPerson": null,
+      "role": null,
+      "contacts": {
+        "site": "https://dombay-resort.ru/"
+      },
+      "legal": {
+        "registry": null,
+        "inn": null
+      },
+      "reputation": "Сайт называет себя официальным сайтом администрации курорта, но подтверждения статуса не найдено; тариф 5000 ₽/час, имена инструкторов не указаны.",
+      "partners": [],
+      "osintScore": 2,
+      "evidence": [
+        "https://dombay-resort.ru/service-category/instruktory/",
+        "https://dombay-resort.ru/"
+      ]
+    },
+    {
+      "scoutArea": "khibiny-kola",
+      "region": "Мурманская область",
+      "name": "Северный Портал (Nord Portal)",
+      "organizerName": "Северный Портал",
+      "url": "http://nord-portal.ru/",
+      "organizerKinds": [
+        "guide_team",
+        "school",
+        "base"
+      ],
+      "kind": "гиды/школа фрирайда и скитура, сап-станция",
+      "disciplines": [
+        "freeride",
+        "ski-tour",
+        "backcountry",
+        "trekking",
+        "sup"
+      ],
+      "rawDisciplines": [
+        "фрирайд",
+        "скитур",
+        "фрирайд на снегоходах",
+        "походы",
+        "сап-туры"
+      ],
+      "formats": [
+        "tour",
+        "school",
+        "course"
+      ],
+      "seasonality": "ноябрь–май (зима), июнь–октябрь (лето)",
+      "keyPerson": "Роман Гребнев",
+      "role": "сооснователь, аттестованный инструктор-проводник ФАР, член АГГР",
+      "contacts": {
+        "site": "http://nord-portal.ru/"
+      },
+      "legal": {
+        "registry": null,
+        "inn": null
+      },
+      "reputation": "Команда с 2012 года в Кировске; гиды аттестованы ФАР, на сайте отзывы клиентов и программа школы фрирайда с группами 5 человек + гид.",
+      "partners": [
+        "база отдыха «Жемчужина Хибин»"
+      ],
+      "osintScore": 4,
+      "evidence": [
+        "http://nord-portal.ru/",
+        "http://nord-portal.ru/freeride/shkola"
+      ]
+    },
+    {
+      "scoutArea": "khibiny-kola",
+      "region": "Мурманская область",
+      "name": "inSki — скитур и фрирайд в Хибинах",
+      "organizerName": "inSki",
+      "url": "https://inski.fun/hibini",
+      "organizerKinds": [
+        "guide_team"
+      ],
+      "kind": "гиды скитура/фрирайда",
+      "disciplines": [
+        "ski-tour",
+        "freeride",
+        "backcountry"
+      ],
+      "rawDisciplines": [
+        "скитур",
+        "фрирайд",
+        "заброски снегоходами",
+        "лавинная безопасность"
+      ],
+      "formats": [
+        "tour",
+        "course"
+      ],
+      "seasonality": "январь–май",
+      "keyPerson": null,
+      "role": null,
+      "contacts": {
+        "site": "https://inski.fun/hibini"
+      },
+      "legal": {
+        "registry": null,
+        "inn": null
+      },
+      "reputation": "Выездные программы с гидом RMGA в Кировске: 6-дневная программа 29 000 ₽ и дневные выходы, ближайшая программа 1–6 мая.",
+      "partners": [],
+      "osintScore": 3,
+      "evidence": [
+        "https://inski.fun/hibini",
+        "https://namorechko.ru/tury/skitur-i-frirayd-v-hibinah-tur-na-6-dney-s-opytnymi-gidami-1992"
+      ]
+    },
+    {
+      "scoutArea": "khibiny-kola",
+      "region": "Мурманская область",
+      "name": "ArcticSUP / Федерация серфинга Мурманской области",
+      "organizerName": "РФСОО «Федерация серфинга Мурманской области»",
+      "url": "https://arctic-sup.ru/",
+      "organizerKinds": [
+        "school",
+        "club"
+      ],
+      "kind": "школа сап и серфинга (Териберка)",
+      "disciplines": [
+        "surf",
+        "sup",
+        "windsurf"
+      ],
+      "rawDisciplines": [
+        "серфинг",
+        "сап",
+        "виндсерфинг",
+        "мотосерф"
+      ],
+      "formats": [
+        "school",
+        "tour"
+      ],
+      "seasonality": "круглый год (по волнам)",
+      "keyPerson": "Александра Низовец",
+      "role": "основатель школы, президент Федерации серфинга Мурманской области",
+      "contacts": {
+        "site": "https://arctic-sup.ru/"
+      },
+      "legal": {
+        "registry": null,
+        "inn": null
+      },
+      "reputation": "Первая школа Sup&surf на Кольском (с 2022), указана оператором серфинга и виндсерфинга на сайте фестиваля Териберки.",
+      "partners": [
+        "Териберка фест"
+      ],
+      "osintScore": 4,
+      "evidence": [
+        "https://arctic-sup.ru/",
+        "https://arctic-sup.ru/serf",
+        "http://teriberkafest.ru/activ"
+      ]
+    },
+    {
+      "scoutArea": "khibiny-kola",
+      "region": "Мурманская область",
+      "name": "КолаТур",
+      "organizerName": "ООО «КолаТур»",
+      "url": "https://kolatour.ru/",
+      "organizerKinds": [
+        "tour_operator"
+      ],
+      "kind": "туроператор/снегоходные туры, северное сияние",
+      "disciplines": [
+        "snowmobile",
+        "wildlife"
+      ],
+      "rawDisciplines": [
+        "снегоходы в Хибинах",
+        "северное сияние",
+        "морская рыбалка",
+        "поиск китов"
+      ],
+      "formats": [
+        "tour"
+      ],
+      "seasonality": "ноябрь–апрель (зимние программы), летние туры",
+      "keyPerson": null,
+      "role": null,
+      "contacts": {
+        "site": "https://kolatour.ru/"
+      },
+      "legal": {
+        "registry": "РТО 025504",
+        "inn": "5190097519"
+      },
+      "reputation": "43 готовых тура на 1–4 дня, снегоходные программы в Хибинах и на Сейдозеро; реестровый номер и ИНН опубликованы на сайте.",
+      "partners": [],
+      "osintScore": 5,
+      "evidence": [
+        "https://kolatour.ru/tours-to-khibiny",
+        "https://kolatour.ru/snowmobiles-tours-zima",
+        "https://kolatour.ru/mountain-shine"
+      ]
+    },
+    {
+      "scoutArea": "khibiny-kola",
+      "region": "Мурманская область",
+      "name": "Центр северного сафари (СОК «Тирвас»)",
+      "organizerName": "Центр северного сафари",
+      "url": "https://nord-safari.ru/",
+      "organizerKinds": [
+        "tour_operator",
+        "base"
+      ],
+      "kind": "снегоходные/квадро-туры, базы отдыха",
+      "disciplines": [
+        "snowmobile",
+        "sup",
+        "jeep-tour"
+      ],
+      "rawDisciplines": [
+        "снегоходные туры",
+        "квадроциклы",
+        "багги",
+        "сап-тур на Умбозере",
+        "айсфлоатинг"
+      ],
+      "formats": [
+        "tour"
+      ],
+      "seasonality": "круглый год",
+      "keyPerson": null,
+      "role": null,
+      "contacts": {
+        "site": "https://nord-safari.ru/"
+      },
+      "legal": {
+        "registry": null,
+        "inn": null
+      },
+      "reputation": "Крупный оператор в Кировске: снегоходные туры с гидами, базы «Лесная» и «Зашеек», рыболовный лагерь «Умба», сап-тур на Умбозере.",
+      "partners": [
+        "санаторий «Тирвас»"
+      ],
+      "osintScore": 4,
+      "evidence": [
+        "https://nord-safari.ru/",
+        "https://nord-safari.ru/catalog/snegohodnye-tury/new-year-shine/"
+      ]
+    },
+    {
+      "scoutArea": "khibiny-kola",
+      "region": "Мурманская область",
+      "name": "Хибины Трэвел (Khibiny Travel)",
+      "organizerName": "Хибины Трэвел",
+      "url": "https://xn----9sbemlbym2at1a0f3a.xn--p1ai/",
+      "organizerKinds": [
+        "tour_operator",
+        "guide_team"
+      ],
+      "kind": "снегоходные, квадро- и джип-туры",
+      "disciplines": [
+        "snowmobile",
+        "jeep-tour"
+      ],
+      "rawDisciplines": [
+        "снегоходы",
+        "квадроциклы",
+        "джип-туры"
+      ],
+      "formats": [
+        "tour",
+        "expedition"
+      ],
+      "seasonality": "круглый год (снегоходы — зима)",
+      "keyPerson": null,
+      "role": null,
+      "contacts": {
+        "site": "https://xn----9sbemlbym2at1a0f3a.xn--p1ai/"
+      },
+      "legal": {
+        "registry": null,
+        "inn": null
+      },
+      "reputation": "Офис в Кировске, своя гостиница «Куэльпорр»; на сезон 2026 опубликованы даты 2-дневного снегоходного маршрута «Полярное сияние».",
+      "partners": [
+        "гостиница «Куэльпорр»"
+      ],
+      "osintScore": 4,
+      "evidence": [
+        "https://xn----9sbemlbym2at1a0f3a.xn--p1ai/",
+        "https://xn----9sbemlbym2at1a0f3a.xn--p1ai/services/marshrut-2-dnia-poliarnoe-siianie"
+      ]
+    },
+    {
+      "scoutArea": "khibiny-kola",
+      "region": "Мурманская область",
+      "name": "Север для Вас (north4you)",
+      "organizerName": "Север для Вас",
+      "url": "https://north4you.com/",
+      "organizerKinds": [
+        "tour_operator"
+      ],
+      "kind": "туроператор по Кольскому полуострову",
+      "disciplines": [
+        "surf",
+        "snowmobile",
+        "wildlife"
+      ],
+      "rawDisciplines": [
+        "арктический серфинг",
+        "снегоходы",
+        "северное сияние"
+      ],
+      "formats": [
+        "tour"
+      ],
+      "seasonality": "круглый год",
+      "keyPerson": null,
+      "role": null,
+      "contacts": {
+        "site": "https://north4you.com/"
+      },
+      "legal": {
+        "registry": "РТО 025627",
+        "inn": null
+      },
+      "reputation": "Официальный туроператор по Мурманской области (на сайте указан РТО 025627); цены туров актуальны на октябрь 2026.",
+      "partners": [
+        "ArcticSurf"
+      ],
+      "osintScore": 5,
+      "evidence": [
+        "https://north4you.com/tury/arkticheskiy-serfing-tur-v-teriberku",
+        "http://teriberkafest.ru/activ"
+      ]
+    },
+    {
+      "scoutArea": "khibiny-kola",
+      "region": "Мурманская область",
+      "name": "Дыхание Севера",
+      "organizerName": "Дыхание Севера",
+      "url": "https://spiritusnord.ru/",
+      "organizerKinds": [
+        "tour_operator",
+        "guide_team"
+      ],
+      "kind": "туроператор активных туров/походы",
+      "disciplines": [
+        "trekking",
+        "kayaking",
+        "expedition",
+        "jeep-tour"
+      ],
+      "rawDisciplines": [
+        "походы по Хибинам",
+        "каякинг на Умбозере",
+        "автотуры Средний/Рыбачий",
+        "охота на северное сияние"
+      ],
+      "formats": [
+        "tour",
+        "expedition"
+      ],
+      "seasonality": "круглый год",
+      "keyPerson": null,
+      "role": null,
+      "contacts": {
+        "site": "https://spiritusnord.ru/"
+      },
+      "legal": {
+        "registry": "РТО 022977",
+        "inn": null
+      },
+      "reputation": "Более 20 аттестованных инструкторов, свой автопарк и каяки; на 2026 опубликованы поход «Осенние Хибины» (7–13 сентября) и туры на ноябрь.",
+      "partners": [
+        "Российский союз туриндустрии"
+      ],
+      "osintScore": 5,
+      "evidence": [
+        "https://spiritusnord.ru/",
+        "https://spiritusnord.ru/pohod-osennie-hibiny"
+      ]
+    },
+    {
+      "scoutArea": "khibiny-kola",
+      "region": "Мурманская область",
+      "name": "Кайт-центр К1 (сноукайтинг в Кировске)",
+      "organizerName": "Серф-кайт школа K1",
+      "url": "https://k1.surf/",
+      "organizerKinds": [
+        "school"
+      ],
+      "kind": "кайт-школа (сноукайт по IKO)",
+      "disciplines": [
+        "kite"
+      ],
+      "rawDisciplines": [
+        "сноукайтинг",
+        "кайтсерфинг"
+      ],
+      "formats": [
+        "school",
+        "course"
+      ],
+      "seasonality": "зима (Кировск)",
+      "keyPerson": null,
+      "role": null,
+      "contacts": {
+        "site": "https://k1.surf/"
+      },
+      "legal": {
+        "registry": null,
+        "inn": null
+      },
+      "reputation": "Региональный портал указывает обучение сноукайтингу по IKO на Большом и Малом Вудъявре; основной сайт сейчас про станции в Муйне и Крыму, зимний сноукайт упомянут кратко.",
+      "partners": [],
+      "osintScore": 3,
+      "evidence": [
+        "https://murmansk.travel/en/places/980",
+        "https://k1.surf/"
+      ]
+    },
+    {
+      "scoutArea": "karelia",
+      "region": "Республика Карелия",
+      "name": "Карелия-лайнс",
+      "organizerName": "ООО «Карелия-лайнс»",
+      "url": "https://karelia-lines.ru/",
+      "organizerKinds": [
+        "tour_operator"
+      ],
+      "kind": "туроператор/сплавы",
+      "disciplines": [
+        "rafting"
+      ],
+      "rawDisciplines": [
+        "сплав на рафтах по Шуе"
+      ],
+      "formats": [
+        "tour",
+        "weekend"
+      ],
+      "seasonality": "май–сентябрь",
+      "keyPerson": null,
+      "role": null,
+      "contacts": {
+        "site": "https://karelia-lines.ru/"
+      },
+      "legal": {
+        "registry": "РТО 012234",
+        "inn": "1001256769"
+      },
+      "reputation": "Петрозаводский туроператор, сплавы по Шуе летом 2026; реквизиты ООО опубликованы на сайте, компания есть в федеральном реестре.",
+      "partners": [],
+      "osintScore": 5,
+      "evidence": [
+        "https://karelia-lines.ru/rafting-v-karelii.html",
+        "https://russiatourism.ru/old/print-f70dcf2e3c3cb21ceedce120eeb2e80f/"
+      ]
+    },
+    {
+      "scoutArea": "karelia",
+      "region": "Республика Карелия",
+      "name": "Турбаза «Поляна»",
+      "organizerName": "ООО «Турбаза Поляна»",
+      "url": "http://tbp.karelia.ru/",
+      "organizerKinds": [
+        "base",
+        "tour_operator"
+      ],
+      "kind": "турбаза/водные походы",
+      "disciplines": [
+        "rafting",
+        "kayaking"
+      ],
+      "rawDisciplines": [
+        "сплавы на рафтах и катамаранах",
+        "байдарки",
+        "каяки"
+      ],
+      "formats": [
+        "tour",
+        "expedition"
+      ],
+      "seasonality": "май–сентябрь",
+      "keyPerson": null,
+      "role": null,
+      "contacts": {
+        "site": "http://tbp.karelia.ru/"
+      },
+      "legal": {
+        "registry": "РТО 013473",
+        "inn": "1021300039"
+      },
+      "reputation": "Давний организатор сплавов по Шуе, Суне и Онде на 5–7 дней, база в Сойважпороге; в федеральном реестре туроператоров.",
+      "partners": [],
+      "osintScore": 5,
+      "evidence": [
+        "http://tbp.karelia.ru/index.html",
+        "https://russiatourism.ru/old/print-f70dcf2e3c3cb21ceedce120eeb2e80f/"
+      ]
+    },
+    {
+      "scoutArea": "karelia",
+      "region": "Республика Карелия",
+      "name": "Скифы Тур / Husky Moa",
+      "organizerName": "ООО «Скифы тур»",
+      "url": "https://www.skif-tour.ru/",
+      "organizerKinds": [
+        "tour_operator",
+        "base"
+      ],
+      "kind": "туроператор/сплавы, питомник ездовых собак",
+      "disciplines": [
+        "rafting",
+        "multisport"
+      ],
+      "rawDisciplines": [
+        "сплав по Шуе",
+        "ездовые собаки"
+      ],
+      "formats": [
+        "tour",
+        "expedition"
+      ],
+      "seasonality": "круглый год (сплавы — лето, собаки — зима)",
+      "keyPerson": null,
+      "role": null,
+      "contacts": {
+        "site": "https://www.skif-tour.ru/"
+      },
+      "legal": {
+        "registry": "РТО 020913",
+        "inn": "1021505389"
+      },
+      "reputation": "Работает с 2006 года, комплекс Husky Moa у порога Большой Толли с питомником ездовых собак; в федеральном реестре туроператоров.",
+      "partners": [
+        "Husky Moa"
+      ],
+      "osintScore": 4,
+      "evidence": [
+        "https://skif-tour.orgs.biz/",
+        "https://russiatourism.ru/old/print-f70dcf2e3c3cb21ceedce120eeb2e80f/"
+      ]
+    },
+    {
+      "scoutArea": "karelia",
+      "region": "Республика Карелия",
+      "name": "Сивер",
+      "organizerName": "ООО «Сивер»",
+      "url": "https://sivertour.ru/",
+      "organizerKinds": [
+        "tour_operator"
+      ],
+      "kind": "туроператор/сплавы",
+      "disciplines": [
+        "rafting"
+      ],
+      "rawDisciplines": [
+        "сплав по Шуе на рафтах"
+      ],
+      "formats": [
+        "tour",
+        "weekend"
+      ],
+      "seasonality": "май–сентябрь",
+      "keyPerson": null,
+      "role": null,
+      "contacts": {
+        "site": "https://sivertour.ru/"
+      },
+      "legal": {
+        "registry": "РТО 018127",
+        "inn": "1001231845"
+      },
+      "reputation": "Опубликован полный календарь трёхдневных сплавов по Шуе на 2026 год (21 900 ₽); в федеральном реестре туроператоров.",
+      "partners": [],
+      "osintScore": 5,
+      "evidence": [
+        "https://sivertour.ru/splavy-po-rekam-karelii/splav-po-reke-shuja-3-dnja/",
+        "https://russiatourism.ru/old/print-f70dcf2e3c3cb21ceedce120eeb2e80f/"
+      ]
+    },
+    {
+      "scoutArea": "karelia",
+      "region": "Республика Карелия",
+      "name": "InKarjala",
+      "organizerName": "ООО «ИнКарьяла — отдых в Карелии»",
+      "url": "https://inkarjala.ru/",
+      "organizerKinds": [
+        "tour_operator"
+      ],
+      "kind": "туроператор/снегоходные экспедиции, Белое море",
+      "disciplines": [
+        "snowmobile",
+        "expedition"
+      ],
+      "rawDisciplines": [
+        "экспедиция на снегоходах к Белому морю",
+        "подледная рыбалка"
+      ],
+      "formats": [
+        "expedition",
+        "tour"
+      ],
+      "seasonality": "круглый год (снегоходы — зима)",
+      "keyPerson": null,
+      "role": null,
+      "contacts": {
+        "site": "https://inkarjala.ru/"
+      },
+      "legal": {
+        "registry": "РТО 022817",
+        "inn": "1018005629"
+      },
+      "reputation": "5-дневная снегоходная экспедиция на 600 км «Путь к Белому морю» (рейтинг 5.0 по 3 отзывам); в федеральном реестре туроператоров.",
+      "partners": [],
+      "osintScore": 5,
+      "evidence": [
+        "https://inkarjala.ru/tours/ekspeditsiya-na-snegohodah-put-k-belomu-moryu/",
+        "https://inkarjala.ru/tour-category/tury-po-belomu-moryu/",
+        "https://russiatourism.ru/old/print-f70dcf2e3c3cb21ceedce120eeb2e80f/"
+      ]
+    },
+    {
+      "scoutArea": "karelia",
+      "region": "Республика Карелия",
+      "name": "ВелТ Карельские путешествия",
+      "organizerName": "ООО «ВелТ-Карельские путешествия»",
+      "url": "https://kalevala-welt.ru/",
+      "organizerKinds": [
+        "tour_operator",
+        "base"
+      ],
+      "kind": "снегоходные туры, турбаза в Калевале",
+      "disciplines": [
+        "snowmobile"
+      ],
+      "rawDisciplines": [
+        "снегоходный тур «Северный прорыв»",
+        "снегоходы",
+        "рыбалка"
+      ],
+      "formats": [
+        "tour",
+        "expedition"
+      ],
+      "seasonality": "декабрь–март; летний отдых",
+      "keyPerson": null,
+      "role": null,
+      "contacts": {
+        "site": "https://kalevala-welt.ru/"
+      },
+      "legal": {
+        "registry": null,
+        "inn": null
+      },
+      "reputation": "Снегоходный тур «Северный прорыв» проводится с 2004 года, даты опубликованы на сезоны 2026 и 2027; тур перепродаёт travel-karelia.ru.",
+      "partners": [
+        "travel-karelia.ru"
+      ],
+      "osintScore": 4,
+      "evidence": [
+        "https://kalevala-welt.ru/",
+        "https://kalevala-welt.ru/project/severny-proryv/",
+        "https://travel-karelia.ru/tours/zima-v-karelii/severnyj-proryv/"
+      ]
+    },
+    {
+      "scoutArea": "karelia",
+      "region": "Республика Карелия",
+      "name": "КарелияОК",
+      "organizerName": "ООО «Озерный край»",
+      "url": "https://kareliaok.ru/",
+      "organizerKinds": [
+        "tour_operator"
+      ],
+      "kind": "туроператор/снегоходные туры",
+      "disciplines": [
+        "snowmobile",
+        "expedition"
+      ],
+      "rawDisciplines": [
+        "туры на снегоходах",
+        "Белое море",
+        "Паанаярви"
+      ],
+      "formats": [
+        "tour",
+        "expedition"
+      ],
+      "seasonality": "зима (снегоходы), круглый год",
+      "keyPerson": null,
+      "role": null,
+      "contacts": {
+        "site": "https://kareliaok.ru/"
+      },
+      "legal": {
+        "registry": "РТО 014732",
+        "inn": "1001284283"
+      },
+      "reputation": "Снегоходные маршруты по Карелии и Кольскому, даты на февраль 2027 уже открыты; в федеральном реестре туроператоров (домен kareliaOK.ru).",
+      "partners": [],
+      "osintScore": 5,
+      "evidence": [
+        "https://kareliaok.ru/tury-na-snegohodah",
+        "https://russiatourism.ru/old/print-f70dcf2e3c3cb21ceedce120eeb2e80f/"
+      ]
+    },
+    {
+      "scoutArea": "karelia",
+      "region": "Республика Карелия",
+      "name": "Nord Kayak",
+      "organizerName": "Nord Kayak",
+      "url": "https://nordkayak.ru/",
+      "organizerKinds": [
+        "school",
+        "guide_team"
+      ],
+      "kind": "морской каякинг, походы и обучение (Сортавала)",
+      "disciplines": [
+        "kayaking",
+        "expedition"
+      ],
+      "rawDisciplines": [
+        "морской каякинг",
+        "Ладожские шхеры",
+        "Белое море",
+        "эскимосский переворот"
+      ],
+      "formats": [
+        "tour",
+        "expedition",
+        "school",
+        "course",
+        "camp"
+      ],
+      "seasonality": "май–сентябрь + зимние сборы в бассейне",
+      "keyPerson": null,
+      "role": null,
+      "contacts": {
+        "site": "https://nordkayak.ru/"
+      },
+      "legal": {
+        "registry": null,
+        "inn": null
+      },
+      "reputation": "Поход по Ладоге и арктические экспедиции на 2026 (май–сентябрь), каяк-школа 11–12 июля 2026, ежедневные прогулки из Сортавалы.",
+      "partners": [],
+      "osintScore": 4,
+      "evidence": [
+        "https://nordkayak.ru/",
+        "https://nordkayak.ru/ladoga7"
+      ]
+    },
+    {
+      "scoutArea": "karelia",
+      "region": "Республика Карелия",
+      "name": "Полярный Круг (Белое море)",
+      "organizerName": "ЗАО «Компания Полярный Круг»",
+      "url": "https://www.pkrug.ru/",
+      "organizerKinds": [
+        "base",
+        "tour_operator"
+      ],
+      "kind": "турцентр/лагерь на Белом море",
+      "disciplines": [
+        "sailing",
+        "wildlife",
+        "multisport"
+      ],
+      "rawDisciplines": [
+        "парусные выходы",
+        "катера",
+        "морская биология",
+        "дайвинг"
+      ],
+      "formats": [
+        "camp",
+        "tour"
+      ],
+      "seasonality": "круглый год",
+      "keyPerson": null,
+      "role": null,
+      "contacts": {
+        "site": "https://www.pkrug.ru/"
+      },
+      "legal": {
+        "registry": "РТО 001433",
+        "inn": "1018003406"
+      },
+      "reputation": "Турцентр и детский лагерь в Нильмогубе; новости за сентябрь 2026, программы «Пять островов» на июнь и сентябрь 2026; в федеральном реестре туроператоров.",
+      "partners": [],
+      "osintScore": 5,
+      "evidence": [
+        "https://www.pkrug.ru/",
+        "https://www.pkrug.ru/events/novosti/skazki-belogo-morya-pyat-ostrovov-novaya-programma-dlya-vzroslykh/",
+        "https://russiatourism.ru/old/print-f70dcf2e3c3cb21ceedce120eeb2e80f/"
+      ]
+    },
+    {
+      "scoutArea": "karelia",
+      "region": "Республика Карелия",
+      "name": "Ауринко",
+      "organizerName": "ООО «Ауринко»",
+      "url": "https://aurinkokarelia.ru/",
+      "organizerKinds": [
+        "tour_operator"
+      ],
+      "kind": "туроператор/сплавы и туры по Карелии",
+      "disciplines": [
+        "rafting"
+      ],
+      "rawDisciplines": [
+        "сплав на рафтах по Шуе"
+      ],
+      "formats": [
+        "tour",
+        "weekend"
+      ],
+      "seasonality": "май–сентябрь (сплавы)",
+      "keyPerson": null,
+      "role": null,
+      "contacts": {
+        "site": "https://aurinkokarelia.ru/"
+      },
+      "legal": {
+        "registry": "РТО 025934",
+        "inn": null
+      },
+      "reputation": "Петрозаводский туроператор (РТО указан на сайте) с 2-дневными сплавами по Шуе на 2026; основной профиль — экскурсионные туры, отзывы датированы августом 2026.",
+      "partners": [],
+      "osintScore": 5,
+      "evidence": [
+        "https://aurinkokarelia.ru/",
+        "https://aurinkokarelia.ru/tury-v-kareliy/aktivnye/splav-na-raftah"
+      ]
+    },
+    {
+      "scoutArea": "dagestan",
+      "region": "Республика Дагестан",
+      "name": "Леки Тревел (Leki Travel)",
+      "organizerName": "ИП Агамирзоев Анзор Рафикович",
+      "url": "https://lekitravel.ru/",
+      "organizerKinds": [
+        "guide_team",
+        "tour_operator"
+      ],
+      "kind": "треккинг и восхождения по Южному Дагестану",
+      "disciplines": [
+        "trekking",
+        "mountaineering",
+        "expedition"
+      ],
+      "rawDisciplines": [
+        "треккинг",
+        "восхождение на Базардюзю",
+        "восхождение на Шалбуздаг",
+        "Ерыдаг"
+      ],
+      "formats": [
+        "tour",
+        "expedition"
+      ],
+      "seasonality": "май–октябрь (восхождения), круглый год (туры)",
+      "keyPerson": "Анзор Агамирзоев",
+      "role": "основатель и автор маршрутов",
+      "contacts": {
+        "site": "https://lekitravel.ru/"
+      },
+      "legal": {
+        "registry": null,
+        "inn": "052303654216"
+      },
+      "reputation": "Местная команда из Магарамкента: туры по Южному Дагестану на 2026 (Шалбуздаг — 3 дня, Ерыдаг и Базардюзю — 7 дней, 65 000 ₽); на категорийные восхождения привлекают спасателей МЧС.",
+      "partners": [
+        "МЧС России (обеспечение категорийных восхождений)"
+      ],
+      "osintScore": 5,
+      "evidence": [
+        "https://lekitravel.ru/",
+        "https://lekitravel.ru/uzhnee_nekuda_2026",
+        "https://lekitravel.ru/shalbuzdag2026"
+      ]
+    },
+    {
+      "scoutArea": "dagestan",
+      "region": "Республика Дагестан",
+      "name": "DAGEXTREME (Dagextreme Team)",
+      "organizerName": "Клуб DAGEXTREME",
+      "url": "https://dagextremeteam.ru/",
+      "organizerKinds": [
+        "club",
+        "guide_team"
+      ],
+      "kind": "клуб активного отдыха: джип-туры, рафтинг, параплан",
+      "disciplines": [
+        "jeep-tour",
+        "rafting",
+        "paragliding",
+        "trekking"
+      ],
+      "rawDisciplines": [
+        "джип-туры",
+        "рафтинг по Аварскому Койсу",
+        "полёты на параплане",
+        "треккинг"
+      ],
+      "formats": [
+        "tour",
+        "weekend"
+      ],
+      "seasonality": "круглый год (рафтинг — весна–осень)",
+      "keyPerson": "Магомед Муртузалиев",
+      "role": "основатель и турлидер клуба, инструктор по рафтингу",
+      "contacts": {
+        "site": "https://dagextremeteam.ru/"
+      },
+      "legal": {
+        "registry": null,
+        "inn": null
+      },
+      "reputation": "Туры по Дагестану на 3–7 дней (даты 2025–26), однодневный рафтинг и тандемы на параплане с горы Пушкин-Тау; на сайте много отзывов о турах.",
+      "partners": [],
+      "osintScore": 4,
+      "evidence": [
+        "https://dagextremeteam.ru/",
+        "https://dagextremeteam.ru/raftdagestan",
+        "https://dagextremeteam.ru/paraplanedag"
+      ]
+    },
+    {
+      "scoutArea": "dagestan",
+      "region": "Республика Дагестан",
+      "name": "Гашимов Тур",
+      "organizerName": "Гашимов Тур",
+      "url": "https://gashimov-tur.ru/",
+      "organizerKinds": [
+        "tour_operator",
+        "guide_team"
+      ],
+      "kind": "авторские и экстрим-туры по Дагестану",
+      "disciplines": [
+        "rafting",
+        "trekking",
+        "multisport"
+      ],
+      "rawDisciplines": [
+        "рафтинг по Аварскому Койсу",
+        "зиплайн",
+        "квадроциклы",
+        "восхождение на Шалбуздаг",
+        "SUP"
+      ],
+      "formats": [
+        "tour",
+        "weekend"
+      ],
+      "seasonality": "круглый год",
+      "keyPerson": "Раджаб Гашимов",
+      "role": "основатель «Гашимов Тур»",
+      "contacts": {
+        "site": "https://gashimov-tur.ru/"
+      },
+      "legal": {
+        "registry": null,
+        "inn": null
+      },
+      "reputation": "Базируется в Дербенте, на сайте отзывы за июль–сентябрь 2025 (рейтинг 4.9) и экстрим-туры с рафтингом, а также тур «Южный Дагестан» с восхождением на Шалбуздаг.",
+      "partners": [],
+      "osintScore": 4,
+      "evidence": [
+        "https://gashimov-tur.ru/",
+        "https://gashimov-tur.ru/turi/ekstrim-tur-s-raftingom-po-avarskomu-kojsu/",
+        "https://gashimov-tur.ru/turi/tur-yuzhnyj-dagestan/"
+      ]
+    },
+    {
+      "scoutArea": "dagestan",
+      "region": "Республика Дагестан",
+      "name": "Dagestan Polet — полёты на параплане",
+      "organizerName": null,
+      "url": "https://dagestanpolet.com/",
+      "organizerKinds": [
+        "instructor_service"
+      ],
+      "kind": "тандемные полёты на параплане (Избербаш)",
+      "disciplines": [
+        "paragliding"
+      ],
+      "rawDisciplines": [
+        "параплан",
+        "тандем-полёт с инструктором"
+      ],
+      "formats": [
+        "tour"
+      ],
+      "seasonality": "по погоде, преимущественно весна–осень",
+      "keyPerson": null,
+      "role": null,
+      "contacts": {
+        "site": "https://dagestanpolet.com/"
+      },
+      "legal": {
+        "registry": null,
+        "inn": null
+      },
+      "reputation": "Тандемы от 7 000 ₽ над склонами у Избербаша и высотные полёты до 2500 м у Верхних Мулебок; заявлено более 1000 часов налёта у пилотов.",
+      "partners": [],
+      "osintScore": 3,
+      "evidence": [
+        "https://dagestanpolet.com/",
+        "https://dagextremeteam.ru/paraplanedag"
+      ]
+    },
+    {
+      "scoutArea": "dagestan",
+      "region": "Республика Дагестан",
+      "name": "Фокус-Тур",
+      "organizerName": "ООО «Фокус-Тур»",
+      "url": "https://focus-tour.ru/",
+      "organizerKinds": [
+        "tour_operator",
+        "base"
+      ],
+      "kind": "туроператор, рафтинговая база в Голотле",
+      "disciplines": [
+        "rafting",
+        "jeep-tour"
+      ],
+      "rawDisciplines": [
+        "рафтинг по Аварскому Койсу",
+        "джип-туры",
+        "экскурсии"
+      ],
+      "formats": [
+        "tour",
+        "weekend"
+      ],
+      "seasonality": "круглый год (рафтинг — сезонно)",
+      "keyPerson": null,
+      "role": null,
+      "contacts": {
+        "site": "https://focus-tour.ru/"
+      },
+      "legal": {
+        "registry": "РТО 025977",
+        "inn": "0500008294"
+      },
+      "reputation": "Центры продаж в Махачкале и Каспийске, рафтинг на порогах 2–4 категории с базы в селе Голотль; на сайте указаны ОГРН, ИНН и реестровый номер (2026).",
+      "partners": [],
+      "osintScore": 5,
+      "evidence": [
+        "https://focus-tour.ru/",
+        "https://focus-tour.ru/rafting"
+      ]
+    },
+    {
+      "scoutArea": "dagestan",
+      "region": "Республика Дагестан",
+      "name": "ДагТурСервис",
+      "organizerName": "ООО «ДагТурСервис»",
+      "url": "https://dagturservice.ru/",
+      "organizerKinds": [
+        "tour_operator"
+      ],
+      "kind": "туроператор/джип-туры по Дагестану",
+      "disciplines": [
+        "jeep-tour"
+      ],
+      "rawDisciplines": [
+        "джип-тур",
+        "групповые и семейные туры"
+      ],
+      "formats": [
+        "tour"
+      ],
+      "seasonality": "круглый год",
+      "keyPerson": "Ахмед Шейхмагомедов",
+      "role": "основатель, генеральный директор",
+      "contacts": {
+        "site": "https://dagturservice.ru/"
+      },
+      "legal": {
+        "registry": null,
+        "inn": null
+      },
+      "reputation": "Местный оператор из Махачкалы со своим автопарком и гидами, 5-дневный джип-тур через Хунзах, Матлас и Гамсутль; основатель больше 10 лет водит туры.",
+      "partners": [
+        "horosho-tam.ru (листинг)"
+      ],
+      "osintScore": 4,
+      "evidence": [
+        "https://dagturservice.ru/",
+        "https://horosho-tam.ru/rossiya/mahachkala/tur/dzhip-trip-po-dagestanu-luchshie-lokatsii"
+      ]
+    },
+    {
+      "scoutArea": "dagestan",
+      "region": "Республика Дагестан",
+      "name": "ДагДаг — «Активный Дагестан»",
+      "organizerName": "ДагДаг",
+      "url": "https://dagdag.ru/",
+      "organizerKinds": [
+        "tour_operator",
+        "guide_team"
+      ],
+      "kind": "туры с местным гидом: треккинг, конные прогулки, рафтинг",
+      "disciplines": [
+        "trekking",
+        "horse-riding",
+        "rafting",
+        "jeep-tour"
+      ],
+      "rawDisciplines": [
+        "треккинг",
+        "конный поход",
+        "рафтинг",
+        "джип-тур"
+      ],
+      "formats": [
+        "tour"
+      ],
+      "seasonality": "весна–осень",
+      "keyPerson": null,
+      "role": null,
+      "contacts": {
+        "site": "https://dagdag.ru/"
+      },
+      "legal": {
+        "registry": null,
+        "inn": null
+      },
+      "reputation": "Мини-группы до 8 человек с местным гидом; тур «Активный Дагестан» (49 900 ₽) с ночёвкой в горах, конной прогулкой и рафтингом.",
+      "partners": [],
+      "osintScore": 3,
+      "evidence": [
+        "https://dagdag.ru/dagactive",
+        "https://dagdag.ru/"
+      ]
+    },
+    {
+      "scoutArea": "dagestan",
+      "region": "Республика Дагестан",
+      "name": "Угребись — сплав-тур по рекам Дагестана",
+      "organizerName": "Комплекс активного отдыха «Угребись»",
+      "url": "https://wildwater.ru/",
+      "organizerKinds": [
+        "school",
+        "guide_team"
+      ],
+      "kind": "обучающие SUP/каяк-сплавы (выездной тур)",
+      "disciplines": [
+        "sup",
+        "kayaking"
+      ],
+      "rawDisciplines": [
+        "SUP",
+        "каяк",
+        "Сулак",
+        "Андийское и Аварское Койсу"
+      ],
+      "formats": [
+        "tour",
+        "training"
+      ],
+      "seasonality": "30 апреля – 6 мая и 4–10 сентября 2026",
+      "keyPerson": "Алексей Васильев",
+      "role": "инструктор, мастер спорта по гребному слалому",
+      "contacts": {
+        "site": "https://wildwater.ru/"
+      },
+      "legal": {
+        "registry": null,
+        "inn": null
+      },
+      "reputation": "7-дневный обучающий сплав на SUP и каяках по Сулаку и Койсу (67 000 ₽ с питанием); основная база команды находится в Лосево (Ленобласть), Дагестан — выездное направление.",
+      "partners": [],
+      "osintScore": 3,
+      "evidence": [
+        "https://wildwater.ru/dagestan",
+        "https://wildwater.ru/"
+      ]
+    },
+    {
+      "scoutArea": "dagestan",
+      "region": "Республика Дагестан",
+      "name": "Зов гор — треккинг в Дагестане",
+      "organizerName": "Зов гор",
+      "url": "https://zovgor.com/",
+      "organizerKinds": [
+        "guide_team",
+        "club"
+      ],
+      "kind": "походный клуб (пешие походы)",
+      "disciplines": [
+        "trekking"
+      ],
+      "rawDisciplines": [
+        "пеший поход",
+        "треккинг Сулакский каньон — Гуниб — Гамсутль"
+      ],
+      "formats": [
+        "tour",
+        "expedition"
+      ],
+      "seasonality": "сентябрь–октябрь",
+      "keyPerson": null,
+      "role": null,
+      "contacts": {
+        "site": "https://zovgor.com/"
+      },
+      "legal": {
+        "registry": null,
+        "inn": null
+      },
+      "reputation": "Автономный 7-дневный поход на 70 км с регистрацией в МЧС, ближайшая дата 17–23 октября 2026 (20 000 ₽); клуб, судя по всему, внешний (не дагестанский).",
+      "partners": [],
+      "osintScore": 3,
+      "evidence": [
+        "https://zovgor.com/trekking-dagestan.html",
+        "https://zovgor.com/"
+      ]
+    },
+    {
+      "scoutArea": "dagestan",
+      "region": "Республика Дагестан",
+      "name": "Шаг — восхождение на Базардюзю",
+      "organizerName": "Шаг",
+      "url": "https://shagtours.ru/",
+      "organizerKinds": [
+        "guide_team",
+        "club"
+      ],
+      "kind": "походы и восхождения",
+      "disciplines": [
+        "mountaineering",
+        "trekking"
+      ],
+      "rawDisciplines": [
+        "восхождение на Базардюзю",
+        "треккинг",
+        "джип-туры"
+      ],
+      "formats": [
+        "expedition",
+        "tour"
+      ],
+      "seasonality": "лето–сентябрь",
+      "keyPerson": null,
+      "role": null,
+      "contacts": {
+        "site": "https://shagtours.ru/"
+      },
+      "legal": {
+        "registry": null,
+        "inn": null
+      },
+      "reputation": "Восхождение на Базардюзю 15–20 сентября 2026 с акклиматизацией у Ерыдага; в отзывах на сайте упоминается восхождение на Базардюзю, но работают по всей России.",
+      "partners": [],
+      "osintScore": 3,
+      "evidence": [
+        "https://shagtours.ru/adventures/voshozhdenie-na-bazardyuzyu",
+        "https://shagtours.ru/"
+      ]
+    }
+  ]
+}

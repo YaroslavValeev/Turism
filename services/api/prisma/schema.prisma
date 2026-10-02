@@ -1653,6 +1653,10 @@ model SpotAssessment {
   id                      String                @id @default(cuid())
   unitId                  String
   testedAt                DateTime
+  /// Закреплённая версия методики (D3). NULL только у оценок, созданных до D3; новые строки без неё отклоняет триггер.
+  methodologyId           String?
+  /// definitionSha256 методики на момент создания оценки: снимок не считается, если черновик методики изменился.
+  methodologySha256       String?
   methodologyVersion      String
   protocolVersion         String
   criteriaVersion         String
@@ -1666,6 +1670,7 @@ model SpotAssessment {
   createdAt               DateTime              @default(now())
   updatedAt               DateTime              @updatedAt
   unit                    SpotEquipment         @relation(fields: [unitId], references: [id], onDelete: Restrict)
+  methodology             SpotMethodology?      @relation(fields: [methodologyId], references: [id], onDelete: Restrict)
   expert                  User?                 @relation("SpotAuditExpert", fields: [expertUserId], references: [id], onDelete: Restrict)
   independentEditor       User?                 @relation("SpotAuditEditor", fields: [independentEditorUserId], references: [id], onDelete: Restrict)
   categoryScores          SpotCriterionResult[]
@@ -1676,6 +1681,7 @@ model SpotAssessment {
 
   @@index([unitId])
   @@index([status])
+  @@index([methodologyId])
   @@map("spot_audits")
 }
 
@@ -1749,6 +1755,9 @@ model SpotRatingSnapshot {
   id                 String         @id @default(cuid())
   unitId             String
   auditId            String
+  /// Равны methodologyId/methodologySha256 оценки (триггер); NULL только у снимков до D3.
+  methodologyId      String?
+  methodologySha256  String?
   methodologyVersion String
   protocolVersion    String
   criteriaVersion    String
@@ -1767,10 +1776,12 @@ model SpotRatingSnapshot {
   revokeReason       String?
   unit               SpotEquipment  @relation(fields: [unitId], references: [id], onDelete: Restrict)
   audit              SpotAssessment @relation(fields: [auditId], references: [id], onDelete: Restrict)
+  methodology        SpotMethodology? @relation(fields: [methodologyId], references: [id], onDelete: Restrict)
   appeals            SpotAppeal[]
 
   @@index([unitId, publishedAt])
   @@index([auditId])
+  @@index([methodologyId])
   @@map("spot_rating_snapshots")
 }
 
@@ -1808,6 +1819,8 @@ model SpotMethodology {
   retiredAt          DateTime?
   notes              String?   @db.Text
   createdAt          DateTime  @default(now())
+  assessments        SpotAssessment[]
+  snapshots          SpotRatingSnapshot[]
 
   @@unique([discipline, methodologyVersion, protocolVersion, criteriaVersion, ratingVersion])
   @@index([discipline, status])

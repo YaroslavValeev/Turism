@@ -176,6 +176,7 @@ export function parseUnitInput(body: unknown, mode: "create" | "patch"): Parsed<
 
 export interface AuditInput {
   testedAt?: Date;
+  methodologyId?: string;
   methodologyVersion?: string;
   protocolVersion?: string;
   criteriaVersion?: string;
@@ -194,11 +195,20 @@ export function parseAuditInput(body: unknown, mode: "create" | "patch"): Parsed
   if (!testedAt.ok) return testedAt;
   if (testedAt.data) data.testedAt = testedAt.data;
 
-  for (const field of ["methodologyVersion", "protocolVersion", "criteriaVersion"] as const) {
-    if (mode === "create" || body[field] !== undefined) {
-      const v = requiredText(body[field], field, 100);
-      if (!v.ok) return v;
-      data[field] = v.data;
+  const pinFields = ["methodologyId", "methodologyVersion", "protocolVersion", "criteriaVersion"] as const;
+  if (mode === "patch") {
+    if (pinFields.some((field) => body[field] !== undefined)) {
+      return fail("methodology is pinned to the assessment; create a new assessment to change it");
+    }
+  } else {
+    // Оценка закрепляется за методикой: по methodologyId либо по полному набору версий.
+    const versionsRequired = body.methodologyId === undefined;
+    for (const field of pinFields) {
+      if (body[field] !== undefined || (versionsRequired && field !== "methodologyId")) {
+        const v = requiredText(body[field], field, 100);
+        if (!v.ok) return v;
+        data[field] = v.data;
+      }
     }
   }
 

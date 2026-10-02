@@ -53,7 +53,6 @@ export default function SpotAuditPage() {
   const [evidenceCapturedAt, setEvidenceCapturedAt] = useState("");
   const [evidenceGenerated, setEvidenceGenerated] = useState(false);
   const [remediation, setRemediation] = useState({ evidenceId: "", rationale: "", verified: false });
-  const [snapshotForm, setSnapshotForm] = useState({ ratingVersion: "wakesurf-v1.1", approved: false });
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [busy, setBusy] = useState(false);
@@ -480,31 +479,23 @@ export default function SpotAuditPage() {
       ) : null}
 
       <AdminSectionCard title="Снимки рейтинга">
-        {isSigned ? (
+        {isSigned && audit.methodology ? (
           <div className="mw-admin-inline-form" style={{ marginBottom: 12 }}>
-            <label className="mw-admin-stack-6">
-              <span className="mw-admin-caption">Версия рейтинга</span>
-              <input className="mw-admin-input" value={snapshotForm.ratingVersion} onChange={(e) => setSnapshotForm({ ...snapshotForm, ratingVersion: e.target.value })} />
-            </label>
-            <label className="mw-admin-inline-form">
-              <input type="checkbox" checked={snapshotForm.approved} onChange={(e) => setSnapshotForm({ ...snapshotForm, approved: e.target.checked })} />
-              <span className="mw-admin-caption">Методика утверждена для публикации</span>
-            </label>
+            <span className="mw-admin-caption">
+              Методика {audit.methodology.id}, версия рейтинга {audit.methodology.ratingVersion}:{" "}
+              {audit.methodology.status === "approved" ? "утверждена" : "не утверждена — снимок будет без балла"}
+            </span>
             <button
               type="button"
               className="mw-admin-btn"
-              disabled={busy || !snapshotForm.ratingVersion.trim()}
-              onClick={() => void run(
-                () => post("snapshots", {
-                  ratingVersion: snapshotForm.ratingVersion.trim(),
-                  methodologyApprovedForPublication: snapshotForm.approved,
-                }),
-                "Снимок рассчитан.",
-              )}
+              disabled={busy}
+              onClick={() => void run(() => post("snapshots"), "Снимок рассчитан.")}
             >
               Рассчитать снимок
             </button>
           </div>
+        ) : isSigned ? (
+          <p className="mw-admin-caption">Аудит создан до закрепления методики — для снимка нужен новый аудит.</p>
         ) : (
           <p className="mw-admin-caption">Снимок рассчитывается только из подписанного аудита.</p>
         )}

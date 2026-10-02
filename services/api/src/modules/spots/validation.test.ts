@@ -52,6 +52,26 @@ describe("parseAuditInput", () => {
     );
     expect(ok.ok).toBe(true);
     expect(parseAuditInput({ testedAt: "not a date", methodologyVersion: "v", protocolVersion: "p", criteriaVersion: "c" }, "create").ok).toBe(false);
+    expect(parseAuditInput({ testedAt: "2026-06-01T10:00:00Z", methodologyVersion: "v1.1" }, "create")).toEqual({
+      ok: false,
+      error: "protocolVersion is required",
+    });
+  });
+
+  it("accepts methodologyId instead of the versions on create", () => {
+    expect(parseAuditInput({ testedAt: "2026-06-01T10:00:00Z", methodologyId: "spotmeth_wakesurf_v1_1" }, "create")).toEqual({
+      ok: true,
+      data: { testedAt: new Date("2026-06-01T10:00:00Z"), methodologyId: "spotmeth_wakesurf_v1_1" },
+    });
+    expect(parseAuditInput({ testedAt: "2026-06-01T10:00:00Z", methodologyId: " " }, "create").ok).toBe(false);
+  });
+
+  it("does not let a patch change the pinned methodology", () => {
+    for (const field of ["methodologyId", "methodologyVersion", "protocolVersion", "criteriaVersion"]) {
+      const parsed = parseAuditInput({ [field]: "x", notes: "n" }, "patch");
+      expect(parsed).toMatchObject({ ok: false, error: expect.stringMatching(/pinned/) });
+    }
+    expect(parseAuditInput({ notes: "n" }, "patch")).toEqual({ ok: true, data: { notes: "n" } });
   });
 });
 

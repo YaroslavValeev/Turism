@@ -106,7 +106,10 @@ draft audit → оценки + гейты + evidence → подпись эксп
 
 1. **D1** — переименование моделей через `@@map` без изменения БД (пустой `prisma migrate diff`); поля связей не меняются. Выполняется в PR #142.
 2. **D2** — реестр `SpotMethodology` + скрипт `ensure-spot-methodology.ts`; данные — `services/api/prisma/data/spot-methodology/wakesurf-v1.1.json`. Создаётся со статусом `draft`, автоматически никогда не утверждается.
-3. **D3** — `methodologyId` закрепляется на оценке (`SpotAssessment`) и снимке; признак утверждения читается из методологии, а не из тела запроса.
+3. **D3** — `methodologyId` закрепляется на оценке (`SpotAssessment`) и снимке; признак утверждения читается из методологии, а не из тела запроса. **Сделано:** миграция `20261004120000_spot_assessment_methodology_pin`, `spots/methodologyPin.ts`.
+   - Колонки `methodologyId` + `methodologySha256` (хеш определения на момент создания) в `spot_audits` и `spot_rating_snapshots`; FK `RESTRICT`. Колонки nullable только ради строк до D3: триггеры отклоняют новые оценки/снимки без закрепления, закрепление нельзя изменить, выведенную (`retired`) методику нельзя взять для новой оценки.
+   - Бэкфилл: старая оценка закрепляется, только если ровно одна строка реестра совпадает по дисциплине и трём версиям; иначе остаётся `NULL` и снимок по ней не считается (нужен новый аудит). Старые снимки не трогаются.
+   - API: `POST /spots/units/:unitId/audits` принимает `methodologyId` или три версии и копирует версии и хеш из реестра; `PATCH` не меняет методику. `POST .../snapshots`: версия рейтинга — из методики, «утверждена» = `status=approved`; `methodologyApprovedForPublication` из тела игнорируется. Снимок не считается, если черновик методики изменился после создания оценки или определение не совпадает с движком.
 4. **D4** — `SpotService` + бэкфилл `serviceId` / `configKey` у `SpotEquipment`.
 5. **D5** — `SpotExpert` + `expertId` / `kind` на оценке.
 6. **D6** — `ratingStatus` в `SpotRatingSnapshot` (правило 7.2) + CHECK-ограничения в БД.

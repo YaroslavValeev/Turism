@@ -9,6 +9,8 @@ export type ScoutImportCounts = Record<ScoutImportKind, number>;
 
 export type ScoutImportOptions = {
   batchId: string;
+  /** Selects the notes layout; defaults to v1. */
+  schemaVersion?: number;
   apply: boolean;
   submittedBy?: string;
   onRow?: (row: ScoutValidatedRow, kind: ScoutImportKind) => void;
@@ -55,7 +57,7 @@ export async function importScoutBatch(rows: ScoutValidatedRow[], options: Scout
         url: row.item.url,
         displayName: row.item.name,
         organizerName: clean(row.item.organizerName),
-        notes: buildNotes(row.item, header),
+        notes: buildNotes(row.item, header, options.schemaVersion),
         submittedVia: "admin",
         submittedBy,
       });

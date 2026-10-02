@@ -1,4 +1,4 @@
-import type { ScoutCandidate } from "./candidate";
+import { SCOUT_SCHEMA_VERSION, SCOUT_SCHEMA_VERSION_V2, type ScoutCandidate } from "./candidate";
 
 /** Matches SourceProposal.notes storage limit in sources/sourceProposal.ts. */
 export const NOTES_MAX_LENGTH = 2_000;
@@ -7,9 +7,12 @@ export function batchNotesHeader(batchId: string): string {
   return `OSINT discovery ${batchId}`;
 }
 
-export function composeNotes(item: ScoutCandidate, batchHeader: string): string {
+/** v1 output must stay byte-identical: Wave 1 proposals are already reviewed against it. */
+export function composeNotes(item: ScoutCandidate, batchHeader: string, schemaVersion: number = SCOUT_SCHEMA_VERSION): string {
+  const isV2 = schemaVersion === SCOUT_SCHEMA_VERSION_V2;
   const parts = [
     batchHeader,
+    isV2 ? `зона=${item.scoutArea}` : null,
     `регион=${item.region}`,
     `тип=${item.kind}`,
     `дисциплины=${item.disciplines.join(", ")}`,
@@ -25,6 +28,6 @@ export function composeNotes(item: ScoutCandidate, batchHeader: string): string 
   return parts.join("; ");
 }
 
-export function buildNotes(item: ScoutCandidate, batchHeader: string): string {
-  return composeNotes(item, batchHeader).slice(0, NOTES_MAX_LENGTH);
+export function buildNotes(item: ScoutCandidate, batchHeader: string, schemaVersion: number = SCOUT_SCHEMA_VERSION): string {
+  return composeNotes(item, batchHeader, schemaVersion).slice(0, NOTES_MAX_LENGTH);
 }

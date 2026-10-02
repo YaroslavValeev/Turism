@@ -143,6 +143,38 @@ describe("importScoutBatch", () => {
     expect(mocks.prisma.sourceProposal.create).toHaveBeenCalledWith({ data: expect.objectContaining({ submittedBy: "operator-7" }) });
   });
 
+  it("writes v2 notes with the zone line when schemaVersion 2 is passed", async () => {
+    const result = validateScoutBatch({
+      batchId: "wave2-2026-10-05",
+      schemaVersion: 2,
+      wave: 2,
+      discoveredAt: "2026-10-05",
+      candidates: [
+        {
+          scoutArea: "karelia",
+          region: "Республика Карелия",
+          name: "Karelia Kayak",
+          url: "https://karelia-kayak.ru/",
+          organizerKinds: ["club"],
+          kind: "клуб",
+          disciplines: ["kayaking"],
+          osintScore: 3,
+          evidence: ["https://karelia-kayak.ru/about"],
+        },
+      ],
+    });
+    expect(result.errors).toEqual([]);
+
+    await importScoutBatch(result.rows, { batchId: "wave2-2026-10-05", schemaVersion: 2, apply: true });
+
+    expect(mocks.prisma.sourceProposal.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        submittedBy: "osint-import:wave2-2026-10-05",
+        notes: expect.stringMatching(/^OSINT discovery wave2-2026-10-05; зона=karelia; регион=Республика Карелия; .*дисциплины=kayaking;/),
+      }),
+    });
+  });
+
   it("dry-run touches no database at all", async () => {
     const result = await importScoutBatch(rowsFor(["https://alpha.ru/"]), { batchId: "2026-10-01", apply: false });
 

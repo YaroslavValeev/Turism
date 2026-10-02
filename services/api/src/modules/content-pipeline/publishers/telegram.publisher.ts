@@ -1,4 +1,4 @@
-import type { Env } from "@mywave/config";
+import { resolveUpdatesThreadId, type Env } from "@mywave/config";
 import type { ChannelPublisher, PublishAdapterInput, PublishAdapterResult } from "./types";
 import { callTelegramJson, isTelegramBotApiConfigured } from "../../telegram/telegramApi";
 
@@ -12,6 +12,7 @@ export function createTelegramPublisher(env: Env): ChannelPublisher {
       const text = `${input.text}\n\n#mywave`;
       const res = await callTelegramJson<{ message_id: number }>(env, "sendMessage", {
         chat_id: chatId,
+        ...(resolveUpdatesThreadId(env) ? { message_thread_id: resolveUpdatesThreadId(env) } : {}),
         text: text.slice(0, 4090),
         disable_web_page_preview: false,
       });

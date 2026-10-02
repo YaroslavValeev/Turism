@@ -60,6 +60,12 @@ export function buildTelegramBotApiUrl(env: TelegramApiEnv, method: string): str
   return `${base}/${normalizedMethod}`;
 }
 
+/** message_thread_id темы форум-группы обновлений; undefined — писать в General (или в обычный канал). */
+export function resolveUpdatesThreadId(env: { TELEGRAM_UPDATES_CHANNEL_THREAD_ID?: string }): number | undefined {
+  const n = Number(env.TELEGRAM_UPDATES_CHANNEL_THREAD_ID?.trim());
+  return Number.isInteger(n) && n > 0 ? n : undefined;
+}
+
 export function buildTelegramFileApiUrl(env: TelegramApiEnv, filePath: string): string | undefined {
   const normalizedPath = filePath.trim().replace(/^\/+/, "");
   if (!normalizedPath) return undefined;

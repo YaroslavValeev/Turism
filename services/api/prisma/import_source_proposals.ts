@@ -52,6 +52,9 @@ async function main() {
         warnings: warnings.length,
         byRegion: stats.byRegion,
         byKind: stats.byKind,
+        byScoutArea: stats.byScoutArea,
+        byDiscipline: stats.byDiscipline,
+        byFormat: stats.byFormat,
       },
       null,
       2,
@@ -60,6 +63,7 @@ async function main() {
 
   const result = await importScoutBatch(rows, {
     batchId: batch.batchId,
+    schemaVersion: batch.schemaVersion,
     apply,
     onRow: (row, kind) => console.log(`${kind.padEnd(19)} ${row.item.region.padEnd(12)} ${row.item.name}`),
   });

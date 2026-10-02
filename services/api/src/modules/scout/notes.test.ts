@@ -53,6 +53,44 @@ describe("buildNotes", () => {
     }
   });
 
+  const v2Item: ScoutCandidate = {
+    scoutArea: "sheregesh",
+    region: "Кемеровская область — Кузбасс",
+    name: "Sheregesh Freeride School",
+    url: "https://sheregesh-school.ru/",
+    organizerKinds: ["school"],
+    kind: "школа",
+    disciplines: ["freeride", "ski-tour"],
+    rawDisciplines: ["фрирайд", "скитур"],
+    formats: ["course"],
+    osintScore: 4,
+    legal: { inn: "4205000000" },
+    evidence: ["https://sheregesh-school.ru/about"],
+  };
+
+  it("v2 notes add the zone line and canonical discipline ids", () => {
+    expect(buildNotes(v2Item, batchNotesHeader("wave2-2026-10-05"), 2)).toBe(
+      [
+        "OSINT discovery wave2-2026-10-05",
+        "зона=sheregesh",
+        "регион=Кемеровская область — Кузбасс",
+        "тип=школа",
+        "дисциплины=freeride, ski-tour",
+        "OSINT score=4/5",
+        "ключевая персона=требует обогащения",
+        "реестр=требует проверки",
+        "ИНН=4205000000",
+        "evidence=https://sheregesh-school.ru/about",
+      ].join("; "),
+    );
+  });
+
+  it("v1 layout ignores scoutArea even if a row carries it", () => {
+    const notes = buildNotes(v2Item, batchNotesHeader("b"));
+    expect(notes).not.toContain("зона=");
+    expect(notes).toBe(buildNotes(v2Item, batchNotesHeader("b"), 1));
+  });
+
   it("truncates to the SourceProposal notes limit", () => {
     const notes = buildNotes(
       {

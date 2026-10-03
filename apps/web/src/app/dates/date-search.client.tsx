@@ -1,9 +1,12 @@
 "use client";
 
 import Script from "next/script";
-import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { localDate } from "../../lib/catalog";
+import { localDate, type CatalogProgram } from "../../lib/catalog";
+import { MINI_LEVELS, miniCatalogQuery, miniEntry, miniPrograms, readMiniCatalog } from "../../lib/miniCatalog";
+import { getDisciplineDisplay } from "../../lib/disciplineLabels";
+import { formatProgramPrice } from "../../lib/priceFormat";
+import { applyProgramCardImageFallback, normalizeProgramCardCoverSrc, pickBestProgramCoverImageUrl } from "../../lib/programCardCover";
 import {
   MONTHS_NOMINATIVE,
   WEEKDAYS_SHORT,
@@ -18,7 +21,6 @@ import {
   startsByDay,
   type DateRange,
 } from "../../lib/dateSearch";
-import { dedupeProgramListingsByEvent } from "../../lib/dedupeProgramListingsByEvent";
 import { getPublicApiBase } from "../../lib/publicApiBase";
 import { ruPluralNoun } from "../../lib/ruPlural";
 import { WEEKEND_PRESET_TITLES, weekendRange, type WeekendPreset } from "../../lib/weekendRange";
@@ -64,8 +66,6 @@ const PRESETS: Preset[] = [
   { key: "month", title: "Месяц", range: () => ({ from: localDate(), to: addDaysYmd(localDate(), 30) }) },
 ];
 
-type ApiProgram = Parameters<typeof dedupeProgramListingsByEvent>[0][number] & { scheduleType?: string | null };
-
 const STARTS_FORMS = ["старт", "старта", "стартов"] as const;
 
 function haptic() {
@@ -74,15 +74,18 @@ function haptic() {
 }
 
 export function DateSearch() {
-  const router = useRouter();
-  const today = useMemo(() => localDate(), []);
-  const [programs, setPrograms] = useState<ApiProgram[] | null>(null);
+  // Date-dependent markup is rendered after mounting: server and Telegram may use different timezones.
+  const [today, setToday] = useState("");
+  const [programs, setPrograms] = useState<CatalogProgram[] | null>(null);
+  const [loadError, setLoadError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
+  const [discipline, setDiscipline] = useState("");
+  const [level, setLevel] = useState("");
+  const [visibleCount, setVisibleCount] = useState(6);
+  const resultsRef = useRef<HTMLElement>(null);
   const [range, setRange] = useState<DateRange>({ from: "", to: "" });
   const [presetKey, setPresetKey] = useState<string | null>(null);
-  const [cursor, setCursor] = useState(() => {
-    const now = new Date();
-    return { year: now.getFullYear(), month: now.getMonth() };
-  });
+  const [cursor, setCursor] = useState({ year: 2000, month: 0 });
   const [telegram, setTelegram] = useState<TelegramWebApp | null>(null);
 
   // Вне Telegram скрипт тоже грузится, но initData пустая — тогда остаёмся обычной страницей.
@@ -98,27 +101,50 @@ export function DateSearch() {
   useEffect(attachTelegram, [attachTelegram]);
 
   useEffect(() => {
-    let cancelled = false;
-    fetch(`${getPublicApiBase()}/programs`, { cache: "no-store" })
-      .then((r) => (r.ok ? r.json() : []))
-      .then((data) => {
-        if (!cancelled) setPrograms(Array.isArray(data) ? dedupeProgramListingsByEvent(data as ApiProgram[]) : []);
-      })
-      .catch(() => {
-        if (!cancelled) setPrograms([]);
-      });
-    return () => {
-      cancelled = true;
-    };
+    const now = new Date();
+    setToday(localDate(now));
+    setCursor({ year: now.getFullYear(), month: now.getMonth() });
+    const entry = miniEntry(window.location.search, window.location.hash);
+    setDiscipline(entry.discipline);
+    setLevel(entry.level);
   }, []);
 
-  const byDay = useMemo(() => startsByDay(programs ?? [], today), [programs, today]);
+  useEffect(() => {
+    let cancelled = false;
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 20_000);
+    setPrograms(null);
+    setLoadError(false);
+    fetch(`${getPublicApiBase()}/programs`, { cache: "no-store", signal: controller.signal })
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
+      .then((data) => {
+        if (!cancelled) setPrograms(readMiniCatalog(data));
+      })
+      .catch(() => {
+        if (!cancelled) setLoadError(true);
+      })
+      .finally(() => window.clearTimeout(timeout));
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeout);
+      controller.abort();
+    };
+  }, [reloadKey]);
+
+  const matching = useMemo(() => miniPrograms(programs ?? [], null, discipline, level, today), [programs, discipline, level, today]);
+  const byDay = useMemo(() => startsByDay(matching, today), [matching, today]);
   const selected = effectiveRange(range);
+  const results = miniPrograms(matching, selected, "", "", today);
+  const disciplines = [...new Set((programs ?? []).map((p) => p.discipline))].sort();
+  if (discipline && !disciplines.includes(discipline)) disciplines.push(discipline);
+  useEffect(() => setVisibleCount(6), [range.from, range.to, discipline, level]);
   const count = countInRange(byDay, selected);
   const nextStart = selected && count === 0 ? nextStartAfter(byDay, selected.to) : null;
   const weeks = monthGrid(cursor.year, cursor.month);
-  const now = new Date();
-  const atCurrentMonth = cursor.year === now.getFullYear() && cursor.month === now.getMonth();
+  const atCurrentMonth = `${cursor.year}-${String(cursor.month + 1).padStart(2, "0")}` <= today.slice(0, 7);
 
   const shiftMonth = (delta: number) =>
     setCursor(({ year, month }) => {
@@ -136,9 +162,10 @@ export function DateSearch() {
 
   const startPreset = telegram?.initDataUnsafe?.start_param;
   useEffect(() => {
-    const key = startPreset ?? new URLSearchParams(window.location.search).get("preset");
-    const preset = PRESETS.find((p) => p.key === key);
+    const entry = miniEntry(window.location.search, window.location.hash, startPreset);
+    const preset = PRESETS.find((p) => p.key === entry.preset);
     if (preset) applyRange(preset.range(), preset.key);
+    else if (entry.range) applyRange(entry.range, null);
   }, [startPreset, applyRange]);
 
   const onDay = (day: string) => {
@@ -147,33 +174,24 @@ export function DateSearch() {
     haptic();
   };
 
-  const goToCatalog = useCallback(() => {
-    if (!selected) return;
-    const params = new URLSearchParams();
-    const preset = PRESETS.find((p) => p.key === presetKey);
-    if (count === 0) {
-      params.set("from", selected.from);
-    } else if (preset?.when) {
-      params.set("when", preset.when);
-    } else {
-      params.set("from", selected.from);
-      params.set("to", selected.to);
-    }
-    const current = new URLSearchParams(window.location.search);
-    for (const [key, value] of current) if (key.startsWith("utm_")) params.set(key, value);
-    router.push(`/?${params.toString()}#programs`);
-  }, [router, selected, presetKey, count]);
+  const showResults = useCallback(() => resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), []);
+  const [catalogHref, setCatalogHref] = useState("/#programs");
+  useEffect(() => {
+    setCatalogHref(`/?${miniCatalogQuery(selected, discipline, level, window.location.search)}#programs`);
+  }, [range.from, range.to, discipline, level]);
 
   const cta = !selected
     ? "Выберите даты"
-    : programs === null
+    : loadError
+      ? "Каталог недоступен"
+      : programs === null
       ? "Считаем старты…"
       : count > 0
         ? `Показать ${count} ${ruPluralNoun(count, STARTS_FORMS)}`
-        : "Показать ближайшие старты";
+        : "Посмотреть результаты";
 
-  const goRef = useRef(goToCatalog);
-  goRef.current = goToCatalog;
+  const goRef = useRef(showResults);
+  goRef.current = showResults;
   useEffect(() => {
     if (!telegram) return;
     const handler = () => goRef.current();
@@ -183,13 +201,14 @@ export function DateSearch() {
   useEffect(() => {
     if (!telegram) return;
     telegram.MainButton.setText(cta);
-    if (selected) {
+    if (selected && programs !== null && !loadError) {
       telegram.MainButton.enable();
       telegram.MainButton.show();
     } else {
       telegram.MainButton.hide();
     }
-  }, [telegram, cta, selected]);
+  }, [telegram, cta, selected, programs, loadError]);
+  useEffect(() => () => telegram?.MainButton.hide(), [telegram]);
 
   return (
     <main className="mw-dates">
@@ -198,8 +217,25 @@ export function DateSearch() {
         <img src="/brand/mywavetour-logo-human.png" alt="MyWaveTour" width={220} height={97} />
       </a>
       <h1 className="mw-dates__title">Когда едем?</h1>
-      <p className="mw-dates__lead">Выберите даты — покажем программы, которые стартуют в эти дни.</p>
+      <p className="mw-dates__lead">Выберите даты, дисциплину и уровень — поездки появятся здесь, без перехода в другой каталог.</p>
 
+      <section className="mw-dates__filters" aria-label="Фильтры поездок">
+        <label>Дисциплина
+          <select className="mw-input" value={discipline} onChange={(e) => setDiscipline(e.target.value)}>
+            <option value="">Все дисциплины</option>
+            {disciplines.map((d) => <option key={d} value={d}>{getDisciplineDisplay(d).translation || d}</option>)}
+          </select>
+        </label>
+        <label>Уровень
+          <select className="mw-input" value={level} onChange={(e) => setLevel(e.target.value)}>
+            <option value="">Любой уровень</option>
+            {MINI_LEVELS.map((l) => <option key={l.value} value={l.value}>{l.label}</option>)}
+          </select>
+        </label>
+        {(discipline || level) && <button type="button" className="mw-dates__link" onClick={() => { setDiscipline(""); setLevel(""); }}>Сбросить фильтры</button>}
+      </section>
+
+      {today ? <>
       <div className="mw-dates__presets" role="group" aria-label="Быстрый выбор">
         {PRESETS.map((p) => (
           <button
@@ -268,10 +304,38 @@ export function DateSearch() {
         </p>
       </section>
 
+      </> : <p role="status">Готовим календарь…</p>}
+
+      <section ref={resultsRef} className="mw-dates__results" aria-label="Поездки" aria-busy={programs === null && !loadError}>
+        <h2>{selected ? `Поездки: ${formatRange(selected)}` : "Ближайшие поездки"}</h2>
+        {loadError ? <div role="alert"><p>Не удалось загрузить каталог. Это не означает, что поездок нет.</p><button type="button" className="mw-btn" onClick={() => setReloadKey((n) => n + 1)}>Повторить загрузку</button></div>
+          : programs === null ? <p role="status">Загружаем поездки…</p>
+          : <>
+            <p role="status">Найдено поездок: {results.length}</p>
+            {results.length === 0 && <p>Нет поездок с подтверждёнными датами по этим условиям. Попробуйте другие даты или сбросьте фильтры. Программы «по запросу» доступны в полном каталоге.</p>}
+            {results.slice(0, visibleCount).map((p) => {
+              const cover = pickBestProgramCoverImageUrl(p.media, p.title, { mediaOrderPinned: p.mediaOrderPinned });
+              return <article key={p.id} className="mw-dates__trip">
+                {cover && <img src={normalizeProgramCardCoverSrc(cover)} alt={p.title} loading="lazy" onError={(e) => applyProgramCardImageFallback(e.currentTarget)} />}
+                <h3><a href={`/program/${encodeURIComponent(p.id)}`} target="_blank" rel="noopener noreferrer">{p.title}</a></h3>
+                <p>{getDisciplineDisplay(p.discipline).translation || p.discipline} · {p.region}</p>
+                <p>{formatDay(p.startDate.slice(0, 10))} · {p.durationDays} дн. · {MINI_LEVELS.find((l) => l.value === p.levelRequired)?.label || "Уровень уточняется"}</p>
+                <p>{formatProgramPrice(p) || "Стоимость уточняется"}</p>
+                <a href={`/program/${encodeURIComponent(p.id)}`} target="_blank" rel="noopener noreferrer">Подробнее и заявка на сайте ↗</a>
+              </article>;
+            })}
+            {visibleCount < results.length && <button type="button" className="mw-btn" onClick={() => setVisibleCount((n) => n + 6)}>Показать ещё ({results.length - visibleCount})</button>}
+          </>}
+        <a href={catalogHref} target="_blank" rel="noopener noreferrer">Полный каталог на сайте ↗</a>
+        <p className="mw-dates__lead">Форма общей подписки находится в полном каталоге. Уведомления по выбранным датам и уровню пока не подключены.</p>
+      </section>
+
       <div className={`mw-dates__footer${telegram ? " is-telegram" : ""}`}>
         <p className="mw-dates__summary" aria-live="polite">
           {!selected
             ? "Нажмите на день начала, затем на день окончания."
+            : loadError ? "Каталог временно недоступен — повторите загрузку."
+            : programs === null ? "Загружаем поездки…"
             : count > 0
               ? `${formatRange(selected)}: ${count} ${ruPluralNoun(count, STARTS_FORMS)}`
               : nextStart
@@ -284,7 +348,7 @@ export function DateSearch() {
           </button>
         ) : null}
         {!telegram ? (
-          <button type="button" className="mw-btn mw-btn--primary mw-dates__cta" disabled={!selected} onClick={goToCatalog}>
+          <button type="button" className="mw-btn mw-btn--primary mw-dates__cta" disabled={!selected || programs === null || loadError} onClick={showResults}>
             {cta}
           </button>
         ) : null}

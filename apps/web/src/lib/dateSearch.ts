@@ -1,4 +1,4 @@
-import { localDate } from "./catalog";
+import { localDate, validDate } from "./catalog";
 
 export type DateRange = { from: string; to: string };
 
@@ -47,6 +47,9 @@ export function effectiveRange(range: DateRange): DateRange | null {
 /** Дата старта по местному календарю; туры «по запросу» без реальной даты не участвуют. */
 export function programStartDay(p: DatedProgram): string | null {
   if (p.scheduleType === "on_request") return null;
+  // API dates describe a calendar day, not a user's shifted midnight instant.
+  const day = validDate(p.startDate.slice(0, 10));
+  if (day) return day;
   const t = new Date(p.startDate);
   return Number.isFinite(t.getTime()) ? localDate(t) : null;
 }

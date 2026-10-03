@@ -9,8 +9,21 @@ import {
   monthGrid,
   nextStartAfter,
   pickDay,
+  programStartDay,
   startsByDay,
 } from "./dateSearch";
+
+test("API midnight date stays on the published calendar day in any timezone", () => {
+  const previous = process.env.TZ;
+  try {
+    process.env.TZ = "America/Los_Angeles";
+    assert.equal(programStartDay({ startDate: "2026-10-03T00:00:00Z" }), "2026-10-03");
+    assert.equal(programStartDay({ startDate: "2026-10-03T00:00:00Z", scheduleType: "on_request" }), null);
+  } finally {
+    if (previous === undefined) delete process.env.TZ;
+    else process.env.TZ = previous;
+  }
+});
 
 test("monthGrid starts on Monday and covers the whole month", () => {
   const weeks = monthGrid(2026, 9); // октябрь 2026, 1-е — четверг

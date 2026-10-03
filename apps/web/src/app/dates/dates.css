@@ -239,3 +239,29 @@
   opacity: 0.5;
   cursor: default;
 }
+
+.mw-dates__filters {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.mw-dates__filters label { display: grid; gap: 6px; min-width: 0; font-weight: 600; }
+.mw-dates__filters select { width: 100%; min-height: 44px; }
+.mw-dates__filters .mw-dates__link { grid-column: 1 / -1; }
+.mw-dates__results { margin-top: 24px; scroll-margin-top: 16px; }
+.mw-dates__results > a { display: inline-block; margin-top: 18px; }
+.mw-dates__trip {
+  margin: 12px 0;
+  padding: 16px;
+  border: 1px solid var(--mw-border);
+  border-radius: var(--mw-radius-panel);
+  background: var(--mw-surface);
+  overflow-wrap: anywhere;
+}
+.mw-dates__trip h3 { margin: 12px 0 8px; font-size: 1.1rem; line-height: 1.4; }
+.mw-dates__trip p { margin: 8px 0; }
+.mw-dates__trip img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 12px; }
+.mw-dates__trip a { color: var(--mw-accent); }
+.mw-dates__trip > a { display: inline-block; padding: 8px 0; }
+@media (max-width: 360px) { .mw-dates__filters { grid-template-columns: 1fr; } }

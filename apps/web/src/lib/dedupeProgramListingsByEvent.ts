@@ -90,12 +90,15 @@ export function programEventDisplaySignature(p: {
  * но это фактически одно событие (дубли на витрине с одинаковыми датами).
  */
 function looseIngestionDuplicateKey(p: {
+  scheduleType?: string | null;
   startDate: string;
   endDate: string;
   durationDays: number;
   region: string;
   organizer?: { id?: string; displayName: string } | null;
 }): string | null {
+  // Placeholder dates are not evidence that two on-request tours are one event.
+  if (p.scheduleType === "on_request") return null;
   const org = organizerKey(p);
   if (!org) return null;
   return [
@@ -107,7 +110,12 @@ function looseIngestionDuplicateKey(p: {
   ].join("\u241F");
 }
 
-type SigProgram = { id: string; title: string; priceFromRub: number | null; discipline: string; region: string; startDate: string; endDate: string; durationDays: number; exactLocation?: string | null; isStarred?: boolean; media?: { id?: string; url: string; mediaType: string }[]; autoPublished?: boolean; sourceType?: string | null; organizer?: { id?: string; displayName: string } | null };
+type SigProgram = { id: string; title: string; priceFromRub: number | null; discipline: string; region: string; startDate: string; endDate: string; durationDays: number; scheduleType?: string | null; exactLocation?: string | null; isStarred?: boolean; media?: { id?: string; url: string; mediaType: string }[]; autoPublished?: boolean; sourceType?: string | null; organizer?: { id?: string; displayName: string } | null };
+
+function listingSignature(p: SigProgram): string {
+  // Keep distinct database records, even if titles and placeholder dates match.
+  return p.scheduleType === "on_request" ? `on_request:${p.id}` : programEventDisplaySignature(p);
+}
 
 function dedupeByLooseOrganizerWindow<T extends SigProgram>(programs: T[]): T[] {
   const buckets = new Map<string, T[]>();
@@ -142,7 +150,7 @@ export function dedupeProgramListingsByEvent<T extends SigProgram>(programs: T[]
   if (pre.length < 2) return pre;
   const best = new Map<string, T>();
   for (const p of pre) {
-    const sig = programEventDisplaySignature(p);
+    const sig = listingSignature(p);
     const prev = best.get(sig);
     if (!prev) {
       best.set(sig, p);
@@ -158,7 +166,7 @@ export function dedupeProgramListingsByEvent<T extends SigProgram>(programs: T[]
   const seen = new Set<T>();
   const order: T[] = [];
   for (const p of pre) {
-    const chosen = best.get(programEventDisplaySignature(p))!;
+    const chosen = best.get(listingSignature(p))!;
     if (!seen.has(chosen)) {
       seen.add(chosen);
       order.push(chosen);

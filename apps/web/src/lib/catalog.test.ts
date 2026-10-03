@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { isCatalogProgram } from "./catalog";
+import { dedupeProgramListingsByEvent } from "./dedupeProgramListingsByEvent";
 import {
   catalogQuery,
   EMPTY_FILTERS,
@@ -12,6 +13,34 @@ import {
 } from "./catalog";
 
 const now = new Date(2026, 8, 15, 12);
+const qaTour = (id: string, title: string, extra = {}) => ({
+  id, title, priceFromRub: null, discipline: "trekking", region: "Камчатка",
+  startDate: "2026-10-01", endDate: "2026-10-02", durationDays: 2,
+  organizer: { id: "organizer", displayName: "БЕАРТРО" }, ...extra,
+});
+
+test("different on-request tours survive both dedupe passes", () => {
+  const tours = [qaTour("lake", "Начикинское озеро", { scheduleType: "on_request" }),
+    qaTour("mountain", "Вачкажец", { scheduleType: "on_request" }),
+    qaTour("culture", "Культура коренных народов", { scheduleType: "on_request", discipline: "wildlife" })];
+  assert.deepEqual(dedupeProgramListingsByEvent(tours).map(p => p.id), ["lake", "mountain", "culture"]);
+});
+
+test("same titles do not justify collapsing distinct on-request records", () => {
+  const a = qaTour("a", "Индивидуальный тур", { scheduleType: "on_request" });
+  assert.equal(dedupeProgramListingsByEvent([a, { ...a, id: "b" }]).length, 2);
+  assert.equal(dedupeProgramListingsByEvent([a, { ...a }]).length, 1);
+});
+
+test("dated events still dedupe with the existing quality preference", () => {
+  const a = qaTour("a", "Поездка на вулкан, дата подтверждена");
+  assert.deepEqual(dedupeProgramListingsByEvent([a, { ...a, id: "b", priceFromRub: 10000 }]).map(p => p.id), ["b"]);
+});
+
+test("on-request tour never disappears behind a matching dated event", () => {
+  const a = qaTour("a", "По запросу", { scheduleType: "on_request" });
+  assert.deepEqual(dedupeProgramListingsByEvent([a, qaTour("b", "Подтверждённый выезд")]).map(p => p.id), ["a", "b"]);
+});
 test("malformed catalogue records do not reach the renderer", () => {
   assert.equal(isCatalogProgram(null), false);
   assert.equal(isCatalogProgram({ title: "incomplete" }), false);

@@ -59,6 +59,7 @@ export type PublicSubscriptionResponse = {
   tgOptInUrl?: string | null;
   tgGroupInviteUrl?: string | null;
   telegramConfirmed?: boolean;
+  emailDeliveryConfigured?: boolean;
 };
 
 export async function postPublicSubscription(payload: PublicSubscriptionPayload): Promise<PublicSubscriptionResponse> {
@@ -83,5 +84,6 @@ export async function postPublicSubscription(payload: PublicSubscriptionPayload)
     tgOptInUrl: data.tgOptInUrl ?? null,
     tgGroupInviteUrl: data.tgGroupInviteUrl ?? null,
     telegramConfirmed: Boolean(data.telegramConfirmed),
+    emailDeliveryConfigured: typeof data.emailDeliveryConfigured === "boolean" ? data.emailDeliveryConfigured : undefined,
   };
 }

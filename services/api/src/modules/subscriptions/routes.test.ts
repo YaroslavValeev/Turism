@@ -47,6 +47,17 @@ describe("subscriptions HTTP", () => {
     expect((await post({ telegramUsername: "qa_user", consent: true }, { ...enabled, TELEGRAM_PUBLIC_BOT_ENABLED: false })).status).toBe(503);
     expect(prisma.updateSubscription.upsert).not.toHaveBeenCalled();
   });
+  it("distinguishes saved conditions from unavailable email delivery and offers only configured fallback", async () => {
+    const disabled = { ...enabled, TELEGRAM_PUBLIC_BOT_ENABLED: false };
+    const smtp = { ...disabled, SMTP_HOST: "smtp.example.invalid", SMTP_USER: "qa", SMTP_PASS: "qa-only", SMTP_FROM: "qa@example.invalid" } as Env;
+    const saved = await post({ email: "qa@example.invalid", consent: true }, disabled);
+    expect(saved.status).toBe(201); expect(saved.data.emailDeliveryConfigured).toBe(false);
+    expect(saved.data.message).toContain("письма пока не отправляются");
+    expect((await post({ telegramUsername: "qa_user", consent: true }, disabled)).data.error).not.toContain("Используйте email");
+    const configured = await post({ email: "qa@example.invalid", consent: true }, smtp);
+    expect(configured.data.emailDeliveryConfigured).toBe(true); expect(configured.data.message).toBe("Подписка сохранена.");
+    expect((await post({ telegramUsername: "qa_user", consent: true }, smtp)).data.error).toContain("Используйте email");
+  });
   it("issues an expiring random link, never a subscription ID payload", async () => {
     const r = await post({ telegramUsername: "@qa_user", consent: true });
     expect(r.status).toBe(201); expect(r.data.telegramConfirmed).toBe(false);

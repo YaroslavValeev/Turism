@@ -4,6 +4,7 @@ import { prisma } from "../../lib/prisma";
 import { requireAdmin } from "../../middleware/auth";
 import { isTelegramBotApiConfigured } from "../telegram/telegramApi";
 import { newSubscriptionToken, subscriptionFilters, subscriptionIdentity, SUBSCRIPTION_POLICY_VERSION } from "./policy";
+import { isSmtpConfigured } from "./mailer";
 
 function isEmail(v: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
@@ -82,7 +83,8 @@ export function publicSubscriptionsRoutes(env: Env): Router {
       return;
     }
     if (channelTelegram && (!env.TELEGRAM_PUBLIC_BOT_ENABLED || !env.TELEGRAM_UPDATES_BOT_USERNAME?.trim() || !isTelegramBotApiConfigured(env))) {
-      res.status(503).json({ error: "Личные Telegram-уведомления пока не подключены. Используйте email." });
+      res.status(503).json({ error: "Личные Telegram-уведомления пока не подключены." +
+        (isSmtpConfigured(env) ? " Используйте email." : " Доставка уведомлений пока недоступна.") });
       return;
     }
     let filters: ReturnType<typeof subscriptionFilters>;
@@ -128,6 +130,10 @@ export function publicSubscriptionsRoutes(env: Env): Router {
       where: { identityKey }, create: { identityKey, ...data }, update: data,
     });
 
+    const emailDeliveryConfigured = isSmtpConfigured(env);
+    const message = channelTelegram && !updated.telegramChatId
+      ? "Условия сохранены. Для личных Telegram-уведомлений откройте бота и нажмите Start. Ссылка действует 24 часа."
+      : "Подписка сохранена.";
     res.status(existing ? 200 : 201).json({
       id: updated.id,
       ok: true,
@@ -135,8 +141,9 @@ export function publicSubscriptionsRoutes(env: Env): Router {
       tgOptInUrl: updated.telegramChatId ? null : links.tgOptInUrl,
       tgGroupInviteUrl: updated.tgGroupInviteUrl,
       telegramConfirmed: Boolean(updated.telegramChatId && updated.telegramBoundAt),
-      message: channelTelegram && !updated.telegramChatId ? "Условия сохранены. Для личных Telegram-уведомлений откройте бота и нажмите Start. Ссылка действует 24 часа."
-        : "Подписка сохранена.",
+      emailDeliveryConfigured,
+      message: message + (channelEmail && !emailDeliveryConfigured
+        ? " Email-уведомления пока не подключены. Условия сохранены, но письма пока не отправляются." : ""),
     });
     } catch (error) { next(error); }
   });

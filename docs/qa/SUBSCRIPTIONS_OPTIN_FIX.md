@@ -19,6 +19,8 @@ The existing owner/operator Telegram flow is retained. This is not a production 
   An ambiguous provider result remains `uncertain`; no blind retry. A crash can leave `sending`.
 - The catalog signup form shows inherited filters and does not claim Telegram confirmation before Start.
   Public Telegram mode remains opt-in through existing configuration; disabled mode returns an honest 503.
+- Email signup can save conditions while SMTP is absent, but explicitly says no emails are being sent.
+  Disabled Telegram suggests email only when SMTP is configured; configuration is not proof of delivery.
 
 ## Migration and legacy data
 
@@ -52,7 +54,7 @@ Telegram transport, never real contacts or repository env files.
 Do not run the SMTP Sprint 3 script without an explicitly consenting recipient;
 it now requires `SPRINT3_E2E_CONSENT=true` before any email.
 
-Evidence on 2026-10-03: 34 targeted tests passed; API TypeScript build passed;
+Initial evidence on 2026-10-03: 34 targeted tests passed; API TypeScript build passed;
 12 real-Postgres/fake-Telegram integration checks passed, including concurrent signup,
 atomic chat binding, one delivery under concurrency/replay and `/stop`.
 Browser: empty form and missing consent rejected, email signup saved, disabled Telegram
@@ -61,6 +63,12 @@ Full quality gate passed after the final rebind regression/SMTP-script consent g
 938 API + 64 web/admin model + 18 config + 3 explore-link tests (1023 total);
 API, web and admin production builds passed. API Docker build and loopback health
 passed against the migrated disposable database. The exact committed head must pass CI before merge.
+
+SMTP-readiness follow-up: operator-provided production diagnostics show public bot disabled,
+polling enabled, SMTP absent and an updates username configured. No flags were changed.
+The follow-up adds truthful unavailable-channel feedback: 35 targeted tests and fresh API/web
+builds passed. Initial Docker/integration results above refer to the pre-follow-up artifact;
+real production delivery remains unverified.
 
 ## Production acceptance gates (not executed)
 

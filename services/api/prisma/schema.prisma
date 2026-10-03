@@ -230,6 +230,7 @@ model Program {
   contentItems            ContentItem[]
   telegramLeadAttempts    TelegramLeadAttempt[]
   enrichments             ProgramEnrichment[]
+  subscriptionDeliveries  SubscriptionDelivery[]
 
   @@index([sourceId])
   @@map("programs")
@@ -899,12 +900,39 @@ model UpdateSubscription {
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
   metaJson         Json?
+  identityKey      String?   @unique
+  consentAt        DateTime?
+  levelRequired    String?
+  dateFrom         DateTime? @db.Date
+  dateTo           DateTime? @db.Date
+  telegramChatId   String?
+  telegramBoundAt  DateTime?
+  telegramTokenHash String?  @unique
+  telegramTokenExpiresAt DateTime?
+  deliveries       SubscriptionDelivery[]
 
   @@index([status, createdAt])
   @@index([discipline, region, status])
   @@index([email])
   @@index([telegramUsername])
   @@map("update_subscriptions")
+}
+
+// A failed/ambiguous send is not automatically retried: providers have no idempotency key.
+model SubscriptionDelivery {
+  id             String   @id @default(cuid())
+  subscriptionId String
+  programId      String
+  channel        String
+  status         String   @default("sending") // sending | sent | uncertain
+  createdAt      DateTime @default(now())
+  completedAt    DateTime?
+  subscription   UpdateSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  program        Program @relation(fields: [programId], references: [id], onDelete: Cascade)
+
+  @@unique([subscriptionId, programId, channel])
+  @@index([status, createdAt])
+  @@map("subscription_deliveries")
 }
 
 // Analytics event store (non-PII). Source: docs/analytics/*

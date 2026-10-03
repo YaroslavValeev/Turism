@@ -1,7 +1,9 @@
-import { Router, Request, Response } from "express";
+import { Router, Request, Response, NextFunction } from "express";
 import type { Env } from "@mywave/config";
 import { prisma } from "../../lib/prisma";
 import { requireAdmin } from "../../middleware/auth";
+import { isTelegramBotApiConfigured } from "../telegram/telegramApi";
+import { newSubscriptionToken, subscriptionFilters, subscriptionIdentity, SUBSCRIPTION_POLICY_VERSION } from "./policy";
 
 function isEmail(v: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
@@ -11,10 +13,10 @@ function normalizeTelegramUsername(v: string): string {
   return v.trim().replace(/^@+/, "").replace(/\s+/g, "");
 }
 
-function buildTgLinks(env: Env, subId: string): { tgOptInUrl: string | null; tgGroupInviteUrl: string | null } {
+function buildTgLinks(env: Env, token: string | null): { tgOptInUrl: string | null; tgGroupInviteUrl: string | null } {
   const bot = env.TELEGRAM_UPDATES_BOT_USERNAME?.trim().replace(/^@+/, "") ?? "";
   const invite = env.TELEGRAM_UPDATES_INVITE_LINK?.trim() ?? "";
-  const tgOptInUrl = bot ? `https://t.me/${bot}?start=mywave_sub_${subId}` : null;
+  const tgOptInUrl = bot && token ? `https://t.me/${bot}?start=mywave_sub_${token}` : null;
   return {
     tgOptInUrl,
     tgGroupInviteUrl: invite || null,
@@ -25,8 +27,9 @@ export function publicSubscriptionsRoutes(env: Env): Router {
   const router = Router();
   const admin = requireAdmin(env);
 
-  router.post("/", async (req: Request, res: Response) => {
-    const body = req.body as {
+  router.post("/", async (req: Request, res: Response, next: NextFunction) => {
+    try {
+    const body = (req.body && typeof req.body === "object" ? req.body : {}) as {
       email?: string;
       telegramUsername?: string;
       discipline?: string;
@@ -38,6 +41,9 @@ export function publicSubscriptionsRoutes(env: Env): Router {
       consent?: boolean;
       source?: string;
       utm?: Record<string, string>;
+      levelRequired?: unknown;
+      dateFrom?: unknown;
+      dateTo?: unknown;
     };
 
     const email = String(body.email ?? "").trim().toLowerCase();
@@ -50,7 +56,7 @@ export function publicSubscriptionsRoutes(env: Env): Router {
     const channelTelegram =
       body.channelTelegram === true || body.telegramOptIn === true || (!!telegramUsername && body.channelTelegram !== false);
 
-    if (body.consent === false) {
+    if (body.consent !== true) {
       res.status(400).json({ error: "Нужно согласие на получение обновлений." });
       return;
     }
@@ -71,31 +77,30 @@ export function publicSubscriptionsRoutes(env: Env): Router {
       res.status(400).json({ error: "Для Telegram-уведомлений нужен @username." });
       return;
     }
-
-    const existing = await prisma.updateSubscription.findFirst({
-      where: {
-        status: "active",
-        email: email || null,
-        telegramUsername: telegramUsername || null,
-        discipline,
-        region,
-      },
-      select: { id: true, tgOptInUrl: true, tgGroupInviteUrl: true },
-    });
-
-    if (existing) {
-      res.status(200).json({
-        id: existing.id,
-        ok: true,
-        created: false,
-        tgOptInUrl: existing.tgOptInUrl,
-        tgGroupInviteUrl: existing.tgGroupInviteUrl,
-      });
+    if (channelTelegram && !/^[a-z0-9_]{5,32}$/i.test(telegramUsername)) {
+      res.status(400).json({ error: "Некорректный Telegram username." });
+      return;
+    }
+    if (channelTelegram && (!env.TELEGRAM_PUBLIC_BOT_ENABLED || !env.TELEGRAM_UPDATES_BOT_USERNAME?.trim() || !isTelegramBotApiConfigured(env))) {
+      res.status(503).json({ error: "Личные Telegram-уведомления пока не подключены. Используйте email." });
+      return;
+    }
+    let filters: ReturnType<typeof subscriptionFilters>;
+    try { filters = subscriptionFilters(body); } catch (error) {
+      res.status(400).json({ error: error instanceof Error ? error.message : "Некорректные условия подписки." });
       return;
     }
 
-    const created = await prisma.updateSubscription.create({
-      data: {
+    const identityKey = subscriptionIdentity([email || null, telegramUsername.toLowerCase() || null,
+      discipline?.toLowerCase() || null, region?.toLowerCase() || null, filters.levelRequired,
+      filters.dateFrom?.toISOString() || null, filters.dateTo?.toISOString() || null, channelEmail, channelTelegram]);
+    const existing = await prisma.updateSubscription.findUnique({ where: { identityKey } });
+    const rebind = Boolean(existing && (existing.status !== "active" || !existing.channelTelegram));
+    const token = channelTelegram && (!existing?.telegramChatId || rebind) ? newSubscriptionToken() : null;
+    const links = buildTgLinks(env, token?.token ?? null);
+    const consentAt = new Date();
+    const previousMeta = existing?.metaJson && typeof existing.metaJson === "object" && !Array.isArray(existing.metaJson) ? existing.metaJson : {};
+    const data = {
         email: email || null,
         telegramUsername: telegramUsername || null,
         channelEmail,
@@ -103,37 +108,37 @@ export function publicSubscriptionsRoutes(env: Env): Router {
         discipline,
         region,
         status: "active",
-        metaJson: {
-          source: body.source ?? "site",
-          utm: body.utm ?? null,
-          /** После проверки выше consent !== false; явное true при отсутствии поля — пилотный opt-in. */
-          consentGiven: body.consent === true || body.consent === undefined,
-        },
-      },
-    });
-
-    const links = buildTgLinks(env, created.id);
-    const updated = await prisma.updateSubscription.update({
-      where: { id: created.id },
-      data: {
-        tgOptInUrl: links.tgOptInUrl,
+        ...filters,
+        consentAt,
+        // The bearer link is returned once; only its hash is stored in the DB.
+        tgOptInUrl: null,
         tgGroupInviteUrl: links.tgGroupInviteUrl,
+        ...(rebind ? { telegramChatId: null, telegramBoundAt: null } : {}),
+        ...(token ? { telegramTokenHash: token.hash, telegramTokenExpiresAt: token.expiresAt } : {}),
         metaJson: {
-          note: "Auto-add to Telegram groups is restricted by Telegram privacy/API; user joins via invite/deep-link.",
+          ...previousMeta,
+          source: body.source ?? previousMeta.source ?? "site",
+          utm: body.utm ?? previousMeta.utm ?? null,
+          consentGiven: true,
+          consentAt: consentAt.toISOString(),
+          consentPolicyVersion: SUBSCRIPTION_POLICY_VERSION,
         },
-      },
-      select: { id: true, tgOptInUrl: true, tgGroupInviteUrl: true },
+    };
+    const updated = await prisma.updateSubscription.upsert({
+      where: { identityKey }, create: { identityKey, ...data }, update: data,
     });
 
-    res.status(201).json({
+    res.status(existing ? 200 : 201).json({
       id: updated.id,
       ok: true,
-      created: true,
-      tgOptInUrl: updated.tgOptInUrl,
+      created: !existing,
+      tgOptInUrl: updated.telegramChatId ? null : links.tgOptInUrl,
       tgGroupInviteUrl: updated.tgGroupInviteUrl,
-      message:
-        "Подписка активирована. Для Telegram откройте ссылку бота/группы: это стандартный opt-in flow Telegram.",
+      telegramConfirmed: Boolean(updated.telegramChatId && updated.telegramBoundAt),
+      message: channelTelegram && !updated.telegramChatId ? "Условия сохранены. Для личных Telegram-уведомлений откройте бота и нажмите Start. Ссылка действует 24 часа."
+        : "Подписка сохранена.",
     });
+    } catch (error) { next(error); }
   });
 
   router.get("/unsubscribe", async (req: Request, res: Response) => {

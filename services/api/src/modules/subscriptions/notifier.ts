@@ -1,7 +1,9 @@
 import type { Env } from "@mywave/config";
 import { prisma } from "../../lib/prisma";
-import { sendEmailIfConfigured } from "./mailer";
+import { isSmtpConfigured, sendEmailIfConfigured } from "./mailer";
 import { safeLog } from "../../lib/safeLogger";
+import { deliverSubscriptionOnce } from "./delivery";
+import { subscriptionMatches } from "./policy";
 import { PROGRAM_MEDIA_ORDER } from "../programs/mediaOrder";
 import { callTelegramJson, isTelegramBotApiConfigured } from "../telegram/telegramApi";
 import { attachChannelPostId, buildChannelCtas, createTrackedChannelKeyboard } from "../telegram/channelClicks";
@@ -124,22 +126,22 @@ async function loadProgramPrimaryMediaUrl(programId: string): Promise<string | n
 
 async function sendTelegramDirectIfPossible(
   env: Env,
-  username: string,
+  chatId: string,
   text: string,
   options?: { parseMode?: "HTML"; mediaUrl?: string },
 ): Promise<boolean> {
-  if (!isTelegramBotApiConfigured(env)) return false;
+  if (!env.TELEGRAM_PUBLIC_BOT_ENABLED || !isTelegramBotApiConfigured(env) || !/^[1-9]\d*$/.test(chatId)) return false;
   try {
     if (options?.mediaUrl) {
       const photo = await sendTelegramPhoto(env, {
-        chatId: `@${username.replace(/^@/, "")}`,
+        chatId,
         photo: options.mediaUrl,
         disableNotification: true,
       });
       if (!photo.ok) console.error("[subscriptions] telegram DM photo failed", photo.description ?? "unknown");
     }
     const resp = await callTelegramJson(env, "sendMessage", {
-      chat_id: `@${username.replace(/^@/, "")}`,
+      chat_id: chatId,
       text,
       disable_web_page_preview: true,
       ...(options?.parseMode ? { parse_mode: options.parseMode } : {}),
@@ -255,6 +257,9 @@ export async function announceProgramToChannel(env: Env, programId: string): Pro
 }
 
 export async function notifySubscribersOnProgramPublished(env: Env, program: PublishedProgramPayload): Promise<void> {
+  const deliveryProgram = await prisma.program.findUnique({ where: { id: program.id },
+    select: { discipline: true, region: true, levelRequired: true, startDate: true, scheduleType: true, publishStatus: true } });
+  if (!deliveryProgram || deliveryProgram.publishStatus !== "published") return;
   const tgQuality = evaluateTelegramTitleQuality(program.title);
   if (!tgQuality.ok) {
     console.log("[subscriptions] telegram publish skipped by quality filter", {
@@ -268,13 +273,20 @@ export async function notifySubscribersOnProgramPublished(env: Env, program: Pub
   const subs = await prisma.updateSubscription.findMany({
     where: {
       status: "active",
-      OR: [{ discipline: null }, { discipline: { contains: program.discipline, mode: "insensitive" } }],
-      AND: [{ OR: [{ region: null }, { region: { contains: program.region, mode: "insensitive" } }] }],
+      consentAt: { not: null },
     },
     select: {
       id: true,
+      consentAt: true,
       email: true,
       telegramUsername: true,
+      telegramChatId: true,
+      telegramBoundAt: true,
+      levelRequired: true,
+      dateFrom: true,
+      dateTo: true,
+      discipline: true,
+      region: true,
       channelEmail: true,
       channelTelegram: true,
       tgGroupInviteUrl: true,
@@ -299,6 +311,8 @@ export async function notifySubscribersOnProgramPublished(env: Env, program: Pub
   );
 
   for (const sub of subs) {
+    if (!sub.consentAt) continue;
+    if (!subscriptionMatches(sub, deliveryProgram)) continue;
     if (emailAllow) {
       const e = sub.email?.trim().toLowerCase() ?? "";
       if (!e || !emailAllow.has(e)) {
@@ -308,22 +322,22 @@ export async function notifySubscribersOnProgramPublished(env: Env, program: Pub
     }
     let sent = false;
 
-    if (sub.channelEmail && sub.email) {
+    if (sub.channelEmail && sub.email && isSmtpConfigured(env)) {
       const unsubscribeUrl = `${apiBase}/public/subscriptions/unsubscribe?email=${encodeURIComponent(sub.email)}`;
       const emailHtmlFull = buildEmailProgramNotifyHtml(notifySrc, programUrlEmail, unsubscribeUrl);
       const emailTextFull = buildEmailProgramNotifyText(notifySrc, programUrlEmail, unsubscribeUrl);
       // eslint-disable-next-line no-await-in-loop
-      const ok = await sendEmailIfConfigured(env, {
-        to: sub.email,
+      const ok = await deliverSubscriptionOnce(sub.id, program.id, "email", () => sendEmailIfConfigured(env, {
+        to: sub.email!,
         subject: `Подборка MyWaveTour: ${program.title}`,
         text: emailTextFull,
         html: emailHtmlFull,
-      });
-      safeLog("[subscriptions] email delivery", { status: ok ? "success" : "failed", subscriptionId: sub.id });
-      sent = sent || ok;
+      }));
+      safeLog("[subscriptions] email delivery", { status: ok, subscriptionId: sub.id });
+      sent = sent || ok === "sent";
     }
 
-    if (tgQuality.ok && sub.channelTelegram && sub.telegramUsername) {
+    if (tgQuality.ok && sub.channelTelegram && sub.telegramChatId && sub.telegramBoundAt && env.TELEGRAM_PUBLIC_BOT_ENABLED && isTelegramBotApiConfigured(env)) {
       const tgBody = [
         buildTelegramProgramNotifyHtml(
           notifySrc,
@@ -333,12 +347,12 @@ export async function notifySubscribersOnProgramPublished(env: Env, program: Pub
         sub.tgOptInUrl ? `\nПодключить бота: ${escapeTelegramHtml(sub.tgOptInUrl)}` : "",
       ].join("");
       // eslint-disable-next-line no-await-in-loop
-      const ok = await sendTelegramDirectIfPossible(env, sub.telegramUsername, tgBody, {
+      const ok = await deliverSubscriptionOnce(sub.id, program.id, "telegram", () => sendTelegramDirectIfPossible(env, sub.telegramChatId!, tgBody, {
         parseMode: "HTML",
         mediaUrl: mediaUrl ?? undefined,
-      });
-      safeLog("[subscriptions] telegram DM", { status: ok ? "success" : "failed", subscriptionId: sub.id });
-      sent = sent || ok;
+      }));
+      safeLog("[subscriptions] telegram DM", { status: ok, subscriptionId: sub.id });
+      sent = sent || ok === "sent";
     }
 
     if (sent) sentIds.push(sub.id);
@@ -353,7 +367,7 @@ export async function notifySubscribersOnProgramPublished(env: Env, program: Pub
 
   if (emailAllow) {
     console.log("[subscriptions] telegram channel publish skipped (EMAIL_STAGING_ALLOWLIST is set)");
-  } else if (tgQuality.ok) {
+  } else if (tgQuality.ok && env.TELEGRAM_UPDATES_CHANNEL_CHAT_ID?.trim() && isTelegramBotApiConfigured(env)) {
     const keyboard = await createTrackedChannelKeyboard({
       apiBase,
       programId: program.id,
@@ -367,6 +381,6 @@ export async function notifySubscribersOnProgramPublished(env: Env, program: Pub
     if (channel.ok) await attachChannelPostId(keyboard.clickTokens, channel.messageId);
     console.log("[subscriptions] telegram channel publish", channel.ok ? "success" : "failed");
   } else {
-    console.log("[subscriptions] telegram channel publish skipped by quality filter");
+    safeLog("[subscriptions] telegram channel skipped", { reason: tgQuality.ok ? "not_configured" : "quality_filter" });
   }
 }

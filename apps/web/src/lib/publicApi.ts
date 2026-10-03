@@ -46,6 +46,9 @@ export type PublicSubscriptionPayload = {
   consent?: boolean;
   source?: string;
   utm?: Record<string, string>;
+  levelRequired?: string;
+  dateFrom?: string;
+  dateTo?: string;
 };
 
 export type PublicSubscriptionResponse = {
@@ -55,6 +58,7 @@ export type PublicSubscriptionResponse = {
   message?: string;
   tgOptInUrl?: string | null;
   tgGroupInviteUrl?: string | null;
+  telegramConfirmed?: boolean;
 };
 
 export async function postPublicSubscription(payload: PublicSubscriptionPayload): Promise<PublicSubscriptionResponse> {
@@ -62,6 +66,7 @@ export async function postPublicSubscription(payload: PublicSubscriptionPayload)
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
+    signal: AbortSignal.timeout(20_000),
   });
   const data = (await res.json().catch(() => ({}))) as PublicSubscriptionResponse & { error?: string };
   if (!res.ok) {
@@ -77,5 +82,6 @@ export async function postPublicSubscription(payload: PublicSubscriptionPayload)
     message: data.message,
     tgOptInUrl: data.tgOptInUrl ?? null,
     tgGroupInviteUrl: data.tgGroupInviteUrl ?? null,
+    telegramConfirmed: Boolean(data.telegramConfirmed),
   };
 }

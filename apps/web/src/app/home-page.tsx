@@ -1088,6 +1088,9 @@ function HomePageInner() {
         <StartAlertsSignup
           discipline={selectedDisciplines.length ? selectedDisciplines.join(", ") : undefined}
           region={appliedRegionQuery || undefined}
+          levelRequired={levelFilters.length === 1 ? levelFilters[0] : undefined}
+          dateFrom={dateFrom || undefined}
+          dateTo={dateTo || undefined}
         />
         {loading && (
           <p style={{ color: "var(--mw-muted)" }}>

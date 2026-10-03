@@ -5,7 +5,7 @@
  *
  * Запуск (из корня репо):
  *   pnpm --filter @mywave/config build
- *   SPRINT3_E2E_RECIPIENT_EMAIL=you@gmail.com pnpm --filter api run sprint3:email-e2e
+ *   SPRINT3_E2E_CONSENT=true SPRINT3_E2E_RECIPIENT_EMAIL=you@gmail.com pnpm --filter api run sprint3:email-e2e
  */
 import "../src/env/loadProcessEnv";
 
@@ -35,6 +35,9 @@ function checkPublicUrlsForE2e(env: Env, strict: boolean): { ok: boolean; messag
 async function main() {
   const strictLocal = process.env.SPRINT3_FAIL_ON_LOCALHOST === "1";
   const recipient = process.env.SPRINT3_E2E_RECIPIENT_EMAIL?.trim();
+  if (recipient && process.env.SPRINT3_E2E_CONSENT !== "true") {
+    throw new Error("Set SPRINT3_E2E_CONSENT=true only with the test recipient's explicit permission to receive QA emails.");
+  }
   if (recipient && !process.env.EMAIL_STAGING_ALLOWLIST?.trim()) {
     process.env.EMAIL_STAGING_ALLOWLIST = recipient;
   }
@@ -127,7 +130,8 @@ async function main() {
       discipline: tag,
       region: tag,
       status: "active",
-      metaJson: { source: "sprint3_e2e" },
+      consentAt: new Date(),
+      metaJson: { source: "sprint3_e2e", consentGiven: true, consentPolicyVersion: "updates-v2-2026-10-03" },
     },
   });
 

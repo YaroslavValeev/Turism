@@ -12,6 +12,7 @@ import { requiredConsentsForProgram, CONSENT_TEXTS, type RequiredConsentType } f
 import { consentLabel, formatConsentList, leadSubmitErrorMessage } from "./userMessages";
 import { prisma } from "../../lib/prisma";
 import { PUBLIC_VISIBILITY_SELECT, isProgramPubliclyVisible } from "../programs/publicVisibility";
+import { handleSubscriptionOptIn } from "../subscriptions/telegramOptIn";
 
 // Minimal Telegram update types (subset).
 type TgUser = { id: number; username?: string; first_name?: string; last_name?: string; language_code?: string };
@@ -161,6 +162,7 @@ async function handleCallback(env: Env, cb: CallbackQuery) {
 }
 
 async function handleMessage(env: Env, msg: Message) {
+  if (await handleSubscriptionOptIn(env, msg)) return { ok: true as const };
   const chatId = msg.chat.id;
   const text = (msg.text ?? "").trim();
   if (!text) return { ok: true as const };

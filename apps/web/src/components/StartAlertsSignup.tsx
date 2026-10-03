@@ -1,15 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { postPublicSubscription } from "../lib/publicApi";
 
 type Props = {
   discipline?: string;
   region?: string;
+  levelRequired?: string;
+  dateFrom?: string;
+  dateTo?: string;
 };
 
-export function StartAlertsSignup({ discipline, region }: Props) {
+export function StartAlertsSignup({ discipline, region, levelRequired: initialLevel, dateFrom: initialFrom, dateTo: initialTo }: Props) {
   const telegramInviteFallback = process.env.NEXT_PUBLIC_TELEGRAM_UPDATES_INVITE_LINK ?? "";
   const [email, setEmail] = useState("");
   const [telegramUsername, setTelegramUsername] = useState("");
@@ -19,17 +22,28 @@ export function StartAlertsSignup({ discipline, region }: Props) {
   const [success, setSuccess] = useState("");
   const [tgOptInUrl, setTgOptInUrl] = useState<string | null>(null);
   const [tgGroupInviteUrl, setTgGroupInviteUrl] = useState<string | null>(null);
+  const [levelRequired, setLevelRequired] = useState(initialLevel ?? "");
+  const [dateFrom, setDateFrom] = useState(initialFrom ?? "");
+  const [dateTo, setDateTo] = useState(initialTo ?? "");
+  useEffect(() => setLevelRequired(initialLevel ?? ""), [initialLevel]);
+  useEffect(() => setDateFrom(initialFrom ?? ""), [initialFrom]);
+  useEffect(() => setDateTo(initialTo ?? ""), [initialTo]);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setError("");
     setSuccess("");
+    setTgOptInUrl(null);
     if (!email.trim() && !telegramUsername.trim()) {
       setError("Укажите email или Telegram username.");
       return;
     }
     if (!consent) {
       setError("Подтвердите согласие на получение обновлений.");
+      return;
+    }
+    if (dateFrom && dateTo && dateFrom > dateTo) {
+      setError("Дата окончания раньше начала.");
       return;
     }
     setSubmitting(true);
@@ -45,11 +59,15 @@ export function StartAlertsSignup({ discipline, region }: Props) {
         channelTelegram: Boolean(telegramUsername.trim()),
         consent,
         source: "homepage",
+        levelRequired: levelRequired || undefined,
+        dateFrom: dateFrom || undefined,
+        dateTo: dateTo || undefined,
+        utm: Object.fromEntries([...new URLSearchParams(window.location.search)].filter(([key]) => key.startsWith("utm_"))),
       });
       setSuccess(
-        result.created
+        result.message || (result.created
           ? "Готово. Мы будем присылать новые выезды и обновления MyWaveTour."
-          : "Подписка уже активна.",
+          : "Подписка уже активна."),
       );
       setTgOptInUrl(result.tgOptInUrl ?? null);
       setTgGroupInviteUrl(result.tgGroupInviteUrl ?? null);
@@ -58,7 +76,7 @@ export function StartAlertsSignup({ discipline, region }: Props) {
         setTelegramUsername("");
       }
     } catch (err) {
-      setError("Не удалось оформить подписку. Проверьте контакт и повторите попытку позже.");
+      setError(err instanceof Error ? err.message : "Не удалось оформить подписку. Повторите попытку позже.");
     } finally {
       setSubmitting(false);
     }
@@ -68,7 +86,7 @@ export function StartAlertsSignup({ discipline, region }: Props) {
     <div className="mw-card mw-alerts-signup">
       <p className="mw-alerts-signup__title">Не пропускай новые выезды</p>
       <p className="mw-alerts-signup__lead">
-        Подпишись на обновления MyWaveTour в email или Telegram.
+        Новые поездки по условиям ниже. Личные сообщения в Telegram — после подтверждения в боте.
       </p>
       {(tgGroupInviteUrl ?? telegramInviteFallback) && (
         <a
@@ -81,6 +99,23 @@ export function StartAlertsSignup({ discipline, region }: Props) {
         </a>
       )}
       <form onSubmit={onSubmit} className="mw-alerts-signup__form">
+        <p>Дисциплина: {discipline || "любая"}. Регион: {region || "любой"}.</p>
+        <div className="mw-alerts-signup__grid">
+          <label className="mw-field">Уровень подписки
+            <select className="mw-input" value={levelRequired} disabled={submitting} onChange={e => setLevelRequired(e.target.value)}>
+              <option value="">Любой уровень</option>
+              <option value="beginner">Начальный</option><option value="intermediate">Средний</option>
+              <option value="advanced">Продвинутый</option><option value="expert">Экспертный</option>
+              <option value="all_levels">Обозначено «любой»</option>
+            </select>
+          </label>
+          <label className="mw-field">Дата старта с
+            <input className="mw-input" type="date" value={dateFrom} disabled={submitting} onChange={e => setDateFrom(e.target.value)} />
+          </label>
+          <label className="mw-field">Дата старта по
+            <input className="mw-input" type="date" value={dateTo} disabled={submitting} onChange={e => setDateTo(e.target.value)} />
+          </label>
+        </div>
         <div className="mw-alerts-signup__grid">
           <div className="mw-field">
             <label htmlFor="sub-email">Email</label>

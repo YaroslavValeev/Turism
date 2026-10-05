@@ -15,6 +15,7 @@ import { ensureReviewRequestForCompletedBooking } from "../reviews/reviewRequest
 import { createDealForBooking, resolveContentItemIdForAttribution, syncDealFromBooking } from "../deals/dealService";
 import { addRevenueToContentMetrics } from "../content-pipeline/contentRevenue";
 import { createPublicRateLimiter } from "../../middleware/security";
+import { validateBookingIntake } from "./intakeValidation";
 
 export function bookingsRoutes(env: Env): Router {
   const router = Router();
@@ -23,25 +24,12 @@ export function bookingsRoutes(env: Env): Router {
 
   // Assisted booking intake: public can create inquiry (new). organizer_id from program.
   router.post("/", publicRateLimiter, async (req: Request, res: Response) => {
-    const body = req.body as {
-      programId?: string;
-      guestContact?: string;
-      sourceChannel?: string;
-      sourceCampaign?: string;
-      notes?: string;
-      entryType?: string;
-      entryId?: string;
-      utmSource?: string;
-      utmMedium?: string;
-      exploreType?: string;
-      exploreSlug?: string;
-      /** Обязательно true: согласие с политикой и передачей контакта (сохраняется в legalConsentAt) */
-      legalConsent?: boolean;
-    };
-    if (!body.programId || !body.guestContact) {
-      res.status(400).json({ error: "programId and guestContact required" });
+    const validation = validateBookingIntake(req.body);
+    if (!validation.ok) {
+      res.status(400).json({ error: validation.error });
       return;
     }
+    const body = validation.data;
     if (body.legalConsent !== true) {
       res.status(400).json({ error: "legal_consent_required" });
       return;

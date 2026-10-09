@@ -21,12 +21,17 @@ function sculptureFor(label: string): string | null {
   if (/экспедиц|expedition/.test(value)) return "expedition";
   if (/дикая природа|wildlife/.test(value)) return "wildlife";
   if (/трекинг|trekking|поход/.test(value)) return "trekking";
-  if (/лыж|ski|скитур|ски-тур|фрирайд|freeride/.test(value)) return "ski";
+  if (/хели-ски|хелиски|heli[- ]?ski/.test(value)) return "heli-ski-ka62-baskets";
+  if (/фрирайд|freeride/.test(value)) return "freeride-snowboard";
+  if (/скитур|ски-тур|ski[- ]?tour/.test(value)) return "ski-tour";
+  if (/лыж|ski/.test(value)) return "ski-alpine-v2";
   // An unspecified or unfamiliar discipline keeps its real label, without invented equipment.
   return null;
 }
 
-export function DisciplineCarousel({ items }: { items: DisciplineCarouselItem[] }) {
+export function DisciplineCarousel({ items: catalogItems }: { items: DisciplineCarouselItem[] }) {
+  // This source category is outside the sports navigation, per the owner's visual review.
+  const items = catalogItems.filter((item) => !/^(дикая природа|wildlife)$/i.test(item.label.trim()));
   const count = items.length;
   const [position, setPosition] = useState(() => Math.max(0, items.findIndex((item) => /вейксерф|wakesurf/i.test(item.label))));
   const [enabled, setEnabled] = useState(true);
@@ -46,7 +51,7 @@ export function DisciplineCarousel({ items }: { items: DisciplineCarouselItem[] 
   const active = count ? wrap(position, count) : 0;
   const rotationEnabled = enabled && !focusStopped && !reducedMotion;
   const rotating = rotationEnabled && !hovered && inView && pageVisible && count > 1 && !dragOffset;
-  const gap = width > 760 ? 220 : width > 520 ? 180 : width ? Math.min(155, width * 0.43) : 180;
+  const gap = width > 760 ? 124 : width > 520 ? 108 : width ? Math.min(92, width * 0.27) : 108;
 
   const move = useCallback((direction: number) => {
     setFocusStopped(true);
@@ -209,10 +214,11 @@ export function DisciplineCarousel({ items }: { items: DisciplineCarouselItem[] 
             const angle = Math.max(-2.5, Math.min(2.5, distance)) * 0.55;
             const itemStyle = {
               "--figure-x": `${Math.sin(angle) * (gap / Math.sin(0.55))}px`,
-              "--figure-y": `${Math.abs(distance) * 13}px`,
-              "--figure-scale": Math.max(0.54, 1 - Math.abs(distance) * 0.18),
-              "--figure-turn": `${-distance * 12}deg`,
-              "--figure-opacity": Math.max(0.45, 1 - Math.abs(distance) * 0.2),
+              "--figure-y": `${-(1 - Math.cos(angle)) * 48}px`,
+              "--figure-z": `${60 - (1 - Math.cos(angle)) * 120}px`,
+              "--figure-scale": Math.max(0.66, 1 - Math.abs(distance) * 0.1),
+              "--figure-turn": `${-distance * 6}deg`,
+              "--figure-opacity": Math.max(0.64, 1 - Math.abs(distance) * 0.12),
               opacity: visible ? 1 : 0,
               zIndex: Math.round(100 - Math.abs(distance) * 10),
               pointerEvents: visible ? "auto" : "none",
@@ -223,7 +229,7 @@ export function DisciplineCarousel({ items }: { items: DisciplineCarouselItem[] 
                   href={item.href}
                   className={styles.figure}
                   data-active={index === active}
-                  tabIndex={index === active ? 0 : -1}
+                  tabIndex={-1}
                   aria-label={`${item.label}: показать программы`}
                   onDragStart={(event) => event.preventDefault()}
                 >
@@ -237,12 +243,16 @@ export function DisciplineCarousel({ items }: { items: DisciplineCarouselItem[] 
                       </svg>
                     )}
                   </span>
-                  <strong>{item.label}</strong>
-                  <span className={styles.linkHint} aria-hidden="true">Смотреть программы <span>↗</span></span>
                 </Link>
               </div>
             );
           })}
+        </div>
+        <div className={styles.caption}>
+          <Link href={items[active].href} className={styles.captionLink} aria-label={`${items[active].label}: показать программы`}>
+            <strong>{items[active].label}</strong>
+            <span>Смотреть программы <span aria-hidden="true">↗</span></span>
+          </Link>
         </div>
         <div className={styles.footer}>
           <p id="discipline-carousel-help" className={styles.help}>Колесо мыши · свайп · клавиши ← →</p>

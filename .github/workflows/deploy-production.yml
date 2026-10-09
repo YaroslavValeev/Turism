@@ -84,7 +84,10 @@ jobs:
             echo "SSH probe failed" >&2
             exit 255
           fi
-          ssh $SSH_PROBE "${DEPLOY_USER}@${DEPLOY_HOST}" "set -euo pipefail; DP='${DP}'; case \"\$DP\" in ''|'/'|'/opt'|'/opt/'|'/opt/mywave'|'/opt/mywave/') echo \"Unsafe DEPLOY_PATH: \$DP\" >&2; exit 64 ;; esac; install -m 700 -d /var/backups/mywave-tourism /var/lib/mywave-tourism; if [ -d \"\$DP\" ]; then BACKUP_PATH=\"/var/backups/mywave-tourism/release-\$(date -u +%Y%m%dT%H%M%SZ)-${GITHUB_SHA}.tgz\"; tar --warning=no-file-changed --ignore-failed-read --exclude='*/node_modules' --exclude='*/.next' --exclude='*/dist' --exclude='*/logs' --exclude='*/backups' -czf \"\$BACKUP_PATH\" -C \"\$(dirname \"\$DP\")\" \"\$(basename \"\$DP\")\"; printf '%s\n' \"\$BACKUP_PATH\" > /var/lib/mywave-tourism/last-release-backup; echo \"release_backup=\$BACKUP_PATH\"; fi"
+          BACKUP_PATH="/var/backups/mywave-tourism/release-$(date -u +%Y%m%dT%H%M%SZ)-${GITHUB_SHA}.tgz"
+          # Stream the helper from this checkout BEFORE rsync overwrites server code.
+          # It resolves a symlinked deploy root and refuses incomplete/config-link snapshots.
+          ssh $SSH_PROBE "${DEPLOY_USER}@${DEPLOY_HOST}" "set -euo pipefail; install -m 700 -d /var/backups/mywave-tourism /var/lib/mywave-tourism; bash -s -- '${DP}' '${BACKUP_PATH}'; printf '%s\n' '${BACKUP_PATH}' > /var/lib/mywave-tourism/last-release-backup" < scripts/production/create-source-backup.sh
           if rsync -avz --timeout=900 -e "ssh $SSH_RSYNC" --delete --exclude='.git/' --exclude='node_modules/' --exclude='.next/' --exclude='dist/' --exclude='backups/' --exclude='logs/' --exclude='.env' --exclude='.env.*' --exclude='.cursor/' --exclude='.turbo/' --exclude='coverage/' --exclude='**/.turbo/' --exclude='**/test-results/' --exclude='**/*.tsbuildinfo' --exclude='infra/nginx/certs/' "$GITHUB_WORKSPACE/" "${DEPLOY_USER}@${DEPLOY_HOST}:${DP}/"; then
             echo "Rsync complete"
           else
@@ -125,24 +128,24 @@ jobs:
             exit 65
           fi
           if [ "$DEPLOY_MODE" = "web_only" ]; then
-            "${DC[@]}" up -d --no-deps --build web reverse-proxy
+            "${DC[@]}" up -d --no-deps --build web reverse-proxy </dev/null
           elif [ "$BUILD_MODE" = "full" ]; then
-            "${DC[@]}" build --no-cache api web admin
-            "${DC[@]}" run --rm api sh -lc 'cd /app/services/api && pnpm exec prisma migrate deploy'
-            "${DC[@]}" up -d api web admin reverse-proxy
+            "${DC[@]}" build --no-cache api web admin </dev/null
+            "${DC[@]}" run --rm -T --interactive=false api sh -lc 'cd /app/services/api && pnpm exec prisma migrate deploy' </dev/null
+            "${DC[@]}" up -d api web admin reverse-proxy </dev/null
           else
-            "${DC[@]}" build api web admin
-            "${DC[@]}" run --rm api sh -lc 'cd /app/services/api && pnpm exec prisma migrate deploy'
-            "${DC[@]}" up -d api web admin reverse-proxy
+            "${DC[@]}" build api web admin </dev/null
+            "${DC[@]}" run --rm -T --interactive=false api sh -lc 'cd /app/services/api && pnpm exec prisma migrate deploy' </dev/null
+            "${DC[@]}" up -d api web admin reverse-proxy </dev/null
           fi
-          "${DC[@]}" ps
+          "${DC[@]}" ps </dev/null
           # web_only не пересобирает api, поэтому /api/health честно отдаёт прежний releaseSha.
           HEALTH_EXPECTED_SHA="$EXPECTED_SHA"
           if [ "$DEPLOY_MODE" = "web_only" ]; then HEALTH_EXPECTED_SHA=""; fi
-          PROD_HEALTHCHECK_EXPECTED_SHA="$HEALTH_EXPECTED_SHA" MYWAVE_ROOT="$DEPLOY_PATH" bash scripts/prod_healthcheck.sh
+          PROD_HEALTHCHECK_EXPECTED_SHA="$HEALTH_EXPECTED_SHA" MYWAVE_ROOT="$DEPLOY_PATH" bash scripts/prod_healthcheck.sh </dev/null
           if [ "$DEPLOY_MODE" = "full" ]; then
-            "${DC[@]}" exec -T api sh -lc 'cd /app && INGESTION_TRACE_AUDIT_STRICT=true pnpm --filter api audit:ingestion-trace'
-            "${DC[@]}" exec -T api sh -lc 'cd /app && pnpm --filter api audit:pilot-readiness'
+            "${DC[@]}" exec -T api sh -lc 'cd /app && INGESTION_TRACE_AUDIT_STRICT=true pnpm --filter api audit:ingestion-trace' </dev/null
+            "${DC[@]}" exec -T api sh -lc 'cd /app && pnpm --filter api audit:pilot-readiness' </dev/null
           fi
           echo "release_sha=$EXPECTED_SHA"
           echo "rollback_backup=$(cat /var/lib/mywave-tourism/last-release-backup 2>/dev/null || true)"

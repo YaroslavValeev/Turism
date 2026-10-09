@@ -70,6 +70,7 @@ jobs:
           set -euo pipefail
           bash scripts/production/create-source-backup.test.sh
           bash scripts/production/deploy-stdin.test.sh
+          bash scripts/production/rehearse-database-restore.test.sh
 
       - name: Validate local Compose
         run: docker compose config --quiet

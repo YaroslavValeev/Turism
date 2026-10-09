@@ -5,6 +5,7 @@ import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { getProgramLevelLabel } from "@mywave/shared-types";
 import { Faq } from "../components/Faq";
+import { DisciplineCarousel } from "../components/DisciplineCarousel";
 import { ToursFilmstrip } from "../components/ToursFilmstrip";
 import { HeroHotOfferSpotlight, type HotOfferSlide } from "../components/HeroHotOfferSpotlight";
 import { LandingFooter } from "../components/LandingFooter";
@@ -663,6 +664,10 @@ function HomePageInner() {
           </div>
         </div>
       </header>
+
+      {disciplineOptions.length > 0 && (
+        <DisciplineCarousel items={disciplineOptions.map((label) => ({ label, href: catalogHrefBuilder({ discipline: label }) }))} />
+      )}
 
       {!loading && programsCatalogUnique.length > 0 && (
         <>

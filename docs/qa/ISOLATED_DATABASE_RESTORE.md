@@ -24,3 +24,18 @@ bash scripts/production/rehearse-database-restore.test.sh
 
 The helper deliberately does not enable notification delivery, add a scheduler,
 recalculate scores, apply migrations, restart production or change access controls.
+
+## Confirmed rehearsal — 2026-10-09
+
+- Helper commit: `c6179a48549930b84dbc79f2df3716ec5adb935b`; exact-head quality
+  run `37969323333` passed. Uploaded helpers were checked against their SHA-256.
+- Production source/API remained `1732d9aaadca5cb4b396efb0b156798b1034aa95`.
+- Evidence: `/var/backups/mywave-tourism/restore-rehearsal-BfpigK1J`.
+- Full `pg_restore --exit-on-error` succeeded: 254 programs, 29 organizers,
+  3 bookings, 1800 raw items and 46 applied migrations were present in the copy.
+- Source/dump checksums passed; all five production container IDs and all saved
+  env hashes remained unchanged; the final public health check passed.
+- The owned networkless/tmpfs PostgreSQL container was removed after validation.
+  Dumps, source archive and private logs were retained in the protected snapshot.
+- This proves backup restorability, not notification delivery, every business
+  scenario or original-media provenance. No production database restore occurred.

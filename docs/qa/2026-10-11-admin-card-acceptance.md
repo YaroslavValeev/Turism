@@ -15,7 +15,7 @@ mounts into a Linux Node 20 runtime. An initial expired-token expectation was
 corrected: private organizer routes return 401; forbidden admin catalog scope
 returns 403. Production code was not changed to fit the test.
 
-The final run at `2026-10-11T07:49:19.828Z` passed **43/43** HTTP scenarios:
+The local run at `2026-10-11T07:49:19.828Z` passed **43/43** HTTP scenarios:
 real login, incorrect credentials, member/admin boundaries, expiry, public organizer
 allowlist, verification evidence/ladder, draft creation, rejected patches without
 record/audit mutation, text/price/capacity edits and manual-field protection,
@@ -26,6 +26,13 @@ Twenty audit records were present; expected actors and selected diffs were check
 Bookings, subscriptions and deliveries stayed at zero. Two external FX fetches
 were blocked by the QA fetch guard; SMTP/Telegram/AI settings were cleared and
 no application scheduler was started.
+
+Exact-head quality run `38123022728` repeated all 43 scenarios with Linux-built
+dependencies and real PostgreSQL in GitHub Actions. The final suite additionally
+checks that an `organizer` account cannot log in to the admin portal or create a
+program with its role token, bringing the suite to **45** scenarios; its exact-head
+CI result must be confirmed independently. Browser navigation eventually reached
+the production login form after a transport timeout; no credentials were entered.
 
 ## Repeatable validation
 

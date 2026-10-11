@@ -45,6 +45,9 @@ async function main() {
   const member = await prisma.user.create({ data: {
     email: 'member@example.invalid', role: 'user', passwordHash: await bcrypt.hash(password, 10),
   } });
+  const organizerUser = await prisma.user.create({ data: {
+    email: 'organizer-account@example.invalid', role: 'organizer', passwordHash: await bcrypt.hash(password, 10),
+  } });
   const app = express();
   app.use(express.json());
   app.use('/auth', authRoutes(env));
@@ -69,11 +72,14 @@ async function main() {
   await request('login_missing_fields', '/auth/login', 'POST', {}, 400, null);
   await request('login_wrong_password', '/auth/login', 'POST', { email: admin.email, password: 'incorrect-fixture-value' }, 401, null);
   await request('member_cannot_login_admin', '/auth/login', 'POST', { email: member.email, password }, 401, null);
+  await request('organizer_cannot_login_admin', '/auth/login', 'POST', { email: organizerUser.email, password }, 401, null);
   token = (await request('real_admin_login', '/auth/login', 'POST', { email: admin.email, password }, 200, null)).token;
   assert.equal(jwt.verify(token, env.ADMIN_JWT_SECRET).sub, admin.id);
   await request('program_create_anonymous', '/programs', 'POST', {}, 401, null);
   await request('program_create_nonadmin', '/programs', 'POST', {}, 403,
     jwt.sign({ sub: member.id, role: 'user' }, env.ADMIN_JWT_SECRET));
+  await request('program_create_organizer_role_forbidden', '/programs', 'POST', {}, 403,
+    jwt.sign({ sub: organizerUser.id, role: 'organizer' }, env.ADMIN_JWT_SECRET));
   await request('expired_session_private_endpoint', '/organizers/qa-expiry-probe', 'GET', undefined, 401,
     jwt.sign({ sub: admin.id, role: 'admin' }, env.ADMIN_JWT_SECRET, { expiresIn: -1 }));
   await request('expired_catalog_admin_scope_forbidden', '/programs?all=1', 'GET', undefined, 403,

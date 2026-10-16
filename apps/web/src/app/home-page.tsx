@@ -577,6 +577,9 @@ function HomePageInner() {
         <SearchParamSync onChange={applySearchParams} />
       </Suspense>
       <SiteHeader
+        afterBrand={disciplineOptions.length > 0 ? (
+          <DisciplineCarousel items={disciplineOptions.map((label) => ({ label, href: catalogHrefBuilder({ discipline: label }) }))} />
+        ) : null}
         role={role}
         onRoleChange={handleRoleChange}
         appliedDisciplines={selectedDisciplines}
@@ -664,10 +667,6 @@ function HomePageInner() {
           </div>
         </div>
       </header>
-
-      {disciplineOptions.length > 0 && (
-        <DisciplineCarousel items={disciplineOptions.map((label) => ({ label, href: catalogHrefBuilder({ discipline: label }) }))} />
-      )}
 
       {!loading && programsCatalogUnique.length > 0 && (
         <>

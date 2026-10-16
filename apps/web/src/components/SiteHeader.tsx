@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { homePrimaryNav } from "../content/pilotLanding";
 import { HoverHint } from "./HoverHint";
 
@@ -16,6 +16,7 @@ function parseDisciplineInput(raw: string): string[] {
 }
 
 type Props = {
+  afterBrand?: ReactNode;
   role: SiteRole;
   onRoleChange: (role: SiteRole) => void;
   /** Одна и несколько дисциплин; в шапке вводятся через запятую. */
@@ -29,6 +30,7 @@ type Props = {
 };
 
 export function SiteHeader({
+  afterBrand,
   role,
   onRoleChange,
   appliedDisciplines,
@@ -115,6 +117,8 @@ export function SiteHeader({
               </Link>
             ))}
           </nav>
+
+          {afterBrand}
 
           <div className="mw-site-header__controls">
             <div className="mw-site-header__role-block">

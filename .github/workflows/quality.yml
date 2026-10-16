@@ -71,6 +71,7 @@ jobs:
           bash scripts/production/create-source-backup.test.sh
           bash scripts/production/deploy-stdin.test.sh
           bash scripts/production/rehearse-database-restore.test.sh
+          sudo bash scripts/production/deploy-web-carousel.test.sh
           node --test services/api/scripts/admin-card-qa-guard.test.cjs
 
       - name: Verify isolated admin card HTTP and PostgreSQL scenarios

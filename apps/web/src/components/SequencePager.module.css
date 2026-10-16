@@ -1,0 +1,7 @@
+.root { display: inline-flex; align-items: center; gap: 8px; flex-shrink: 0; color: var(--mw-text, #141414); }
+.root button { display: inline-grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 1px solid var(--mw-border, #e7e5e4); border-radius: 50%; background: var(--mw-surface, #fff); color: inherit; font: inherit; cursor: pointer; }
+.root button:hover:not(:disabled) { border-color: var(--mw-accent, #0f766e); color: var(--mw-accent, #0f766e); }
+.root button:disabled { opacity: .35; cursor: default; }
+.root button:focus-visible { outline: 2px solid var(--mw-accent, #0f766e); outline-offset: 3px; }
+.counter { min-width: 46px; text-align: center; white-space: nowrap; font-size: 12px; font-variant-numeric: tabular-nums; color: var(--sequence-counter-color, var(--mw-muted, #666)); }
+.srOnly { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }

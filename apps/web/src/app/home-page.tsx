@@ -27,6 +27,7 @@ import {
 } from "../content/pilotLanding";
 import { dedupeProgramListingsByEvent } from "../lib/dedupeProgramListingsByEvent";
 import { getDisciplineCompactLabel, getDisciplineDisplay } from "../lib/disciplineLabels";
+import { displayValue } from "../lib/programDisplay";
 import { pickBestProgramCoverImageUrl } from "../lib/programCardCover";
 import { isOnRequestProgram, onRequestLabel } from "../lib/programSchedule";
 import { getPublicApiBase } from "../lib/publicApiBase";
@@ -475,7 +476,7 @@ function HomePageInner() {
             { mediaOrderPinned: program.mediaOrderPinned },
           ) ??
           HERO_FALLBACK_IMAGES[index % HERO_FALLBACK_IMAGES.length],
-        kicker: `${getDisciplineCompactLabel(program.discipline)} · ${locationPart}`,
+        kicker: [displayValue(getDisciplineCompactLabel(program.discipline)), locationPart].filter(Boolean).join(" · "),
         timingLabel,
         metaLabel: facts.join(" · "),
         priceLabel: formatProgramPrice(program),
@@ -605,11 +606,11 @@ function HomePageInner() {
           syncToUrl({ disciplines: [], region: "", nearest: false, season: "", levels: [], dates: NO_DATES });
         }}
       />
-      <header className="mw-hero-visual mw-hero-visual--filmstrip">
+      <header className="mw-hero-visual mw-hero-visual--filmstrip mw-hero--sport">
         <div className="mw-container mw-hero-inner mw-hero-inner--filmstrip-top">
           <div className="mw-hero-panel">
             <div className="mw-hero-copy">
-              <p className="mw-hero-kicker">MyWaveTour · спортивные выезды по России</p>
+              <p className="mw-hero-kicker">Спортивные выезды по России</p>
               <h1 className="mw-h1 mw-h1--filmstrip">{hero.title}</h1>
               <p className="mw-lead mw-lead--tight">{hero.subtitle}</p>
               <div className="mw-hero-metrics" aria-label="Краткая сводка по каталогу">
@@ -649,14 +650,17 @@ function HomePageInner() {
                 </Link>
               </div>
               <p className="mw-hero-footnote mw-hero-footnote--main">{hero.footnote}</p>
-              <ul className="mw-factual-strip" aria-label="Коротко о платформе">
+              <details className="mw-hero-about">
+                <summary>Как устроены выезды <span aria-hidden="true">↗</span></summary>
+                <ul className="mw-factual-strip" aria-label="Коротко о платформе">
                 {trustCards.map((c) => (
                   <li key={c.title} className="mw-factual-strip__item">
                     <strong>{c.title}</strong>
                     <span>{c.text}</span>
                   </li>
                 ))}
-              </ul>
+                </ul>
+              </details>
             </div>
             <HeroHotOfferSpotlight slides={hotOfferSlides} />
           </div>
@@ -670,7 +674,7 @@ function HomePageInner() {
 
       {!loading && programsCatalogUnique.length > 0 && (
         <>
-          <Section title="Ближайшие старты" subtitle="Программы, которые стартуют совсем скоро." strip="muted">
+          <Section id="nearest-starts" title="Ближайшие старты" subtitle="Выбери даты и отправляйся в следующую поездку." strip="muted">
             <div className="program-rail-grid">
               {railNearest.map((p) => (
                 <ProgramRailCard key={p.id} program={p} levelLabel={getProgramLevelLabel(p.levelRequired)} catalogHrefBuilder={catalogHrefBuilder} />

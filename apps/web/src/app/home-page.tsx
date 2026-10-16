@@ -27,6 +27,7 @@ import {
 } from "../content/pilotLanding";
 import { dedupeProgramListingsByEvent } from "../lib/dedupeProgramListingsByEvent";
 import { getDisciplineCompactLabel, getDisciplineDisplay } from "../lib/disciplineLabels";
+import { displayValue } from "../lib/programDisplay";
 import { pickBestProgramCoverImageUrl } from "../lib/programCardCover";
 import { isOnRequestProgram, onRequestLabel } from "../lib/programSchedule";
 import { getPublicApiBase } from "../lib/publicApiBase";
@@ -475,7 +476,7 @@ function HomePageInner() {
             { mediaOrderPinned: program.mediaOrderPinned },
           ) ??
           HERO_FALLBACK_IMAGES[index % HERO_FALLBACK_IMAGES.length],
-        kicker: `${getDisciplineCompactLabel(program.discipline)} · ${locationPart}`,
+        kicker: [displayValue(getDisciplineCompactLabel(program.discipline)), locationPart].filter(Boolean).join(" · "),
         timingLabel,
         metaLabel: facts.join(" · "),
         priceLabel: formatProgramPrice(program),

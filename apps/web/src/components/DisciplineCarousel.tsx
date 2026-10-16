@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { arrangeDisciplineItems, sculptureBounds, sculptureFor, type DisciplineCarouselItem } from "../lib/disciplineSculptures";
 import { SequencePager } from "./SequencePager";
+import { displayValue } from "../lib/programDisplay";
 import styles from "./DisciplineCarousel.module.css";
 
 // Leave time to recognize each discipline between the smooth turns.
@@ -37,6 +38,7 @@ export function DisciplineCarousel({ items: catalogItems }: { items: DisciplineC
   const suppressClickUntil = useRef(0);
   const wheelState = useRef({ lastStep: -Infinity, delta: 0, lastEvent: -Infinity });
   const active = count ? wrap(position, count) : 0;
+  const activeLabel = count ? displayValue(items[active].label) ?? "Другие выезды" : "";
   const rotationEnabled = enabled && !focusStopped && !reducedMotion;
   const rotating = rotationEnabled && !hovered && !interactionPaused && inView && pageVisible && count > 1 && !dragOffset;
   const figureWidth = width > 600 ? Math.min(190, Math.max(154, width * 0.12)) : 150;
@@ -255,7 +257,7 @@ export function DisciplineCarousel({ items: catalogItems }: { items: DisciplineC
                 className={styles.figure}
                 data-active={index === active}
                 tabIndex={-1}
-                aria-label={`${item.label}: показать программы`}
+                aria-label={`${displayValue(item.label) ?? "Другие выезды"}: показать программы`}
                 onDragStart={(event) => event.preventDefault()}
               >
                 <span className={styles.sculpture}>
@@ -270,7 +272,7 @@ export function DisciplineCarousel({ items: catalogItems }: { items: DisciplineC
                       <img src={`/media/disciplines/${sculpture}.webp`} alt="" width={400} height={440} draggable={false} decoding="async" />
                     </span>
                   ) : (
-                    <svg className={styles.compass} viewBox="0 0 160 160" aria-hidden="true">
+                    <svg className={styles.compass} viewBox="16 16 128 128" aria-hidden="true">
                       <circle cx="80" cy="80" r="58" /><circle cx="80" cy="80" r="49" />
                       <path d="m99 47-10 43-28 23 10-43Z" /><path d="m80 17 0 8m0 110v8M17 80h8m110 0h8" />
                     </svg>
@@ -282,11 +284,11 @@ export function DisciplineCarousel({ items: catalogItems }: { items: DisciplineC
         })}
       </div>
       <div className={`mw-container ${styles.footer}`}>
-        <Link ref={captionRef} href={items[active].href} className={styles.captionLink} aria-label={`${items[active].label}: показать программы`}>
-          <strong>{items[active].label}</strong>
+        <Link ref={captionRef} href={items[active].href} className={styles.captionLink} aria-label={`${activeLabel}: показать программы`}>
+          <strong>{activeLabel}</strong>
           <span>Смотреть программы <span aria-hidden="true">↗</span></span>
         </Link>
-        <SequencePager index={active} count={count} currentLabel={items[active].label} label="Дисциплины" previousLabel="Предыдущая дисциплина" nextLabel="Следующая дисциплина" onPrevious={() => move(-1)} onNext={() => move(1)} loop live={rotating ? "off" : "polite"} />
+        <SequencePager index={active} count={count} currentLabel={activeLabel} label="Дисциплины" previousLabel="Предыдущая дисциплина" nextLabel="Следующая дисциплина" onPrevious={() => move(-1)} onNext={() => move(1)} loop live={rotating ? "off" : "polite"} />
       </div>
     </section>
   );

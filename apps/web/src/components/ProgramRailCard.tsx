@@ -9,6 +9,7 @@ import {
 import { getDisciplineDisplay } from "../lib/disciplineLabels";
 import type { ProgramCardProgram } from "../lib/programCardModel";
 import { ProgramCardBody } from "./ProgramCardBody";
+import { programDateLabel } from "../lib/programDateLabel";
 
 type Props = {
   program: ProgramCardProgram;
@@ -63,6 +64,10 @@ export function ProgramRailCard({ program, levelLabel, catalogHrefBuilder, progr
       <h3 className="mw-rail-card__title">
         <Link href={pdp}>{program.title}</Link>
       </h3>
+      <p className="mw-rail-card__dates">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3" /><path d="M3 10h18M8 3v4m8-4v4" /></svg>
+        <span>{programDateLabel(program)}</span>
+      </p>
       <details className="mw-rail-card__details">
         <summary className="mw-rail-card__summary">Подробнее</summary>
         <div className="mw-rail-card__expand">

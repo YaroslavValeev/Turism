@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { SequencePager } from "./SequencePager";
 import { applyProgramCardImageFallback, normalizeProgramCardCoverSrc } from "../lib/programCardCover";
 import {
   DEMO_TOUR_CARDS,
@@ -386,17 +387,6 @@ export function ToursFilmstrip({ programs, regionOptions, loading, allToursHref 
       </div>
 
       <div className="tours-filmstrip-outer">
-        {pageCount > 1 && (
-          <button
-            type="button"
-            className="filmstrip-arrow filmstrip-arrow--prev"
-            onClick={goPrev}
-            disabled={!canPrev}
-            aria-label="Предыдущие туры"
-          >
-            <span aria-hidden>‹</span>
-          </button>
-        )}
         <div className="tours-filmstrip">
           {isFilterEmpty && (
             <p className="tours-filmstrip-note" role="status">
@@ -424,40 +414,10 @@ export function ToursFilmstrip({ programs, regionOptions, loading, allToursHref 
             </div>
           )}
         </div>
-        {pageCount > 1 && (
-          <button
-            type="button"
-            className="filmstrip-arrow filmstrip-arrow--next"
-            onClick={goNext}
-            disabled={!canNext}
-            aria-label="Следующие туры"
-          >
-            <span aria-hidden>›</span>
-          </button>
-        )}
       </div>
 
       <div className="tours-filmstrip-bottom">
-        <div className="tours-filmstrip-bottom__spacer" aria-hidden />
-        <div className="tours-filmstrip-bottom__center" aria-label="Пагинация">
-          {pageCount > 1 && (
-            <div className="tours-pagination" role="tablist" aria-label="Страницы">
-              {Array.from({ length: pageCount }, (_, k) => (
-                <button
-                  key={k}
-                  type="button"
-                  className={`tours-pagination__item ${page === k ? "tours-pagination__item--active" : ""}`}
-                  onClick={() => setPage(k)}
-                  role="tab"
-                  aria-selected={page === k}
-                  aria-label={`Страница ${k + 1}`}
-                >
-                  {k + 1}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+        <SequencePager index={page} count={pageCount} label="Страницы туров и кемпов" previousLabel="Предыдущие туры" nextLabel="Следующие туры" onPrevious={goPrev} onNext={goNext} />
         <div className="tours-filmstrip-bottom__link">
           <Link href={allToursHref} className="tours-filmstrip-all">
             Смотреть все туры →

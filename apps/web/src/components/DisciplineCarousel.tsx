@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { arrangeDisciplineItems, sculptureBounds, sculptureFor, type DisciplineCarouselItem } from "../lib/disciplineSculptures";
+import { SequencePager } from "./SequencePager";
 import styles from "./DisciplineCarousel.module.css";
 
 // Leave time to recognize each discipline between the smooth turns.
@@ -10,29 +12,10 @@ const INTERACTION_PAUSE_MS = 8000;
 const WHEEL_SETTLE_MS = 700;
 const wrap = (value: number, count: number) => ((value % count) + count) % count;
 
-export type DisciplineCarouselItem = { label: string; href: string };
-
-function sculptureFor(label: string): string | null {
-  const value = label.toLowerCase().replace(/ё/g, "е");
-  if (/вейксерф|wakesurf/.test(value)) return "wakesurf";
-  if (/кайт|kite/.test(value)) return "kite";
-  if (/маунтинбайк|mtb|велосипед/.test(value)) return "mtb";
-  if (/скалолаз|альпинизм|climbing/.test(value)) return "climbing";
-  if (/снегоход|snowmobile/.test(value)) return "snowmobile";
-  if (/экспедиц|expedition/.test(value)) return "expedition";
-  if (/дикая природа|wildlife/.test(value)) return "wildlife";
-  if (/трекинг|trekking|поход/.test(value)) return "trekking";
-  if (/хели-ски|хелиски|heli[- ]?ski/.test(value)) return "heli-ski-ka62-baskets";
-  if (/фрирайд|freeride/.test(value)) return "freeride-snowboard";
-  if (/скитур|ски-тур|ski[- ]?tour/.test(value)) return "ski-tour";
-  if (/лыж|ski/.test(value)) return "ski-alpine-v2";
-  // An unspecified or unfamiliar discipline keeps its real label, without invented equipment.
-  return null;
-}
+export type { DisciplineCarouselItem } from "../lib/disciplineSculptures";
 
 export function DisciplineCarousel({ items: catalogItems }: { items: DisciplineCarouselItem[] }) {
-  // This source category is outside the sports navigation, per the owner's visual review.
-  const items = catalogItems.filter((item) => !/^(дикая природа|wildlife)$/i.test(item.label.trim()));
+  const items = useMemo(() => arrangeDisciplineItems(catalogItems), [catalogItems]);
   const count = items.length;
   const [position, setPosition] = useState(() => Math.max(0, items.findIndex((item) => /вейксерф|wakesurf/i.test(item.label))));
   const [enabled, setEnabled] = useState(true);
@@ -44,8 +27,10 @@ export function DisciplineCarousel({ items: catalogItems }: { items: DisciplineC
   const [pageVisible, setPageVisible] = useState(true);
   const [width, setWidth] = useState(0);
   const [dragOffset, setDragOffset] = useState(0);
+  const [helpVisible, setHelpVisible] = useState(false);
   const rootRef = useRef<HTMLElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
+  const captionRef = useRef<HTMLAnchorElement>(null);
   const pauseIntent = useRef<boolean | null>(null);
   const resumeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const gesture = useRef<{ x: number; y: number; horizontal: boolean; id: number } | null>(null);
@@ -54,13 +39,13 @@ export function DisciplineCarousel({ items: catalogItems }: { items: DisciplineC
   const active = count ? wrap(position, count) : 0;
   const rotationEnabled = enabled && !focusStopped && !reducedMotion;
   const rotating = rotationEnabled && !hovered && !interactionPaused && inView && pageVisible && count > 1 && !dragOffset;
-  const figureWidth = width > 600 ? Math.min(280, Math.max(216, width * 0.16)) : 196;
+  const figureWidth = width > 600 ? Math.min(190, Math.max(154, width * 0.12)) : 150;
   // Keep a hidden figure at the seam, so wrapping never sweeps across the scene.
   const visibleSteps = Math.max(2, Math.min(Math.floor((count - 1) / 2) - 1, Math.ceil(width / (figureWidth * 1.56))));
   const angleStep = width > 600 ? 0.9 / visibleSteps : 0.55;
   const gap = width > 600
-    ? Math.max(108, (width / 2 - figureWidth * 0.22) * Math.sin(angleStep) / Math.sin(0.9))
-    : width > 520 ? 108 : width ? Math.min(92, width * 0.27) : 92;
+    ? Math.max(86, (width / 2 - figureWidth * 0.22) * Math.sin(angleStep) / Math.sin(0.9))
+    : width > 520 ? 100 : width ? Math.min(90, width * 0.27) : 90;
 
   const pauseForInteraction = useCallback(() => {
     setInteractionPaused(true);
@@ -151,10 +136,18 @@ export function DisciplineCarousel({ items: catalogItems }: { items: DisciplineC
       }}
     >
       <div className={`mw-container ${styles.heading}`}>
-        <div>
-          <p className={styles.eyebrow}>Направления</p>
-          <h2 id="discipline-carousel-title">Выберите свой спорт</h2>
-        </div>
+        <h2 id="discipline-carousel-title">Выберите свой спорт</h2>
+        <div className={styles.tools}>
+          <div
+            className={styles.helpAnchor}
+            onPointerEnter={(event) => { if (event.pointerType === "mouse") setHelpVisible(true); }}
+            onPointerLeave={(event) => { if (event.pointerType === "mouse") setHelpVisible(false); }}
+            onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setHelpVisible(false); }}
+            onKeyDown={(event) => { if (event.key === "Escape") { setHelpVisible(false); event.stopPropagation(); } }}
+          >
+            <button type="button" className={styles.helpButton} aria-label="Как управлять каруселью" aria-describedby="discipline-carousel-help" onFocus={(event) => { if (event.currentTarget.matches(":focus-visible")) setHelpVisible(true); }} onClick={() => setHelpVisible((value) => !value)}>?</button>
+            <p id="discipline-carousel-help" role="tooltip" className={styles.help} hidden={!helpVisible}>Колесо мыши или свайп — листать. Клавиши ← → — выбрать, Enter — открыть программы.</p>
+          </div>
         {count > 1 && (
           <button
             type="button"
@@ -178,6 +171,7 @@ export function DisciplineCarousel({ items: catalogItems }: { items: DisciplineC
             {rotationEnabled ? "Пауза" : reducedMotion ? "Без анимации" : "Продолжить"}
           </button>
         )}
+        </div>
       </div>
       <div
         id="discipline-carousel-stage"
@@ -186,8 +180,9 @@ export function DisciplineCarousel({ items: catalogItems }: { items: DisciplineC
         data-dragging={Boolean(dragOffset)}
         tabIndex={count > 1 ? 0 : -1}
         aria-label="Выбор дисциплины"
-        aria-describedby="discipline-carousel-help"
+        aria-describedby="discipline-carousel-instructions"
         onKeyDown={(event) => {
+          if (event.key === "Enter") { event.preventDefault(); captionRef.current?.click(); return; }
           const direction = event.key === "ArrowRight" ? 1 : event.key === "ArrowLeft" ? -1 : 0;
           if (direction || event.key === "Home" || event.key === "End") {
             event.preventDefault();
@@ -234,6 +229,7 @@ export function DisciplineCarousel({ items: catalogItems }: { items: DisciplineC
           if (Date.now() < suppressClickUntil.current) { event.preventDefault(); event.stopPropagation(); }
         }}
       >
+        <span id="discipline-carousel-instructions" className={styles.srOnly}>Листайте колесом мыши, свайпом или клавишами ← →. Enter открывает программы выбранной дисциплины.</span>
         <div className={styles.orbit} aria-hidden="true" />
         {items.map((item, index) => {
           const offset = wrap(index - position + count / 2, count) - count / 2;
@@ -243,7 +239,6 @@ export function DisciplineCarousel({ items: catalogItems }: { items: DisciplineC
           const angle = Math.max(-visibleSteps - 0.5, Math.min(visibleSteps + 0.5, distance)) * angleStep;
           const itemStyle = {
             "--figure-x": `${Math.sin(angle) * (gap / Math.sin(angleStep))}px`,
-            "--figure-y": `${-(1 - Math.cos(angle)) * 48}px`,
             "--figure-z": `${60 - (1 - Math.cos(angle)) * 120}px`,
             "--figure-scale": Math.max(0.66, 1 - Math.abs(distance) * 0.1),
             "--figure-turn": `${-distance * 6}deg`,
@@ -252,6 +247,7 @@ export function DisciplineCarousel({ items: catalogItems }: { items: DisciplineC
             zIndex: Math.round(100 - Math.abs(distance) * 10),
             pointerEvents: visible ? "auto" : "none",
           } as CSSProperties;
+          const bounds = sculpture ? sculptureBounds[sculpture] : null;
           return (
             <div key={item.label} className={styles.item} style={itemStyle} aria-hidden={!visible}>
               <Link
@@ -263,8 +259,16 @@ export function DisciplineCarousel({ items: catalogItems }: { items: DisciplineC
                 onDragStart={(event) => event.preventDefault()}
               >
                 <span className={styles.sculpture}>
-                  {sculpture ? (
-                    <img src={`/media/disciplines/${sculpture}.webp`} alt="" width={400} height={440} draggable={false} decoding="async" />
+                  {sculpture && bounds ? (
+                    <span className={styles.artwork} style={{
+                      "--art-ratio": bounds.width / bounds.height,
+                      "--art-left": `${-bounds.x / bounds.width * 100}%`,
+                      "--art-top": `${-bounds.y / bounds.height * 100}%`,
+                      "--art-width": `${400 / bounds.width * 100}%`,
+                      "--art-height": `${440 / bounds.height * 100}%`,
+                    } as CSSProperties}>
+                      <img src={`/media/disciplines/${sculpture}.webp`} alt="" width={400} height={440} draggable={false} decoding="async" />
+                    </span>
                   ) : (
                     <svg className={styles.compass} viewBox="0 0 160 160" aria-hidden="true">
                       <circle cx="80" cy="80" r="58" /><circle cx="80" cy="80" r="49" />
@@ -277,24 +281,12 @@ export function DisciplineCarousel({ items: catalogItems }: { items: DisciplineC
           );
         })}
       </div>
-      <div className={styles.caption}>
-        <Link href={items[active].href} className={styles.captionLink} aria-label={`${items[active].label}: показать программы`}>
+      <div className={`mw-container ${styles.footer}`}>
+        <Link ref={captionRef} href={items[active].href} className={styles.captionLink} aria-label={`${items[active].label}: показать программы`}>
           <strong>{items[active].label}</strong>
           <span>Смотреть программы <span aria-hidden="true">↗</span></span>
         </Link>
-      </div>
-      <div className={`mw-container ${styles.footer}`}>
-        <p id="discipline-carousel-help" className={styles.help}>Колесо мыши · свайп · клавиши ← →</p>
-        {count > 1 && (
-          <div className={styles.navigation}>
-            <button type="button" aria-label="Предыдущая дисциплина" aria-controls="discipline-carousel-stage" onClick={() => move(-1)}>←</button>
-            <span className={styles.counter} aria-live={rotating ? "off" : "polite"} aria-atomic="true">
-              <span className={styles.srOnly}>{items[active].label}. Дисциплина </span>
-              {String(active + 1).padStart(2, "0")}<span aria-hidden="true"> / </span><span className={styles.srOnly}> из </span>{String(count).padStart(2, "0")}
-            </span>
-            <button type="button" aria-label="Следующая дисциплина" aria-controls="discipline-carousel-stage" onClick={() => move(1)}>→</button>
-          </div>
-        )}
+        <SequencePager index={active} count={count} currentLabel={items[active].label} label="Дисциплины" previousLabel="Предыдущая дисциплина" nextLabel="Следующая дисциплина" onPrevious={() => move(-1)} onNext={() => move(1)} loop live={rotating ? "off" : "polite"} />
       </div>
     </section>
   );

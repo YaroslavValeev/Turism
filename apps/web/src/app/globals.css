@@ -687,6 +687,27 @@ a:hover {
   flex-direction: column;
 }
 
+/* Sport-first homepage: a clear headline, one main action and a quieter frame. */
+.mw-hero--sport .mw-hero-inner { padding-top: clamp(24px, 4vw, 48px); padding-inline: clamp(18px, 4vw, 28px); }
+.mw-hero--sport .mw-hero-panel { align-items: center; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; gap: clamp(28px, 5vw, 64px); }
+.mw-hero--sport .mw-hero-copy { padding-block: 12px; }
+.mw-hero--sport .mw-h1 { max-width: 15ch; font-size: clamp(34px, 4.6vw, 60px); line-height: 1.06; font-weight: 600; letter-spacing: -.045em; margin-bottom: 20px; }
+.mw-hero--sport .mw-lead { max-width: 42ch; font-size: clamp(16px, 1.4vw, 18px); line-height: 1.55; }
+.mw-hero--sport .mw-hero-metrics { order: 4; margin-top: 22px; gap: 0; padding-top: 20px; border-top: 1px solid var(--mw-border); }
+.mw-hero--sport .mw-hero-metric { gap: 8px; padding: 0 14px; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+.mw-hero--sport .mw-hero-metric:first-child { padding-left: 0; }
+.mw-hero--sport .mw-hero-metric + .mw-hero-metric { border-left: 1px solid var(--mw-border); }
+.mw-hero--sport .mw-hero-metric__label { font-size: 11px; letter-spacing: 0; text-transform: none; font-weight: 500; overflow-wrap: anywhere; }
+.mw-hero--sport .mw-hero-cta-row { margin-top: 24px; }
+.mw-hero--sport .mw-hero-footnote { font-size: 12px; margin-top: 12px; }
+.mw-hero--sport .mw-hot-offer { --sequence-counter-color: rgb(255 255 255 / 85%); border-radius: 22px; box-shadow: none; }
+.mw-hero--sport .mw-hot-offer__footer { flex-wrap: wrap; }
+.mw-hero-about { order: 5; margin-top: 20px; font-size: 13px; }
+.mw-hero-about summary { display: flex; align-items: center; gap: 8px; width: fit-content; min-height: 44px; color: var(--mw-accent); cursor: pointer; list-style: none; }
+.mw-hero-about summary::-webkit-details-marker { display: none; }
+.mw-hero-about[open] summary span { transform: rotate(90deg); }
+.mw-hero-about .mw-factual-strip { margin-top: 8px; }
+
 .mw-hero-metrics {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -2273,6 +2294,8 @@ a:hover {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   max-width: 1440px;
   margin: 24px auto 0;
   padding: 0 var(--t-film-bleed) 4px;
@@ -2317,41 +2340,6 @@ a:hover {
   outline: none;
   text-decoration: underline;
   text-underline-offset: 3px;
-}
-
-.tours-pagination {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 10px 8px;
-}
-
-.tours-pagination__item {
-  display: inline-flex;
-  min-width: 2.1rem;
-  min-height: 2.1rem;
-  align-items: center;
-  justify-content: center;
-  padding: 0 0.2rem;
-  font: inherit;
-  font-size: 0.95rem;
-  font-weight: 700;
-  line-height: 1;
-  border: none;
-  border-radius: 999px;
-  background: transparent;
-  color: #344054;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.tours-pagination__item--active {
-  min-width: 2.2rem;
-  min-height: 2.2rem;
-  color: #fff;
-  background: var(--t-primary);
-  box-shadow: 0 2px 10px rgba(40, 45, 52, 0.22);
 }
 
 @media (min-width: 1024px) {
@@ -3032,7 +3020,7 @@ a:hover {
 
 .program-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
   gap: 24px;
 }
 
@@ -3152,6 +3140,17 @@ a:hover {
   display: block;
   color: var(--mw-text);
   text-decoration: none;
+}
+
+.mw-rail-card__dates { display: flex; align-items: flex-start; gap: 7px; margin: 0; padding: 0 14px 14px; color: var(--mw-accent); font-size: 13px; font-weight: 650; line-height: 1.45; }
+.mw-rail-card__dates svg { flex-shrink: 0; margin-top: 1px; }
+
+@media (max-width: 640px) {
+  .mw-hero--sport .mw-h1 { font-size: clamp(32px, 8vw, 44px); }
+  .mw-hero--sport .mw-hero-panel { gap: 24px; }
+  .mw-hero--sport .mw-hero-metrics { margin-top: 20px; }
+  .tours-filmstrip-bottom { justify-content: center; }
+  .tours-filmstrip-bottom__link { width: 100%; text-align: center; margin: 0; padding: 4px 0 0; }
 }
 .mw-rail-card__title a:hover {
   color: var(--mw-accent);

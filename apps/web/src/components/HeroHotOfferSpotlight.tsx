@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { SequencePager } from "./SequencePager";
+import { applyProgramCardImageFallback, normalizeProgramCardCoverSrc } from "../lib/programCardCover";
 
 export type HotOfferSlide = {
   id: string;
@@ -81,7 +83,7 @@ export function HeroHotOfferSpotlight({ slides }: Props) {
 
       <div className="mw-hot-offer__media">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={active.imageSrc} alt="" className="mw-hot-offer__img" />
+        <img key={active.id} src={normalizeProgramCardCoverSrc(active.imageSrc)} alt="" className="mw-hot-offer__img" onError={(event) => applyProgramCardImageFallback(event.currentTarget)} />
       </div>
 
       <div className="mw-hot-offer__body">
@@ -108,36 +110,7 @@ export function HeroHotOfferSpotlight({ slides }: Props) {
           Подробнее
         </Link>
         {canRotate && (
-          <div className="mw-hot-offer__controls">
-            <button
-              type="button"
-              className="mw-hot-offer__arrow"
-              aria-label="Предыдущее горячее предложение"
-              onClick={() => setActiveIndex((current) => (current - 1 + slides.length) % slides.length)}
-            >
-              ‹
-            </button>
-            <div className="mw-hot-offer__dots" role="tablist" aria-label="Горячие предложения">
-              {slides.map((slide, index) => (
-                <button
-                  key={slide.id}
-                  type="button"
-                  className={`mw-hot-offer__dot ${index === activeIndex ? "mw-hot-offer__dot--active" : ""}`}
-                  aria-label={`Предложение ${index + 1}: ${slide.title}`}
-                  aria-current={index === activeIndex}
-                  onClick={() => setActiveIndex(index)}
-                />
-              ))}
-            </div>
-            <button
-              type="button"
-              className="mw-hot-offer__arrow"
-              aria-label="Следующее горячее предложение"
-              onClick={() => setActiveIndex((current) => (current + 1) % slides.length)}
-            >
-              ›
-            </button>
-          </div>
+          <SequencePager index={activeIndex} count={slides.length} label="Горячие предложения" previousLabel="Предыдущее горячее предложение" nextLabel="Следующее горячее предложение" onPrevious={() => setActiveIndex((current) => (current - 1 + slides.length) % slides.length)} onNext={() => setActiveIndex((current) => (current + 1) % slides.length)} loop live={paused ? "polite" : "off"} />
         )}
       </div>
     </aside>

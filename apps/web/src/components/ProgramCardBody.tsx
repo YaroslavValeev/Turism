@@ -2,7 +2,7 @@ import Link from "next/link";
 import { getDisciplineDisplay } from "../lib/disciplineLabels";
 import { participantLevel } from "../lib/catalog";
 import { reviewWord } from "../lib/programCardHelpers";
-import { isOnRequestProgram, onRequestLabel } from "../lib/programSchedule";
+import { programDateLabel } from "../lib/programDateLabel";
 import type { ProgramCardProgram } from "../lib/programCardModel";
 import { ProgramPrice } from "./ProgramPrice";
 
@@ -37,14 +37,7 @@ export function ProgramCardBody({
         <div>
           <dt>Даты</dt>
           <dd>
-            {isOnRequestProgram(program) ? (
-              onRequestLabel(program)
-            ) : (
-              <>
-                {new Date(program.startDate).toLocaleDateString("ru-RU")} —{" "}
-                {new Date(program.endDate).toLocaleDateString("ru-RU")}
-              </>
-            )}
+            {programDateLabel(program)}
           </dd>
         </div>
         <div>

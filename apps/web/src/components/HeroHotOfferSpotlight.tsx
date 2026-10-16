@@ -61,7 +61,9 @@ export function HeroHotOfferSpotlight({ slides }: Props) {
     );
   }
 
-  const active = slides[activeIndex];
+  // Filtering can shorten the collection before the reset effect runs.
+  const visibleIndex = activeIndex < slides.length ? activeIndex : 0;
+  const active = slides[visibleIndex];
   const canRotate = slides.length > 1;
 
   return (
@@ -110,7 +112,7 @@ export function HeroHotOfferSpotlight({ slides }: Props) {
           Подробнее
         </Link>
         {canRotate && (
-          <SequencePager index={activeIndex} count={slides.length} label="Горячие предложения" previousLabel="Предыдущее горячее предложение" nextLabel="Следующее горячее предложение" onPrevious={() => setActiveIndex((current) => (current - 1 + slides.length) % slides.length)} onNext={() => setActiveIndex((current) => (current + 1) % slides.length)} loop live={paused ? "polite" : "off"} />
+          <SequencePager index={visibleIndex} count={slides.length} currentLabel={active.title} label="Горячие предложения" previousLabel="Предыдущее горячее предложение" nextLabel="Следующее горячее предложение" onPrevious={() => setActiveIndex((current) => (current - 1 + slides.length) % slides.length)} onNext={() => setActiveIndex((current) => (current + 1) % slides.length)} loop live={paused ? "polite" : "off"} />
         )}
       </div>
     </aside>

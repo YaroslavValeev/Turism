@@ -145,7 +145,7 @@ export function DisciplineCarousel({ items: catalogItems }: { items: DisciplineC
             onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setHelpVisible(false); }}
             onKeyDown={(event) => { if (event.key === "Escape") { setHelpVisible(false); event.stopPropagation(); } }}
           >
-            <button type="button" className={styles.helpButton} aria-label="Как управлять каруселью" aria-describedby="discipline-carousel-help" onFocus={(event) => { if (event.currentTarget.matches(":focus-visible")) setHelpVisible(true); }} onClick={() => setHelpVisible((value) => !value)}>?</button>
+            <button type="button" className={styles.helpButton} aria-label="Как управлять каруселью" aria-describedby="discipline-carousel-help" onFocus={(event) => { if (event.currentTarget.matches(":focus-visible")) setHelpVisible(true); }} onClick={() => setHelpVisible(true)}>?</button>
             <p id="discipline-carousel-help" role="tooltip" className={styles.help} hidden={!helpVisible}>Колесо мыши или свайп — листать. Клавиши ← → — выбрать, Enter — открыть программы.</p>
           </div>
         {count > 1 && (
@@ -182,7 +182,7 @@ export function DisciplineCarousel({ items: catalogItems }: { items: DisciplineC
         aria-label="Выбор дисциплины"
         aria-describedby="discipline-carousel-instructions"
         onKeyDown={(event) => {
-          if (event.key === "Enter") { event.preventDefault(); captionRef.current?.click(); return; }
+          if (event.key === "Enter" && event.target === event.currentTarget) { event.preventDefault(); captionRef.current?.click(); return; }
           const direction = event.key === "ArrowRight" ? 1 : event.key === "ArrowLeft" ? -1 : 0;
           if (direction || event.key === "Home" || event.key === "End") {
             event.preventDefault();

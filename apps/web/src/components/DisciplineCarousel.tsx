@@ -216,7 +216,7 @@ export function DisciplineCarousel({ items: catalogItems }: { items: DisciplineC
       }}
     >
       <div className={`mw-container ${styles.heading}`}>
-        <h2 id="discipline-carousel-title">Выберите свой спорт</h2>
+        <h2 id="discipline-carousel-title">Выбирай свой спортивный отдых</h2>
         {count > 1 && (
           <button
             type="button"

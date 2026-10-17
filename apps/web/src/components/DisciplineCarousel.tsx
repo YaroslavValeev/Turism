@@ -353,7 +353,7 @@ export function DisciplineCarousel({ items: catalogItems }: { items: DisciplineC
           );
         })}
       </div>
-      <div className={`mw-container ${styles.footer}`}>
+      <div className={`mw-container ${styles.footer}`} aria-live={rotating ? "off" : "polite"} aria-atomic="true">
         <Link ref={captionRef} href={items[active].href} className={styles.captionLink} aria-label={`${activeLabel}: показать программы`}>
           <strong>{activeLabel}</strong>
           <span>Смотреть программы <span aria-hidden="true">↗</span></span>

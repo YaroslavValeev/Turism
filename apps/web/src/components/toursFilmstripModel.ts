@@ -3,7 +3,7 @@
  */
 
 import { getProgramLevelLabel } from "@mywave/shared-types";
-import { getDisciplineDisplay } from "../lib/disciplineLabels";
+import { tourDiscipline } from "../lib/tourFilters";
 import { pickBestProgramCoverImageUrl } from "../lib/programCardCover";
 import { ruPluralNoun } from "../lib/ruPlural";
 import { isOnRequestProgram, onRequestLabel } from "../lib/programSchedule";
@@ -30,82 +30,6 @@ export type ProgramLike = {
   media?: { id?: string; url: string; mediaType: string }[];
   mediaOrderPinned?: boolean;
 };
-
-export type TourCategoryKey = "all" | "wakesurf" | "family" | "kids" | "beginner";
-
-export const TOUR_FILTER_CHIPS: { id: TourCategoryKey; label: string }[] = [
-  { id: "all", label: "Все" },
-  { id: "wakesurf", label: "Вейксерф" },
-  { id: "family", label: "Семейные" },
-  { id: "kids", label: "Для детей" },
-  { id: "beginner", label: "Новичкам" },
-];
-
-type BadgeKey = "wakesurf" | "family" | "kids" | "beginner";
-
-const BADGE_META: Record<BadgeKey, { label: string; bg: string; color: string }> = {
-  wakesurf: { label: "Вейксерф", bg: "rgba(64, 69, 76, 0.13)", color: "#2f343a" },
-  family: { label: "Семейный", bg: "rgba(64, 69, 76, 0.13)", color: "#2f343a" },
-  kids: { label: "Для детей", bg: "rgba(64, 69, 76, 0.13)", color: "#2f343a" },
-  beginner: { label: "Новичкам", bg: "rgba(64, 69, 76, 0.13)", color: "#2f343a" },
-};
-
-function norm(s: string | null | undefined): string {
-  return String(s ?? "").trim().toLowerCase();
-}
-
-function discText(p: ProgramLike): string {
-  const d = getDisciplineDisplay(p.discipline);
-  return norm([d.original, d.translation].filter(Boolean).join(" "));
-}
-
-function blob(p: ProgramLike): string {
-  return norm(
-    [p.title, p.region, p.exactLocation, p.audienceFit, discText(p), p.itineraryDayByDay].join(" "),
-  );
-}
-
-/** К какому «чипу» относится тур — для бейджа (приоритет: дети → семья → вейк → новичкам). */
-export function programPrimaryBadge(p: ProgramLike): BadgeKey {
-  const b = blob(p);
-  if (/(^|\s|\/)(дет|детск|ребён|reben|подрост|школ|клуб\s+для)/i.test(b) || /для\s+дет/i.test(b)) {
-    return "kids";
-  }
-  if (/(семей|родител|с\s+детьми|family)/i.test(b)) {
-    return "family";
-  }
-  if (/(wakesurf|вейк|wake|букс|катер)/i.test(b) || /вейксерф/.test(p.title)) {
-    return "wakesurf";
-  }
-  if (
-    p.levelRequired === "beginner" ||
-    p.levelRequired === "all_levels" ||
-    /(нович|перв(ый|ого)|с\s+нуля|баз(ов|а))/i.test(b)
-  ) {
-    return "beginner";
-  }
-  return "wakesurf";
-}
-
-export function programMatchesChip(p: ProgramLike, chip: TourCategoryKey): boolean {
-  if (chip === "all") return true;
-  if (chip === "wakesurf") {
-    const t = discText(p) + " " + norm(p.title);
-    return /(wakesurf|вейк|wake|вейкс|букс|катер|водн)/i.test(t);
-  }
-  if (chip === "family") {
-    return /(семей|родител|с\s+детьми|family|вместе)/i.test(blob(p));
-  }
-  if (chip === "kids") {
-    return /(дет|детьми|детск|подрост|школ|family)/i.test(blob(p));
-  }
-  if (chip === "beginner") {
-    const lv = p.levelRequired ?? "";
-    if (lv === "beginner" || lv === "all_levels") return true;
-    return /(нович|перв|с\s+нуля|базов|любой)/i.test(blob(p));
-  }
-  return true;
-}
 
 function formatDateRangeRu(start: string, end: string): string {
   const a = new Date(start);
@@ -142,7 +66,7 @@ export type TourCardModel = {
   /** Тонкая строка «≈ … ₽ по курсу ЦБ» для цен в иностранной валюте. */
   priceRubLabel?: string | null;
   priceRubTitle?: string;
-  badge: (typeof BADGE_META)[BadgeKey];
+  badge: { label: string; bg: string; color: string } | null;
 };
 
 const FALLBACK_IMAGES = ["/pilot-media/program-1.svg", "/pilot-media/program-2.svg", "/pilot-media/program-3.svg"];
@@ -160,69 +84,13 @@ function coverUrl(p: ProgramLike, index: number): { url: string; isRemote: boole
   return { url: raw, isRemote };
 }
 
-/** Статичные кадры, если API ещё пуст: сохраняем визуал киноленты. */
-export const DEMO_TOUR_CARDS: TourCardModel[] = [
-  {
-    id: "demo-1",
-    href: "/#programs",
-    imageSrc: "/media/filmstrip/wakesurf/wasurf_1.jpg",
-    isRemote: false,
-    title: "Вейксерф-кэмп на Братском море",
-    location: "Братск, Иркутская область",
-    dateLine: "1–10 мая 2026 г.",
-    durationLine: "10 дней / 9 ночей",
-    levelLine: "Уровень: для любого уровня",
-    priceLabel: "от 64 900 ₽",
-    badge: BADGE_META.wakesurf,
-  },
-  {
-    id: "demo-2",
-    href: "/#programs",
-    imageSrc: "/media/filmstrip/wakesurf/wasurf_2.jpg",
-    isRemote: false,
-    title: "Семейный вейк-уикенд",
-    location: "Краснодарский край",
-    dateLine: "12–15 июня 2026 г.",
-    durationLine: "4 дня / 3 ночи",
-    levelLine: "Уровень: с нуля",
-    priceLabel: "от 42 000 ₽",
-    badge: BADGE_META.family,
-  },
-  {
-    id: "demo-3",
-    href: "/#programs",
-    imageSrc: "/media/filmstrip/ski/ski_kids_1.jpg",
-    isRemote: false,
-    title: "Детская лыжная школа в горах",
-    location: "Сочи",
-    dateLine: "5–19 января 2026 г.",
-    durationLine: "15 дней / 14 ночей",
-    levelLine: "Уровень: начинающий",
-    priceLabel: "от 88 000 ₽",
-    badge: BADGE_META.kids,
-  },
-  {
-    id: "demo-4",
-    href: "/#programs",
-    imageSrc: "/media/filmstrip/mtb/mtbdh_1.jpg",
-    isRemote: false,
-    title: "MTB: маршрут для новичков",
-    location: "Карелия",
-    dateLine: "1–3 августа 2026 г.",
-    durationLine: "3 дня / 2 ночи",
-    levelLine: "Уровень: с нуля",
-    priceLabel: "от 19 500 ₽",
-    badge: BADGE_META.beginner,
-  },
-];
-
 export function programToTourCard(
   p: ProgramLike,
   index: number,
   options?: { isArchived?: boolean },
 ): TourCardModel {
-  const badgeKey = programPrimaryBadge(p);
-  const badge = BADGE_META[badgeKey];
+  const discipline = tourDiscipline(p.discipline);
+  const badge = discipline ? { label: discipline.label, bg: "rgba(64, 69, 76, 0.13)", color: "#2f343a" } : null;
   const { url, isRemote } = coverUrl(p, index);
   const loc = p.exactLocation?.trim() ? `${p.region} · ${p.exactLocation}` : p.region;
   const nights = Math.max(0, p.durationDays - 1);

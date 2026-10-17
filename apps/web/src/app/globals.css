@@ -1895,6 +1895,12 @@ a:hover {
   opacity: 0.9;
 }
 
+.tour-filter-chip__count {
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.7;
+}
+
 .tour-filter-chip:not(.tour-filter-chip--active) .tour-filter-chip__ic {
   color: #0f1728;
   opacity: 0.6;

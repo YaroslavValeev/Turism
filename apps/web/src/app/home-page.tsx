@@ -9,7 +9,7 @@ import { DisciplineCarousel } from "../components/DisciplineCarousel";
 import { ToursFilmstrip } from "../components/ToursFilmstrip";
 import { HeroHotOfferSpotlight, type HotOfferSlide } from "../components/HeroHotOfferSpotlight";
 import { LandingFooter } from "../components/LandingFooter";
-import { ProgramCard } from "../components/ProgramCard";
+import { ExpandableProgramCatalog } from "../components/ExpandableProgramCatalog";
 import { ProgramRailCard } from "../components/ProgramRailCard";
 import { Section } from "../components/Section";
 import { SiteHeader, type SiteRole } from "../components/SiteHeader";
@@ -388,6 +388,12 @@ function HomePageInner() {
     }
     return { list: [] as Program[], notice: null as string | null };
   }, [filtered, catalogPrograms, programsCatalogUnique, weekendPreset, dateTo]);
+
+  const programGridKey = JSON.stringify([
+    selectedDisciplines, appliedRegionQuery, levelFilters, dateFrom, dateTo,
+    weekendPreset, nearestStartsOnly, seasonFilter, scenarioExtra,
+    programGrid.list.map((program) => program.id),
+  ]);
 
   const heroPrograms = catalogPrograms.length > 0 ? catalogPrograms : programsCatalogUnique;
 
@@ -1117,11 +1123,11 @@ function HomePageInner() {
         )}
         {!loading && programsCatalogUnique.length === 0 && <p>Пока нет опубликованных программ.</p>}
         {!loading && programGrid.list.length > 0 && (
-          <div className="program-grid">
-            {programGrid.list.map((p) => (
-              <ProgramCard key={p.id} program={p} levelLabel={getProgramLevelLabel(p.levelRequired)} catalogHrefBuilder={catalogHrefBuilder} />
-            ))}
-          </div>
+          <ExpandableProgramCatalog
+            key={programGridKey}
+            programs={programGrid.list}
+            catalogHrefBuilder={catalogHrefBuilder}
+          />
         )}
       </Section>
 

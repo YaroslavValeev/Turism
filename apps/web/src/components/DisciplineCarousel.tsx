@@ -3,15 +3,23 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { arrangeDisciplineItems, sculptureBounds, sculptureFor, type DisciplineCarouselItem } from "../lib/disciplineSculptures";
-import { SequencePager } from "./SequencePager";
+import { advanceDisciplinePosition, disciplinePose, wrapDisciplinePosition as wrap } from "../lib/disciplineMotion";
 import { displayValue } from "../lib/programDisplay";
 import styles from "./DisciplineCarousel.module.css";
 
-// Leave time to recognize each discipline between the smooth turns.
-export const DISCIPLINE_INTERVAL_MS = 4000;
 const INTERACTION_PAUSE_MS = 8000;
 const WHEEL_SETTLE_MS = 700;
-const wrap = (value: number, count: number) => ((value % count) + count) % count;
+const MANUAL_MOVE_MS = 500;
+
+function figureStyle(pose: ReturnType<typeof disciplinePose>): CSSProperties {
+  return {
+    transform: `translateX(-50%) translate3d(${pose.x}px, 0, ${pose.z}px) rotateY(${pose.turn}deg) scale(${pose.scale})`,
+    "--figure-opacity": pose.inkOpacity,
+    opacity: pose.opacity,
+    zIndex: pose.zIndex,
+    pointerEvents: pose.opacity > 0 ? "auto" : "none",
+  } as CSSProperties;
+}
 
 export type { DisciplineCarouselItem } from "../lib/disciplineSculptures";
 
@@ -28,7 +36,11 @@ export function DisciplineCarousel({ items: catalogItems }: { items: DisciplineC
   const [pageVisible, setPageVisible] = useState(true);
   const [width, setWidth] = useState(0);
   const [dragOffset, setDragOffset] = useState(0);
-  const [helpVisible, setHelpVisible] = useState(false);
+  const [motionVersion, setMotionVersion] = useState(0);
+  const phase = useRef(position);
+  const activeRef = useRef(position);
+  const figures = useRef<(HTMLDivElement | null)[]>([]);
+  const manualMotion = useRef<{ from: number; to: number; startedAt: number | null } | null>(null);
   const rootRef = useRef<HTMLElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const captionRef = useRef<HTMLAnchorElement>(null);
@@ -43,8 +55,11 @@ export function DisciplineCarousel({ items: catalogItems }: { items: DisciplineC
   const rotating = rotationEnabled && !hovered && !interactionPaused && inView && pageVisible && count > 1 && !dragOffset;
   const figureWidth = width > 600 ? Math.min(190, Math.max(154, width * 0.12)) : 150;
   // Keep a hidden figure at the seam, so wrapping never sweeps across the scene.
-  const visibleSteps = Math.max(2, Math.min(Math.floor((count - 1) / 2) - 1, Math.ceil(width / (figureWidth * 1.56))));
-  const angleStep = width > 600 ? 0.9 / visibleSteps : 0.55;
+  const visibleSteps = Math.min(
+    Math.max(0.25, count / 2 - 0.75),
+    Math.max(2, Math.min(Math.floor((count - 1) / 2) - 1, Math.ceil(width / (figureWidth * 1.56)))),
+  );
+  const angleStep = width > 600 ? 0.9 / Math.max(2, visibleSteps) : 0.55;
   const gap = width > 600
     ? Math.max(86, (width / 2 - figureWidth * 0.22) * Math.sin(angleStep) / Math.sin(0.9))
     : width > 520 ? 100 : width ? Math.min(90, width * 0.27) : 90;
@@ -62,10 +77,35 @@ export function DisciplineCarousel({ items: catalogItems }: { items: DisciplineC
     if (resumeTimer.current) clearTimeout(resumeTimer.current);
   }, []);
 
-  const move = useCallback((direction: number) => {
+  const paint = useCallback((value: number) => {
+    figures.current.forEach((element, index) => {
+      if (!element || index >= count) return;
+      const pose = disciplinePose(index, value, count, gap, angleStep, visibleSteps);
+      const style = figureStyle(pose);
+      element.style.transform = style.transform!;
+      element.style.opacity = String(style.opacity);
+      element.style.zIndex = String(style.zIndex);
+      element.style.pointerEvents = style.pointerEvents!;
+      element.style.setProperty("--figure-opacity", String(pose.inkOpacity));
+      const hidden = String(pose.opacity === 0);
+      if (element.getAttribute("aria-hidden") !== hidden) element.setAttribute("aria-hidden", hidden);
+    });
+    const next = wrap(Math.round(value), count);
+    if (next !== activeRef.current) {
+      activeRef.current = next;
+      setPosition(next);
+    }
+  }, [count, gap, angleStep, visibleSteps]);
+
+  const moveTo = useCallback((target: number) => {
     pauseForInteraction();
-    setPosition((value) => value + direction);
+    manualMotion.current = { from: phase.current, to: target, startedAt: null };
+    setMotionVersion((value) => value + 1);
   }, [pauseForInteraction]);
+
+  const move = useCallback((direction: number) => {
+    moveTo(Math.round(manualMotion.current?.to ?? phase.current) + direction);
+  }, [moveTo]);
 
   useEffect(() => {
     const media = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -88,10 +128,48 @@ export function DisciplineCarousel({ items: catalogItems }: { items: DisciplineC
   }, [count > 0]);
 
   useEffect(() => {
-    if (!rotating) return;
-    const timer = window.setInterval(() => setPosition((value) => value + 1), DISCIPLINE_INTERVAL_MS);
-    return () => window.clearInterval(timer);
-  }, [rotating]);
+    phase.current = wrap(phase.current, count);
+    paint(phase.current - (gap ? dragOffset / gap : 0));
+  }, [paint, count, gap, dragOffset]);
+
+  useEffect(() => {
+    if (!count || !inView || !pageVisible) return;
+    if (reducedMotion && manualMotion.current) {
+      phase.current = wrap(manualMotion.current.to, count);
+      manualMotion.current = null;
+      paint(phase.current);
+    }
+    if (reducedMotion || (!rotating && !manualMotion.current)) return;
+    let frame: number;
+    let previousTime: number | null = null;
+    const tick = (now: number) => {
+      const elapsed = previousTime === null ? 0 : now - previousTime;
+      previousTime = now;
+      const manual = manualMotion.current;
+      if (manual) {
+        manual.startedAt ??= now;
+        const progress = Math.min(1, (now - manual.startedAt) / MANUAL_MOVE_MS);
+        phase.current = manual.from + (manual.to - manual.from) * (1 - (1 - progress) ** 3);
+        if (progress === 1) {
+          phase.current = wrap(manual.to, count);
+          manualMotion.current = null;
+        }
+      } else if (rotating) {
+        phase.current = advanceDisciplinePosition(phase.current, elapsed, count);
+      }
+      paint(phase.current);
+      if (rotating || manualMotion.current) frame = requestAnimationFrame(tick);
+    };
+    // Each restart gets a fresh clock: paused/hidden time is never fast-forwarded.
+    frame = requestAnimationFrame(tick);
+    return () => {
+      cancelAnimationFrame(frame);
+      if (manualMotion.current) {
+        manualMotion.current.from = phase.current;
+        manualMotion.current.startedAt = null;
+      }
+    };
+  }, [rotating, reducedMotion, inView, pageVisible, count, paint, motionVersion]);
 
   useEffect(() => {
     const stage = stageRef.current;
@@ -139,23 +217,13 @@ export function DisciplineCarousel({ items: catalogItems }: { items: DisciplineC
     >
       <div className={`mw-container ${styles.heading}`}>
         <h2 id="discipline-carousel-title">Выберите свой спорт</h2>
-        <div className={styles.tools}>
-          <div
-            className={styles.helpAnchor}
-            onPointerEnter={(event) => { if (event.pointerType === "mouse") setHelpVisible(true); }}
-            onPointerLeave={(event) => { if (event.pointerType === "mouse") setHelpVisible(false); }}
-            onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setHelpVisible(false); }}
-            onKeyDown={(event) => { if (event.key === "Escape") { setHelpVisible(false); event.stopPropagation(); } }}
-          >
-            <button type="button" className={styles.helpButton} aria-label="Как управлять каруселью" aria-describedby="discipline-carousel-help" onFocus={(event) => { if (event.currentTarget.matches(":focus-visible")) setHelpVisible(true); }} onClick={() => setHelpVisible(true)}>?</button>
-            <p id="discipline-carousel-help" role="tooltip" className={styles.help} hidden={!helpVisible}>Колесо мыши или свайп — листать. Клавиши ← → — выбрать, Enter — открыть программы.</p>
-          </div>
         {count > 1 && (
           <button
             type="button"
             className={styles.rotation}
             aria-controls="discipline-carousel-stage"
             aria-label={rotationEnabled ? "Остановить автоматическое вращение" : "Запустить автоматическое вращение"}
+            title={rotationEnabled ? "Пауза" : reducedMotion ? "Уменьшение движения включено" : "Продолжить"}
             disabled={reducedMotion}
             onPointerDown={() => { pauseIntent.current = rotationEnabled; }}
             onPointerCancel={() => { pauseIntent.current = null; }}
@@ -169,11 +237,13 @@ export function DisciplineCarousel({ items: catalogItems }: { items: DisciplineC
               pauseIntent.current = null;
             }}
           >
-            <span aria-hidden="true">{rotationEnabled ? "Ⅱ" : "▷"}</span>
-            {rotationEnabled ? "Пауза" : reducedMotion ? "Без анимации" : "Продолжить"}
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              {rotationEnabled
+                ? <path d="M8 5v14M16 5v14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                : <path d="m9 5 10 7-10 7V5Z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />}
+            </svg>
           </button>
         )}
-        </div>
       </div>
       <div
         id="discipline-carousel-stage"
@@ -190,13 +260,17 @@ export function DisciplineCarousel({ items: catalogItems }: { items: DisciplineC
             event.preventDefault();
             setFocusStopped(true);
             if (direction) move(direction);
-            else setPosition(event.key === "Home" ? 0 : count - 1);
+            else {
+              const target = event.key === "Home" ? 0 : count - 1;
+              moveTo(phase.current + wrap(target - phase.current + count / 2, count) - count / 2);
+            }
             stageRef.current?.focus({ preventScroll: true });
           }
         }}
         onPointerDown={(event) => {
           if (!event.isPrimary || event.button !== 0 || count < 2) return;
           pauseForInteraction();
+          manualMotion.current = null;
           gesture.current = { x: event.clientX, y: event.clientY, horizontal: false, id: event.pointerId };
         }}
         onPointerMove={(event) => {
@@ -219,7 +293,15 @@ export function DisciplineCarousel({ items: catalogItems }: { items: DisciplineC
           if (!current || current.id !== event.pointerId) return;
           pauseForInteraction();
           if (current.horizontal && Math.abs(event.clientX - current.x) > 36) {
-            move(event.clientX < current.x ? 1 : -1);
+            // Continue from the dragged pose instead of snapping back on release.
+            const direction = event.clientX < current.x ? 1 : -1;
+            const target = Math.round(phase.current) + direction;
+            phase.current -= dragOffset / gap;
+            moveTo(target);
+          } else if (current.horizontal) {
+            const target = Math.round(phase.current);
+            phase.current -= dragOffset / gap;
+            moveTo(target);
           }
           gesture.current = null;
           setDragOffset(0);
@@ -234,24 +316,12 @@ export function DisciplineCarousel({ items: catalogItems }: { items: DisciplineC
         <span id="discipline-carousel-instructions" className={styles.srOnly}>Листайте колесом мыши, свайпом или клавишами ← →. Enter открывает программы выбранной дисциплины.</span>
         <div className={styles.orbit} aria-hidden="true" />
         {items.map((item, index) => {
-          const offset = wrap(index - position + count / 2, count) - count / 2;
-          const distance = offset + (gap ? dragOffset / gap : 0);
-          const visible = Math.abs(distance) < visibleSteps + 0.5;
+          const pose = disciplinePose(index, phase.current - (gap ? dragOffset / gap : 0), count, gap, angleStep, visibleSteps);
+          const visible = pose.opacity > 0;
           const sculpture = sculptureFor(item.label);
-          const angle = Math.max(-visibleSteps - 0.5, Math.min(visibleSteps + 0.5, distance)) * angleStep;
-          const itemStyle = {
-            "--figure-x": `${Math.sin(angle) * (gap / Math.sin(angleStep))}px`,
-            "--figure-z": `${60 - (1 - Math.cos(angle)) * 120}px`,
-            "--figure-scale": Math.max(0.66, 1 - Math.abs(distance) * 0.1),
-            "--figure-turn": `${-distance * 6}deg`,
-            "--figure-opacity": Math.max(0.64, 1 - Math.abs(distance) * 0.12),
-            opacity: visible ? 1 : 0,
-            zIndex: Math.round(100 - Math.abs(distance) * 10),
-            pointerEvents: visible ? "auto" : "none",
-          } as CSSProperties;
           const bounds = sculpture ? sculptureBounds[sculpture] : null;
           return (
-            <div key={item.label} className={styles.item} style={itemStyle} aria-hidden={!visible}>
+            <div key={item.label} ref={(element) => { figures.current[index] = element; }} className={styles.item} style={figureStyle(pose)} aria-hidden={!visible}>
               <Link
                 href={item.href}
                 className={styles.figure}
@@ -283,12 +353,11 @@ export function DisciplineCarousel({ items: catalogItems }: { items: DisciplineC
           );
         })}
       </div>
-      <div className={`mw-container ${styles.footer}`}>
+      <div className={`mw-container ${styles.footer}`} aria-live={rotating ? "off" : "polite"} aria-atomic="true">
         <Link ref={captionRef} href={items[active].href} className={styles.captionLink} aria-label={`${activeLabel}: показать программы`}>
           <strong>{activeLabel}</strong>
           <span>Смотреть программы <span aria-hidden="true">↗</span></span>
         </Link>
-        <SequencePager index={active} count={count} currentLabel={activeLabel} label="Дисциплины" previousLabel="Предыдущая дисциплина" nextLabel="Следующая дисциплина" onPrevious={() => move(-1)} onNext={() => move(1)} loop live={rotating ? "off" : "polite"} />
       </div>
     </section>
   );

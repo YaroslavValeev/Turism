@@ -4,38 +4,19 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { SequencePager } from "./SequencePager";
 import { applyProgramCardImageFallback, normalizeProgramCardCoverSrc } from "../lib/programCardCover";
+import { availableTours, tourDiscipline, tourFilterChips, type TourDateWindow } from "../lib/tourFilters";
 import {
-  DEMO_TOUR_CARDS,
   type ProgramLike,
-  type TourCategoryKey,
   type TourCardModel,
-  programMatchesChip,
   programToTourCard,
-  TOUR_FILTER_CHIPS,
 } from "./toursFilmstripModel";
 
-type DateWindow = "" | "30" | "60" | "90";
-
-const DATE_FILTER_OPTIONS: { value: DateWindow; label: string }[] = [
+const DATE_FILTER_OPTIONS: { value: TourDateWindow; label: string }[] = [
   { value: "", label: "Все даты" },
   { value: "30", label: "30 дней" },
   { value: "60", label: "60 дней" },
   { value: "90", label: "90 дней" },
 ];
-
-function startOfDay(d: Date): Date {
-  const x = new Date(d);
-  x.setHours(0, 0, 0, 0);
-  return x;
-}
-
-function programStartsWithinDays(p: ProgramLike, days: number): boolean {
-  const now = startOfDay(new Date());
-  const limit = new Date(now);
-  limit.setDate(limit.getDate() + days);
-  const start = startOfDay(new Date(p.startDate));
-  return start >= now && start <= limit;
-}
 
 type Props = {
   programs: ProgramLike[];
@@ -46,7 +27,7 @@ type Props = {
   allToursHref?: string;
 };
 
-function ChipIcon({ id }: { id: TourCategoryKey }) {
+function ChipIcon({ id }: { id: string }) {
   const common = { width: 16, height: 16, viewBox: "0 0 24 24" as const, "aria-hidden": true as const };
   switch (id) {
     case "all":
@@ -58,40 +39,12 @@ function ChipIcon({ id }: { id: TourCategoryKey }) {
           <rect x="14" y="14" width="7" height="7" />
         </svg>
       );
-    case "wakesurf":
-      return (
-        <svg {...common} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M2 12a10 10 0 0 0 20 0" />
-          <path d="M6 8h4l2 3 2-3h4" />
-        </svg>
-      );
-    case "family":
-      return (
-        <svg {...common} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-          <circle cx="9" cy="7" r="4" />
-          <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-          <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-        </svg>
-      );
-    case "kids":
-      return (
-        <svg {...common} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="12" cy="8" r="3" />
-          <path d="M7 20h.01" />
-          <path d="M7 16h6" />
-          <path d="M17 20h.01" />
-          <path d="M17 16c.6 0 1.1.4 1.3.9" />
-        </svg>
-      );
-    case "beginner":
-      return (
-        <svg {...common} fill="currentColor" viewBox="0 0 24 24">
-          <path d="M12 2l2.2 6.2h6.4l-5.1 3.7 1.9 5.7-5.4-3.9-5.4 3.9 1.9-5.7-5.1-3.7h6.4L12 2z" />
-        </svg>
-      );
     default:
-      return <svg {...common} viewBox="0 0 24 24" />;
+      return (
+        <svg {...common} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="m3 20 6-12 4 6 3-4 5 10Z" />
+        </svg>
+      );
   }
 }
 
@@ -163,12 +116,11 @@ function TourCard({
           loading={priority ? "eager" : "lazy"}
           onError={(event) => applyProgramCardImageFallback(event.currentTarget)}
         />
-        <span
-          className="tour-card-badge"
-          style={{ background: item.badge.bg, color: item.badge.color }}
-        >
-          {item.badge.label}
-        </span>
+        {item.badge && (
+          <span className="tour-card-badge" style={{ background: item.badge.bg, color: item.badge.color }}>
+            {item.badge.label}
+          </span>
+        )}
         <button
           type="button"
           className="tour-card-fav"
@@ -238,55 +190,31 @@ function TourCard({
 const PAGE = 4;
 
 export function ToursFilmstrip({ programs, regionOptions, loading, allToursHref = "/#programs" }: Props) {
-  const [chip, setChip] = useState<TourCategoryKey>("all");
-  const [dateWin, setDateWin] = useState<DateWindow>("");
+  const [chip, setChip] = useState("all");
+  const [dateWin, setDateWin] = useState<TourDateWindow>("");
   const [region, setRegion] = useState<string>("");
   const [page, setPage] = useState(0);
 
-  const filteredBase = useMemo(() => {
-    let list = programs.filter((p) => programMatchesChip(p, chip));
-    if (region.trim()) {
-      const r = region.trim().toLowerCase();
-      list = list.filter(
-        (p) =>
-          (p.region && p.region.toLowerCase().includes(r)) ||
-          (p.exactLocation && p.exactLocation.toLowerCase().includes(r)),
-      );
+  const available = useMemo(
+    () => loading ? [] : availableTours(programs, { dateWindow: dateWin, region }),
+    [programs, dateWin, region, loading],
+  );
+  const chips = useMemo(() => tourFilterChips(available), [available]);
+  const activeChip = chips.some((item) => item.id === chip) ? chip : "all";
+
+  useEffect(() => {
+    if (chip !== activeChip) {
+      setChip("all");
+      setPage(0);
     }
-    return [...list];
-  }, [programs, chip, region]);
+  }, [chip, activeChip]);
 
-  const filteredCurrent = useMemo(() => {
-    let list = filteredBase.filter((p) => startOfDay(new Date(p.startDate)) >= startOfDay(new Date()));
-    if (dateWin) {
-      const d = dateWin === "30" ? 30 : dateWin === "60" ? 60 : 90;
-      list = list.filter((p) => programStartsWithinDays(p, d));
-    }
-    return [...list].sort((a, b) => +new Date(a.startDate) - +new Date(b.startDate));
-  }, [filteredBase, dateWin]);
-
-  const filteredPastLast5 = useMemo(() => {
-    const past = filteredBase
-      .filter((p) => startOfDay(new Date(p.startDate)) < startOfDay(new Date()))
-      .sort((a, b) => +new Date(b.startDate) - +new Date(a.startDate))
-      .slice(0, 5);
-    return past;
-  }, [filteredBase]);
-
-  const cards: TourCardModel[] = useMemo(() => {
-    if (loading) return [];
-    if (filteredCurrent.length > 0 || filteredPastLast5.length > 0) {
-      const currentCards = filteredCurrent.map((p, i) => programToTourCard(p, i));
-      const pastCards = filteredPastLast5.map((p, i) =>
-        programToTourCard(p, filteredCurrent.length + i, { isArchived: true }),
-      );
-      return [...currentCards, ...pastCards];
-    }
-    return DEMO_TOUR_CARDS;
-  }, [loading, filteredCurrent, filteredPastLast5]);
-
-  /** Каталог есть, но текущий фильтр никого не прошёл — показываем демо-кадры и пояснение. */
-  const isFilterEmpty = !loading && programs.length > 0 && filteredCurrent.length === 0 && filteredPastLast5.length === 0;
+  const cards: TourCardModel[] = useMemo(
+    () => available
+      .filter((program) => activeChip === "all" || tourDiscipline(program.discipline)?.id === activeChip)
+      .map((program, index) => programToTourCard(program, index)),
+    [available, activeChip],
+  );
 
   const pageCount = loading || cards.length === 0 ? 1 : Math.max(1, Math.ceil(cards.length / PAGE));
 
@@ -313,28 +241,29 @@ export function ToursFilmstrip({ programs, regionOptions, loading, allToursHref 
         <p className="tours-filmstrip-eyebrow">Подберите тур под себя</p>
         <h2 className="tours-filmstrip-title">Туры и кемпы</h2>
         <p className="tours-filmstrip-desc">
-          Вейксерф, семейные поездки, детские туры и активный отдых по России.
+          Выбирай дисциплину, даты и регион — смотри доступные программы.
         </p>
       </div>
 
       <div className="tours-filters-bar" role="search" aria-label="Фильтр туров">
-        <div className="tours-filters-chips" role="tablist" aria-label="Категории">
-          {TOUR_FILTER_CHIPS.map((c) => (
+        <div className="tours-filters-chips" role="group" aria-label="Дисциплины доступных туров">
+          {chips.map((c) => (
             <button
               key={c.id}
               type="button"
-              className={`tour-filter-chip ${chip === c.id ? "tour-filter-chip--active" : ""}`}
+              className={`tour-filter-chip ${activeChip === c.id ? "tour-filter-chip--active" : ""}`}
               onClick={() => {
                 setChip(c.id);
                 setPage(0);
               }}
-              role="tab"
-              aria-selected={chip === c.id}
+              aria-pressed={activeChip === c.id}
+              disabled={loading}
             >
               <span className="tour-filter-chip__ic">
                 <ChipIcon id={c.id} />
               </span>
               {c.label}
+              {!loading && <span className="tour-filter-chip__count">{c.count}</span>}
             </button>
           ))}
         </div>
@@ -347,7 +276,7 @@ export function ToursFilmstrip({ programs, regionOptions, loading, allToursHref 
               className="tour-filter-select"
               value={dateWin}
               onChange={(e) => {
-                setDateWin(e.target.value as DateWindow);
+                setDateWin(e.target.value as TourDateWindow);
                 setPage(0);
               }}
               aria-label="Даты"
@@ -388,10 +317,9 @@ export function ToursFilmstrip({ programs, regionOptions, loading, allToursHref 
 
       <div className="tours-filmstrip-outer">
         <div className="tours-filmstrip">
-          {isFilterEmpty && (
+          {!loading && cards.length === 0 && (
             <p className="tours-filmstrip-note" role="status">
-              Под выбранные фильтры в каталоге пока нет туров. Ниже — примеры форматов; снимите часть условий или откройте
-              полный список.
+              Пока нет актуальных туров по выбранным условиям. Измени даты или регион либо открой все программы.
             </p>
           )}
           {loading ? (

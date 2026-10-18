@@ -1895,6 +1895,12 @@ a:hover {
   opacity: 0.9;
 }
 
+.tour-filter-chip__count {
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.7;
+}
+
 .tour-filter-chip:not(.tour-filter-chip--active) .tour-filter-chip__ic {
   color: #0f1728;
   opacity: 0.6;
@@ -1946,6 +1952,36 @@ a:hover {
 
 .tour-filter-wrap:focus-within {
   box-shadow: 0 0 0 2px rgba(64, 69, 76, 0.28);
+}
+
+@media (max-width: 600px) {
+  .tours-filters-chips {
+    flex-basis: 100%;
+  }
+
+  .tours-filters-ext {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    flex: 1 1 100%;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .tour-filter-wrap {
+    min-width: 0;
+  }
+
+  .tour-filter-select {
+    flex: 1;
+    width: 100%;
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 420px) {
+  .tours-filters-ext {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .tours-filmstrip-outer {

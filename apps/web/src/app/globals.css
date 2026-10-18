@@ -244,7 +244,7 @@ a:hover {
 
 .mw-site-header__brand-image {
   display: block;
-  width: clamp(220px, 28vw, 360px);
+  width: clamp(246px, 31vw, 404px);
   height: auto;
 }
 
@@ -265,7 +265,7 @@ a:hover {
   }
 
   .mw-site-header__brand-image {
-    width: min(172px, 58vw);
+    width: min(192px, 62vw);
   }
 }
 

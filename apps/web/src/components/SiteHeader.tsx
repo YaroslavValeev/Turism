@@ -102,7 +102,7 @@ export function SiteHeader({
               width={1881}
               height={836}
               priority
-              sizes="(max-width: 640px) 220px, (max-width: 1024px) 290px, 360px"
+              sizes="(max-width: 640px) 192px, (max-width: 793px) 246px, (max-width: 1303px) 31vw, 404px"
               className="mw-site-header__brand-image"
             />
           </Link>

@@ -117,7 +117,8 @@ for scenario in success smoke-failure protected-drift asset-mismatch chunk-misma
 import json, sys
 with open(sys.argv[1],'w') as f: json.dump({'scenario':sys.argv[2],'ids':{'web':'web-old','api':'api-original','admin':'admin-original','postgres':'postgres-original','reverse-proxy':'proxy-original'},'current_image':'old-tag','images':{'old-tag':{'id':'old-image','revision':'old'}},'up_images':[]},f)
 PY
-  test_release=$(printf '%040x' "$test_number")
+  # Backup names use the first 12 SHA characters: keep scenarios distinct within one second.
+  test_release=$(printf '%012x%028x' "$test_number" 0)
   test_asset_sha=$(sha256sum <"$MW_TEST_CASE/approved.webp" | awk '{print $1}')
   set +e
   bash "$script_root/deploy-web-carousel.sh" --root "$MW_TEST_CASE/app-link" --release "$test_release" --origin https://fixture.example --heli-sha "$test_asset_sha" >"$MW_TEST_CASE/output" 2>&1

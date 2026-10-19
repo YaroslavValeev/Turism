@@ -1,0 +1,48 @@
+name: Booking intake deduplication
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/booking-intake-dedup.yml'
+      - 'services/api/src/modules/bookings/**'
+      - 'services/api/scripts/booking-intake-dedup.qa.cjs'
+      - 'services/api/prisma/**'
+      - 'services/api/Dockerfile'
+      - 'packages/**'
+      - 'pnpm-lock.yaml'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/booking-intake-dedup.yml'
+      - 'services/api/src/modules/bookings/**'
+      - 'services/api/scripts/booking-intake-dedup.qa.cjs'
+      - 'services/api/prisma/**'
+      - 'services/api/Dockerfile'
+      - 'packages/**'
+      - 'pnpm-lock.yaml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  http-postgres:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Build official API image from this checkout
+        run: docker build --target build --label org.opencontainers.image.revision="$GITHUB_SHA" -f services/api/Dockerfile -t tourism-booking-dedup:ci .
+      - name: Booking unit regression without network
+        run: docker run --rm --network none --entrypoint pnpm tourism-booking-dedup:ci --filter api test src/modules/bookings
+      - name: Two-worker HTTP and real Postgres acceptance
+        run: node services/api/scripts/booking-intake-dedup.qa.cjs --image tourism-booking-dedup:ci --source "$GITHUB_SHA" --out artifacts/booking-intake-dedup-ci
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: booking-intake-dedup-evidence
+          path: artifacts/booking-intake-dedup-ci/
+          if-no-files-found: ignore

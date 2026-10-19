@@ -119,10 +119,45 @@ async function main() {
     worker.once('exit', code => { clearTimeout(timer); reject(new Error('QA worker exited early: ' + code)); });
   });
   const concurrent = await fixture();
-  const responses = await Promise.all([
-    post(concurrent.id, { amountRub: 3000, paymentKind: 'partial', externalReference: 'QA-DISTINCT-A' }),
-    post(concurrent.id, { amountRub: 7000, paymentKind: 'partial', externalReference: 'QA-DISTINCT-B' }, otherBase),
-  ]);
+  let release;
+  let entered;
+  let paused = false;
+  const held = new Promise(resolve => { release = resolve; });
+  const firstRead = new Promise(resolve => { entered = resolve; });
+  prisma.$transaction = function(callback, options) {
+    return originalTransaction.call(prisma, async tx => callback(new Proxy(tx, {
+      get(target, key) {
+        if (key === 'booking') return new Proxy(target.booking, { get(model, operation) {
+          if (operation === 'findUnique') return async (...args) => {
+            const result = await model.findUnique(...args);
+            if (!paused && result?.id === concurrent.id) { paused = true; entered(); await held; }
+            return result;
+          };
+          const value = Reflect.get(model, operation); return typeof value === 'function' ? value.bind(model) : value;
+        } });
+        const value = Reflect.get(target, key); return typeof value === 'function' ? value.bind(target) : value;
+      },
+    })), options);
+  };
+  let responses;
+  let second;
+  const first = post(concurrent.id, { amountRub: 3000, paymentKind: 'partial', externalReference: 'QA-DISTINCT-A' });
+  try {
+    await Promise.race([firstRead, first.then(() => { throw new Error('First payment did not reach the transaction barrier'); })]);
+    second = post(concurrent.id, { amountRub: 7000, paymentKind: 'partial', externalReference: 'QA-DISTINCT-B' }, otherBase);
+    const { Prisma } = apiRequire('@prisma/client');
+    let lockObserved = false;
+    const deadline = Date.now() + 8000;
+    while (Date.now() < deadline) {
+      const rows = await prisma.$queryRaw(Prisma.sql`SELECT count(*)::int AS "count" FROM pg_stat_activity WHERE datname = current_database() AND wait_event_type = 'Lock' AND query LIKE '%FOR UPDATE%' AND query LIKE '%bookings%'`);
+      if (rows[0].count > 0) { lockObserved = true; break; }
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    assert.ok(lockObserved, 'The other API process must wait on the booking row lock');
+    report.push('row_lock_blocks_other_api_process_until_commit');
+    release();
+    responses = await Promise.all([first, second]);
+  } finally { release(); prisma.$transaction = originalTransaction; await Promise.allSettled([first, second].filter(Boolean)); }
   assert.deepEqual(responses.map(r => r.status), [201, 201]);
   const concurrentState = await state(concurrent.id);
   assert.equal(concurrentState.booking.paidAmountRub, 10000); assert.equal(concurrentState.booking.netAmountRub, 10000);

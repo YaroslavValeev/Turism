@@ -1,11 +1,18 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import test from "node:test";
+import ts from "typescript";
 import { isCatalogProgram } from "./catalog";
+import { getDisciplineDisplay } from "./disciplineLabels";
 import { dedupeProgramListingsByEvent } from "./dedupeProgramListingsByEvent";
+import { isOnRequestProgram } from "./programSchedule";
+import { WEEKEND_PRESET_TITLES, weekendRange } from "./weekendRange";
 import {
   catalogQuery,
   EMPTY_FILTERS,
   filterCatalog,
+  localDate,
   parseCatalogFilters,
   participantLevel,
   safeCatalogReturn,
@@ -150,4 +157,68 @@ test("return paths cannot navigate to another origin or arbitrary app page", () 
     safeCatalogReturn("/?region=Алтай#programs"),
     "/?region=Алтай#programs",
   );
+});
+
+test("the homepage catalogue keeps empty filters empty through its actual render wiring", async (t) => {
+  // These callbacks are deliberately read from the page: testing filterCatalog alone
+  // missed the page's fallback that replaced zero matches with unrelated programs.
+  const source = readFileSync(resolve(__dirname, "../app/home-page.tsx"), "utf8");
+  const file = ts.createSourceFile("home-page.tsx", source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  const functions = new Map<string, ts.FunctionDeclaration>();
+  const callbacks = new Map<string, ts.ArrowFunction>();
+  let renderedPrograms: ts.Expression | undefined;
+  const visit = (node: ts.Node) => {
+    if (ts.isFunctionDeclaration(node) && node.name) functions.set(node.name.text, node);
+    if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer && ts.isCallExpression(node.initializer)
+      && node.initializer.expression.getText(file) === "useMemo" && node.initializer.arguments[0] && ts.isArrowFunction(node.initializer.arguments[0])) {
+      callbacks.set(node.name.text, node.initializer.arguments[0]);
+    }
+    if (ts.isJsxSelfClosingElement(node) && node.tagName.getText(file) === "ExpandableProgramCatalog") {
+      const attribute = node.attributes.properties.find((p): p is ts.JsxAttribute => ts.isJsxAttribute(p) && p.name.getText(file) === "programs");
+      if (attribute?.initializer && ts.isJsxExpression(attribute.initializer)) renderedPrograms = attribute.initializer.expression;
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(file);
+  assert.ok(renderedPrograms, "the homepage must pass its matching list to the expandable catalogue");
+  const helpers = ["levelMatchesOne", "levelMatchesAny", "normScope", "disciplineSearchText", "startOfDay", "programStartsWithinDays", "seasonOfProgramStart", "regionSearchText", "programBlob"];
+  const code = [
+    ...helpers.map((name) => {
+      assert.ok(functions.has(name), `homepage helper ${name} not found`);
+      return functions.get(name)!.getText(file);
+    }),
+    ...["catalogPrograms", "filtered", "programGrid"].flatMap((name) => {
+      const callback = callbacks.get(name);
+      return callback ? [`const ${name} = (${callback.getText(file)})();`] : [];
+    }),
+    `return ${renderedPrograms.getText(file)};`,
+  ].join("\n");
+  const compiled = ts.transpileModule(code, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None } }).outputText;
+  const evaluate = new Function("getDisciplineDisplay", "isOnRequestProgram", "localDate", "Date", "weekendRange", "WEEKEND_PRESET_TITLES", "state", `const { selectedDisciplines, appliedRegionQuery, programsCatalogUnique, levelFilters, nearestStartsOnly, seasonFilter, dateFrom, dateTo, scenarioExtra, weekendPreset } = state;\n${compiled}`);
+  const clock = class extends Date {
+    constructor(value?: string | number) { super(value ?? new Date(2026, 9, 18, 12).valueOf()); }
+  };
+  const programs = [
+    qaTour("match", "Кэмп", { discipline: "wakesurf", region: "Краснодар", startDate: "2026-10-25", endDate: "2026-10-31", levelRequired: "intermediate" }),
+    qaTour("other", "Другой спорт", { discipline: "ski", region: "Алтай", startDate: "2026-11-20", endDate: "2026-11-25" }),
+    qaTour("unknown", "Дисциплина уточняется", { discipline: "Unknown", startDate: "2026-11-01", endDate: "2026-11-02" }),
+  ];
+  const defaults = { selectedDisciplines: [], appliedRegionQuery: "", programsCatalogUnique: programs, levelFilters: [], nearestStartsOnly: false, seasonFilter: "", dateFrom: "", dateTo: "", scenarioExtra: null, weekendPreset: null };
+  const cases = [
+    { name: "reset shows every program", filters: {}, ids: ["match", "other", "unknown"] },
+    { name: "existing discipline", filters: { selectedDisciplines: ["Вейксерф"] }, ids: ["match"] },
+    { name: "nonexistent discipline", filters: { selectedDisciplines: ["несуществующая дисциплина"] }, ids: [] },
+    { name: "nonexistent region", filters: { appliedRegionQuery: "несуществующий регион" }, ids: [] },
+    { name: "unclassified program remains selectable", filters: { selectedDisciplines: ["Unknown"] }, ids: ["unknown"] },
+    { name: "combined matching filters", filters: { selectedDisciplines: ["Вейксерф"], appliedRegionQuery: "Краснодар", dateFrom: "2026-10-25", dateTo: "2026-10-25", levelFilters: ["intermediate"] }, ids: ["match"] },
+    { name: "combined dates with no matches", filters: { selectedDisciplines: ["Вейксерф"], appliedRegionQuery: "Краснодар", dateFrom: "2099-01-01", dateTo: "2099-01-02" }, ids: [] },
+    { name: "combined level with no matches", filters: { selectedDisciplines: ["Вейксерф"], appliedRegionQuery: "Краснодар", levelFilters: ["expert"] }, ids: [] },
+    { name: "empty weekend does not show later starts", filters: { weekendPreset: "this-weekend", dateFrom: "2026-10-18", dateTo: "2026-10-18" }, ids: [] },
+  ];
+  for (const scenario of cases) {
+    await t.test(scenario.name, () => {
+      const result = evaluate(getDisciplineDisplay, isOnRequestProgram, localDate, clock, weekendRange, WEEKEND_PRESET_TITLES, { ...defaults, ...scenario.filters });
+      assert.deepEqual(result.map((program: { id: string }) => program.id), scenario.ids);
+    });
+  }
 });

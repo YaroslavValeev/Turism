@@ -358,41 +358,10 @@ function HomePageInner() {
     });
   }, [catalogPrograms, levelFilters, dateFrom, dateTo, nearestStartsOnly, seasonFilter, scenarioExtra]);
 
-  /** Сетка «Все программы»: как в герое — сначала точные фильтры, иначе каталог по дисциплине/региону, иначе весь опубликованный список. */
-  const programGrid = useMemo(() => {
-    if (filtered.length > 0) {
-      return { list: filtered, notice: null as string | null };
-    }
-    if (weekendPreset) {
-      const after = catalogPrograms
-        .filter((p) => !isOnRequestProgram(p) && localDate(new Date(p.startDate)) > dateTo)
-        .sort((a, b) => +new Date(a.startDate) - +new Date(b.startDate));
-      if (after.length > 0) {
-        return {
-          list: after,
-          notice: `На ${WEEKEND_PRESET_TITLES[weekendPreset].toLowerCase()} (${weekendRange(weekendPreset).label}) стартов нет. Ниже — ближайшие старты после них.`,
-        };
-      }
-    }
-    if (catalogPrograms.length > 0) {
-      return {
-        list: catalogPrograms,
-        notice: "Сужающие фильтры (уровень, даты, сезон…) никого не прошли. Ниже — весь набор в выбранных дисциплине и регионе.",
-      };
-    }
-    if (programsCatalogUnique.length > 0) {
-      return {
-        list: programsCatalogUnique,
-        notice: "По дисциплине/региону из ссылки совпадений нет. Показан весь опубликованный каталог.",
-      };
-    }
-    return { list: [] as Program[], notice: null as string | null };
-  }, [filtered, catalogPrograms, programsCatalogUnique, weekendPreset, dateTo]);
-
   const programGridKey = JSON.stringify([
     selectedDisciplines, appliedRegionQuery, levelFilters, dateFrom, dateTo,
     weekendPreset, nearestStartsOnly, seasonFilter, scenarioExtra,
-    programGrid.list.map((program) => program.id),
+    filtered.map((program) => program.id),
   ]);
 
   const heroPrograms = catalogPrograms.length > 0 ? catalogPrograms : programsCatalogUnique;
@@ -1116,16 +1085,16 @@ function HomePageInner() {
             Не удалось подключиться к каталогу с первой попытки. Повторите загрузку страницы. Техническая деталь: {catalogLoadError}
           </p>
         )}
-        {!loading && programGrid.notice && (
+        {!loading && programsCatalogUnique.length > 0 && filtered.length === 0 && (
           <p style={{ color: "var(--mw-muted)", maxWidth: "70ch" }} role="status">
-            {programGrid.notice}
+            По выбранным фильтрам программ не найдено. Измените условия поиска или нажмите «Сбросить всё».
           </p>
         )}
         {!loading && programsCatalogUnique.length === 0 && <p>Пока нет опубликованных программ.</p>}
-        {!loading && programGrid.list.length > 0 && (
+        {!loading && filtered.length > 0 && (
           <ExpandableProgramCatalog
             key={programGridKey}
-            programs={programGrid.list}
+            programs={filtered}
             catalogHrefBuilder={catalogHrefBuilder}
           />
         )}

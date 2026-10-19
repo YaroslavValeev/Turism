@@ -1,10 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({ transaction: vi.fn(), emit: vi.fn() }));
-vi.mock("../../lib/prisma", () => ({ prisma: { $transaction: mocks.transaction } }));
+const mocks = vi.hoisted(() => {
+  const transaction = vi.fn();
+  return { transaction, emit: vi.fn(), db: { $transaction: transaction } as Record<string, any> };
+});
+vi.mock("../../lib/prisma", () => ({ prisma: mocks.db }));
 vi.mock("../analytics/service", () => ({ emitBackendAnalyticsEventBestEffort: mocks.emit }));
 
-import { derivePaymentBookingStatus, recordPayment } from "./service";
+import { derivePaymentBookingStatus, recalculateCommissionForBooking, recordPayment } from "./service";
 
 describe("confirmed payment ledger", () => {
   let tx: any;
@@ -36,6 +39,7 @@ describe("confirmed payment ledger", () => {
         upsert: vi.fn().mockImplementation(async ({ create }) => ({ id: "commission", ...create })),
       },
     };
+    Object.assign(mocks.db, tx);
     mocks.transaction.mockImplementation(async (callback) => {
       const result = await callback(tx);
       expect(mocks.emit).not.toHaveBeenCalled();
@@ -70,6 +74,23 @@ describe("confirmed payment ledger", () => {
   it("does not emit an event when a later commission write aborts the transaction", async () => {
     tx.commission.upsert.mockRejectedValue(new Error("QA commission fault"));
     await expect(recordPayment({ bookingId: "booking", amountRub: 3000 }, "admin")).rejects.toThrow("QA commission fault");
+    expect(mocks.emit).not.toHaveBeenCalled();
+  });
+
+  it("preserves the legacy ensure-race lookup for non-transactional commission callers", async () => {
+    tx.deal.findUnique.mockResolvedValueOnce(null).mockResolvedValue({ id: "deal", dealStatus: "confirmed", commissionRatePct: 3 });
+    tx.deal.upsert = vi.fn().mockRejectedValue(new Error("QA legacy ensure race"));
+    await expect(recalculateCommissionForBooking("booking", "admin")).resolves.toMatchObject({ reconciliationStatus: "reversed" });
+    expect(tx.deal.upsert).toHaveBeenCalledOnce();
+    expect(mocks.transaction).not.toHaveBeenCalled();
+  });
+
+  it("propagates the original ensure failure from a payment transaction without events", async () => {
+    const failure = new Error("QA payment ensure failure");
+    tx.deal.findUnique.mockResolvedValue(null);
+    tx.deal.upsert = vi.fn().mockRejectedValue(failure);
+    await expect(recordPayment({ bookingId: "booking", amountRub: 3000 }, "admin")).rejects.toBe(failure);
+    expect(tx.booking.update).toHaveBeenCalledOnce();
     expect(mocks.emit).not.toHaveBeenCalled();
   });
 

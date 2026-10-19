@@ -34,6 +34,7 @@ async function recalculateCommissionCore(
   actor: Actor,
   db: BillingDb,
   emit: AnalyticsSink,
+  preserveLegacyEnsureFailure = false,
 ) {
   const booking = await db.booking.findUnique({ where: { id: bookingId } });
   if (!booking) {
@@ -46,7 +47,13 @@ async function recalculateCommissionCore(
 
   let deal = await db.deal.findUnique({ where: { bookingId } });
   if (!deal) {
-    await createDealForBooking(bookingId, booking.contentItemId ?? null, db);
+    try {
+      await createDealForBooking(bookingId, booking.contentItemId ?? null, db);
+    } catch (error) {
+      // Existing non-transactional callers retry the lookup after an ensure race.
+      // A payment transaction must abort with the original cause.
+      if (!preserveLegacyEnsureFailure) throw error;
+    }
     deal = await db.deal.findUnique({ where: { bookingId } });
   }
   if (deal) {
@@ -195,7 +202,7 @@ async function recalculateCommissionCore(
 }
 
 export async function recalculateCommissionForBooking(bookingId: string, actor: Actor) {
-  return recalculateCommissionCore(bookingId, actor, prisma, emitBackendAnalyticsEventBestEffort);
+  return recalculateCommissionCore(bookingId, actor, prisma, emitBackendAnalyticsEventBestEffort, true);
 }
 
 export function derivePaymentBookingStatus(

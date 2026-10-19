@@ -43,6 +43,7 @@ jobs:
       - name: Build current API with official Dockerfile
         run: docker build --target build --label "org.opencontainers.image.revision=$QA_SOURCE_SHA" -f services/api/Dockerfile -t "$QA_IMAGE" .
       - name: API unit regressions without network
-        run: docker run --rm --network none "$QA_IMAGE" pnpm --filter api test
+        # Visual-system unit tests also verify committed web assets; the API image omits them.
+        run: docker run --rm --network none --mount "type=bind,source=$PWD/apps/web/public,target=/app/apps/web/public,readonly" "$QA_IMAGE" pnpm --filter api test
       - name: Isolated Postgres HTTP transaction and concurrency proof
         run: bash scripts/qa/confirmed-payment-docker.sh

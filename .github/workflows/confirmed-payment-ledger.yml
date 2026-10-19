@@ -1,0 +1,53 @@
+name: Confirmed payment ledger
+
+on:
+  pull_request:
+    paths:
+      - 'services/api/**'
+      - 'packages/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'scripts/qa/confirmed-payment-docker.sh'
+      - '.github/workflows/confirmed-payment-ledger.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'services/api/**'
+      - 'packages/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'scripts/qa/confirmed-payment-docker.sh'
+      - '.github/workflows/confirmed-payment-ledger.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: payment-ledger-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  payment-ledger:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      QA_IMAGE: tourism-confirmed-payment-qa:ci
+      QA_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Build current API with official Dockerfile
+        run: docker build --target build --label "org.opencontainers.image.revision=$QA_SOURCE_SHA" -f services/api/Dockerfile -t "$QA_IMAGE" .
+      - name: API unit regressions without network
+        # Visual-system unit tests verify committed brand assets and canon documents omitted by the API image.
+        run: >-
+          docker run --rm --network none
+          --mount "type=bind,source=$PWD/apps/web/public,target=/app/apps/web/public,readonly"
+          --mount "type=bind,source=$PWD/docs/design/telegram-visual-system-v1,target=/app/docs/design/telegram-visual-system-v1,readonly"
+          "$QA_IMAGE" pnpm --filter api test
+      - name: Isolated Postgres HTTP transaction and concurrency proof
+        run: bash scripts/qa/confirmed-payment-docker.sh

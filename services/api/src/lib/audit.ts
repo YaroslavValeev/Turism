@@ -3,6 +3,7 @@
  * Depth: actor (changedBy), entity_type, entity_id, action (changedField), timestamp (createdAt), metadata/diff (oldValue, newValue).
  */
 import { prisma } from "./prisma";
+import type { Prisma } from "@prisma/client";
 
 export interface AuditEntry {
   entityType: string;
@@ -16,8 +17,11 @@ export interface AuditEntry {
   reason?: string | null;
 }
 
-export async function writeAuditLog(entry: AuditEntry): Promise<void> {
-  await prisma.auditLog.create({
+export async function writeAuditLog(
+  entry: AuditEntry,
+  db: Pick<Prisma.TransactionClient, "auditLog"> = prisma,
+): Promise<void> {
+  await db.auditLog.create({
     data: {
       entityType: entry.entityType,
       entityId: entry.entityId,

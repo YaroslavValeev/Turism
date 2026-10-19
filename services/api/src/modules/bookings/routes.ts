@@ -2,7 +2,8 @@
  * Booking: assisted intake (POST public), admin queue (GET), status update (PATCH admin). Audit on status change.
  * Source: booking_data_contract.md, canonical_status_models. No payment flow, no revenue UI.
  */
-import { Router, Request, Response } from "express";
+import { createHash } from "node:crypto";
+import { Router, Request, Response, NextFunction } from "express";
 import { prisma } from "../../lib/prisma";
 import { writeAuditLog } from "../../lib/audit";
 import { requireAdmin } from "../../middleware/auth";
@@ -23,7 +24,7 @@ export function bookingsRoutes(env: Env): Router {
   const publicRateLimiter = createPublicRateLimiter(env);
 
   // Assisted booking intake: public can create inquiry (new). organizer_id from program.
-  router.post("/", publicRateLimiter, async (req: Request, res: Response) => {
+  router.post("/", publicRateLimiter, async (req: Request, res: Response, next: NextFunction) => {
     const validation = validateBookingIntake(req.body);
     if (!validation.ok) {
       res.status(400).json({ error: validation.error });
@@ -48,20 +49,6 @@ export function bookingsRoutes(env: Env): Router {
       return;
     }
     const travelerKeyHash = computeTravelerKeyHash(env, body.guestContact);
-    const duplicateWindowStart = new Date(Date.now() - 2 * 60 * 1000);
-    const duplicate = await prisma.booking.findFirst({
-      where: {
-        programId: body.programId,
-        guestContact: body.guestContact,
-        createdAt: { gte: duplicateWindowStart },
-      },
-      select: { id: true },
-      orderBy: { createdAt: "desc" },
-    });
-    if (duplicate) {
-      res.status(409).json({ error: "Duplicate booking request", bookingId: duplicate.id });
-      return;
-    }
     const sourceCampaignParts = [
       body.sourceCampaign?.trim(),
       body.utmSource?.trim() ? `utm_source=${body.utmSource.trim()}` : "",
@@ -84,35 +71,62 @@ export function bookingsRoutes(env: Env): Router {
       .filter(Boolean)
       .join("\n\n");
 
-    let contentItemId: string | null = resolveContentItemIdForAttribution(body.entryType, body.entryId);
-    if (contentItemId) {
-      const ex = await prisma.contentItem.findUnique({ where: { id: contentItemId }, select: { id: true } });
-      if (!ex) contentItemId = null;
-    }
+    // The lock and lookup use the same validated, trimmed identity. Hashing keeps
+    // contact text out of lock keys; PostgreSQL coordinates every API process.
+    const lockKey = createHash("sha256").update(JSON.stringify([body.programId, body.guestContact])).digest();
+    const intake = await prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(${lockKey.readInt32BE(0)}::int, ${lockKey.readInt32BE(4)}::int)`;
+      // Compute the rolling window after waiting for the preceding request.
+      const duplicate = await tx.booking.findFirst({
+        where: {
+          programId: body.programId,
+          guestContact: body.guestContact,
+          createdAt: { gte: new Date(Date.now() - 2 * 60 * 1000) },
+        },
+        select: { id: true },
+        orderBy: { createdAt: "desc" },
+      });
+      if (duplicate) return { duplicate: true as const, id: duplicate.id };
 
-    const consentAt = new Date();
-    const b = await prisma.booking.create({
-      data: {
-        programId: program.id,
-        organizerId: program.organizerId,
-        guestContact: body.guestContact,
-        travelerKeyHash: travelerKeyHash ?? undefined,
-        sourceChannel: body.sourceChannel ?? null,
-        sourceCampaign,
-        notes: mergedNotes || null,
-        bookingStatus: "new",
-        contentItemId,
-        entryType: body.entryType?.trim() || null,
-        entryId: body.entryId?.trim() || null,
-        exploreType: body.exploreType?.trim() || null,
-        exploreSlug: body.exploreSlug?.trim() || null,
-        utmSource: body.utmSource?.trim() || null,
-        utmMedium: body.utmMedium?.trim() || null,
-        legalConsentAt: consentAt,
-        legalConsentPolicyVersion: legalVersion,
-      },
-      include: { program: { select: { title: true } }, organizer: { select: { displayName: true } } },
+      let contentItemId: string | null = resolveContentItemIdForAttribution(body.entryType, body.entryId);
+      if (contentItemId) {
+        const ex = await tx.contentItem.findUnique({ where: { id: contentItemId }, select: { id: true } });
+        if (!ex) contentItemId = null;
+      }
+      const consentAt = new Date();
+      const booking = await tx.booking.create({
+        data: {
+          programId: program.id,
+          organizerId: program.organizerId,
+          guestContact: body.guestContact,
+          travelerKeyHash: travelerKeyHash ?? undefined,
+          sourceChannel: body.sourceChannel ?? null,
+          sourceCampaign,
+          notes: mergedNotes || null,
+          bookingStatus: "new",
+          contentItemId,
+          entryType: body.entryType?.trim() || null,
+          entryId: body.entryId?.trim() || null,
+          exploreType: body.exploreType?.trim() || null,
+          exploreSlug: body.exploreSlug?.trim() || null,
+          utmSource: body.utmSource?.trim() || null,
+          utmMedium: body.utmMedium?.trim() || null,
+          legalConsentAt: consentAt,
+          legalConsentPolicyVersion: legalVersion,
+        },
+        include: { program: { select: { title: true } }, organizer: { select: { displayName: true } } },
+      });
+      return { duplicate: false as const, booking, contentItemId, consentAt };
+    }, { isolationLevel: "ReadCommitted", maxWait: 10_000, timeout: 10_000 }).catch((error: unknown) => {
+      next(error);
+      return null;
     });
+    if (!intake) return;
+    if (intake.duplicate) {
+      res.status(409).json({ error: "Duplicate booking request", bookingId: intake.id });
+      return;
+    }
+    const { booking: b, contentItemId, consentAt } = intake;
 
     try {
       await createDealForBooking(b.id, contentItemId);

@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client";
 import {
   DEFAULT_COMMISSION_RATE_BPS,
   ELIGIBLE_STATEMENT_COMMISSION_STATUSES,
+  isPaymentStatus,
   type GenerateStatementInput,
   type OrganizerContractStatus,
   type PrivilegesState,
@@ -14,6 +15,8 @@ import { emitBackendAnalyticsEventBestEffort } from "../analytics/service";
 import { createDealForBooking, syncDealFromBooking, commissionEligible } from "../deals/dealService";
 
 type Actor = string | null;
+type BillingDb = Pick<Prisma.TransactionClient, "booking" | "organizer" | "deal" | "commission" | "auditLog">;
+type AnalyticsSink = (event: Record<string, unknown>) => void;
 
 function calcCommission(netAmountRub: number, commissionRateBps: number): number {
   return Math.round((Math.max(0, netAmountRub) * commissionRateBps) / 10000);
@@ -26,24 +29,25 @@ function deriveBookingStatus(paidAmountRub: number, refundedAmountRub: number): 
   return "paid_full";
 }
 
-export async function recalculateCommissionForBooking(bookingId: string, actor: Actor) {
-  const booking = await prisma.booking.findUnique({ where: { id: bookingId } });
+async function recalculateCommissionCore(
+  bookingId: string,
+  actor: Actor,
+  db: BillingDb,
+  emit: AnalyticsSink,
+) {
+  const booking = await db.booking.findUnique({ where: { id: bookingId } });
   if (!booking) {
     throw new Error("Booking not found");
   }
-  const organizer = await prisma.organizer.findUnique({ where: { id: booking.organizerId } });
+  const organizer = await db.organizer.findUnique({ where: { id: booking.organizerId } });
   if (!organizer) {
     throw new Error("Organizer not found");
   }
 
-  let deal = await prisma.deal.findUnique({ where: { bookingId } });
+  let deal = await db.deal.findUnique({ where: { bookingId } });
   if (!deal) {
-    try {
-      await createDealForBooking(bookingId, booking.contentItemId ?? null);
-    } catch {
-      /* already exists */
-    }
-    deal = await prisma.deal.findUnique({ where: { bookingId } });
+    await createDealForBooking(bookingId, booking.contentItemId ?? null, db);
+    deal = await db.deal.findUnique({ where: { bookingId } });
   }
   if (deal) {
     await syncDealFromBooking(
@@ -55,12 +59,13 @@ export async function recalculateCommissionForBooking(bookingId: string, actor: 
         contentItemId: booking.contentItemId,
       },
       organizer.verificationStatus,
+      db,
     );
-    deal = await prisma.deal.findUnique({ where: { bookingId } });
+    deal = await db.deal.findUnique({ where: { bookingId } });
   }
   const dealStatus = deal?.dealStatus ?? "new";
   if (booking.bookingStatus !== "disputed" && !commissionEligible(organizer.verificationStatus, dealStatus)) {
-    const zero = await prisma.commission.upsert({
+    const zero = await db.commission.upsert({
       where: { bookingId },
       create: {
         bookingId,
@@ -108,7 +113,7 @@ export async function recalculateCommissionForBooking(bookingId: string, actor: 
         ? "reversed"
         : "accrued";
 
-  const commission = await prisma.commission.upsert({
+  const commission = await db.commission.upsert({
     where: { bookingId },
     create: {
       bookingId,
@@ -140,7 +145,7 @@ export async function recalculateCommissionForBooking(bookingId: string, actor: 
   });
 
   if (status === "accrued") {
-    emitBackendAnalyticsEventBestEffort({
+    emit({
       event_name: "commission_accrued",
       event_version: 1,
       event_source: "backend",
@@ -158,7 +163,7 @@ export async function recalculateCommissionForBooking(bookingId: string, actor: 
     });
   }
   if (status === "reversed") {
-    emitBackendAnalyticsEventBestEffort({
+    emit({
       event_name: "commission_reversed",
       event_version: 1,
       event_source: "backend",
@@ -184,74 +189,108 @@ export async function recalculateCommissionForBooking(bookingId: string, actor: 
     newValue: JSON.stringify({ netAmountRub, rateBps, commissionAmountRub, status }),
     changedBy: actor,
     reason: "payment/refund recalculation",
-  });
+  }, db);
 
   return commission;
 }
 
+export async function recalculateCommissionForBooking(bookingId: string, actor: Actor) {
+  return recalculateCommissionCore(bookingId, actor, prisma, emitBackendAnalyticsEventBestEffort);
+}
+
+export function derivePaymentBookingStatus(
+  currentStatus: string,
+  paidAmountRub: number,
+  refundedAmountRub: number,
+  paymentKind: "partial" | "full",
+): string {
+  if (currentStatus === "completed" || currentStatus === "disputed") return currentStatus;
+  const status = deriveBookingStatus(paidAmountRub, refundedAmountRub);
+  if (status === "paid_full" && paymentKind === "partial" && currentStatus !== "paid_full") {
+    return "paid_partial";
+  }
+  return status;
+}
+
 export async function recordPayment(input: RecordPaymentInput, actor: Actor) {
-  const booking = await prisma.booking.findUnique({ where: { id: input.bookingId } });
-  if (!booking) throw new Error("Booking not found");
-  if (input.amountRub <= 0) throw new Error("amountRub must be positive");
+  if (!Number.isSafeInteger(input.amountRub) || input.amountRub <= 0 || input.amountRub > 2_147_483_647) {
+    throw new Error("amountRub must be a positive integer within the supported range");
+  }
+  const status = input.status ?? "confirmed";
+  const paymentKind = input.paymentKind ?? "full";
+  if (!isPaymentStatus(status)) throw new Error("Invalid payment status");
+  if (paymentKind !== "partial" && paymentKind !== "full") throw new Error("Invalid payment kind");
+  const paidAt = input.paidAt ? new Date(input.paidAt) : new Date();
+  if (Number.isNaN(paidAt.valueOf())) throw new Error("paidAt must be a valid date");
 
-  const payment = await prisma.payment.create({
-    data: {
-      bookingId: booking.id,
-      leadId: booking.leadId,
-      organizerId: booking.organizerId,
-      programId: booking.programId,
-      amountRub: input.amountRub,
-      status: input.status ?? "confirmed",
-      paymentKind: input.paymentKind ?? "full",
-      paidAt: input.paidAt ? new Date(input.paidAt) : new Date(),
-      externalReference: input.externalReference ?? null,
-      paymentMethod: input.paymentMethod ?? null,
-      notes: input.notes ?? null,
-    },
-  });
+  const committed = await prisma.$transaction(async (tx) => {
+    // Serialize different payments for the same booking across API processes.
+    const locked = await tx.$queryRaw<Array<{ id: string }>>(
+      Prisma.sql`SELECT "id" FROM "bookings" WHERE "id" = ${input.bookingId} FOR UPDATE`,
+    );
+    if (locked.length === 0) throw new Error("Booking not found");
+    const booking = await tx.booking.findUnique({ where: { id: input.bookingId } });
+    if (!booking) throw new Error("Booking not found");
+    const events: Record<string, unknown>[] = [];
+    const payment = await tx.payment.create({
+      data: {
+        bookingId: booking.id,
+        leadId: booking.leadId,
+        organizerId: booking.organizerId,
+        programId: booking.programId,
+        amountRub: input.amountRub,
+        status,
+        paymentKind,
+        paidAt,
+        externalReference: input.externalReference ?? null,
+        paymentMethod: input.paymentMethod ?? null,
+        notes: input.notes ?? null,
+      },
+    });
+    await writeAuditLog({
+      entityType: "payment",
+      entityId: payment.id,
+      changedField: "payment_recorded",
+      oldValue: null,
+      newValue: String(payment.amountRub),
+      changedBy: actor,
+      reason: "manual payment recorded",
+    }, tx);
+    events.push({
+      event_name: "payment_recorded",
+      event_version: 1,
+      event_source: "backend",
+      event_time: payment.paidAt.toISOString(),
+      idempotency_key: `payment_recorded:${payment.id}`,
+      organizer_id: booking.organizerId,
+      program_id: booking.programId,
+      booking_id: booking.id,
+      lead_id: booking.leadId ?? undefined,
+      payment_id: payment.id,
+      payment_status: payment.status,
+      gross_amount: payment.amountRub,
+      properties_json: { payment_kind: payment.paymentKind },
+    });
 
-  emitBackendAnalyticsEventBestEffort({
-    event_name: "payment_recorded",
-    event_version: 1,
-    event_source: "backend",
-    event_time: payment.paidAt.toISOString(),
-    idempotency_key: `payment_recorded:${payment.id}`,
-    organizer_id: booking.organizerId,
-    program_id: booking.programId,
-    booking_id: booking.id,
-    lead_id: booking.leadId ?? undefined,
-    payment_id: payment.id,
-    payment_status: payment.status,
-    gross_amount: payment.amountRub,
-    properties_json: { payment_kind: payment.paymentKind },
-  });
+    let commission = await tx.commission.findUnique({ where: { bookingId: booking.id } });
+    if (status === "confirmed") {
+      const paidAmountRub = (booking.paidAmountRub ?? 0) + input.amountRub;
+      if (paidAmountRub > 2_147_483_647) throw new Error("Total paid amount exceeds the supported range");
+      const refundedAmountRub = booking.refundedAmountRub ?? 0;
+      const netAmountRub = Math.max(0, paidAmountRub - refundedAmountRub);
+      const bookingStatus = derivePaymentBookingStatus(booking.bookingStatus, paidAmountRub, refundedAmountRub, paymentKind);
+      await tx.booking.update({
+        where: { id: booking.id },
+        data: { paidAmountRub, netAmountRub, bookingStatus },
+      });
+      commission = await recalculateCommissionCore(booking.id, actor, tx, (event) => events.push(event));
+    }
+    return { payment, commission, events };
+  }, { maxWait: 10_000, timeout: 15_000 });
 
-  const paidAmountRub = (booking.paidAmountRub ?? 0) + input.amountRub;
-  const refundedAmountRub = booking.refundedAmountRub ?? 0;
-  const netAmountRub = Math.max(0, paidAmountRub - refundedAmountRub);
-  const bookingStatus = deriveBookingStatus(paidAmountRub, refundedAmountRub);
-
-  await prisma.booking.update({
-    where: { id: booking.id },
-    data: {
-      paidAmountRub,
-      netAmountRub,
-      bookingStatus,
-    },
-  });
-
-  await writeAuditLog({
-    entityType: "payment",
-    entityId: payment.id,
-    changedField: "payment_recorded",
-    oldValue: null,
-    newValue: String(payment.amountRub),
-    changedBy: actor,
-    reason: "manual payment recorded",
-  });
-
-  const commission = await recalculateCommissionForBooking(booking.id, actor);
-  return { payment, commission };
+  // Never publish events for a payment whose database transaction rolled back.
+  for (const event of committed.events) emitBackendAnalyticsEventBestEffort(event);
+  return { payment: committed.payment, commission: committed.commission };
 }
 
 export async function recordRefund(input: RecordRefundInput, actor: Actor) {

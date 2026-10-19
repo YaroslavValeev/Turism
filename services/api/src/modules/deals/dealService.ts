@@ -1,4 +1,5 @@
 import { prisma } from "../../lib/prisma";
+import type { Prisma } from "@prisma/client";
 
 export const DEAL_STATUSES = ["new", "contacted", "confirmed", "completed", "canceled"] as const;
 export type DealStatus = (typeof DEAL_STATUSES)[number];
@@ -45,10 +46,14 @@ export function resolveContentItemIdForAttribution(
 
 export async function createDealForBooking(
   bookingId: string,
-  contentItemId: string | null
+  contentItemId: string | null,
+  db: Pick<Prisma.TransactionClient, "deal"> = prisma,
 ): Promise<void> {
-  await prisma.deal.create({
-    data: {
+  // Preserve an existing deal. Payment writers serialize through the booking row lock.
+  await db.deal.upsert({
+    where: { bookingId },
+    update: {},
+    create: {
       bookingId,
       contentItemId,
       dealStatus: "new",
@@ -67,9 +72,10 @@ export async function syncDealFromBooking(
     netAmountRub: number;
     contentItemId: string | null;
   },
-  organizerVerificationStatus: string
+  organizerVerificationStatus: string,
+  db: Pick<Prisma.TransactionClient, "deal"> = prisma,
 ): Promise<void> {
-  const deal = await prisma.deal.findUnique({ where: { bookingId: booking.id } });
+  const deal = await db.deal.findUnique({ where: { bookingId: booking.id } });
   if (!deal) return;
   const nextStatus = mapBookingStatusToDealStatus(booking.bookingStatus);
   const amount = Math.max(0, booking.gmvRub ?? booking.netAmountRub ?? 0);
@@ -78,7 +84,7 @@ export async function syncDealFromBooking(
     isVerifiedOrganizer(organizerVerificationStatus) &&
     (nextStatus === "confirmed" || nextStatus === "completed");
   const commissionAmountRub = eligible ? Math.round((amount * ratePct) / 100) : 0;
-  await prisma.deal.update({
+  await db.deal.update({
     where: { bookingId: booking.id },
     data: {
       dealStatus: nextStatus,

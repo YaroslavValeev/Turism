@@ -2,9 +2,9 @@
  * Схлопывание дубликатов «одно и то же событие» в списке программ (разные сущности
  * с одними датами/гео после парсинга соцсетей и т.д.).
  *
- * Сигнатура события: окно дат, длительность, регион, уточнение локации, организатор, дисциплина.
- * Для пропущенного организатора подпись всё равно совпадёт, если остальное совпадает
- * (типично — несколько «постов» об одном кэмпе).
+ * Совпадение дат и организатора само по себе не доказывает дубликат.
+ * Для разных записей нужны одинаковые название, URL конкретного источника
+ * и сигнатура события. При отсутствии доказательств сохраняем обе карточки.
  *
  * «Победить» в группе: карточка с более полной коммерческой/операторской приоритетом
  * (цена, медиа, витринная пометка, не сырой автопост).
@@ -84,72 +84,36 @@ export function programEventDisplaySignature(p: {
   ].join("\u241F");
 }
 
-/**
- * Мягкая сигнатура: один организатор + те же даты/длительность/регион.
- * Нужна, когда из разных постов приходят разные `discipline`/`exactLocation`/title,
- * но это фактически одно событие (дубли на витрине с одинаковыми датами).
- */
-function looseIngestionDuplicateKey(p: {
-  scheduleType?: string | null;
-  startDate: string;
-  endDate: string;
-  durationDays: number;
-  region: string;
-  organizer?: { id?: string; displayName: string } | null;
-}): string | null {
-  // Placeholder dates are not evidence that two on-request tours are one event.
-  if (p.scheduleType === "on_request") return null;
-  const org = organizerKey(p);
-  if (!org) return null;
-  return [
-    org,
-    dayKey(p.startDate),
-    dayKey(p.endDate),
-    String(p.durationDays),
-    norm(p.region),
-  ].join("\u241F");
-}
+type SigProgram = { id: string; title: string; priceFromRub: number | null; discipline: string; region: string; startDate: string; endDate: string; durationDays: number; scheduleType?: string | null; exactLocation?: string | null; isStarred?: boolean; media?: { id?: string; url: string; mediaType: string }[]; autoPublished?: boolean; sourceType?: string | null; sourceUrl?: string | null; organizer?: { id?: string; displayName: string } | null };
 
-type SigProgram = { id: string; title: string; priceFromRub: number | null; discipline: string; region: string; startDate: string; endDate: string; durationDays: number; scheduleType?: string | null; exactLocation?: string | null; isStarred?: boolean; media?: { id?: string; url: string; mediaType: string }[]; autoPublished?: boolean; sourceType?: string | null; organizer?: { id?: string; displayName: string } | null };
+function sourceItemKey(value: string | null | undefined): string | null {
+  try {
+    const url = new URL(String(value ?? "").trim());
+    if (url.protocol !== "https:" && url.protocol !== "http:") return null;
+    if (url.username || url.password) return null;
+    // A shared organizer homepage is not evidence of one specific program.
+    if (url.pathname === "/" && !url.search) return null;
+    // Queries and fragments may identify separate entries on a shared page.
+    return url.href;
+  } catch {
+    return null;
+  }
+}
 
 function listingSignature(p: SigProgram): string {
-  // Keep distinct database records, even if titles and placeholder dates match.
-  return p.scheduleType === "on_request" ? `on_request:${p.id}` : programEventDisplaySignature(p);
-}
-
-function dedupeByLooseOrganizerWindow<T extends SigProgram>(programs: T[]): T[] {
-  const buckets = new Map<string, T[]>();
-  for (const p of programs) {
-    const k = looseIngestionDuplicateKey(p);
-    if (!k) continue;
-    const arr = buckets.get(k) ?? [];
-    arr.push(p);
-    buckets.set(k, arr);
-  }
-  const drop = new Set<string>();
-  for (const group of buckets.values()) {
-    if (group.length < 2) continue;
-    let best = group[0]!;
-    for (const p of group.slice(1)) {
-      const a = listingQualityScore(best);
-      const b = listingQualityScore(p);
-      if (b > a) best = p;
-      else if (b === a && p.id < best.id) best = p;
-    }
-    for (const p of group) {
-      if (p.id !== best.id) drop.add(p.id);
-    }
-  }
-  if (drop.size === 0) return programs;
-  return programs.filter((p) => !drop.has(p.id));
+  // Placeholder dates do not identify an on-request tour. Nor do matching
+  // dates/geography prove that different courses/posts refer to one event.
+  if (p.scheduleType === "on_request") return `row:${p.id}`;
+  const source = sourceItemKey(p.sourceUrl);
+  const title = p.title.toLowerCase().replace(/\s+/g, " ").trim();
+  if (!source || !title) return `row:${p.id}`;
+  return JSON.stringify([source, title, programEventDisplaySignature(p)]);
 }
 
 export function dedupeProgramListingsByEvent<T extends SigProgram>(programs: T[]): T[] {
   if (programs.length < 2) return programs;
-  const pre = dedupeByLooseOrganizerWindow(programs);
-  if (pre.length < 2) return pre;
   const best = new Map<string, T>();
-  for (const p of pre) {
+  for (const p of programs) {
     const sig = listingSignature(p);
     const prev = best.get(sig);
     if (!prev) {
@@ -165,7 +129,7 @@ export function dedupeProgramListingsByEvent<T extends SigProgram>(programs: T[]
   }
   const seen = new Set<T>();
   const order: T[] = [];
-  for (const p of pre) {
+  for (const p of programs) {
     const chosen = best.get(listingSignature(p))!;
     if (!seen.has(chosen)) {
       seen.add(chosen);

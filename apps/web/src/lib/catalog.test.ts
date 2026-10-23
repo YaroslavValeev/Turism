@@ -26,7 +26,7 @@ const qaTour = (id: string, title: string, extra = {}) => ({
   organizer: { id: "organizer", displayName: "БЕАРТРО" }, ...extra,
 });
 
-test("different on-request tours survive both dedupe passes", () => {
+test("different on-request tours remain distinct during display deduplication", () => {
   const tours = [qaTour("lake", "Начикинское озеро", { scheduleType: "on_request" }),
     qaTour("mountain", "Вачкажец", { scheduleType: "on_request" }),
     qaTour("culture", "Культура коренных народов", { scheduleType: "on_request", discipline: "wildlife" })];
@@ -39,8 +39,8 @@ test("same titles do not justify collapsing distinct on-request records", () => 
   assert.equal(dedupeProgramListingsByEvent([a, { ...a }]).length, 1);
 });
 
-test("dated events still dedupe with the existing quality preference", () => {
-  const a = qaTour("a", "Поездка на вулкан, дата подтверждена");
+test("same-source dated events still dedupe with the existing quality preference", () => {
+  const a = qaTour("a", "Поездка на вулкан, дата подтверждена", { sourceUrl: "https://organizer.example.invalid/tours/volcano" });
   assert.deepEqual(dedupeProgramListingsByEvent([a, { ...a, id: "b", priceFromRub: 10000 }]).map(p => p.id), ["b"]);
 });
 

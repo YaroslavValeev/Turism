@@ -18,11 +18,25 @@ test("entry reads Telegram query/hash and preserves explicit dates and filters",
 });
 
 test("catalog validates shape and deduplicates before filtering", () => {
-  const p = program("a", "2026-10-03");
+  const p = program("a", "2026-10-03", { sourceUrl: "https://organizer.example.invalid/tours/one" });
   assert.equal(readMiniCatalog([p, { ...p, id: "b" }]).length, 1);
   assert.throws(() => readMiniCatalog({ items: [] }));
   assert.throws(() => readMiniCatalog([{ id: "incomplete" }]));
   assert.deepEqual(readMiniCatalog([]), []);
+});
+
+test("Mini App preserves different source items within the same organizer date window", () => {
+  const first = program("a", "2026-10-03", {
+    title: "Mamay ski tour", sourceUrl: "https://organizer.example.invalid/tours/mamay",
+    organizer: { displayName: "Organizer" },
+  });
+  const second = { ...first, id: "b", title: "Kazakhstan tour", sourceUrl: "https://organizer.example.invalid/tours/kazakhstan" };
+  assert.deepEqual(readMiniCatalog([first, second]).map(p => p.id), ["a", "b"]);
+});
+
+test("Mini App preserves same-title records when there is no source-item evidence", () => {
+  const first = program("a", "2026-10-03");
+  assert.deepEqual(readMiniCatalog([first, { ...first, id: "b" }]).map(p => p.id), ["a", "b"]);
 });
 
 test("combined filters include boundaries, exclude past/on-request, and keep sorted results", () => {

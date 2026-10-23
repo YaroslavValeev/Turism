@@ -42,6 +42,12 @@ the local candidate retained **122/122** programs, with no excluded IDs and all
 four known hidden records retained. This is local pure-function evidence, not
 proof of deployment or rendered/browser acceptance of the candidate.
 
+The first committed-SHA CI run caught another dates-only assumption in the Mini
+App fixture. Its true-duplicate case now explicitly has the same source item;
+additional Mini App regressions preserve different source items and same-title
+rows without source evidence. The shared helper is used by both home and Mini
+App, so both consumers must pass before release. CI failure was not bypassed.
+
 This change does not correct source data or dates, write production rows, change
 media/notifications or prove full device/browser acceptance. Verify the exact
 candidate on the current public catalog, CI builds and isolated Docker tests

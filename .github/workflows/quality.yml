@@ -74,6 +74,7 @@ jobs:
           sudo bash scripts/production/deploy-web-carousel.test.sh
           node --test services/api/scripts/admin-card-qa-guard.test.cjs
           node --test services/api/scripts/repair-source-card-classifications.test.cjs
+          node --test services/api/scripts/merge-confirmed-enduro-event.test.cjs
 
       - name: Verify isolated admin card HTTP and PostgreSQL scenarios
         run: bash scripts/qa/admin-card-docker.sh

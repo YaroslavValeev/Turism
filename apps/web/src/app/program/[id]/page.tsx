@@ -1,4 +1,5 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { confirmedProgramId } from "../../../lib/confirmedProgramIdentity";
 import { fetchPublicExploreList } from "../../../lib/exploreApi";
 import { buildValidHubKeySetFromExploreIndex } from "../../../lib/exploreNavWeb";
 import { getServerApiBaseUrl, safeServerFetch } from "../../../lib/serverApiBase";
@@ -10,6 +11,9 @@ export default async function ProgramPage({ params }: Props) {
   const { id: rawId } = await params;
   const id = typeof rawId === "string" ? rawId : "";
   if (!id) notFound();
+  const canonicalId = confirmedProgramId(id);
+  // Temporary 307 keeps the curated decision reversible; never forwards contact/query data.
+  if (canonicalId !== id) redirect(`/program/${canonicalId}`);
 
   const base = getServerApiBaseUrl();
   const [programResponse, reviewsResponse, items] = await Promise.all([

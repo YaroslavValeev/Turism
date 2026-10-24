@@ -8,6 +8,7 @@ type Props = {
   sourceTypeLabel: string;
   reviewPending: boolean;
   sourceUrl: string | null;
+  additionalSources?: readonly { url: string; label: string }[];
   ingestedAt: string | null | undefined;
   updatedFromSourceAt: string | null | undefined;
   trustReason: string | null;
@@ -20,6 +21,7 @@ export function ProgramProvenance({
   sourceTypeLabel,
   reviewPending,
   sourceUrl,
+  additionalSources = [],
   ingestedAt,
   updatedFromSourceAt,
   trustReason,
@@ -61,6 +63,14 @@ export function ProgramProvenance({
               <span className="mw-visually-hidden"> (откроется в новой вкладке)</span>
             </a>
           )}
+          {additionalSources.map(source => (
+            <p key={source.url}>
+              <a href={source.url} rel="nofollow noopener noreferrer" target="_blank" className="mw-pdp-provenance__link">
+                <span>{source.label}</span><IconExternal />
+                <span className="mw-visually-hidden"> (откроется в новой вкладке)</span>
+              </a>
+            </p>
+          ))}
         </div>
       )}
 

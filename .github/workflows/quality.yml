@@ -73,6 +73,7 @@ jobs:
           bash scripts/production/rehearse-database-restore.test.sh
           sudo bash scripts/production/deploy-web-carousel.test.sh
           node --test services/api/scripts/admin-card-qa-guard.test.cjs
+          node --test services/api/scripts/repair-source-card-classifications.test.cjs
 
       - name: Verify isolated admin card HTTP and PostgreSQL scenarios
         run: bash scripts/qa/admin-card-docker.sh

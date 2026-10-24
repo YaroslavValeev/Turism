@@ -50,3 +50,9 @@ docker run --rm --name "$api" --network "$network" --memory 512m --cpus 1 \
   --tmpfs /repo/apps/web/public/ingestion-media:rw,size=16m \
   -e "DATABASE_URL=$url" -e ADMIN_CARD_QA_CONFIRM=isolated-no-outbound-network \
   node:20-bookworm node scripts/admin-card.integration.cjs
+
+# Same disposable database/network; never loads production environment or starts workers.
+docker run --rm --name "$api" --network "$network" --memory 512m --cpus 1 \
+  --label "codex.qa.owner=$run_id" -v "$repo:/repo:ro" -w /repo/services/api \
+  -e "DATABASE_URL=$url" -e ADMIN_CARD_QA_CONFIRM=isolated-no-outbound-network \
+  node:20-bookworm node scripts/repair-source-card-classifications.integration.cjs

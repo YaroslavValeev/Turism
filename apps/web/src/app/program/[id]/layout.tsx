@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { confirmedProgramId } from "../../../lib/confirmedProgramIdentity";
 import { getServerApiBaseUrl, safeServerFetch } from "../../../lib/serverApiBase";
 import "./pdp.css";
 
@@ -20,7 +21,8 @@ async function getProgram(id: string): Promise<ProgramData | null> {
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
-  const { id } = await params;
+  const { id: rawId } = await params;
+  const id = confirmedProgramId(rawId);
   const program = await getProgram(id);
   const title = program?.title ? `${program.title} | MyWaveTour` : "Программа | MyWaveTour";
   const description =
@@ -53,7 +55,8 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 }
 
 export default async function ProgramLayout({ children, params }: { children: React.ReactNode; params: Promise<{ id: string }> }) {
-  const { id } = await params;
+  const { id: rawId } = await params;
+  const id = confirmedProgramId(rawId);
   const program = await getProgram(id);
   const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://mywavetour.ru").replace(/\/+$/, "");
   const structuredData = program

@@ -14,6 +14,7 @@ import {
   mergeProgramField,
 } from "../../../content/programPageOverrides";
 import { getDisciplineDisplay } from "../../../lib/disciplineLabels";
+import { confirmedAdditionalSources } from "../../../lib/confirmedProgramIdentity";
 import { buildInternalContentQuery } from "../../../lib/internalContentUtm";
 import { validExploreMainLinks } from "../../../lib/exploreNavWeb";
 import { orderProgramMediaForDisplay } from "../../../lib/programCardCover";
@@ -814,6 +815,7 @@ export function ProgramPdpClient({
             sourceTypeLabel={sourceTypeLabelRuPdp(program.sourceType)}
             reviewPending={program.reviewStatus === "auto_pending"}
             sourceUrl={sourcePostUrl}
+            additionalSources={confirmedAdditionalSources(program.id, sourcePostUrl)}
             ingestedAt={program.ingestedAt}
             updatedFromSourceAt={program.updatedFromSourceAt}
             trustReason={trustReason ?? null}

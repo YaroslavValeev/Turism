@@ -7,6 +7,9 @@ import { ProgramPdpClient, type Program, type PublicReview } from "./program-pdp
 
 type Props = { params: Promise<{ id: string }> };
 
+// Status changes must be checked on each request, including manual withdrawal.
+export const dynamic = "force-dynamic";
+
 export default async function ProgramPage({ params }: Props) {
   const { id: rawId } = await params;
   const id = typeof rawId === "string" ? rawId : "";
@@ -17,7 +20,7 @@ export default async function ProgramPage({ params }: Props) {
 
   const base = getServerApiBaseUrl();
   const [programResponse, reviewsResponse, items] = await Promise.all([
-    safeServerFetch(`${base}/programs/${encodeURIComponent(id)}`, { next: { revalidate: 300 } }),
+    safeServerFetch(`${base}/programs/${encodeURIComponent(id)}`, { cache: "no-store" }),
     safeServerFetch(`${base}/reviews/public?programId=${encodeURIComponent(id)}`, { next: { revalidate: 300 } }),
     fetchPublicExploreList(),
   ]);

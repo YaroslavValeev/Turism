@@ -64,6 +64,9 @@ jobs:
       - name: Run unit and production builds
         run: pnpm run check:quality
 
+      - name: Verify completed programme SSR and manual-withdrawal cache behaviour
+        run: node scripts/qa/completed-program-web.mjs
+
       - name: Verify production backup and SSH stdin guards
         shell: bash
         run: |

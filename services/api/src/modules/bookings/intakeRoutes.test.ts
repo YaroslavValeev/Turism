@@ -108,6 +108,21 @@ describe("booking intake HTTP regression", () => {
     expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 
+  it("does not accept inquiries for completed published or archived detail pages", async () => {
+    for (const publishStatus of ["published", "archived"]) {
+      vi.mocked(prisma.program.findUnique).mockResolvedValue({
+        id: "program-id", organizerId: "organizer-id", publishStatus,
+        startDate: new Date(Date.now() - 3 * 86_400_000), endDate: new Date(Date.now() - 2 * 86_400_000),
+        organizer: { verificationStatus: "verified" },
+      } as any);
+      expect((await post(valid)).status).toBe(404);
+    }
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+    expect(prisma.booking.create).not.toHaveBeenCalled();
+    expect(createDealForBooking).not.toHaveBeenCalled();
+    expect(emitBackendAnalyticsEventBestEffort).not.toHaveBeenCalled();
+  });
+
   it("locks the validated identity before looking up and creating within a ReadCommitted transaction", async () => {
     const result = await post({ ...valid, programId: " program-id ", guestContact: " qa@example.invalid " });
     expect(result.status).toBe(201);

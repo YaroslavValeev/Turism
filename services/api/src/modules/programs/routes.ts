@@ -15,6 +15,7 @@ import { requireAdmin } from "../../middleware/auth";
 import type { Env } from "@mywave/config";
 import type { AdminPayload } from "../../middleware/auth";
 import { isProgramPubliclyVisible } from "./publicVisibility";
+import { hasAutomaticCompletionAudit, isCompletedPublicCandidate } from "./completedPublicAccess";
 import { dedupeProgramsByEventKey } from "./dedup";
 import { setProgramPublishStatus } from "./publishStatus.service";
 import { describePublishMissing } from "./publishGate";
@@ -152,25 +153,40 @@ export function programsRoutes(env: Env): Router {
     res.json(publicList.map((p) => toPublicProgram(p, rates)));
   });
 
-  router.get("/:id", async (req: Request, res: Response) => {
-    const p = await prisma.program.findUnique({
-      where: { id: req.params.id },
-      include: { media: orderedProgramMedia, organizer: { select: { id: true, displayName: true, verificationStatus: true } } },
-    });
-    if (!p) {
-      res.status(404).json({ error: "Not found" });
-      return;
+  router.get("/:id", async (req: Request, res: Response, next) => {
+    res.set("Cache-Control", "no-store");
+    try {
+      const p = await prisma.program.findUnique({
+        where: { id: req.params.id },
+        include: { media: orderedProgramMedia, organizer: { select: { id: true, displayName: true, verificationStatus: true } } },
+      });
+      if (!p) {
+        res.status(404).json({ error: "Not found" });
+        return;
+      }
+      const now = new Date();
+      const completed = isCompletedPublicCandidate(p, now);
+      let readable = isProgramPubliclyVisible(p, now);
+      if (!readable && completed) {
+        readable = p.publishStatus === "published" || hasAutomaticCompletionAudit(
+          await prisma.auditLog.findMany({
+            where: { entityType: "program", entityId: p.id, changedField: "publish_status_change" },
+            orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+            take: 2,
+            select: { changedBy: true, oldValue: true, newValue: true, reason: true, createdAt: true },
+          }),
+          p.endDate!, now,
+        );
+      }
+      if (!readable || isSyntheticPublicProgram(p)) {
+        res.status(404).json({ error: "Not found" });
+        return;
+      }
+      const enrichment = await loadPublicEnrichment(p.id);
+      res.json({ ...toPublicProgram(p, await getCbrRates()), enrichment, ...(completed ? { publicView: "completed" } : {}) });
+    } catch (error) {
+      next(error);
     }
-    if (!isProgramPubliclyVisible(p)) {
-      res.status(404).json({ error: "Not found" });
-      return;
-    }
-    if (isSyntheticPublicProgram(p)) {
-      res.status(404).json({ error: "Not found" });
-      return;
-    }
-    const enrichment = await loadPublicEnrichment(p.id);
-    res.json({ ...toPublicProgram(p, await getCbrRates()), enrichment });
   });
 
   registerEnrichmentRoutes(router, admin);

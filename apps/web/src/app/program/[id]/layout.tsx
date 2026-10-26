@@ -4,6 +4,7 @@ import { getServerApiBaseUrl, safeServerFetch } from "../../../lib/serverApiBase
 import "./pdp.css";
 
 type ProgramData = {
+  publicView?: "completed";
   title?: string;
   discipline?: string;
   region?: string;
@@ -15,7 +16,7 @@ type ProgramData = {
 
 async function getProgram(id: string): Promise<ProgramData | null> {
   const base = getServerApiBaseUrl();
-  const res = await safeServerFetch(`${base}/programs/${id}`, { next: { revalidate: 300 } });
+  const res = await safeServerFetch(`${base}/programs/${encodeURIComponent(id)}`, { cache: "no-store" });
   if (!res || !res.ok) return null;
   return (await res.json()) as ProgramData;
 }
@@ -25,7 +26,9 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const id = confirmedProgramId(rawId);
   const program = await getProgram(id);
   const title = program?.title ? `${program.title} | MyWaveTour` : "Программа | MyWaveTour";
+  const completed = program?.publicView === "completed";
   const description =
+    (completed ? `Завершённый выезд: ${program?.title}. Описание, фотографии и первоисточники. Приём заявок закрыт.`.slice(0, 160) : null) ||
     program?.audienceFit?.slice(0, 150) ||
     (program?.discipline && program?.region
       ? `${program.discipline} в регионе ${program.region}. Детали, условия участия и заявка на MyWaveTour.`
@@ -37,7 +40,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     alternates: {
       canonical: `/program/${id}`,
     },
-    ...(!program ? { robots: { index: false, follow: false } } : {}),
+    ...(!program || completed ? { robots: { index: false, follow: completed } } : {}),
     openGraph: {
       type: "website",
       title,

@@ -72,6 +72,7 @@ import {
 } from "../../../components/program-pdp/icons";
 
 export type Program = {
+  publicView?: "completed";
   id: string;
   title: string;
   discipline: string;
@@ -253,7 +254,7 @@ export function ProgramPdpClient({
       try {
         setLoadError("");
         const [progRes, revRes] = await Promise.all([
-          fetch(`${getPublicApiBase()}/programs/${id}`),
+          fetch(`${getPublicApiBase()}/programs/${id}`, { cache: "no-store" }),
           fetch(
             `${getPublicApiBase()}/reviews/public?programId=${encodeURIComponent(id)}`,
           ),
@@ -389,7 +390,7 @@ export function ProgramPdpClient({
     /детский|детская|детские|kids|подростковый/i.test(
       `${program.title} ${program.formatType ?? ""}`,
     );
-  const ended = program.endDate.slice(0, 10) < localDate();
+  const ended = program.publicView === "completed" || program.endDate.slice(0, 10) < localDate();
   const isHighRiskProgram =
     /high|critical|extreme|высок/i.test(String(program.riskLevel ?? "")) ||
     /freeride|mountain|альп|фрирайд|горы/i.test(

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { adminJson, getAdminToken } from "../../lib/admin";
+import { candidateHeading } from "../../lib/candidatePresentation";
 import { AdminEmptyState } from "../../components/admin/AdminEmptyState";
 import { AdminFilterField, AdminFiltersBar } from "../../components/admin/AdminFiltersBar";
 import { AdminLoadingState } from "../../components/admin/AdminLoadingState";
@@ -185,14 +186,14 @@ export default function ContentPipelineAdminPage() {
 
   if (loading && !items.length && !pubs.length) {
     return (
-      <main className="mw-admin-page">
+      <main className="mw-admin-page mw-admin-page--wide mw-admin-pipeline">
         <AdminLoadingState label="Контент-конвейер…" />
       </main>
     );
   }
 
   return (
-    <main className="mw-admin-page">
+    <main className="mw-admin-page mw-admin-page--wide mw-admin-pipeline">
       <AdminPageHeader
         title="Контент-конвейер"
         description="Сбор → нормализация → черновики → согласование → публикация."
@@ -205,7 +206,8 @@ export default function ContentPipelineAdminPage() {
           <button
             key={t}
             type="button"
-            className={t === tab ? "mw-btn mw-btn--primary" : "mw-btn"}
+            className={t === tab ? "mw-admin-btn" : "mw-admin-btn mw-admin-btn--ghost"}
+            aria-pressed={t === tab}
             onClick={() => setTab(t)}
           >
             {t === "items" ? "Материалы" : t === "publications" ? "Публикации" : "Метрики + ₽"}
@@ -216,7 +218,7 @@ export default function ContentPipelineAdminPage() {
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16, alignItems: "center" }}>
         <button
           type="button"
-          className="mw-btn mw-btn--primary"
+          className="mw-admin-btn"
           disabled={busy !== ""}
           onClick={() => void runJob("/api/jobs/run-content-pipeline", "run-content-pipeline")}
         >
@@ -224,7 +226,7 @@ export default function ContentPipelineAdminPage() {
         </button>
         <button
           type="button"
-          className="mw-btn"
+          className="mw-admin-btn mw-admin-btn--ghost"
           disabled={busy !== ""}
           onClick={() => void runJob("/api/jobs/run-content-drafts", "run-content-drafts")}
         >
@@ -233,7 +235,7 @@ export default function ContentPipelineAdminPage() {
         {tab === "publications" ? (
           <button
             type="button"
-            className="mw-btn"
+            className="mw-admin-btn mw-admin-btn--ghost"
             disabled={busy !== ""}
             onClick={() => void runJob("/api/content-pipeline/publications/retry-failed", "retry-failed", { limit: 20 })}
           >
@@ -241,11 +243,11 @@ export default function ContentPipelineAdminPage() {
           </button>
         ) : null}
         {tab === "items" && selectedDrafts.size > 0 ? (
-          <button type="button" className="mw-btn mw-btn--primary" disabled={busy !== ""} onClick={() => void bulkApprove()}>
+          <button type="button" className="mw-admin-btn" disabled={busy !== ""} onClick={() => void bulkApprove()}>
             {busy === "bulk-approve" ? "…" : `Одобрить выбранные (${selectedDrafts.size})`}
           </button>
         ) : null}
-        <button type="button" className="mw-btn" onClick={() => void loadAll()}>
+        <button type="button" className="mw-admin-btn mw-admin-btn--ghost" onClick={() => void loadAll()}>
           Обновить
         </button>
       </div>
@@ -269,7 +271,7 @@ export default function ContentPipelineAdminPage() {
                 <option value="failed">failed</option>
               </select>
             </AdminFilterField>
-            <AdminFilterField label="min ₽ (по content_metrics)">
+            <AdminFilterField label="Выручка от, ₽">
               <input
                 className="mw-admin-input"
                 style={{ width: 100 }}
@@ -279,7 +281,7 @@ export default function ContentPipelineAdminPage() {
                 placeholder="0"
               />
             </AdminFilterField>
-            <AdminFilterField label="мин. лидов">
+            <AdminFilterField label="Заявок от">
               <input
                 className="mw-admin-input"
                 style={{ width: 100 }}
@@ -293,8 +295,8 @@ export default function ContentPipelineAdminPage() {
           {items.length === 0 ? (
             <AdminEmptyState title="Нет материалов" description="Запустите конвейер или измените фильтр." />
           ) : (
-            <div className="mw-admin-table-outer mw-admin-table-outer--always-scroll">
-              <table className="mw-admin-table">
+            <div className="mw-admin-table-outer">
+              <table className="mw-admin-table mw-admin-table--materials">
                 <thead>
                   <tr>
                     <th style={{ width: 32 }}>✓</th>
@@ -328,7 +330,10 @@ export default function ContentPipelineAdminPage() {
                         <td>
                           <AdminStatusBadge tone={wfTone(c.workflowStatus)}>{c.workflowStatus}</AdminStatusBadge>
                         </td>
-                        <td>{c.rawItem?.rawTitle || c.id}</td>
+                        <td className="mw-admin-pipeline-title">
+                          {candidateHeading(c.rawItem?.rawTitle || c.id)}
+                          {(c.rawItem?.rawTitle?.length ?? 0) > 120 ? <details className="mw-admin-candidate-evidence"><summary>Полный заголовок</summary><p>{c.rawItem?.rawTitle}</p></details> : null}
+                        </td>
                         <td style={{ fontSize: 12, whiteSpace: "nowrap" }}>
                           {p ? `₽${p.revenueRub} / ${p.leads}L` : "—"}
                         </td>
@@ -367,7 +372,7 @@ export default function ContentPipelineAdminPage() {
           {pubs.length === 0 ? (
             <AdminEmptyState title="Нет публикаций" />
           ) : (
-            <div className="mw-admin-table-outer mw-admin-table-outer--always-scroll">
+            <div className="mw-admin-table-outer">
               <table className="mw-admin-table">
                 <thead>
                   <tr>
@@ -389,7 +394,7 @@ export default function ContentPipelineAdminPage() {
                         {p.state === "failed" ? (
                           <button
                             type="button"
-                            className="mw-btn"
+                            className="mw-admin-btn mw-admin-btn--ghost"
                             style={{ fontSize: 12, padding: "4px 8px" }}
                             disabled={busy !== ""}
                             onClick={() => void retryPublication(p.id)}
@@ -414,7 +419,7 @@ export default function ContentPipelineAdminPage() {
           {perf.length === 0 ? (
             <AdminEmptyState title="Нет агрегатов" description="После броней с contentItemId появятся цифры." />
           ) : (
-            <div className="mw-admin-table-outer mw-admin-table-outer--always-scroll">
+            <div className="mw-admin-table-outer">
               <table className="mw-admin-table">
                 <thead>
                   <tr>

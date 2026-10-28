@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState, type MouseEvent } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import Link from "next/link";
+import { candidateDate, candidateHeading, candidateMedia } from "../../lib/candidatePresentation";
 import { adminJson, getAdminToken } from "../../lib/admin";
 import { AdminEmptyState } from "../../components/admin/AdminEmptyState";
 import { AdminFilterField, AdminFiltersBar } from "../../components/admin/AdminFiltersBar";
@@ -45,6 +46,7 @@ type EventCandidateListItem = {
     rawItem: {
       id?: string;
       sourceUrl?: string | null;
+      rawMediaJson?: unknown;
       source: SourceRef;
     };
   };
@@ -76,27 +78,6 @@ type CandidateDetail = EventCandidateListItem & {
   };
 };
 
-function collectPreviewMediaUrls(detail: CandidateDetail): string[] {
-  const urls: string[] = [];
-  const push = (value: string | null | undefined) => {
-    const url = String(value ?? "").trim();
-    if (!url || /telegram\.org\/img\/emoji\//i.test(url)) return;
-    const normalized = url.startsWith("//") ? `https:${url}` : url;
-    if (!/^https?:\/\//i.test(normalized) && !normalized.startsWith("/")) return;
-    if (urls.includes(normalized)) return;
-    urls.push(normalized);
-  };
-  push(detail.normalizedItem.imageUrl);
-  const raw = detail.normalizedItem.rawItem.rawMediaJson;
-  if (Array.isArray(raw)) {
-    for (const item of raw) {
-      if (typeof item === "string") push(item);
-      else if (item && typeof item === "object") push((item as { url?: string }).url);
-    }
-  }
-  return urls.slice(0, 12);
-}
-
 /** Браузер не тянет telesco.pe — через API SOCKS-прокси. */
 function presentAdminMediaUrl(url: string): string {
   if (url.startsWith("/ingestion-media/")) {
@@ -124,11 +105,6 @@ function presentAdminMediaUrl(url: string): string {
 }
 
 const DEFAULT_STATUS = "needs_review";
-
-function formatDate(value: string | null) {
-  if (!value) return "—";
-  return new Date(value).toLocaleString("ru-RU");
-}
 
 function statusLabelRu(status: string): string {
   if (status === "new") return "новый";
@@ -177,7 +153,16 @@ function resolveSourceHref(item: {
   return null;
 }
 
+function SourcePreviewImage({ url }: { url: string }) {
+  const [failed, setFailed] = useState(false);
+  useEffect(() => setFailed(false), [url]);
+  if (failed) return <span className="mw-admin-caption">Фото недоступно — проверьте оригинал источника</span>;
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src={presentAdminMediaUrl(url)} alt="Медиа из источника программы" loading="lazy" onError={() => setFailed(true)} />;
+}
+
 export default function EventCandidatesPage() {
+  const selectionRequest = useRef(0);
   const [sources, setSources] = useState<SourceOption[]>([]);
   const [items, setItems] = useState<EventCandidateListItem[]>([]);
   const [selected, setSelected] = useState<CandidateDetail | null>(null);
@@ -217,6 +202,7 @@ export default function EventCandidatesPage() {
       ]);
       setSources(sourcesData);
       setItems(candidatesData);
+      setSelected((current) => current && candidatesData.some((item) => item.id === current.id) ? current : null);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -233,13 +219,17 @@ export default function EventCandidatesPage() {
   }, [query]);
 
   async function selectCandidate(id: string) {
+    const request = ++selectionRequest.current;
     setError("");
     try {
       const detail = await adminJson<CandidateDetail>(`/event-candidates/${id}`);
+      if (request !== selectionRequest.current) return;
       setSelected(detail);
-      window.requestAnimationFrame(() => {
-        document.getElementById("candidate-detail-panel")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-      });
+      if (window.matchMedia("(max-width: 1100px)").matches) {
+        window.requestAnimationFrame(() => {
+          document.getElementById("candidate-detail-panel")?.scrollIntoView({ behavior: "smooth", block: "start" });
+        });
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }
@@ -289,21 +279,16 @@ export default function EventCandidatesPage() {
 
   async function handleReject() {
     if (!selected) return;
-    const notes = window.prompt("Причина отклонения (можно пусто)", "") ?? "";
+    const notes = window.prompt("Причина отклонения (можно пусто)", "");
+    if (notes === null) return;
     await runAction("reject", `/event-candidates/${selected.id}/reject`, { notes });
-  }
-
-  function onCardClick(item: EventCandidateListItem, e: MouseEvent) {
-    const target = e.target as HTMLElement;
-    if (target.closest("a,button")) return;
-    void selectCandidate(item.id);
   }
 
   return (
     <main className="mw-admin-page mw-admin-page--wide">
       <AdminPageHeader
         title="Кандидаты на публикацию"
-        description="Первичную проверку уже сделал скоринг: в «Требуют проверки» попадают только прошедшие пороги (итог ≥ 0.42, будущее ≥ 0.2, likelihood ≥ 0.3). Вам — финальная сверка источника и публикация одной кнопкой."
+        description="Проверьте программу по оригиналу: медиа, даты, место и условия участия. Полный текст и оценки доступны в карточке."
       />
       {error ? <AdminMessage type="error">{error}</AdminMessage> : null}
       {message ? <AdminMessage type="success">{message}</AdminMessage> : null}
@@ -384,20 +369,17 @@ export default function EventCandidatesPage() {
                   {items.map((item) => {
                     const active = selected?.id === item.id;
                     const href = resolveSourceHref(item);
+                    const cover = candidateMedia(item.normalizedItem.imageUrl, item.normalizedItem.rawItem.rawMediaJson).find((media) => media.kind === "image");
                     return (
                       <article
                         key={item.id}
-                        role="button"
-                        tabIndex={0}
                         className={"mw-admin-candidate-card" + (active ? " mw-admin-candidate-card--active" : "")}
-                        onClick={(e) => onCardClick(item, e)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === " ") {
-                            e.preventDefault();
-                            void selectCandidate(item.id);
-                          }
-                        }}
                       >
+                        <div className="mw-admin-candidate-cover">
+                          {cover ? (
+                            <SourcePreviewImage url={cover.url} />
+                          ) : <span>Фото не загружено</span>}
+                        </div>
                         <div className="mw-admin-candidate-card__body">
                           <div style={{ marginBottom: 8 }}>
                             <AdminStatusBadge tone={candidateStatusTone(item.status)}>
@@ -409,16 +391,18 @@ export default function EventCandidatesPage() {
                               </span>
                             ) : null}
                           </div>
-                          <strong>{item.normalizedItem.title || "Без названия"}</strong>
+                          <h2 className="mw-admin-candidate-title">{candidateHeading(item.normalizedItem.title)}</h2>
                           <div className="mw-admin-caption" style={{ marginTop: 6 }}>
                             {item.normalizedItem.discipline || "—"} ·{" "}
                             {item.normalizedItem.region || item.normalizedItem.country || "—"} ·{" "}
-                            {formatDate(item.normalizedItem.startDate)}
+                            {candidateDate(item.normalizedItem.startDate)}
                           </div>
                           <div className="mw-admin-caption">
                             {item.normalizedItem.organizerName || "—"} · {item.normalizedItem.rawItem.source.name} (
                             {item.normalizedItem.rawItem.source.type})
                           </div>
+                          <details className="mw-admin-candidate-evidence"><summary>Оценка и исходный заголовок</summary>
+                          <p>{item.normalizedItem.title || "Название не указано"}</p>
                           <div className="mw-admin-candidate-scores" aria-label="Автооценка">
                             <span title="Итоговый score (порог в очередь ≥ 0.42)">
                               итог {item.finalScore.toFixed(2)}
@@ -433,6 +417,7 @@ export default function EventCandidatesPage() {
                               доверие {item.trustScore.toFixed(2)}
                             </span>
                           </div>
+                          </details>
                           <div style={{ marginTop: 8 }}>
                             {href ? (
                               <a
@@ -450,8 +435,8 @@ export default function EventCandidatesPage() {
                           </div>
                         </div>
                         <div className="mw-admin-candidate-card__actions">
-                          <button type="button" className="mw-admin-btn mw-admin-btn--ghost" onClick={() => void selectCandidate(item.id)}>
-                            {active ? "Выбрано" : "Выбрать"}
+                          <button type="button" className="mw-admin-btn mw-admin-btn--ghost" onClick={() => void selectCandidate(item.id)} aria-pressed={active}>
+                            {active ? "Открыта" : "Проверить карточку"}
                           </button>
                         </div>
                       </article>
@@ -462,30 +447,13 @@ export default function EventCandidatesPage() {
             </section>
 
             <aside id="candidate-detail-panel" className="mw-admin-aside-panel mw-admin-aside-panel--sticky">
-              <h2 style={{ marginTop: 0, marginBottom: 8 }}>Публикация</h2>
+              <h2 style={{ marginTop: 0, marginBottom: 8 }}>Предпросмотр программы</h2>
               {!selected ? (
                 <p className="mw-admin-caption" style={{ margin: 0 }}>
-                  Кликните карточку слева — она выделится. Здесь появится кнопка одной публикации.
+                  Выберите «Проверить карточку»: здесь откроются медиа, условия и полный текст источника. Публикация выполняется отдельно после проверки.
                 </p>
               ) : (
                 <>
-                  <div className="mw-admin-candidate-actions-bar">
-                    <button
-                      type="button"
-                      className="mw-admin-btn"
-                      onClick={() => void handleApproveAndPublish()}
-                      disabled={busyAction !== "" || selected.status === "published"}
-                    >
-                      {busyAction === "approve-and-publish"
-                        ? "Публикуем…"
-                        : selected.status === "published"
-                          ? "Уже опубликовано"
-                          : "Одобрить и опубликовать на сайте"}
-                    </button>
-                    <button type="button" className="mw-admin-btn mw-admin-btn--ghost" onClick={() => void handleReject()} disabled={busyAction !== ""}>
-                      {busyAction === "reject" ? "Отклоняем…" : "Отклонить"}
-                    </button>
-                  </div>
                   <p className="mw-admin-caption">
                     Одна кнопка = одобрение кандидата + программа + статус <strong>published</strong> (сайт и Telegram при
                     первом переходе). Перед этим откройте ссылку источника.
@@ -503,37 +471,30 @@ export default function EventCandidatesPage() {
                   })()}
 
                   <p>
-                    <strong>{selected.normalizedItem.title || "Без названия"}</strong>
+                    <strong className="mw-admin-candidate-title">{candidateHeading(selected.normalizedItem.title)}</strong>
                   </p>
                   <p className="mw-admin-caption">
                     {selected.normalizedItem.discipline || "—"} ·{" "}
                     {selected.normalizedItem.region || selected.normalizedItem.country || "—"}
                   </p>
                   <p>
-                    <strong>Даты:</strong> {formatDate(selected.normalizedItem.startDate)} →{" "}
-                    {formatDate(selected.normalizedItem.endDate)}
+                    <strong>Даты:</strong> {candidateDate(selected.normalizedItem.startDate)} →{" "}
+                    {candidateDate(selected.normalizedItem.endDate)}
                   </p>
                   <p>
                     <strong>Организатор:</strong> {selected.normalizedItem.organizerName || "—"}
                   </p>
                   {(() => {
-                    const mediaUrls = collectPreviewMediaUrls(selected);
+                    const mediaUrls = candidateMedia(selected.normalizedItem.imageUrl, selected.normalizedItem.rawItem.rawMediaJson);
                     if (mediaUrls.length === 0) {
                       return <p className="mw-admin-caption">Медиа в источнике не найдено (или ещё не загружено).</p>;
                     }
                     return (
                       <div style={{ marginBottom: 12 }}>
                         <strong>Медиа источника ({mediaUrls.length})</strong>
-                        <div
-                          style={{
-                            display: "grid",
-                            gridTemplateColumns: "repeat(auto-fill, minmax(96px, 1fr))",
-                            gap: 8,
-                            marginTop: 8,
-                          }}
-                        >
-                          {mediaUrls.map((url) => {
-                            const isVideo = /\.(mp4|webm|mov)(\?|#|$)/i.test(url);
+                        <div className="mw-admin-candidate-gallery">
+                          {mediaUrls.map(({ url, kind }) => {
+                            const isVideo = kind === "video";
                             const displayUrl = presentAdminMediaUrl(url);
                             return isVideo ? (
                               <a key={url} href={displayUrl} target="_blank" rel="noreferrer" className="mw-admin-caption">
@@ -541,12 +502,7 @@ export default function EventCandidatesPage() {
                               </a>
                             ) : (
                               <a key={url} href={displayUrl} target="_blank" rel="noreferrer">
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img
-                                  src={displayUrl}
-                                  alt=""
-                                  style={{ width: "100%", height: 88, objectFit: "cover", borderRadius: 8 }}
-                                />
+                                <SourcePreviewImage url={url} />
                               </a>
                             );
                           })}
@@ -554,9 +510,37 @@ export default function EventCandidatesPage() {
                       </div>
                     );
                   })()}
-                  <p style={{ whiteSpace: "pre-wrap" }}>
-                    {selected.normalizedItem.descriptionShort || selected.normalizedItem.descriptionFull || "—"}
-                  </p>
+                  <dl className="mw-admin-candidate-facts">
+                    <div><dt>Место</dt><dd>{[selected.normalizedItem.country, selected.normalizedItem.region, selected.normalizedItem.city, selected.normalizedItem.venue].filter(Boolean).join(" · ") || "Не указано"}</dd></div>
+                    <div><dt>Уровень</dt><dd>{selected.normalizedItem.level || "Не указан"}</dd></div>
+                    <div><dt>Продолжительность</dt><dd>{selected.normalizedItem.durationDays ? `${selected.normalizedItem.durationDays} дн.` : "Не указана"}</dd></div>
+                    <div><dt>Стоимость от</dt><dd>{selected.normalizedItem.priceFrom != null ? `${selected.normalizedItem.priceFrom} ${selected.normalizedItem.currency || "(валюта не указана)"}` : "Не указана"}</dd></div>
+                  </dl>
+                  <h3>О программе</h3>
+                  <p className="mw-admin-candidate-description">{selected.normalizedItem.descriptionShort || selected.normalizedItem.descriptionFull || "Описание не выделено. Сверьте исходный текст перед публикацией."}</p>
+                  <details className="mw-admin-candidate-evidence">
+                    <summary>Полный текст и данные источника</summary>
+                    <p className="mw-admin-candidate-description">{selected.normalizedItem.title}</p>
+                    <p className="mw-admin-candidate-description">{selected.normalizedItem.descriptionFull || "Полное описание не выделено"}</p>
+                    <p>Источник: {selected.normalizedItem.rawItem.source.name}</p>
+                  </details>
+                  <div className="mw-admin-candidate-actions-bar">
+                    <button
+                      type="button"
+                      className="mw-admin-btn"
+                      onClick={() => void handleApproveAndPublish()}
+                      disabled={busyAction !== "" || selected.status === "published"}
+                    >
+                      {busyAction === "approve-and-publish"
+                        ? "Публикуем…"
+                        : selected.status === "published"
+                          ? "Уже опубликовано"
+                          : "Одобрить и опубликовать на сайте"}
+                    </button>
+                    <button type="button" className="mw-admin-btn mw-admin-btn--ghost" onClick={() => void handleReject()} disabled={busyAction !== ""}>
+                      {busyAction === "reject" ? "Отклоняем…" : "Отклонить"}
+                    </button>
+                  </div>
                   {selected.publishedProgram ? (
                     <p>
                       Программа:{" "}

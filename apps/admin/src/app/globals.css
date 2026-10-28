@@ -19,7 +19,7 @@
   --mw-max: 1120px;
   --mw-leading-tight: 1.22;
   --mw-leading-body: 1.6;
-  --mw-admin-sidebar: 280px;
+  --mw-admin-sidebar: 248px;
   --mw-admin-topbar: 60px;
 }
 
@@ -481,7 +481,7 @@ h2 {
 }
 
 .mw-admin-workspace--shelled {
-  margin-left: 280px;
+  margin-left: var(--mw-admin-sidebar);
 }
 
 .mw-admin-sidebar__brand {
@@ -765,8 +765,8 @@ h2 {
 .mw-admin-aside-panel--sticky {
   position: sticky;
   top: 12px;
-  max-height: calc(100vh - 24px);
-  overflow: auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .mw-admin-candidate-actions-bar {
@@ -948,10 +948,11 @@ h2 {
   margin-right: 8px;
 }
 
-/* Высота ограничена экраном: иначе у длинных таблиц горизонтальная полоса прокрутки уезжает за нижний край. */
+/* The page owns vertical scrolling; only genuinely wide tables scroll sideways. */
 .mw-admin-table-outer {
   overflow: auto;
-  max-height: calc(100vh - var(--mw-admin-topbar) - 32px);
+  min-width: 0;
+  max-width: 100%;
   padding-bottom: 4px;
   overscroll-behavior-x: contain;
   scrollbar-width: auto;
@@ -994,8 +995,7 @@ h2 {
 }
 
 .mw-admin-table-outer--always-scroll {
-  overflow-x: scroll;
-  scrollbar-gutter: stable;
+  overflow-x: auto;
 }
 
 .mw-admin-table--programs {
@@ -1229,3 +1229,48 @@ h2 {
 .mw-admin-minw-320 {
   min-width: 320px;
 }
+
+/* Editorial workspace: readable rows, source-backed previews, one page scroll. */
+.mw-admin-page { min-width: 0; }
+.mw-admin-page--wide { max-width: 1920px; }
+.mw-admin-page :is(button, input, select, textarea) { font-family: inherit; }
+.mw-admin-page :is(button, a, input, select, textarea, summary):focus-visible {
+  outline: 3px solid var(--mw-accent); outline-offset: 3px;
+}
+.mw-admin-table :is(th, td) { overflow-wrap: anywhere; line-height: 1.55; }
+.mw-admin-table td { padding-top: 16px; padding-bottom: 16px; }
+.mw-admin-candidates-layout > section { min-width: 0; }
+.mw-admin-candidate-card { display: grid; grid-template-columns: 112px minmax(0, 1fr); padding: 18px; gap: 16px; cursor: default; }
+.mw-admin-candidate-card__actions { grid-column: 2; }
+.mw-admin-candidate-cover { aspect-ratio: 4 / 3; border-radius: 12px; background: var(--mw-bg-warm); overflow: hidden; display: grid; place-items: center; font-size: .8rem; text-align: center; color: var(--mw-muted); }
+.mw-admin-candidate-cover img { width: 100%; height: 100%; object-fit: cover; }
+.mw-admin-candidate-title { display: block; font-size: 1.08rem; font-weight: 650; line-height: 1.45; letter-spacing: -.02em; overflow-wrap: anywhere; }
+.mw-admin-candidate-evidence { margin: 14px 0; color: var(--mw-muted); font-size: .85rem; overflow-wrap: anywhere; }
+.mw-admin-candidate-evidence summary { cursor: pointer; font-weight: 600; }
+.mw-admin-candidate-gallery { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 12px 0 24px; }
+.mw-admin-candidate-gallery a:first-child { grid-column: 1 / -1; }
+.mw-admin-candidate-gallery a { display: block; border-radius: 12px; overflow: hidden; background: var(--mw-bg); }
+.mw-admin-candidate-gallery img { display: block; width: 100%; max-height: 360px; object-fit: contain; }
+.mw-admin-candidate-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; padding: 20px 0; border-block: 1px solid var(--mw-border); }
+.mw-admin-candidate-facts dt { font-size: .8rem; color: var(--mw-muted); }
+.mw-admin-candidate-facts dd { margin: 4px 0 0; font-size: .95rem; overflow-wrap: anywhere; }
+.mw-admin-candidate-description { white-space: pre-wrap; overflow-wrap: anywhere; font-size: .95rem; line-height: 1.7; }
+.mw-admin-pipeline .mw-admin-table { table-layout: fixed; }
+.mw-admin-pipeline .mw-admin-table--materials th:first-child { width: 6%; }
+.mw-admin-pipeline .mw-admin-table--materials th:nth-child(2) { width: 15%; }
+.mw-admin-pipeline .mw-admin-table--materials th:nth-child(3) { width: 40%; }
+.mw-admin-pipeline .mw-admin-table .mw-admin-badge { white-space: normal; }
+.mw-admin-pipeline-title { font-weight: 550; }
+@media (max-width: 1100px) {
+  .mw-admin-aside-panel--sticky { position: static; }
+  .mw-admin-pipeline .mw-admin-table { min-width: 760px; }
+}
+@media (max-width: 600px) {
+  .mw-admin-candidate-card { grid-template-columns: 1fr; }
+  .mw-admin-candidate-cover { width: 100%; max-height: 220px; }
+  .mw-admin-candidate-card__actions { grid-column: auto; }
+  .mw-admin-candidate-facts { grid-template-columns: 1fr; }
+  .mw-admin-filters-bar__field, .mw-admin-filters-bar__field select { min-width: 0; max-width: 100%; }
+}
+
+@media (max-width: 899px) { .mw-admin-workspace--shelled { margin-left: 0; } }
